@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/apollos_crib.iml" filepath="$PROJECT_DIR$/apollos_crib.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_air_quality/room_air_quality.iml" filepath="$PROJECT_DIR$/apps/room_air_quality/room_air_quality.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_calendar/room_calendar.iml" filepath="$PROJECT_DIR$/apps/room_calendar/room_calendar.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_ephem/room_ephem.iml" filepath="$PROJECT_DIR$/apps/room_ephem/room_ephem.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_gbfs/room_gbfs.iml" filepath="$PROJECT_DIR$/apps/room_gbfs/room_gbfs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_gtfs/room_gtfs.iml" filepath="$PROJECT_DIR$/apps/room_gtfs/room_gtfs.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_hass/room_hass.iml" filepath="$PROJECT_DIR$/apps/room_hass/room_hass.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_rideshare/room_rideshare.iml" filepath="$PROJECT_DIR$/apps/room_rideshare/room_rideshare.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_sanctum/room_sanctum.iml" filepath="$PROJECT_DIR$/apps/room_sanctum/room_sanctum.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_tidal/room_tidal.iml" filepath="$PROJECT_DIR$/apps/room_tidal/room_tidal.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/room_weather/room_weather.iml" filepath="$PROJECT_DIR$/apps/room_weather/room_weather.iml" />
+    </modules>
+  </component>
+</project>

@@ -1,0 +1,163 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="query-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+
+    <%= label f, :source_id %>
+    <%= select f, :source_id, @cfg_sources_sel %>
+    <%= error_tag f, :source_id %>
+  
+    <%= label f, :name %>
+    <%= text_input f, :name %>
+    <%= error_tag f, :name %>
+  
+    <%= label f, :notes %>
+    <%= text_input f, :notes %>
+    <%= error_tag f, :notes %>
+
+  <%= case get_current_type(@changeset) do %>
+  <%= :aqi -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :aqi, fn aqi_form -> %>
+  <div class="key-inputs">
+    <label>Lookup ZIP</label>
+    <%= text_input aqi_form, :location_zip %>
+    <div class="error">
+      <%= error_tag aqi_form, :location_zip %>
+    </div>
+  </div>
+  <% end %>
+  <%= :calendar -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :calendar, fn cal_form -> %>
+  <div class="url-inputs">
+    <label>filters?</label>
+    <%= text_input cal_form, :filters %>
+    <div class="error">
+      <%= error_tag cal_form, :filters %>
+    </div>
+  </div>
+  <% end %>
+
+  <%= :ephem -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :ephem, fn ephem_form -> %>
+  <div class="lat-inputs">
+    <label>Lat</label>
+    <%= text_input ephem_form, :lat %>
+    <div class="error">
+      <%= error_tag ephem_form, :lat %>
+    </div>
+  </div>
+  <div class="lon-inputs">
+    <label>Lon</label>
+    <%= text_input ephem_form, :lon %>
+    <div class="error">
+      <%= error_tag ephem_form, :lon %>
+    </div>
+  </div>
+  <% end %>
+
+  <%= :gbfs -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :gbfs, fn gbfs_form -> %>
+  <div class="url-inputs">
+    <label>Stop ID</label>
+    <%= text_input gbfs_form, :stop_id %>
+    <div class="error">
+      <%= error_tag gbfs_form, :stop_id %>
+    </div>
+  </div>
+  <% end %>
+
+  <%= :gtfs -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :gtfs, fn gtfs_form -> %>
+  <div class="stop-inputs">
+    <label>Stop</label>
+    <%= text_input gtfs_form, :stop %>
+    <div class="error">
+      <%= error_tag gtfs_form, :stop %>
+    </div>
+  </div>
+  <div class="routes-inputs">
+    <label>Routes</label>
+    <%= text_input gtfs_form, :routes %>
+    <div class="error">
+      <%= error_tag gtfs_form, :routes %>
+    </div>
+  </div>
+  <% end %>
+
+  <%= :hass -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :hass, fn hass_form -> %>
+  <div class="entity-inputs">
+    <label>Entity</label>
+    <%= text_input hass_form, :entity %>
+    <div class="error">
+      <%= error_tag hass_form, :entity %>
+    </div>
+  </div>
+
+  <div class="property-inputs">
+    <label>Properties</label>
+    <%= text_input hass_form, :properties %>
+    <div class="error">
+      <%= error_tag hass_form, :properties %>
+    </div>
+  </div>
+  <% end %>
+
+  <%= :rideshare -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :rideshare, fn rs_form -> %>
+  <div class="provider-inputs">
+    <label>Provider</label>
+    <%= text_input rs_form, :provider %>
+    <div class="error">
+      <%= error_tag rs_form, :provider %>
+    </div>
+  </div>
+  <div class="api-key-inputs">
+    <label>API Key</label>
+    <%= text_input rs_form, :api_key %>
+    <div class="error">
+      <%= error_tag rs_form, :api_key %>
+    </div>
+  </div>
+  <% end %>
+  <%= :tidal -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :tidal, fn tidal_form -> %>
+  <div class="url-inputs">
+    <label>Station ID</label>
+    <%= text_input tidal_form, :station_id %>
+    <div class="error">
+      <%= error_tag tidal_form, :station_id %>
+    </div>
+  </div>
+  <% end %>
+  <%= :weather -> %>
+  <%= polymorphic_embed_inputs_for f, :query, :weather, fn weather_form -> %>
+  <div class="lat-inputs">
+    <label>Lat</label>
+    <%= text_input weather_form, :lat %>
+    <div class="error">
+      <%= error_tag weather_form, :lat %>
+    </div>
+  </div>
+  <div class="lon-inputs">
+    <label>Lon</label>
+    <%= text_input weather_form, :lon %>
+    <div class="error">
+      <%= error_tag weather_form, :lon %>
+    </div>
+  </div>
+  <% end %>
+    <% _ -> %>
+  nada
+  <% end %>
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>
