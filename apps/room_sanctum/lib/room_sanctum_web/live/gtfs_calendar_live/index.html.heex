@@ -1,0 +1,57 @@
+<h1>Listing Calendars</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.calendar_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.CalendarLive.FormComponent}
+      id={@calendar.id || :new}
+      title={@page_title}
+      action={@live_action}
+      calendar={@calendar}
+      return_to={Routes.calendar_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Service</th>
+      <th>Service name</th>
+      <th>Monday</th>
+      <th>Tuesday</th>
+      <th>Wednesday</th>
+      <th>Thursday</th>
+      <th>Friday</th>
+      <th>Saturday</th>
+      <th>Start date</th>
+      <th>End date</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="calendars">
+    <%= for calendar <- @calendars do %>
+      <tr id={"calendar-#{calendar.id}"}>
+        <td><%= calendar.service_id %></td>
+        <td><%= calendar.service_name %></td>
+        <td><%= calendar.monday %></td>
+        <td><%= calendar.tuesday %></td>
+        <td><%= calendar.wednesday %></td>
+        <td><%= calendar.thursday %></td>
+        <td><%= calendar.friday %></td>
+        <td><%= calendar.saturday %></td>
+        <td><%= calendar.start_date %></td>
+        <td><%= calendar.end_date %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.calendar_show_path(@socket, :show, calendar) %></span>
+          <span><%= live_patch "Edit", to: Routes.calendar_index_path(@socket, :edit, calendar) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: calendar.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Calendar", to: Routes.calendar_index_path(@socket, :new) %></span>

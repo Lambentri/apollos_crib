@@ -1,0 +1,71 @@
+<h1>Show Station info</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.station_info_show_path(@socket, :show, @station_info)}>
+    <.live_component
+      module={RoomSanctumWeb.StationInfoLive.FormComponent}
+      id={@station_info.id}
+      title={@page_title}
+      action={@live_action}
+      station_info={@station_info}
+      return_to={Routes.station_info_show_path(@socket, :show, @station_info)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Station:</strong>
+    <%= @station_info.station_id %>
+  </li>
+
+  <li>
+    <strong>Name:</strong>
+    <%= @station_info.name %>
+  </li>
+
+  <li>
+    <strong>Short name:</strong>
+    <%= @station_info.short_name %>
+  </li>
+
+  <li>
+    <strong>Capacity:</strong>
+    <%= @station_info.capacity %>
+  </li>
+
+  <li>
+    <strong>Region:</strong>
+    <%= @station_info.region_id %>
+  </li>
+
+  <li>
+    <strong>Legacy:</strong>
+    <%= @station_info.legacy_id %>
+  </li>
+
+  <li>
+    <strong>External:</strong>
+    <%= @station_info.external_id %>
+  </li>
+
+  <li>
+    <strong>Lat:</strong>
+    <%= @station_info.lat %>
+  </li>
+
+  <li>
+    <strong>Lon:</strong>
+    <%= @station_info.lon %>
+  </li>
+
+  <li>
+    <strong>Rental methods:</strong>
+    <%= @station_info.rental_methods %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.station_info_show_path(@socket, :edit, @station_info), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.station_info_index_path(@socket, :index) %></span>

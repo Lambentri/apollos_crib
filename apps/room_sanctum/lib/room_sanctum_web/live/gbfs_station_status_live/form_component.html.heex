@@ -1,0 +1,64 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="station_status-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :legacy_id %>
+    <%= text_input f, :legacy_id %>
+    <%= error_tag f, :legacy_id %>
+  
+    <%= label f, :num_bikes_available %>
+    <%= number_input f, :num_bikes_available %>
+    <%= error_tag f, :num_bikes_available %>
+  
+    <%= label f, :num_docks_disabled %>
+    <%= number_input f, :num_docks_disabled %>
+    <%= error_tag f, :num_docks_disabled %>
+  
+    <%= label f, :station_id %>
+    <%= text_input f, :station_id %>
+    <%= error_tag f, :station_id %>
+  
+    <%= label f, :station_status %>
+    <%= text_input f, :station_status %>
+    <%= error_tag f, :station_status %>
+  
+    <%= label f, :num_bikes_disables %>
+    <%= number_input f, :num_bikes_disables %>
+    <%= error_tag f, :num_bikes_disables %>
+  
+    <%= label f, :last_reported %>
+    <%= datetime_select f, :last_reported %>
+    <%= error_tag f, :last_reported %>
+  
+    <%= label f, :is_installed %>
+    <%= checkbox f, :is_installed %>
+    <%= error_tag f, :is_installed %>
+  
+    <%= label f, :is_renting %>
+    <%= checkbox f, :is_renting %>
+    <%= error_tag f, :is_renting %>
+  
+    <%= label f, :num_ebikes_available %>
+    <%= number_input f, :num_ebikes_available %>
+    <%= error_tag f, :num_ebikes_available %>
+  
+    <%= label f, :num_docks_available %>
+    <%= number_input f, :num_docks_available %>
+    <%= error_tag f, :num_docks_available %>
+  
+    <%= label f, :is_returning %>
+    <%= checkbox f, :is_returning %>
+    <%= error_tag f, :is_returning %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

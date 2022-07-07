@@ -1,0 +1,71 @@
+<h1>Listing Airnow reporting area</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.reporting_area_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.ReportingAreaLive.FormComponent}
+      id={@reporting_area.id || :new}
+      title={@page_title}
+      action={@live_action}
+      reporting_area={@reporting_area}
+      return_to={Routes.reporting_area_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Issue date</th>
+      <th>Valid date</th>
+      <th>Valid time</th>
+      <th>Time zone</th>
+      <th>Record sequence</th>
+      <th>Data type</th>
+      <th>Primary</th>
+      <th>Reporting area</th>
+      <th>State code</th>
+      <th>Lat</th>
+      <th>Lon</th>
+      <th>Parameter name</th>
+      <th>Aqi value</th>
+      <th>Aqi category</th>
+      <th>Action day</th>
+      <th>Discussion</th>
+      <th>Forecast source</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="airnow_reporting_area">
+    <%= for reporting_area <- @airnow_reporting_area do %>
+      <tr id={"reporting_area-#{reporting_area.id}"}>
+        <td><%= reporting_area.issue_date %></td>
+        <td><%= reporting_area.valid_date %></td>
+        <td><%= reporting_area.valid_time %></td>
+        <td><%= reporting_area.time_zone %></td>
+        <td><%= reporting_area.record_sequence %></td>
+        <td><%= reporting_area.data_type %></td>
+        <td><%= reporting_area.primary %></td>
+        <td><%= reporting_area.reporting_area %></td>
+        <td><%= reporting_area.state_code %></td>
+        <td><%= reporting_area.lat %></td>
+        <td><%= reporting_area.lon %></td>
+        <td><%= reporting_area.parameter_name %></td>
+        <td><%= reporting_area.aqi_value %></td>
+        <td><%= reporting_area.aqi_category %></td>
+        <td><%= reporting_area.action_day %></td>
+        <td><%= reporting_area.discussion %></td>
+        <td><%= reporting_area.forecast_source %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.reporting_area_show_path(@socket, :show, reporting_area) %></span>
+          <span><%= live_patch "Edit", to: Routes.reporting_area_index_path(@socket, :edit, reporting_area) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: reporting_area.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Reporting area", to: Routes.reporting_area_index_path(@socket, :new) %></span>

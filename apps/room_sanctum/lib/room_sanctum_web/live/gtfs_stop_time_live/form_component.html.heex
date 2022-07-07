@@ -1,0 +1,64 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="stop_time-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :trip_id %>
+    <%= text_input f, :trip_id %>
+    <%= error_tag f, :trip_id %>
+  
+    <%= label f, :arrival_time %>
+    <%= time_select f, :arrival_time %>
+    <%= error_tag f, :arrival_time %>
+  
+    <%= label f, :departure_time %>
+    <%= time_select f, :departure_time %>
+    <%= error_tag f, :departure_time %>
+  
+    <%= label f, :stop_id %>
+    <%= text_input f, :stop_id %>
+    <%= error_tag f, :stop_id %>
+  
+    <%= label f, :stop_sequence %>
+    <%= number_input f, :stop_sequence %>
+    <%= error_tag f, :stop_sequence %>
+  
+    <%= label f, :stop_headsign %>
+    <%= text_input f, :stop_headsign %>
+    <%= error_tag f, :stop_headsign %>
+  
+    <%= label f, :pickup_type %>
+    <%= number_input f, :pickup_type %>
+    <%= error_tag f, :pickup_type %>
+  
+    <%= label f, :drop_off_type %>
+    <%= number_input f, :drop_off_type %>
+    <%= error_tag f, :drop_off_type %>
+  
+    <%= label f, :timepoint %>
+    <%= number_input f, :timepoint %>
+    <%= error_tag f, :timepoint %>
+  
+    <%= label f, :checkpoint_id %>
+    <%= text_input f, :checkpoint_id %>
+    <%= error_tag f, :checkpoint_id %>
+  
+    <%= label f, :continuous_pickup %>
+    <%= text_input f, :continuous_pickup %>
+    <%= error_tag f, :continuous_pickup %>
+  
+    <%= label f, :continuous_dropoff %>
+    <%= text_input f, :continuous_dropoff %>
+    <%= error_tag f, :continuous_dropoff %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

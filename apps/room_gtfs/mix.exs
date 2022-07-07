@@ -19,7 +19,7 @@ defmodule RoomGtfs.MixProject do
   def application do
     [
       extra_applications: [:logger],
-      mod: {RoomGtfs.Application, []}
+#      mod: {RoomGtfs.Application, []}
     ]
   end
 

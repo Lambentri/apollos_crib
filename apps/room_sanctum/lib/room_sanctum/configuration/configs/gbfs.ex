@@ -6,11 +6,12 @@ defmodule RoomSanctum.Configuration.Configs.GBFS do
 
   embedded_schema do
     field :url, :string
+    field :lang, :string
   end
 
   def changeset(source, params) do
     source
-    |> cast(params, ~w(url)a)
-    |> validate_required(:url)
+    |> cast(params, ~w(url lang)a)
+    |> validate_required([:url, :lang])
   end
 end

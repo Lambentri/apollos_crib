@@ -1,0 +1,76 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="stop-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :stop_id %>
+    <%= text_input f, :stop_id %>
+    <%= error_tag f, :stop_id %>
+  
+    <%= label f, :stop_code %>
+    <%= text_input f, :stop_code %>
+    <%= error_tag f, :stop_code %>
+  
+    <%= label f, :stop_name %>
+    <%= text_input f, :stop_name %>
+    <%= error_tag f, :stop_name %>
+  
+    <%= label f, :stop_desc %>
+    <%= text_input f, :stop_desc %>
+    <%= error_tag f, :stop_desc %>
+  
+    <%= label f, :platform_code %>
+    <%= text_input f, :platform_code %>
+    <%= error_tag f, :platform_code %>
+  
+    <%= label f, :platform_name %>
+    <%= text_input f, :platform_name %>
+    <%= error_tag f, :platform_name %>
+  
+    <%= label f, :stop_lat %>
+    <%= number_input f, :stop_lat, step: "any" %>
+    <%= error_tag f, :stop_lat %>
+  
+    <%= label f, :stop_lon %>
+    <%= number_input f, :stop_lon, step: "any" %>
+    <%= error_tag f, :stop_lon %>
+  
+    <%= label f, :zone_id %>
+    <%= text_input f, :zone_id %>
+    <%= error_tag f, :zone_id %>
+  
+    <%= label f, :stop_address %>
+    <%= text_input f, :stop_address %>
+    <%= error_tag f, :stop_address %>
+  
+    <%= label f, :stop_url %>
+    <%= text_input f, :stop_url %>
+    <%= error_tag f, :stop_url %>
+  
+    <%= label f, :level_id %>
+    <%= text_input f, :level_id %>
+    <%= error_tag f, :level_id %>
+  
+    <%= label f, :location_type %>
+    <%= text_input f, :location_type %>
+    <%= error_tag f, :location_type %>
+  
+    <%= label f, :parent_station %>
+    <%= text_input f, :parent_station %>
+    <%= error_tag f, :parent_station %>
+  
+    <%= label f, :wheelchair_boarding %>
+    <%= number_input f, :wheelchair_boarding %>
+    <%= error_tag f, :wheelchair_boarding %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

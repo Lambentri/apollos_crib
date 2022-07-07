@@ -1,0 +1,78 @@
+<div>
+    <h2><%= @title %></h2>
+
+    <.form
+    let={f}
+    for={@changeset}
+    id="vision-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+
+    <%= label f, :name %>
+    <%= text_input f, :name %>
+    <%= error_tag f, :name %>
+
+    <%= for {fq, ctr} <- Enum.with_index(inputs_for(f, :queries) |> Enum.sort_by(fn x -> x.data.data.order end)) do %>
+        <%= hidden_inputs_for(fq) %>
+        <%= ctr %>
+
+        <%= label fq, :type %>
+        <%= select fq, :type, Ecto.Enum.values(RoomSanctum.Configuration.Vision, :type), prompt: "Choose a value" %>
+        <%= error_tag fq, :type %>
+
+        <%= for fd <- polymorphic_embed_inputs_for fq, :data do %>
+            <%= hidden_inputs_for(fd) %>
+            <div class="key-inputs">
+                <label>Order</label>
+                <%= number_input fd, :order %>
+                <div class="error">
+                    <%= error_tag fd, :order %>
+                </div>
+            </div>
+            <div class="key-inputs">
+                <label>Query</label>
+                <%= select fd, :query, @cfg_queries_sel %>
+                <div class="error">
+                    <%= error_tag fd, :query %>
+                </div>
+            </div>
+            <%= case gfv(@changeset, fq, ctr) do %>
+                <% :time -> %>
+                    <div class="time-inputs">
+                        <label>Weekdays</label>
+                        <%= multiple_select(
+                                fd,
+                                :weekdays,
+                                Enum.map(Ecto.Enum.values(RoomSanctum.Configuration.Vision.Schema1Time, :weekdays), fn c -> etuple(c) end)
+                              ) %>
+                        <div class="error">
+                            <%= error_tag fd, :weekdays %>
+                        </div>
+                    </div>
+                    <div class="time-inputs">
+                        <label>Start Time</label>
+                        <%= time_select fd, :time_start %>
+                        <div class="error">
+                            <%= error_tag fd, :time_start %>
+                        </div>
+                    </div>
+                    <div class="time-inputs">
+                        <label>End Time</label>
+                        <%= time_select fd, :time_end %>
+                        <div class="error">
+                            <%= error_tag fd, :time_end %>
+                        </div>
+                    </div>
+                <% _ -> %>
+            <% end %>
+        <% end %>
+    <% end %>
+    <br />
+    <button href="#" phx-click="add-entry" phx-target={@myself}>Add Entry</button>
+
+    <div>
+        <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+</.form>
+</div>

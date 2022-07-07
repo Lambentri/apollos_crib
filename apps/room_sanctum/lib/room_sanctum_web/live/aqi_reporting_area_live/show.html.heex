@@ -1,0 +1,106 @@
+<h1>Show Reporting area</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.reporting_area_show_path(@socket, :show, @reporting_area)}>
+    <.live_component
+      module={RoomSanctumWeb.ReportingAreaLive.FormComponent}
+      id={@reporting_area.id}
+      title={@page_title}
+      action={@live_action}
+      reporting_area={@reporting_area}
+      return_to={Routes.reporting_area_show_path(@socket, :show, @reporting_area)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Issue date:</strong>
+    <%= @reporting_area.issue_date %>
+  </li>
+
+  <li>
+    <strong>Valid date:</strong>
+    <%= @reporting_area.valid_date %>
+  </li>
+
+  <li>
+    <strong>Valid time:</strong>
+    <%= @reporting_area.valid_time %>
+  </li>
+
+  <li>
+    <strong>Time zone:</strong>
+    <%= @reporting_area.time_zone %>
+  </li>
+
+  <li>
+    <strong>Record sequence:</strong>
+    <%= @reporting_area.record_sequence %>
+  </li>
+
+  <li>
+    <strong>Data type:</strong>
+    <%= @reporting_area.data_type %>
+  </li>
+
+  <li>
+    <strong>Primary:</strong>
+    <%= @reporting_area.primary %>
+  </li>
+
+  <li>
+    <strong>Reporting area:</strong>
+    <%= @reporting_area.reporting_area %>
+  </li>
+
+  <li>
+    <strong>State code:</strong>
+    <%= @reporting_area.state_code %>
+  </li>
+
+  <li>
+    <strong>Lat:</strong>
+    <%= @reporting_area.lat %>
+  </li>
+
+  <li>
+    <strong>Lon:</strong>
+    <%= @reporting_area.lon %>
+  </li>
+
+  <li>
+    <strong>Parameter name:</strong>
+    <%= @reporting_area.parameter_name %>
+  </li>
+
+  <li>
+    <strong>Aqi value:</strong>
+    <%= @reporting_area.aqi_value %>
+  </li>
+
+  <li>
+    <strong>Aqi category:</strong>
+    <%= @reporting_area.aqi_category %>
+  </li>
+
+  <li>
+    <strong>Action day:</strong>
+    <%= @reporting_area.action_day %>
+  </li>
+
+  <li>
+    <strong>Discussion:</strong>
+    <%= @reporting_area.discussion %>
+  </li>
+
+  <li>
+    <strong>Forecast source:</strong>
+    <%= @reporting_area.forecast_source %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.reporting_area_show_path(@socket, :edit, @reporting_area), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.reporting_area_index_path(@socket, :index) %></span>

@@ -37,6 +37,7 @@ defmodule RoomSanctum.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:bcrypt_elixir, "~> 3.0"},
       {:phoenix, "~> 1.6.9"},
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.6"},
@@ -52,11 +53,15 @@ defmodule RoomSanctum.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
-
       {:plug_cowboy, "~> 2.5"},
 
-      {:poison, "~> 5.0"},
-      {:polymorphic_embed, "~> 1.9.0"}
+      {:timex, "~> 3.7.8"},
+      {:poison, "~> 5.0", override: true},
+
+      #{:polymorphic_embed, "~> 1.9.0"},
+      {:polymorphic_embed, git: "git@github.com:woylie/polymorphic_embed.git", branch: "inputs-for-liveview"},
+      {:geo_postgis, "~> 3.4"},
+      {:tzdata, "~> 1.1"}
     ]
   end
 

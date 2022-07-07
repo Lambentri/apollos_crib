@@ -1,0 +1,56 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="trip-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :route_id %>
+    <%= text_input f, :route_id %>
+    <%= error_tag f, :route_id %>
+  
+    <%= label f, :service_id %>
+    <%= text_input f, :service_id %>
+    <%= error_tag f, :service_id %>
+  
+    <%= label f, :trip_id %>
+    <%= text_input f, :trip_id %>
+    <%= error_tag f, :trip_id %>
+  
+    <%= label f, :trip_headsign %>
+    <%= text_input f, :trip_headsign %>
+    <%= error_tag f, :trip_headsign %>
+  
+    <%= label f, :trip_short_name %>
+    <%= text_input f, :trip_short_name %>
+    <%= error_tag f, :trip_short_name %>
+  
+    <%= label f, :direction_id %>
+    <%= number_input f, :direction_id %>
+    <%= error_tag f, :direction_id %>
+  
+    <%= label f, :block_id %>
+    <%= text_input f, :block_id %>
+    <%= error_tag f, :block_id %>
+  
+    <%= label f, :shape_id %>
+    <%= text_input f, :shape_id %>
+    <%= error_tag f, :shape_id %>
+  
+    <%= label f, :wheelchair_accessible %>
+    <%= number_input f, :wheelchair_accessible %>
+    <%= error_tag f, :wheelchair_accessible %>
+  
+    <%= label f, :bikes_allowed %>
+    <%= number_input f, :bikes_allowed %>
+    <%= error_tag f, :bikes_allowed %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

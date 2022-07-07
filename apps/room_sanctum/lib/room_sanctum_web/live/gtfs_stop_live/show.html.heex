@@ -1,0 +1,96 @@
+<h1>Show Stop</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.stop_show_path(@socket, :show, @stop)}>
+    <.live_component
+      module={RoomSanctumWeb.StopLive.FormComponent}
+      id={@stop.id}
+      title={@page_title}
+      action={@live_action}
+      stop={@stop}
+      return_to={Routes.stop_show_path(@socket, :show, @stop)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Stop:</strong>
+    <%= @stop.stop_id %>
+  </li>
+
+  <li>
+    <strong>Stop code:</strong>
+    <%= @stop.stop_code %>
+  </li>
+
+  <li>
+    <strong>Stop name:</strong>
+    <%= @stop.stop_name %>
+  </li>
+
+  <li>
+    <strong>Stop desc:</strong>
+    <%= @stop.stop_desc %>
+  </li>
+
+  <li>
+    <strong>Platform code:</strong>
+    <%= @stop.platform_code %>
+  </li>
+
+  <li>
+    <strong>Platform name:</strong>
+    <%= @stop.platform_name %>
+  </li>
+
+  <li>
+    <strong>Stop lat:</strong>
+    <%= @stop.stop_lat %>
+  </li>
+
+  <li>
+    <strong>Stop lon:</strong>
+    <%= @stop.stop_lon %>
+  </li>
+
+  <li>
+    <strong>Zone:</strong>
+    <%= @stop.zone_id %>
+  </li>
+
+  <li>
+    <strong>Stop address:</strong>
+    <%= @stop.stop_address %>
+  </li>
+
+  <li>
+    <strong>Stop url:</strong>
+    <%= @stop.stop_url %>
+  </li>
+
+  <li>
+    <strong>Level:</strong>
+    <%= @stop.level_id %>
+  </li>
+
+  <li>
+    <strong>Location type:</strong>
+    <%= @stop.location_type %>
+  </li>
+
+  <li>
+    <strong>Parent station:</strong>
+    <%= @stop.parent_station %>
+  </li>
+
+  <li>
+    <strong>Wheelchair boarding:</strong>
+    <%= @stop.wheelchair_boarding %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.stop_show_path(@socket, :edit, @stop), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.stop_index_path(@socket, :index) %></span>

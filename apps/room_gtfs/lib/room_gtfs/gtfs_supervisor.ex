@@ -27,7 +27,7 @@ defmodule RoomGtfs.DynSupervisor do
   end
 
   defp do_children do
-    RoomSanctum.Configuration.list_cfg_sources(:gtfs)
+    RoomSanctum.Configuration.list_cfg_sources({:type, :gtfs})
     |> Enum.map(fn x -> start_child(x.id) end)
   end
 end

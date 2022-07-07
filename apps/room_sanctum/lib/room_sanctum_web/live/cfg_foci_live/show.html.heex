@@ -1,0 +1,31 @@
+<h1>Show Foci</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.foci_show_path(@socket, :show, @foci)}>
+    <.live_component
+      module={RoomSanctumWeb.FociLive.FormComponent}
+      id={@foci.id}
+      title={@page_title}
+      action={@live_action}
+      foci={@foci}
+      return_to={Routes.foci_show_path(@socket, :show, @foci)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Name:</strong>
+    <%= @foci.name %>
+  </li>
+
+  <li>
+    <strong>Place:</strong>
+    <%= @foci.place %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.foci_show_path(@socket, :edit, @foci), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.foci_index_path(@socket, :index) %></span>

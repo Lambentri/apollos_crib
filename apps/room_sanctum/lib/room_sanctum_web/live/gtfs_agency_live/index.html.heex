@@ -1,0 +1,53 @@
+<h1>Listing Agencies</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.agency_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.AgencyLive.FormComponent}
+      id={@agency.id || :new}
+      title={@page_title}
+      action={@live_action}
+      agency={@agency}
+      return_to={Routes.agency_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Agency</th>
+      <th>Agency url</th>
+      <th>Agency lang</th>
+      <th>Agency name</th>
+      <th>Agency phone</th>
+      <th>Agency timezone</th>
+      <th>Agency fare url</th>
+      <th>Tts agency name</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="agencies">
+    <%= for agency <- @agencies do %>
+      <tr id={"agency-#{agency.id}"}>
+        <td><%= agency.agency_id %></td>
+        <td><%= agency.agency_url %></td>
+        <td><%= agency.agency_lang %></td>
+        <td><%= agency.agency_name %></td>
+        <td><%= agency.agency_phone %></td>
+        <td><%= agency.agency_timezone %></td>
+        <td><%= agency.agency_fare_url %></td>
+        <td><%= agency.tts_agency_name %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.agency_show_path(@socket, :show, agency) %></span>
+          <span><%= live_patch "Edit", to: Routes.agency_index_path(@socket, :edit, agency) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: agency.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Agency", to: Routes.agency_index_path(@socket, :new) %></span>

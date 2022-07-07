@@ -1,0 +1,61 @@
+<h1>Listing Gbfs station status</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.station_status_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.StationStatusLive.FormComponent}
+      id={@station_status.id || :new}
+      title={@page_title}
+      action={@live_action}
+      station_status={@station_status}
+      return_to={Routes.station_status_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Legacy</th>
+      <th>Num bikes available</th>
+      <th>Num docks disabled</th>
+      <th>Station</th>
+      <th>Station status</th>
+      <th>Num bikes disables</th>
+      <th>Last reported</th>
+      <th>Is installed</th>
+      <th>Is renting</th>
+      <th>Num ebikes available</th>
+      <th>Num docks available</th>
+      <th>Is returning</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="gbfs_station_status">
+    <%= for station_status <- @gbfs_station_status do %>
+      <tr id={"station_status-#{station_status.id}"}>
+        <td><%= station_status.legacy_id %></td>
+        <td><%= station_status.num_bikes_available %></td>
+        <td><%= station_status.num_docks_disabled %></td>
+        <td><%= station_status.station_id %></td>
+        <td><%= station_status.station_status %></td>
+        <td><%= station_status.num_bikes_disables %></td>
+        <td><%= station_status.last_reported %></td>
+        <td><%= station_status.is_installed %></td>
+        <td><%= station_status.is_renting %></td>
+        <td><%= station_status.num_ebikes_available %></td>
+        <td><%= station_status.num_docks_available %></td>
+        <td><%= station_status.is_returning %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.station_status_show_path(@socket, :show, station_status) %></span>
+          <span><%= live_patch "Edit", to: Routes.station_status_index_path(@socket, :edit, station_status) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: station_status.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Station status", to: Routes.station_status_index_path(@socket, :new) %></span>

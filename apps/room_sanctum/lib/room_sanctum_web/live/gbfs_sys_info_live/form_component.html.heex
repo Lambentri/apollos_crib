@@ -1,0 +1,64 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="sys_info-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :name %>
+    <%= text_input f, :name %>
+    <%= error_tag f, :name %>
+  
+    <%= label f, :email %>
+    <%= text_input f, :email %>
+    <%= error_tag f, :email %>
+  
+    <%= label f, :timezone %>
+    <%= text_input f, :timezone %>
+    <%= error_tag f, :timezone %>
+  
+    <%= label f, :short_name %>
+    <%= text_input f, :short_name %>
+    <%= error_tag f, :short_name %>
+  
+    <%= label f, :phone_number %>
+    <%= text_input f, :phone_number %>
+    <%= error_tag f, :phone_number %>
+  
+    <%= label f, :language %>
+    <%= text_input f, :language %>
+    <%= error_tag f, :language %>
+  
+    <%= label f, :start_date %>
+    <%= date_select f, :start_date %>
+    <%= error_tag f, :start_date %>
+  
+    <%= label f, :url %>
+    <%= text_input f, :url %>
+    <%= error_tag f, :url %>
+  
+    <%= label f, :operator %>
+    <%= text_input f, :operator %>
+    <%= error_tag f, :operator %>
+  
+    <%= label f, :purchase_url %>
+    <%= text_input f, :purchase_url %>
+    <%= error_tag f, :purchase_url %>
+  
+    <%= label f, :license_url %>
+    <%= text_input f, :license_url %>
+    <%= error_tag f, :license_url %>
+  
+    <%= label f, :system_id %>
+    <%= text_input f, :system_id %>
+    <%= error_tag f, :system_id %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

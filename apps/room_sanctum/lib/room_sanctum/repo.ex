@@ -1,5 +1,6 @@
 defmodule RoomSanctum.Repo do
   use Ecto.Repo,
     otp_app: :room_sanctum,
-    adapter: Ecto.Adapters.Postgres
+    adapter: Ecto.Adapters.Postgres,
+    types: RoomSanctum.PostgresTypes
 end

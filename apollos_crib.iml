@@ -59,6 +59,14 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/poison" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/protobuf" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/parent" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/elixir_make" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/bcrypt_elixir" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/comeonin" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/geo_postgis" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/geo" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/combine" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/tzdata" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/timex" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

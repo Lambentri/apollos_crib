@@ -1,0 +1,86 @@
+<h1>Show Route</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.route_show_path(@socket, :show, @route)}>
+    <.live_component
+      module={RoomSanctumWeb.RouteLive.FormComponent}
+      id={@route.id}
+      title={@page_title}
+      action={@live_action}
+      route={@route}
+      return_to={Routes.route_show_path(@socket, :show, @route)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Agency:</strong>
+    <%= @route.agency_id %>
+  </li>
+
+  <li>
+    <strong>Route:</strong>
+    <%= @route.route_id %>
+  </li>
+
+  <li>
+    <strong>Route short name:</strong>
+    <%= @route.route_short_name %>
+  </li>
+
+  <li>
+    <strong>Route long name:</strong>
+    <%= @route.route_long_name %>
+  </li>
+
+  <li>
+    <strong>Route desc:</strong>
+    <%= @route.route_desc %>
+  </li>
+
+  <li>
+    <strong>Route type:</strong>
+    <%= @route.route_type %>
+  </li>
+
+  <li>
+    <strong>Route url:</strong>
+    <%= @route.route_url %>
+  </li>
+
+  <li>
+    <strong>Route color:</strong>
+    <%= @route.route_color %>
+  </li>
+
+  <li>
+    <strong>Route text color:</strong>
+    <%= @route.route_text_color %>
+  </li>
+
+  <li>
+    <strong>Route sort order:</strong>
+    <%= @route.route_sort_order %>
+  </li>
+
+  <li>
+    <strong>Route fare class:</strong>
+    <%= @route.route_fare_class %>
+  </li>
+
+  <li>
+    <strong>Line:</strong>
+    <%= @route.line_id %>
+  </li>
+
+  <li>
+    <strong>Listed route:</strong>
+    <%= @route.listed_route %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.route_show_path(@socket, :edit, @route), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.route_index_path(@socket, :index) %></span>

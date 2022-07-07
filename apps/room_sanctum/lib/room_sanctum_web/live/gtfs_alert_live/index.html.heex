@@ -1,0 +1,55 @@
+<h1>Listing Gbfs alerts</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.alert_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.AlertLive.FormComponent}
+      id={@alert.id || :new}
+      title={@page_title}
+      action={@live_action}
+      alert={@alert}
+      return_to={Routes.alert_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Alert</th>
+      <th>Type</th>
+      <th>Times</th>
+      <th>Station ids</th>
+      <th>Region ids</th>
+      <th>Url</th>
+      <th>Summary</th>
+      <th>Description</th>
+      <th>Last updated</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="gbfs_alerts">
+    <%= for alert <- @gbfs_alerts do %>
+      <tr id={"alert-#{alert.id}"}>
+        <td><%= alert.alert_id %></td>
+        <td><%= alert.type %></td>
+        <td><%= alert.times %></td>
+        <td><%= alert.station_ids %></td>
+        <td><%= alert.region_ids %></td>
+        <td><%= alert.url %></td>
+        <td><%= alert.summary %></td>
+        <td><%= alert.description %></td>
+        <td><%= alert.last_updated %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.alert_show_path(@socket, :show, alert) %></span>
+          <span><%= live_patch "Edit", to: Routes.alert_index_path(@socket, :edit, alert) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: alert.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Alert", to: Routes.alert_index_path(@socket, :new) %></span>

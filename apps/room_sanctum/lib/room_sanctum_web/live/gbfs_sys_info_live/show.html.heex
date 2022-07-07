@@ -1,0 +1,81 @@
+<h1>Show Sys info</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.sys_info_show_path(@socket, :show, @sys_info)}>
+    <.live_component
+      module={RoomSanctumWeb.SysInfoLive.FormComponent}
+      id={@sys_info.id}
+      title={@page_title}
+      action={@live_action}
+      sys_info={@sys_info}
+      return_to={Routes.sys_info_show_path(@socket, :show, @sys_info)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Name:</strong>
+    <%= @sys_info.name %>
+  </li>
+
+  <li>
+    <strong>Email:</strong>
+    <%= @sys_info.email %>
+  </li>
+
+  <li>
+    <strong>Timezone:</strong>
+    <%= @sys_info.timezone %>
+  </li>
+
+  <li>
+    <strong>Short name:</strong>
+    <%= @sys_info.short_name %>
+  </li>
+
+  <li>
+    <strong>Phone number:</strong>
+    <%= @sys_info.phone_number %>
+  </li>
+
+  <li>
+    <strong>Language:</strong>
+    <%= @sys_info.language %>
+  </li>
+
+  <li>
+    <strong>Start date:</strong>
+    <%= @sys_info.start_date %>
+  </li>
+
+  <li>
+    <strong>Url:</strong>
+    <%= @sys_info.url %>
+  </li>
+
+  <li>
+    <strong>Operator:</strong>
+    <%= @sys_info.operator %>
+  </li>
+
+  <li>
+    <strong>Purchase url:</strong>
+    <%= @sys_info.purchase_url %>
+  </li>
+
+  <li>
+    <strong>License url:</strong>
+    <%= @sys_info.license_url %>
+  </li>
+
+  <li>
+    <strong>System:</strong>
+    <%= @sys_info.system_id %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.sys_info_show_path(@socket, :edit, @sys_info), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.sys_info_index_path(@socket, :index) %></span>

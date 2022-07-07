@@ -4,6 +4,7 @@ defmodule RoomSanctum.Configuration.Query do
   import PolymorphicEmbed, only: [cast_polymorphic_embed: 3]
 
   schema "cfg_queries" do
+    belongs_to :user, RoomSanctum.Accounts.User
     field :name, :string
     field :notes, :string
     field :query, PolymorphicEmbed,
@@ -24,15 +25,19 @@ defmodule RoomSanctum.Configuration.Query do
 
     belongs_to :source, RoomSanctum.Configuration.Source
 
+    field :geom,           Geo.PostGIS.Geometry
+    field :public, :boolean, default: true
+
     timestamps()
   end
 
   @doc false
   def changeset(query, attrs) do
     query
-    |> cast(attrs, [:name, :notes, :source_id]) |> IO.inspect
-    |> foreign_key_constraint(:source_id) |> IO.inspect
-    |> cast_polymorphic_embed(:query, required: true) |> IO.inspect
-    |> validate_required([:name, :notes]) |> IO.inspect
+    |> cast(attrs, [:name, :notes, :source_id, :user_id])
+    |> foreign_key_constraint(:source_id)
+    |> foreign_key_constraint(:user_id)
+    |> cast_polymorphic_embed(:query, required: true)
+    |> validate_required([:name]) |> IO.inspect
   end
 end

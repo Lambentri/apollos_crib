@@ -1,0 +1,71 @@
+<h1>Show Calendar</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.calendar_show_path(@socket, :show, @calendar)}>
+    <.live_component
+      module={RoomSanctumWeb.CalendarLive.FormComponent}
+      id={@calendar.id}
+      title={@page_title}
+      action={@live_action}
+      calendar={@calendar}
+      return_to={Routes.calendar_show_path(@socket, :show, @calendar)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Service:</strong>
+    <%= @calendar.service_id %>
+  </li>
+
+  <li>
+    <strong>Service name:</strong>
+    <%= @calendar.service_name %>
+  </li>
+
+  <li>
+    <strong>Monday:</strong>
+    <%= @calendar.monday %>
+  </li>
+
+  <li>
+    <strong>Tuesday:</strong>
+    <%= @calendar.tuesday %>
+  </li>
+
+  <li>
+    <strong>Wednesday:</strong>
+    <%= @calendar.wednesday %>
+  </li>
+
+  <li>
+    <strong>Thursday:</strong>
+    <%= @calendar.thursday %>
+  </li>
+
+  <li>
+    <strong>Friday:</strong>
+    <%= @calendar.friday %>
+  </li>
+
+  <li>
+    <strong>Saturday:</strong>
+    <%= @calendar.saturday %>
+  </li>
+
+  <li>
+    <strong>Start date:</strong>
+    <%= @calendar.start_date %>
+  </li>
+
+  <li>
+    <strong>End date:</strong>
+    <%= @calendar.end_date %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.calendar_show_path(@socket, :edit, @calendar), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.calendar_index_path(@socket, :index) %></span>

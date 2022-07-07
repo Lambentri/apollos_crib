@@ -4,8 +4,9 @@ defmodule RoomSanctum.Configuration.Source do
   import PolymorphicEmbed, only: [cast_polymorphic_embed: 3]
 
   schema "cfg_sources" do
-#    field :config, :map
+    belongs_to :user, RoomSanctum.Accounts.User
     field :enabled, :boolean, default: false
+    field :public, :boolean, default: true
     field :name, :string
     field :notes, :string
     field :type, Ecto.Enum, values: [:aqi, :calendar, :ephem, :gbfs, :gtfs, :hass, :rideshare, :tidal, :weather]
@@ -32,8 +33,9 @@ defmodule RoomSanctum.Configuration.Source do
   @doc false
   def changeset(source, attrs) do
     source
-    |> cast(attrs, [:name, :notes, :type, :enabled])
+    |> cast(attrs, [:name, :notes, :type, :enabled, :user_id])
+    |> foreign_key_constraint(:user_id)
     |> cast_polymorphic_embed(:config, required: true)
-    |> validate_required([:name, :type, :enabled])
+    |> validate_required([:name, :type, :enabled, :user_id])
   end
 end

@@ -82,5 +82,14 @@
     <orderEntry type="library" name="jsone" level="project" />
     <orderEntry type="library" name="junit_formatter" level="project" />
     <orderEntry type="library" name="tiny" level="project" />
+    <orderEntry type="library" name="bcrypt_elixir" level="project" />
+    <orderEntry type="library" name="comeonin" level="project" />
+    <orderEntry type="library" name="elixir_make" level="project" />
+    <orderEntry type="library" name="geo_postgis" level="project" />
+    <orderEntry type="library" name="geo" level="project" />
+    <orderEntry type="library" name="timex" level="project" />
+    <orderEntry type="library" name="tzdata" level="project" />
+    <orderEntry type="library" name="combine" level="project" />
+    <orderEntry type="library" name="benchfella" level="project" />
   </component>
 </module>

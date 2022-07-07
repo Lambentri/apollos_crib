@@ -1,0 +1,43 @@
+<h1>Listing Directions</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.direction_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.DirectionLive.FormComponent}
+      id={@direction.id || :new}
+      title={@page_title}
+      action={@live_action}
+      direction={@direction}
+      return_to={Routes.direction_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Route</th>
+      <th>Direction</th>
+      <th>Direction</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="directions">
+    <%= for direction <- @directions do %>
+      <tr id={"direction-#{direction.id}"}>
+        <td><%= direction.route_id %></td>
+        <td><%= direction.direction_id %></td>
+        <td><%= direction.direction %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.direction_show_path(@socket, :show, direction) %></span>
+          <span><%= live_patch "Edit", to: Routes.direction_index_path(@socket, :edit, direction) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: direction.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Direction", to: Routes.direction_index_path(@socket, :new) %></span>

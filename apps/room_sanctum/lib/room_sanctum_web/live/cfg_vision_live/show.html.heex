@@ -1,0 +1,32 @@
+<h1>Show Vision</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.vision_show_path(@socket, :show, @vision)}>
+    <.live_component
+      module={RoomSanctumWeb.VisionLive.FormComponent}
+      id={@vision.id}
+      title={@page_title}
+      action={@live_action}
+      vision={@vision}
+      return_to={Routes.vision_show_path(@socket, :show, @vision)}
+current_user={@current_user}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Name:</strong>
+    <%= @vision.name %>
+  </li>
+
+  <li>
+    <strong>Queries:</strong>
+    <%= @vision.queries %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.vision_show_path(@socket, :edit, @vision), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.vision_index_path(@socket, :index) %></span>

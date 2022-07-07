@@ -1,0 +1,63 @@
+<h1>Listing Routes</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.route_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.RouteLive.FormComponent}
+      id={@route.id || :new}
+      title={@page_title}
+      action={@live_action}
+      route={@route}
+      return_to={Routes.route_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Agency</th>
+      <th>Route</th>
+      <th>Route short name</th>
+      <th>Route long name</th>
+      <th>Route desc</th>
+      <th>Route type</th>
+      <th>Route url</th>
+      <th>Route color</th>
+      <th>Route text color</th>
+      <th>Route sort order</th>
+      <th>Route fare class</th>
+      <th>Line</th>
+      <th>Listed route</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="routes">
+    <%= for route <- @routes do %>
+      <tr id={"route-#{route.id}"}>
+        <td><%= route.agency_id %></td>
+        <td><%= route.route_id %></td>
+        <td><%= route.route_short_name %></td>
+        <td><%= route.route_long_name %></td>
+        <td><%= route.route_desc %></td>
+        <td><%= route.route_type %></td>
+        <td><%= route.route_url %></td>
+        <td><%= route.route_color %></td>
+        <td><%= route.route_text_color %></td>
+        <td><%= route.route_sort_order %></td>
+        <td><%= route.route_fare_class %></td>
+        <td><%= route.line_id %></td>
+        <td><%= route.listed_route %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.route_show_path(@socket, :show, route) %></span>
+          <span><%= live_patch "Edit", to: Routes.route_index_path(@socket, :edit, route) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: route.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Route", to: Routes.route_index_path(@socket, :new) %></span>

@@ -1,0 +1,61 @@
+<h1>Listing Stop times</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.stop_time_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.StopTimeLive.FormComponent}
+      id={@stop_time.id || :new}
+      title={@page_title}
+      action={@live_action}
+      stop_time={@stop_time}
+      return_to={Routes.stop_time_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Trip</th>
+      <th>Arrival time</th>
+      <th>Departure time</th>
+      <th>Stop</th>
+      <th>Stop sequence</th>
+      <th>Stop headsign</th>
+      <th>Pickup type</th>
+      <th>Drop off type</th>
+      <th>Timepoint</th>
+      <th>Checkpoint</th>
+      <th>Continuous pickup</th>
+      <th>Continuous dropoff</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="stop_times">
+    <%= for stop_time <- @stop_times do %>
+      <tr id={"stop_time-#{stop_time.id}"}>
+        <td><%= stop_time.trip_id %></td>
+        <td><%= stop_time.arrival_time %></td>
+        <td><%= stop_time.departure_time %></td>
+        <td><%= stop_time.stop_id %></td>
+        <td><%= stop_time.stop_sequence %></td>
+        <td><%= stop_time.stop_headsign %></td>
+        <td><%= stop_time.pickup_type %></td>
+        <td><%= stop_time.drop_off_type %></td>
+        <td><%= stop_time.timepoint %></td>
+        <td><%= stop_time.checkpoint_id %></td>
+        <td><%= stop_time.continuous_pickup %></td>
+        <td><%= stop_time.continuous_dropoff %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.stop_time_show_path(@socket, :show, stop_time) %></span>
+          <span><%= live_patch "Edit", to: Routes.stop_time_index_path(@socket, :edit, stop_time) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: stop_time.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Stop time", to: Routes.stop_time_index_path(@socket, :new) %></span>

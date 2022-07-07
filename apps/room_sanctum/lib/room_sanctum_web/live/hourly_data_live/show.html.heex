@@ -1,0 +1,66 @@
+<h1>Show Hourly data</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.hourly_data_show_path(@socket, :show, @hourly_data)}>
+    <.live_component
+      module={RoomSanctumWeb.HourlyDataLive.FormComponent}
+      id={@hourly_data.id}
+      title={@page_title}
+      action={@live_action}
+      hourly_data={@hourly_data}
+      return_to={Routes.hourly_data_show_path(@socket, :show, @hourly_data)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Valid date:</strong>
+    <%= @hourly_data.valid_date %>
+  </li>
+
+  <li>
+    <strong>Valid time:</strong>
+    <%= @hourly_data.valid_time %>
+  </li>
+
+  <li>
+    <strong>Aqsid:</strong>
+    <%= @hourly_data.aqsid %>
+  </li>
+
+  <li>
+    <strong>Site name:</strong>
+    <%= @hourly_data.site_name %>
+  </li>
+
+  <li>
+    <strong>Gmt offset:</strong>
+    <%= @hourly_data.gmt_offset %>
+  </li>
+
+  <li>
+    <strong>Parameter name:</strong>
+    <%= @hourly_data.parameter_name %>
+  </li>
+
+  <li>
+    <strong>Reporting units:</strong>
+    <%= @hourly_data.reporting_units %>
+  </li>
+
+  <li>
+    <strong>Value:</strong>
+    <%= @hourly_data.value %>
+  </li>
+
+  <li>
+    <strong>Data source:</strong>
+    <%= @hourly_data.data_source %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.hourly_data_show_path(@socket, :edit, @hourly_data), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.hourly_data_index_path(@socket, :index) %></span>

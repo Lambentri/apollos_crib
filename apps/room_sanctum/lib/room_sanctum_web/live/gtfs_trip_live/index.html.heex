@@ -1,0 +1,57 @@
+<h1>Listing Trips</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.trip_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.TripLive.FormComponent}
+      id={@trip.id || :new}
+      title={@page_title}
+      action={@live_action}
+      trip={@trip}
+      return_to={Routes.trip_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Route</th>
+      <th>Service</th>
+      <th>Trip</th>
+      <th>Trip headsign</th>
+      <th>Trip short name</th>
+      <th>Direction</th>
+      <th>Block</th>
+      <th>Shape</th>
+      <th>Wheelchair accessible</th>
+      <th>Bikes allowed</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="trips">
+    <%= for trip <- @trips do %>
+      <tr id={"trip-#{trip.id}"}>
+        <td><%= trip.route_id %></td>
+        <td><%= trip.service_id %></td>
+        <td><%= trip.trip_id %></td>
+        <td><%= trip.trip_headsign %></td>
+        <td><%= trip.trip_short_name %></td>
+        <td><%= trip.direction_id %></td>
+        <td><%= trip.block_id %></td>
+        <td><%= trip.shape_id %></td>
+        <td><%= trip.wheelchair_accessible %></td>
+        <td><%= trip.bikes_allowed %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.trip_show_path(@socket, :show, trip) %></span>
+          <span><%= live_patch "Edit", to: Routes.trip_index_path(@socket, :edit, trip) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: trip.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Trip", to: Routes.trip_index_path(@socket, :new) %></span>

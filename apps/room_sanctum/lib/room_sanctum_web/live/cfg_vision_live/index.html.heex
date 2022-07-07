@@ -1,0 +1,42 @@
+<h1>Listing Visions</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.vision_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.VisionLive.FormComponent}
+      id={@vision.id || :new}
+      title={@page_title}
+      action={@live_action}
+      vision={@vision}
+      return_to={Routes.vision_index_path(@socket, :index)}
+      current_user={@current_user}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Queries</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="visions">
+    <%= for vision <- @visions do %>
+      <tr id={"vision-#{vision.id}"}>
+        <td><%= vision.name %></td>
+        <td>$query</td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.vision_show_path(@socket, :show, vision) %></span>
+          <span><%= live_patch "Edit", to: Routes.vision_index_path(@socket, :edit, vision) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: vision.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Vision", to: Routes.vision_index_path(@socket, :new) %></span>

@@ -1,0 +1,79 @@
+<h1>Listing Airnow monitoring sites</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.monitoring_site_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.MonitoringSiteLive.FormComponent}
+      id={@monitoring_site.id || :new}
+      title={@page_title}
+      action={@live_action}
+      monitoring_site={@monitoring_site}
+      return_to={Routes.monitoring_site_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Station</th>
+      <th>Aqsid</th>
+      <th>Full aqsid</th>
+      <th>Monitor type</th>
+      <th>Parameter</th>
+      <th>Site code</th>
+      <th>Site name</th>
+      <th>Status</th>
+      <th>Agency</th>
+      <th>Agency name</th>
+      <th>Epa region</th>
+      <th>Point</th>
+      <th>Elevation</th>
+      <th>Gmp offset</th>
+      <th>Country fips</th>
+      <th>Cbsa</th>
+      <th>Cbsa name</th>
+      <th>State aqs code</th>
+      <th>State abbreviation</th>
+      <th>County aqs code</th>
+      <th>County name</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="airnow_monitoring_sites">
+    <%= for monitoring_site <- @airnow_monitoring_sites do %>
+      <tr id={"monitoring_site-#{monitoring_site.id}"}>
+        <td><%= monitoring_site.station_id %></td>
+        <td><%= monitoring_site.aqsid %></td>
+        <td><%= monitoring_site.full_aqsid %></td>
+        <td><%= monitoring_site.monitor_type %></td>
+        <td><%= monitoring_site.parameter %></td>
+        <td><%= monitoring_site.site_code %></td>
+        <td><%= monitoring_site.site_name %></td>
+        <td><%= monitoring_site.status %></td>
+        <td><%= monitoring_site.agency_id %></td>
+        <td><%= monitoring_site.agency_name %></td>
+        <td><%= monitoring_site.epa_region %></td>
+        <td><%= monitoring_site.point %></td>
+        <td><%= monitoring_site.elevation %></td>
+        <td><%= monitoring_site.gmp_offset %></td>
+        <td><%= monitoring_site.country_fips %></td>
+        <td><%= monitoring_site.cbsa_id %></td>
+        <td><%= monitoring_site.cbsa_name %></td>
+        <td><%= monitoring_site.state_aqs_code %></td>
+        <td><%= monitoring_site.state_abbreviation %></td>
+        <td><%= monitoring_site.county_aqs_code %></td>
+        <td><%= monitoring_site.county_name %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.monitoring_site_show_path(@socket, :show, monitoring_site) %></span>
+          <span><%= live_patch "Edit", to: Routes.monitoring_site_index_path(@socket, :edit, monitoring_site) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: monitoring_site.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Monitoring site", to: Routes.monitoring_site_index_path(@socket, :new) %></span>

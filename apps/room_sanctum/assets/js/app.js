@@ -26,8 +26,51 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+import L from 'leaflet'
+import "../vendor/leaflet-centermarker"
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
-let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}})
+
+let Hooks = {};
+Hooks.MapPush = {
+    mounted() {
+        window.addEventListener("focus", e => {
+
+            this.pushEvent("load-more", {})
+
+        })
+    },
+}
+Hooks.mkMap = {
+    mounted() {
+        const markers = {}
+        var map = L.map('map', {keyboard: true}).setView([42.3736, -71.1097], 13);
+
+        const view = this;
+        var marker = L.centerMarker(map).on("newposition", function() {
+            var latlng = marker.getLatLng()
+            console.log("New position: " + latlng.lat + ", " + latlng.lng);
+            view.pushEvent("foofofo")
+            document.getElementById("foci-form").dispatchEvent(
+                new Event("update", {latlng: latlng})
+            )
+
+        });;
+        marker.addTo(map);
+
+        L.tileLayer('https:{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https:openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+        }).addTo(map);
+
+        this.handleEvent("add_marker", ({lat, lon}) => {
+            const marker = L.marker(L.latLng(lat, lon))
+            marker.addTo(map)
+        })
+    }
+}
+
+let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}, hooks: Hooks})
 
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})

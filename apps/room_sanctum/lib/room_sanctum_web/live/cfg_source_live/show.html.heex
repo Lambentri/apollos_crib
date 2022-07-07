@@ -1,0 +1,68 @@
+<h1>Show Offering</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.source_show_path(@socket, :show, @source)}>
+    <.live_component
+      module={RoomSanctumWeb.SourceLive.FormComponent}
+      id={@source.id}
+      title={@page_title}
+      action={@live_action}
+      source={@source}
+      return_to={Routes.source_show_path(@socket, :show, @source)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Name:</strong>
+    <%= @source.name %>
+  </li>
+
+  <li>
+    <strong>Notes:</strong>
+    <%= @source.notes %>
+  </li>
+
+  <li>
+    <strong>Type:</strong>
+    <%= @source.type %>
+  </li>
+
+  <li>
+    <strong>Enabled:</strong>
+    <%= @source.enabled %>
+  </li>
+
+  <li>
+    <strong>Config:</strong>
+  </li>
+
+</ul>
+
+<h2>Controls</h2>
+<%= case @source.type do %>
+  <% :gtfs -> %>
+  <button phx-click="do-update" phx-value-type="gtfs" phx-value-id={@source.id}>Update</button>
+  <button phx-click="do-status" >Status-Test</button>
+  <% :gbfs -> %>
+  <button phx-click="do-update" phx-value-type="gbfs" phx-value-id={@source.id}>Update</button>
+  <% :aqi -> %>
+  <button phx-click="do-update" phx-value-type="aqi" phx-value-id={@source.id}>Update</button>
+<% end %>
+<h2>Worker Status</h2>
+  <%= @status %>
+<h2>Database Stats</h2>
+  <%= @stats %>
+<%= case @source.type do %>
+  <% :gtfs -> %>
+    <button phx-click="do-stats" phx-value-type="gtfs" phx-value-id={@source.id}>Calculate</button>
+  <% :gbfs -> %>
+    <button phx-click="do-stats" phx-value-type="gbfs" phx-value-id={@source.id}>Calculate</button>
+  <% :aqi -> %>
+    <button phx-click="do-stats" phx-value-type="aqi" phx-value-id={@source.id}>Calculate</button>
+<% end %>
+<br />
+<span><%= live_patch "Edit", to: Routes.source_show_path(@socket, :edit, @source), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.source_index_path(@socket, :index) %></span>

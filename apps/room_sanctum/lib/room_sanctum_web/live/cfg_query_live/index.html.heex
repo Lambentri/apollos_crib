@@ -1,0 +1,44 @@
+<h1>Listing Cfg queries</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.query_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.QueryLive.FormComponent}
+      id={@query.id || :new}
+      title={@page_title}
+      action={@live_action}
+      query={@query}
+      return_to={Routes.query_index_path(@socket, :index)}
+      current_user={@current_user}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Source</th>
+      <th>Query</th>
+      <th>Notes</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="cfg_queries">
+    <%= for query <- @cfg_queries do %>
+      <tr id={"query-#{query.id}"}>
+        <td><%= query.source.name %></td>
+        <td><%= query.name %></td>
+        <td><%= query.notes %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.query_show_path(@socket, :show, query) %></span>
+          <span><%= live_patch "Edit", to: Routes.query_index_path(@socket, :edit, query) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: query.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Query", to: Routes.query_index_path(@socket, :new) %></span>

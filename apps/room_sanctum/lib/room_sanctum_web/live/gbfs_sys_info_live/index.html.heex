@@ -1,0 +1,61 @@
+<h1>Listing Gbfs system informations</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.sys_info_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.SysInfoLive.FormComponent}
+      id={@sys_info.id || :new}
+      title={@page_title}
+      action={@live_action}
+      sys_info={@sys_info}
+      return_to={Routes.sys_info_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Email</th>
+      <th>Timezone</th>
+      <th>Short name</th>
+      <th>Phone number</th>
+      <th>Language</th>
+      <th>Start date</th>
+      <th>Url</th>
+      <th>Operator</th>
+      <th>Purchase url</th>
+      <th>License url</th>
+      <th>System</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="gbfs_system_informations">
+    <%= for sys_info <- @gbfs_system_informations do %>
+      <tr id={"sys_info-#{sys_info.id}"}>
+        <td><%= sys_info.name %></td>
+        <td><%= sys_info.email %></td>
+        <td><%= sys_info.timezone %></td>
+        <td><%= sys_info.short_name %></td>
+        <td><%= sys_info.phone_number %></td>
+        <td><%= sys_info.language %></td>
+        <td><%= sys_info.start_date %></td>
+        <td><%= sys_info.url %></td>
+        <td><%= sys_info.operator %></td>
+        <td><%= sys_info.purchase_url %></td>
+        <td><%= sys_info.license_url %></td>
+        <td><%= sys_info.system_id %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.sys_info_show_path(@socket, :show, sys_info) %></span>
+          <span><%= live_patch "Edit", to: Routes.sys_info_index_path(@socket, :edit, sys_info) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: sys_info.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Sys info", to: Routes.sys_info_index_path(@socket, :new) %></span>

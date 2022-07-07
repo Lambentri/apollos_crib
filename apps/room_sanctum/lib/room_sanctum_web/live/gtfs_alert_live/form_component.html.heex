@@ -1,0 +1,52 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="alert-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :alert_id %>
+    <%= text_input f, :alert_id %>
+    <%= error_tag f, :alert_id %>
+  
+    <%= label f, :type %>
+    <%= text_input f, :type %>
+    <%= error_tag f, :type %>
+  
+    <%= label f, :times %>
+    <%= multiple_select f, :times, ["1": 1, "2": 2] %>
+    <%= error_tag f, :times %>
+  
+    <%= label f, :station_ids %>
+    <%= multiple_select f, :station_ids, ["Option 1": "option1", "Option 2": "option2"] %>
+    <%= error_tag f, :station_ids %>
+  
+    <%= label f, :region_ids %>
+    <%= multiple_select f, :region_ids, ["Option 1": "option1", "Option 2": "option2"] %>
+    <%= error_tag f, :region_ids %>
+  
+    <%= label f, :url %>
+    <%= text_input f, :url %>
+    <%= error_tag f, :url %>
+  
+    <%= label f, :summary %>
+    <%= text_input f, :summary %>
+    <%= error_tag f, :summary %>
+  
+    <%= label f, :description %>
+    <%= text_input f, :description %>
+    <%= error_tag f, :description %>
+  
+    <%= label f, :last_updated %>
+    <%= datetime_select f, :last_updated %>
+    <%= error_tag f, :last_updated %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

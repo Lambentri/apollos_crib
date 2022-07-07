@@ -1,0 +1,67 @@
+<h1>Listing Stops</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.stop_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.StopLive.FormComponent}
+      id={@stop.id || :new}
+      title={@page_title}
+      action={@live_action}
+      stop={@stop}
+      return_to={Routes.stop_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Stop</th>
+      <th>Stop code</th>
+      <th>Stop name</th>
+      <th>Stop desc</th>
+      <th>Platform code</th>
+      <th>Platform name</th>
+      <th>Stop lat</th>
+      <th>Stop lon</th>
+      <th>Zone</th>
+      <th>Stop address</th>
+      <th>Stop url</th>
+      <th>Level</th>
+      <th>Location type</th>
+      <th>Parent station</th>
+      <th>Wheelchair boarding</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="stops">
+    <%= for stop <- @stops do %>
+      <tr id={"stop-#{stop.id}"}>
+        <td><%= stop.stop_id %></td>
+        <td><%= stop.stop_code %></td>
+        <td><%= stop.stop_name %></td>
+        <td><%= stop.stop_desc %></td>
+        <td><%= stop.platform_code %></td>
+        <td><%= stop.platform_name %></td>
+        <td><%= stop.stop_lat %></td>
+        <td><%= stop.stop_lon %></td>
+        <td><%= stop.zone_id %></td>
+        <td><%= stop.stop_address %></td>
+        <td><%= stop.stop_url %></td>
+        <td><%= stop.level_id %></td>
+        <td><%= stop.location_type %></td>
+        <td><%= stop.parent_station %></td>
+        <td><%= stop.wheelchair_boarding %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.stop_show_path(@socket, :show, stop) %></span>
+          <span><%= live_patch "Edit", to: Routes.stop_index_path(@socket, :edit, stop) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: stop.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Stop", to: Routes.stop_index_path(@socket, :new) %></span>

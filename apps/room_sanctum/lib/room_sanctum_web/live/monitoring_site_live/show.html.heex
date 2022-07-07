@@ -1,0 +1,126 @@
+<h1>Show Monitoring site</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.monitoring_site_show_path(@socket, :show, @monitoring_site)}>
+    <.live_component
+      module={RoomSanctumWeb.MonitoringSiteLive.FormComponent}
+      id={@monitoring_site.id}
+      title={@page_title}
+      action={@live_action}
+      monitoring_site={@monitoring_site}
+      return_to={Routes.monitoring_site_show_path(@socket, :show, @monitoring_site)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Station:</strong>
+    <%= @monitoring_site.station_id %>
+  </li>
+
+  <li>
+    <strong>Aqsid:</strong>
+    <%= @monitoring_site.aqsid %>
+  </li>
+
+  <li>
+    <strong>Full aqsid:</strong>
+    <%= @monitoring_site.full_aqsid %>
+  </li>
+
+  <li>
+    <strong>Monitor type:</strong>
+    <%= @monitoring_site.monitor_type %>
+  </li>
+
+  <li>
+    <strong>Parameter:</strong>
+    <%= @monitoring_site.parameter %>
+  </li>
+
+  <li>
+    <strong>Site code:</strong>
+    <%= @monitoring_site.site_code %>
+  </li>
+
+  <li>
+    <strong>Site name:</strong>
+    <%= @monitoring_site.site_name %>
+  </li>
+
+  <li>
+    <strong>Status:</strong>
+    <%= @monitoring_site.status %>
+  </li>
+
+  <li>
+    <strong>Agency:</strong>
+    <%= @monitoring_site.agency_id %>
+  </li>
+
+  <li>
+    <strong>Agency name:</strong>
+    <%= @monitoring_site.agency_name %>
+  </li>
+
+  <li>
+    <strong>Epa region:</strong>
+    <%= @monitoring_site.epa_region %>
+  </li>
+
+  <li>
+    <strong>Point:</strong>
+    <%= @monitoring_site.point %>
+  </li>
+
+  <li>
+    <strong>Elevation:</strong>
+    <%= @monitoring_site.elevation %>
+  </li>
+
+  <li>
+    <strong>Gmp offset:</strong>
+    <%= @monitoring_site.gmp_offset %>
+  </li>
+
+  <li>
+    <strong>Country fips:</strong>
+    <%= @monitoring_site.country_fips %>
+  </li>
+
+  <li>
+    <strong>Cbsa:</strong>
+    <%= @monitoring_site.cbsa_id %>
+  </li>
+
+  <li>
+    <strong>Cbsa name:</strong>
+    <%= @monitoring_site.cbsa_name %>
+  </li>
+
+  <li>
+    <strong>State aqs code:</strong>
+    <%= @monitoring_site.state_aqs_code %>
+  </li>
+
+  <li>
+    <strong>State abbreviation:</strong>
+    <%= @monitoring_site.state_abbreviation %>
+  </li>
+
+  <li>
+    <strong>County aqs code:</strong>
+    <%= @monitoring_site.county_aqs_code %>
+  </li>
+
+  <li>
+    <strong>County name:</strong>
+    <%= @monitoring_site.county_name %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.monitoring_site_show_path(@socket, :edit, @monitoring_site), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.monitoring_site_index_path(@socket, :index) %></span>

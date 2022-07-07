@@ -1,0 +1,57 @@
+<h1>Listing Gbfs station information</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.station_info_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.StationInfoLive.FormComponent}
+      id={@station_info.id || :new}
+      title={@page_title}
+      action={@live_action}
+      station_info={@station_info}
+      return_to={Routes.station_info_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Station</th>
+      <th>Name</th>
+      <th>Short name</th>
+      <th>Capacity</th>
+      <th>Region</th>
+      <th>Legacy</th>
+      <th>External</th>
+      <th>Lat</th>
+      <th>Lon</th>
+      <th>Rental methods</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="gbfs_station_information">
+    <%= for station_info <- @gbfs_station_information do %>
+      <tr id={"station_info-#{station_info.id}"}>
+        <td><%= station_info.station_id %></td>
+        <td><%= station_info.name %></td>
+        <td><%= station_info.short_name %></td>
+        <td><%= station_info.capacity %></td>
+        <td><%= station_info.region_id %></td>
+        <td><%= station_info.legacy_id %></td>
+        <td><%= station_info.external_id %></td>
+        <td><%= station_info.lat %></td>
+        <td><%= station_info.lon %></td>
+        <td><%= station_info.rental_methods %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.station_info_show_path(@socket, :show, station_info) %></span>
+          <span><%= live_patch "Edit", to: Routes.station_info_index_path(@socket, :edit, station_info) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: station_info.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Station info", to: Routes.station_info_index_path(@socket, :new) %></span>

@@ -1,0 +1,66 @@
+<h1>Show Alert</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.alert_show_path(@socket, :show, @alert)}>
+    <.live_component
+      module={RoomSanctumWeb.AlertLive.FormComponent}
+      id={@alert.id}
+      title={@page_title}
+      action={@live_action}
+      alert={@alert}
+      return_to={Routes.alert_show_path(@socket, :show, @alert)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Alert:</strong>
+    <%= @alert.alert_id %>
+  </li>
+
+  <li>
+    <strong>Type:</strong>
+    <%= @alert.type %>
+  </li>
+
+  <li>
+    <strong>Times:</strong>
+    <%= @alert.times %>
+  </li>
+
+  <li>
+    <strong>Station ids:</strong>
+    <%= @alert.station_ids %>
+  </li>
+
+  <li>
+    <strong>Region ids:</strong>
+    <%= @alert.region_ids %>
+  </li>
+
+  <li>
+    <strong>Url:</strong>
+    <%= @alert.url %>
+  </li>
+
+  <li>
+    <strong>Summary:</strong>
+    <%= @alert.summary %>
+  </li>
+
+  <li>
+    <strong>Description:</strong>
+    <%= @alert.description %>
+  </li>
+
+  <li>
+    <strong>Last updated:</strong>
+    <%= @alert.last_updated %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.alert_show_path(@socket, :edit, @alert), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.alert_index_path(@socket, :index) %></span>

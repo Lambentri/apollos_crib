@@ -1,0 +1,56 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="station_info-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :station_id %>
+    <%= text_input f, :station_id %>
+    <%= error_tag f, :station_id %>
+  
+    <%= label f, :name %>
+    <%= text_input f, :name %>
+    <%= error_tag f, :name %>
+  
+    <%= label f, :short_name %>
+    <%= text_input f, :short_name %>
+    <%= error_tag f, :short_name %>
+  
+    <%= label f, :capacity %>
+    <%= number_input f, :capacity %>
+    <%= error_tag f, :capacity %>
+  
+    <%= label f, :region_id %>
+    <%= text_input f, :region_id %>
+    <%= error_tag f, :region_id %>
+  
+    <%= label f, :legacy_id %>
+    <%= text_input f, :legacy_id %>
+    <%= error_tag f, :legacy_id %>
+  
+    <%= label f, :external_id %>
+    <%= text_input f, :external_id %>
+    <%= error_tag f, :external_id %>
+  
+    <%= label f, :lat %>
+    <%= number_input f, :lat, step: "any" %>
+    <%= error_tag f, :lat %>
+  
+    <%= label f, :lon %>
+    <%= number_input f, :lon, step: "any" %>
+    <%= error_tag f, :lon %>
+  
+    <%= label f, :rental_methods %>
+    <%= multiple_select f, :rental_methods, ["Option 1": "option1", "Option 2": "option2"] %>
+    <%= error_tag f, :rental_methods %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

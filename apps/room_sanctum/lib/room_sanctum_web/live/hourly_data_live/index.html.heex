@@ -1,0 +1,55 @@
+<h1>Listing Airnow hourly data</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.hourly_data_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.HourlyDataLive.FormComponent}
+      id={@hourly_data.id || :new}
+      title={@page_title}
+      action={@live_action}
+      hourly_data={@hourly_data}
+      return_to={Routes.hourly_data_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Valid date</th>
+      <th>Valid time</th>
+      <th>Aqsid</th>
+      <th>Site name</th>
+      <th>Gmt offset</th>
+      <th>Parameter name</th>
+      <th>Reporting units</th>
+      <th>Value</th>
+      <th>Data source</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="airnow_hourly_data">
+    <%= for hourly_data <- @airnow_hourly_data do %>
+      <tr id={"hourly_data-#{hourly_data.id}"}>
+        <td><%= hourly_data.valid_date %></td>
+        <td><%= hourly_data.valid_time %></td>
+        <td><%= hourly_data.aqsid %></td>
+        <td><%= hourly_data.site_name %></td>
+        <td><%= hourly_data.gmt_offset %></td>
+        <td><%= hourly_data.parameter_name %></td>
+        <td><%= hourly_data.reporting_units %></td>
+        <td><%= hourly_data.value %></td>
+        <td><%= hourly_data.data_source %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.hourly_data_show_path(@socket, :show, hourly_data) %></span>
+          <span><%= live_patch "Edit", to: Routes.hourly_data_index_path(@socket, :edit, hourly_data) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: hourly_data.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Hourly data", to: Routes.hourly_data_index_path(@socket, :new) %></span>

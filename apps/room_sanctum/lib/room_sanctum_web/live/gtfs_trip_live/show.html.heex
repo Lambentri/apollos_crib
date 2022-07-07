@@ -1,0 +1,71 @@
+<h1>Show Trip</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.trip_show_path(@socket, :show, @trip)}>
+    <.live_component
+      module={RoomSanctumWeb.TripLive.FormComponent}
+      id={@trip.id}
+      title={@page_title}
+      action={@live_action}
+      trip={@trip}
+      return_to={Routes.trip_show_path(@socket, :show, @trip)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Route:</strong>
+    <%= @trip.route_id %>
+  </li>
+
+  <li>
+    <strong>Service:</strong>
+    <%= @trip.service_id %>
+  </li>
+
+  <li>
+    <strong>Trip:</strong>
+    <%= @trip.trip_id %>
+  </li>
+
+  <li>
+    <strong>Trip headsign:</strong>
+    <%= @trip.trip_headsign %>
+  </li>
+
+  <li>
+    <strong>Trip short name:</strong>
+    <%= @trip.trip_short_name %>
+  </li>
+
+  <li>
+    <strong>Direction:</strong>
+    <%= @trip.direction_id %>
+  </li>
+
+  <li>
+    <strong>Block:</strong>
+    <%= @trip.block_id %>
+  </li>
+
+  <li>
+    <strong>Shape:</strong>
+    <%= @trip.shape_id %>
+  </li>
+
+  <li>
+    <strong>Wheelchair accessible:</strong>
+    <%= @trip.wheelchair_accessible %>
+  </li>
+
+  <li>
+    <strong>Bikes allowed:</strong>
+    <%= @trip.bikes_allowed %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.trip_show_path(@socket, :edit, @trip), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.trip_index_path(@socket, :index) %></span>

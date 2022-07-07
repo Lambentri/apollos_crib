@@ -37,4 +37,34 @@ defmodule RoomSanctum.ConfigurationFixtures do
 
     query
   end
+
+  @doc """
+  Generate a vision.
+  """
+  def vision_fixture(attrs \\ %{}) do
+    {:ok, vision} =
+      attrs
+      |> Enum.into(%{
+        name: "some name",
+        queries: %{}
+      })
+      |> RoomSanctum.Configuration.create_vision()
+
+    vision
+  end
+
+  @doc """
+  Generate a foci.
+  """
+  def foci_fixture(attrs \\ %{}) do
+    {:ok, foci} =
+      attrs
+      |> Enum.into(%{
+        name: "some name",
+        place: "some place"
+      })
+      |> RoomSanctum.Configuration.create_foci()
+
+    foci
+  end
 end

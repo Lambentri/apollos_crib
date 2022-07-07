@@ -5,12 +5,12 @@ defmodule RoomSanctum.Configuration.Queries.AQI do
   @primary_key false
 
   embedded_schema do
-    field :location_zip, :string
+    field :foci_id, :integer
   end
 
   def changeset(source, params) do
     source
-    |> cast(params, ~w(location_zip)a)
-    |> validate_required(:location_zip)
+    |> cast(params, [:foci_id])
+    |> validate_required([:foci_id])
   end
 end

@@ -122,4 +122,116 @@ defmodule RoomSanctum.ConfigurationTest do
       assert %Ecto.Changeset{} = Configuration.change_query(query)
     end
   end
+
+  describe "visions" do
+    alias RoomSanctum.Configuration.Vision
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{name: nil, queries: nil}
+
+    test "list_visions/0 returns all visions" do
+      vision = vision_fixture()
+      assert Configuration.list_visions() == [vision]
+    end
+
+    test "get_vision!/1 returns the vision with given id" do
+      vision = vision_fixture()
+      assert Configuration.get_vision!(vision.id) == vision
+    end
+
+    test "create_vision/1 with valid data creates a vision" do
+      valid_attrs = %{name: "some name", queries: %{}}
+
+      assert {:ok, %Vision{} = vision} = Configuration.create_vision(valid_attrs)
+      assert vision.name == "some name"
+      assert vision.queries == %{}
+    end
+
+    test "create_vision/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_vision(@invalid_attrs)
+    end
+
+    test "update_vision/2 with valid data updates the vision" do
+      vision = vision_fixture()
+      update_attrs = %{name: "some updated name", queries: %{}}
+
+      assert {:ok, %Vision{} = vision} = Configuration.update_vision(vision, update_attrs)
+      assert vision.name == "some updated name"
+      assert vision.queries == %{}
+    end
+
+    test "update_vision/2 with invalid data returns error changeset" do
+      vision = vision_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_vision(vision, @invalid_attrs)
+      assert vision == Configuration.get_vision!(vision.id)
+    end
+
+    test "delete_vision/1 deletes the vision" do
+      vision = vision_fixture()
+      assert {:ok, %Vision{}} = Configuration.delete_vision(vision)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_vision!(vision.id) end
+    end
+
+    test "change_vision/1 returns a vision changeset" do
+      vision = vision_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_vision(vision)
+    end
+  end
+
+  describe "focis" do
+    alias RoomSanctum.Configuration.Foci
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{name: nil, place: nil}
+
+    test "list_focis/0 returns all focis" do
+      foci = foci_fixture()
+      assert Configuration.list_focis() == [foci]
+    end
+
+    test "get_foci!/1 returns the foci with given id" do
+      foci = foci_fixture()
+      assert Configuration.get_foci!(foci.id) == foci
+    end
+
+    test "create_foci/1 with valid data creates a foci" do
+      valid_attrs = %{name: "some name", place: "some place"}
+
+      assert {:ok, %Foci{} = foci} = Configuration.create_foci(valid_attrs)
+      assert foci.name == "some name"
+      assert foci.place == "some place"
+    end
+
+    test "create_foci/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_foci(@invalid_attrs)
+    end
+
+    test "update_foci/2 with valid data updates the foci" do
+      foci = foci_fixture()
+      update_attrs = %{name: "some updated name", place: "some updated place"}
+
+      assert {:ok, %Foci{} = foci} = Configuration.update_foci(foci, update_attrs)
+      assert foci.name == "some updated name"
+      assert foci.place == "some updated place"
+    end
+
+    test "update_foci/2 with invalid data returns error changeset" do
+      foci = foci_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_foci(foci, @invalid_attrs)
+      assert foci == Configuration.get_foci!(foci.id)
+    end
+
+    test "delete_foci/1 deletes the foci" do
+      foci = foci_fixture()
+      assert {:ok, %Foci{}} = Configuration.delete_foci(foci)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_foci!(foci.id) end
+    end
+
+    test "change_foci/1 returns a foci changeset" do
+      foci = foci_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_foci(foci)
+    end
+  end
 end

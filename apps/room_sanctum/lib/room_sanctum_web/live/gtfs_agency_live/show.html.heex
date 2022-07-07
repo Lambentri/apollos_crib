@@ -1,0 +1,61 @@
+<h1>Show Agency</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.agency_show_path(@socket, :show, @agency)}>
+    <.live_component
+      module={RoomSanctumWeb.AgencyLive.FormComponent}
+      id={@agency.id}
+      title={@page_title}
+      action={@live_action}
+      agency={@agency}
+      return_to={Routes.agency_show_path(@socket, :show, @agency)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Agency:</strong>
+    <%= @agency.agency_id %>
+  </li>
+
+  <li>
+    <strong>Agency url:</strong>
+    <%= @agency.agency_url %>
+  </li>
+
+  <li>
+    <strong>Agency lang:</strong>
+    <%= @agency.agency_lang %>
+  </li>
+
+  <li>
+    <strong>Agency name:</strong>
+    <%= @agency.agency_name %>
+  </li>
+
+  <li>
+    <strong>Agency phone:</strong>
+    <%= @agency.agency_phone %>
+  </li>
+
+  <li>
+    <strong>Agency timezone:</strong>
+    <%= @agency.agency_timezone %>
+  </li>
+
+  <li>
+    <strong>Agency fare url:</strong>
+    <%= @agency.agency_fare_url %>
+  </li>
+
+  <li>
+    <strong>Tts agency name:</strong>
+    <%= @agency.tts_agency_name %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.agency_show_path(@socket, :edit, @agency), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.agency_index_path(@socket, :index) %></span>

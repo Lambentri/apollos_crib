@@ -5,13 +5,12 @@ defmodule RoomSanctum.Configuration.Queries.Ephem do
   @primary_key false
 
   embedded_schema do
-    field :lat, :float
-    field :lon, :float
+    field :foci_id, :integer
   end
 
   def changeset(source, params) do
     source
-    |> cast(params, [:lat, :lon])
-    |> validate_required([:lat, :lon])
+    |> cast(params, [:foci_id])
+    |> validate_required([:foci_id])
   end
 end

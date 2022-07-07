@@ -1,0 +1,28 @@
+<div>
+  <h2><%= @title %></h2>
+
+  <.form
+    let={f}
+    for={@changeset}
+    id="direction-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+  
+    <%= label f, :route_id %>
+    <%= text_input f, :route_id %>
+    <%= error_tag f, :route_id %>
+  
+    <%= label f, :direction_id %>
+    <%= number_input f, :direction_id %>
+    <%= error_tag f, :direction_id %>
+  
+    <%= label f, :direction %>
+    <%= text_input f, :direction %>
+    <%= error_tag f, :direction %>
+  
+    <div>
+      <%= submit "Save", phx_disable_with: "Saving..." %>
+    </div>
+  </.form>
+</div>

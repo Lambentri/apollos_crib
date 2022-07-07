@@ -1,0 +1,81 @@
+<h1>Show Stop time</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.stop_time_show_path(@socket, :show, @stop_time)}>
+    <.live_component
+      module={RoomSanctumWeb.StopTimeLive.FormComponent}
+      id={@stop_time.id}
+      title={@page_title}
+      action={@live_action}
+      stop_time={@stop_time}
+      return_to={Routes.stop_time_show_path(@socket, :show, @stop_time)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Trip:</strong>
+    <%= @stop_time.trip_id %>
+  </li>
+
+  <li>
+    <strong>Arrival time:</strong>
+    <%= @stop_time.arrival_time %>
+  </li>
+
+  <li>
+    <strong>Departure time:</strong>
+    <%= @stop_time.departure_time %>
+  </li>
+
+  <li>
+    <strong>Stop:</strong>
+    <%= @stop_time.stop_id %>
+  </li>
+
+  <li>
+    <strong>Stop sequence:</strong>
+    <%= @stop_time.stop_sequence %>
+  </li>
+
+  <li>
+    <strong>Stop headsign:</strong>
+    <%= @stop_time.stop_headsign %>
+  </li>
+
+  <li>
+    <strong>Pickup type:</strong>
+    <%= @stop_time.pickup_type %>
+  </li>
+
+  <li>
+    <strong>Drop off type:</strong>
+    <%= @stop_time.drop_off_type %>
+  </li>
+
+  <li>
+    <strong>Timepoint:</strong>
+    <%= @stop_time.timepoint %>
+  </li>
+
+  <li>
+    <strong>Checkpoint:</strong>
+    <%= @stop_time.checkpoint_id %>
+  </li>
+
+  <li>
+    <strong>Continuous pickup:</strong>
+    <%= @stop_time.continuous_pickup %>
+  </li>
+
+  <li>
+    <strong>Continuous dropoff:</strong>
+    <%= @stop_time.continuous_dropoff %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.stop_time_show_path(@socket, :edit, @stop_time), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.stop_time_index_path(@socket, :index) %></span>
