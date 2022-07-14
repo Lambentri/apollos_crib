@@ -14,6 +14,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateGbfsStationInformation do
       add :lat, :float
       add :lon, :float
       add :rental_methods, {:array, :string}
+      add :place, :geometry
 
       timestamps()
     end

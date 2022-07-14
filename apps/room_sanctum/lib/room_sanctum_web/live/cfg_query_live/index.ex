@@ -43,5 +43,4 @@ defmodule RoomSanctumWeb.QueryLive.Index do
   defp list_cfg_queries(uid) do
     Configuration.list_cfg_queries({:user, uid})
   end
-
 end

@@ -4,6 +4,7 @@ defmodule RoomSanctum.Storage do
   """
 
   import Ecto.Query, warn: false
+  import Geo.PostGIS
   alias RoomSanctum.Repo
 
   alias RoomSanctum.Storage.GTFS.Agency
@@ -59,9 +60,9 @@ defmodule RoomSanctum.Storage do
     %Agency{}
     |> Agency.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :agency_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :agency_id]
+    )
   end
 
   @doc """
@@ -100,7 +101,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_agency(source_id) do
     from(p in Agency, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
 
   @doc """
@@ -169,9 +170,9 @@ defmodule RoomSanctum.Storage do
     %Calendar{}
     |> Calendar.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :service_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :service_id]
+    )
   end
 
   @doc """
@@ -210,9 +211,8 @@ defmodule RoomSanctum.Storage do
 
   def truncate_calendar(source_id) do
     from(p in Calendar, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
-
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking calendar changes.
@@ -280,9 +280,9 @@ defmodule RoomSanctum.Storage do
     %Direction{}
     |> Direction.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :route_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :route_id]
+    )
   end
 
   @doc """
@@ -321,9 +321,8 @@ defmodule RoomSanctum.Storage do
 
   def truncate_direction(source_id) do
     from(p in Direction, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
-
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking direction changes.
@@ -391,9 +390,9 @@ defmodule RoomSanctum.Storage do
     %Route{}
     |> Route.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :route_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :route_id]
+    )
   end
 
   @doc """
@@ -432,9 +431,8 @@ defmodule RoomSanctum.Storage do
 
   def truncate_route(source_id) do
     from(p in Route, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
-
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking route changes.
@@ -502,9 +500,9 @@ defmodule RoomSanctum.Storage do
     %StopTime{}
     |> StopTime.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :trip_id, :stop_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :trip_id, :stop_id]
+    )
   end
 
   @doc """
@@ -543,9 +541,8 @@ defmodule RoomSanctum.Storage do
 
   def truncate_stop_time(source_id) do
     from(p in StopTime, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
-
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking stop_time changes.
@@ -613,9 +610,9 @@ defmodule RoomSanctum.Storage do
     %Stop{}
     |> Stop.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :stop_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :stop_id]
+    )
   end
 
   @doc """
@@ -654,9 +651,8 @@ defmodule RoomSanctum.Storage do
 
   def truncate_stop(source_id) do
     from(p in Stop, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
-
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking stop changes.
@@ -724,11 +720,10 @@ defmodule RoomSanctum.Storage do
     %Trip{}
     |> Trip.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :trip_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :trip_id]
+    )
   end
-
 
   @doc """
   Updates a trip.
@@ -766,9 +761,8 @@ defmodule RoomSanctum.Storage do
 
   def truncate_trip(source_id) do
     from(p in Trip, where: p.source_id == ^source_id)
-    |> Repo.delete_all
+    |> Repo.delete_all()
   end
-
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking trip changes.
@@ -787,7 +781,7 @@ defmodule RoomSanctum.Storage do
 
   defp stringify(val) when is_integer(val) do
     val
-    |> Integer.to_string
+    |> Integer.to_string()
   end
 
   defp stringify(val) do
@@ -798,89 +792,92 @@ defmodule RoomSanctum.Storage do
     source = Cfg.get_source!(source_id)
     tz = source.config.tz
 
-    timestamp = case timestamp do
-      :now -> DateTime.now!(tz)
-      _ -> timestamp
-    end
+    timestamp =
+      case timestamp do
+        :now -> DateTime.now!(tz)
+        _ -> timestamp
+      end
 
-    timestamp_time = timestamp
-                     |> DateTime.to_time
+    timestamp_time =
+      timestamp
+      |> DateTime.to_time()
 
-    q = from st in StopTime,
-             where: st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.stop_id == ^stringify(
-               stop_id
-             ),
-             order_by: [
-               asc: st.arrival_time
-             ],
-             limit: ^limit,
-             left_join: s in Stop,
-             on: s.stop_id == st.stop_id,
-             left_join: t in Trip,
-             on: t.trip_id == st.trip_id,
-             left_join: r in Route,
-             on: t.route_id == r.route_id,
-             left_join: d in Direction,
-             on: t.direction_id == d.direction_id and t.route_id == d.route_id,
-             left_join: c in Calendar,
-             on: t.service_id == c.service_id,
-             select: %{
-               arrival_time: st.arrival_time,
-               departure_time: st.departure_time,
-               stop_id: st.stop_id,
-               stop_sequence: st.stop_sequence,
-               stop: %{
-                 stop_address: s.stop_address,
-                 stop_code: s.stop_code,
-                 stop_desc: s.stop_desc,
-                 stop_id: s.stop_id,
-                 stop_lat: s.stop_lat,
-                 stop_lon: s.stop_lon,
-                 stop_name: s.stop_name,
-                 stop_url: s.stop_url,
-               },
-               trip_id: st.trip_id,
-               trip: %{
-                 bikes_allowed: t.bikes_allowed,
-                 direction_id: t.direction_id,
-                 direction: %{
-                   direction: d.direction,
-                   direction_id: d.direction_id,
-                 },
-                 route_id: t.route_id,
-                 route: %{
-                   line_id: r.line_id,
-                   route_color: r.route_color,
-                   route_desc: r.route_desc,
-                   route_fare_class: r.route_fare_class,
-                   route_id: r.route_id,
-                   route_long_name: r.route_long_name,
-                   route_short_name: r.route_short_name,
-                   route_sort_order: r.route_sort_order,
-                   route_text_color: r.route_text_color,
-                   route_type: r.route_type,
-                   route_url: r.route_url
-                 },
-                 service_id: t.service_id,
-                 service: %{
-                   service_id: c.service_id,
-                   service_name: c.service_name,
-                   start_date: c.start_date,
-                   end_date: c.end_date,
-                   monday: c.monday,
-                   tuesday: c.tuesday,
-                   wednesday: c.wednesday,
-                   thursday: c.thursday,
-                   friday: c.friday,
-                   saturday: c.saturday,
-                   sunday: c.sunday,
+    q =
+      from st in StopTime,
+        where:
+          st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and
+            st.stop_id == ^stringify(stop_id),
+        order_by: [
+          asc: st.arrival_time
+        ],
+        limit: ^limit,
+        left_join: s in Stop,
+        on: s.stop_id == st.stop_id,
+        left_join: t in Trip,
+        on: t.trip_id == st.trip_id,
+        left_join: r in Route,
+        on: t.route_id == r.route_id,
+        left_join: d in Direction,
+        on: t.direction_id == d.direction_id and t.route_id == d.route_id,
+        left_join: c in Calendar,
+        on: t.service_id == c.service_id,
+        select: %{
+          arrival_time: st.arrival_time,
+          departure_time: st.departure_time,
+          stop_id: st.stop_id,
+          stop_sequence: st.stop_sequence,
+          stop: %{
+            stop_address: s.stop_address,
+            stop_code: s.stop_code,
+            stop_desc: s.stop_desc,
+            stop_id: s.stop_id,
+            stop_lat: s.stop_lat,
+            stop_lon: s.stop_lon,
+            stop_name: s.stop_name,
+            stop_url: s.stop_url
+          },
+          trip_id: st.trip_id,
+          trip: %{
+            bikes_allowed: t.bikes_allowed,
+            direction_id: t.direction_id,
+            direction: %{
+              direction: d.direction,
+              direction_id: d.direction_id
+            },
+            route_id: t.route_id,
+            route: %{
+              line_id: r.line_id,
+              route_color: r.route_color,
+              route_desc: r.route_desc,
+              route_fare_class: r.route_fare_class,
+              route_id: r.route_id,
+              route_long_name: r.route_long_name,
+              route_short_name: r.route_short_name,
+              route_sort_order: r.route_sort_order,
+              route_text_color: r.route_text_color,
+              route_type: r.route_type,
+              route_url: r.route_url
+            },
+            service_id: t.service_id,
+            service: %{
+              service_id: c.service_id,
+              service_name: c.service_name,
+              start_date: c.start_date,
+              end_date: c.end_date,
+              monday: c.monday,
+              tuesday: c.tuesday,
+              wednesday: c.wednesday,
+              thursday: c.thursday,
+              friday: c.friday,
+              saturday: c.saturday,
+              sunday: c.sunday
+            },
+            trip_headsign: t.trip_headsign,
+            trip_id: t.trip_id,
+            trip_short_name: t.trip_short_name
+          }
+        }
 
-                 },
-                 trip_headsign: t.trip_headsign,
-                 trip_id: t.trip_id,
-                 trip_short_name: t.trip_short_name
-               }
-             }
     Repo.all(q)
   end
 
@@ -937,9 +934,9 @@ defmodule RoomSanctum.Storage do
     %SysInfo{}
     |> SysInfo.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :system_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :system_id]
+    )
   end
 
   @doc """
@@ -1042,11 +1039,10 @@ defmodule RoomSanctum.Storage do
     %StationInfo{}
     |> StationInfo.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :station_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :station_id]
+    )
   end
-
 
   @doc """
   Updates a station_info.
@@ -1148,9 +1144,9 @@ defmodule RoomSanctum.Storage do
     %StationStatus{}
     |> StationStatus.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :station_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :station_id]
+    )
   end
 
   @doc """
@@ -1253,9 +1249,9 @@ defmodule RoomSanctum.Storage do
     %GBFSAlert{}
     |> GBFSAlert.changeset(attrs)
     |> Repo.insert(
-         on_conflict: {:replace_all_except, [:id]},
-         conflict_target: [:source_id, :alert_id]
-       )
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :alert_id]
+    )
   end
 
   @doc """
@@ -1303,6 +1299,37 @@ defmodule RoomSanctum.Storage do
   """
   def change_gbfs_alert(%GBFSAlert{} = alert, attrs \\ %{}) do
     GBFSAlert.changeset(alert, attrs)
+  end
+
+  def get_current_information_for_bikestop(source_id, stop_id) do
+    q =
+      from st in StationStatus,
+        where: st.source_id == ^source_id and st.station_id == ^stringify(stop_id),
+        left_join: si in StationInfo,
+        on: si.station_id == st.station_id,
+        #        left_join: t in GBFSAlert,
+        #        on: t.station_id == st.trip_id,
+        select: %{
+          is_installed: st.is_installed,
+          is_renting: st.is_renting,
+          is_returning: st.is_returning,
+          last_reported: st.last_reported,
+          num_bikes_available: st.num_bikes_available,
+          num_bikes_disabled: st.num_bikes_disabled,
+          num_docks_available: st.num_docks_available,
+          num_docks_disabled: st.num_docks_disabled,
+          num_ebikes_available: st.num_ebikes_available,
+          station_id: st.station_id,
+          station_status: st.station_status,
+          capacity: si.capacity,
+          lat: si.lat,
+          lon: si.lon,
+          place: si.place,
+          name: si.name,
+          short_name: si.short_name
+        }
+
+    Repo.one(q)
   end
 
   alias RoomSanctum.Storage.AirNow.ReportingArea
@@ -1591,5 +1618,232 @@ defmodule RoomSanctum.Storage do
   """
   def change_monitoring_site(%MonitoringSite{} = monitoring_site, attrs \\ %{}) do
     MonitoringSite.changeset(monitoring_site, attrs)
+  end
+
+  alias RoomSanctum.Storage.AirNow.HourlyObsData
+
+  @doc """
+  Returns the list of hourly_observations.
+
+  ## Examples
+
+      iex> list_hourly_observations()
+      [%HourlyObsData{}, ...]
+
+  """
+  def list_hourly_observations do
+    Repo.all(HourlyObsData)
+  end
+
+  @doc """
+  Gets a single hourly_obs_data.
+
+  Raises `Ecto.NoResultsError` if the Hourly obs data does not exist.
+
+  ## Examples
+
+      iex> get_hourly_obs_data!(123)
+      %HourlyObsData{}
+
+      iex> get_hourly_obs_data!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_hourly_obs_data!(id), do: Repo.get!(HourlyObsData, id)
+
+  @doc """
+  Creates a hourly_obs_data.
+
+  ## Examples
+
+      iex> create_hourly_obs_data(%{field: value})
+      {:ok, %HourlyObsData{}}
+
+      iex> create_hourly_obs_data(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_hourly_obs_data(attrs \\ %{}) do
+    %HourlyObsData{}
+    |> HourlyObsData.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a hourly_obs_data.
+
+  ## Examples
+
+      iex> update_hourly_obs_data(hourly_obs_data, %{field: new_value})
+      {:ok, %HourlyObsData{}}
+
+      iex> update_hourly_obs_data(hourly_obs_data, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_hourly_obs_data(%HourlyObsData{} = hourly_obs_data, attrs) do
+    hourly_obs_data
+    |> HourlyObsData.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a hourly_obs_data.
+
+  ## Examples
+
+      iex> delete_hourly_obs_data(hourly_obs_data)
+      {:ok, %HourlyObsData{}}
+
+      iex> delete_hourly_obs_data(hourly_obs_data)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_hourly_obs_data(%HourlyObsData{} = hourly_obs_data) do
+    Repo.delete(hourly_obs_data)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking hourly_obs_data changes.
+
+  ## Examples
+
+      iex> change_hourly_obs_data(hourly_obs_data)
+      %Ecto.Changeset{data: %HourlyObsData{}}
+
+  """
+  def change_hourly_obs_data(%HourlyObsData{} = hourly_obs_data, attrs \\ %{}) do
+    HourlyObsData.changeset(hourly_obs_data, attrs)
+  end
+
+  defmacro array_agg(field) do
+    quote do: fragment("array_agg(?)", unquote(field))
+  end
+
+  def get_current_information_for_aqi(source_id, foci_id) do
+    foci = Cfg.get_foci!(foci_id)
+
+    # not great but I flailed a bit here for a few days and I want to get this done and didn't figure out array_agg
+    q =
+      from hod in HourlyObsData,
+        where: hod.source_id == ^source_id,
+        limit: 1,
+        order_by: {:asc, st_distance(hod.point, ^foci.place)}
+
+    res = Repo.one(q)
+    [res]
+  end
+
+  alias RoomSanctum.Storage.ICalendar
+
+  @doc """
+  Returns the list of calendar_entries.
+
+  ## Examples
+
+      iex> list_calendar_entries()
+      [%Calendar{}, ...]
+
+  """
+  def list_icalendar_entries do
+    Repo.all(ICalendar)
+  end
+
+  @doc """
+  Gets a single calendar.
+
+  Raises `Ecto.NoResultsError` if the Calendar does not exist.
+
+  ## Examples
+
+      iex> get_calendar!(123)
+      %Calendar{}
+
+      iex> get_calendar!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_icalendar!(id), do: Repo.get!(ICalendar, id)
+
+  @doc """
+  Creates a calendar.
+
+  ## Examples
+
+      iex> create_calendar(%{field: value})
+      {:ok, %Calendar{}}
+
+      iex> create_calendar(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_icalendar(attrs \\ %{}) do
+    %ICalendar{}
+    |> ICalendar.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a calendar.
+
+  ## Examples
+
+      iex> update_calendar(calendar, %{field: new_value})
+      {:ok, %Calendar{}}
+
+      iex> update_calendar(calendar, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_icalendar(%ICalendar{} = calendar, attrs) do
+    calendar
+    |> ICalendar.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a calendar.
+
+  ## Examples
+
+      iex> delete_calendar(calendar)
+      {:ok, %Calendar{}}
+
+      iex> delete_calendar(calendar)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_icalendar(%ICalendar{} = calendar) do
+    Repo.delete(calendar)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking calendar changes.
+
+  ## Examples
+
+      iex> change_calendar(calendar)
+      %Ecto.Changeset{data: %Calendar{}}
+
+  """
+  def change_icalendar(%ICalendar{} = calendar, attrs \\ %{}) do
+    ICalendar.changeset(calendar, attrs)
+  end
+
+  alias RoomSanctum.Configuration
+
+  def get_upcoming_calendar_entries(source_id, query) do
+    foci = Configuration.get_foci!(query.foci_id)
+    {lat, lon} = foci.place.coordinates
+    tz = WhereTZ.lookup(lat, lon)
+    now = DateTime.new!(Date.utc_today, Time.new!(0,0,0), tz) # todo make this configurable from somewhere
+    max = now |> DateTime.add(query.days * 24 * 60 * 60, :second)
+    q =
+      from ic in ICalendar,
+        where: ic.source_id == ^source_id and ic.date_start >= ^now and ic.date_start <= ^max,
+        order_by: [asc: ic.date_start],
+        limit: ^query.limit
+
+    Repo.all(q)
   end
 end

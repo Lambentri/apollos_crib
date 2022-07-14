@@ -28,8 +28,45 @@ defmodule RoomSanctum.Storage.AirNow.ReportingArea do
   @doc false
   def changeset(reporting_area, attrs) do
     reporting_area
-    |> cast(attrs, [:issue_date, :valid_date, :valid_time, :time_zone, :record_sequence, :data_type, :primary, :reporting_area, :state_code, :lat, :lon, :parameter_name, :aqi_value, :aqi_category, :action_day, :discussion, :forecast_source, :source_id])
+    |> cast(attrs, [
+      :issue_date,
+      :valid_date,
+      :valid_time,
+      :time_zone,
+      :record_sequence,
+      :data_type,
+      :primary,
+      :reporting_area,
+      :state_code,
+      :lat,
+      :lon,
+      :parameter_name,
+      :aqi_value,
+      :aqi_category,
+      :action_day,
+      :discussion,
+      :forecast_source,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:issue_date, :valid_date, :valid_time, :time_zone, :record_sequence, :data_type, :primary, :reporting_area, :state_code, :lat, :lon, :parameter_name, :aqi_value, :aqi_category, :action_day, :discussion, :forecast_source])
+    |> validate_required([
+      :issue_date,
+      :valid_date,
+      :valid_time,
+      :time_zone,
+      :record_sequence,
+      :data_type,
+      :primary,
+      :reporting_area,
+      :state_code,
+      :lat,
+      :lon,
+      :parameter_name,
+      :aqi_value,
+      :aqi_category,
+      :action_day,
+      :discussion,
+      :forecast_source
+    ])
   end
 end

@@ -19,8 +19,25 @@ defmodule RoomSanctum.Storage.GTFS.Agency do
   @doc false
   def changeset(agency, attrs) do
     agency
-    |> cast(attrs, [:agency_id, :agency_url, :agency_lang, :agency_name, :agency_phone, :agency_timezone, :agency_fare_url, :tts_agency_name, :source_id])
+    |> cast(attrs, [
+      :agency_id,
+      :agency_url,
+      :agency_lang,
+      :agency_name,
+      :agency_phone,
+      :agency_timezone,
+      :agency_fare_url,
+      :tts_agency_name,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:agency_id, :agency_url, :agency_lang, :agency_name, :agency_phone, :agency_timezone])
+    |> validate_required([
+      :agency_id,
+      :agency_url,
+      :agency_lang,
+      :agency_name,
+      :agency_phone,
+      :agency_timezone
+    ])
   end
 end

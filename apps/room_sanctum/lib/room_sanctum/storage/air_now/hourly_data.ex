@@ -20,8 +20,29 @@ defmodule RoomSanctum.Storage.AirNow.HourlyData do
   @doc false
   def changeset(hourly_data, attrs) do
     hourly_data
-    |> cast(attrs, [:valid_date, :valid_time, :aqsid, :site_name, :gmt_offset, :parameter_name, :reporting_units, :value, :data_source, :source_id])
+    |> cast(attrs, [
+      :valid_date,
+      :valid_time,
+      :aqsid,
+      :site_name,
+      :gmt_offset,
+      :parameter_name,
+      :reporting_units,
+      :value,
+      :data_source,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:valid_date, :valid_time, :aqsid, :site_name, :gmt_offset, :parameter_name, :reporting_units, :value, :data_source])
+    |> validate_required([
+      :valid_date,
+      :valid_time,
+      :aqsid,
+      :site_name,
+      :gmt_offset,
+      :parameter_name,
+      :reporting_units,
+      :value,
+      :data_source
+    ])
   end
 end

@@ -21,8 +21,31 @@ defmodule RoomSanctum.Storage.GTFS.Trip do
   @doc false
   def changeset(trip, attrs) do
     trip
-    |> cast(attrs, [:route_id, :service_id, :trip_id, :trip_headsign, :trip_short_name, :direction_id, :block_id, :shape_id, :wheelchair_accessible, :bikes_allowed, :source_id])
+    |> cast(attrs, [
+      :route_id,
+      :service_id,
+      :trip_id,
+      :trip_headsign,
+      :trip_short_name,
+      :direction_id,
+      :block_id,
+      :shape_id,
+      :wheelchair_accessible,
+      :bikes_allowed,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:route_id, :service_id, :trip_id, :trip_headsign, :trip_short_name, :direction_id, :block_id, :shape_id, :wheelchair_accessible, :bikes_allowed])
+    |> validate_required([
+      :route_id,
+      :service_id,
+      :trip_id,
+      :trip_headsign,
+      :trip_short_name,
+      :direction_id,
+      :block_id,
+      :shape_id,
+      :wheelchair_accessible,
+      :bikes_allowed
+    ])
   end
 end

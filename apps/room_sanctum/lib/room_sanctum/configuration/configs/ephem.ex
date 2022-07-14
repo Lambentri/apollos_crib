@@ -5,8 +5,8 @@ defmodule RoomSanctum.Configuration.Configs.Ephem do
   @primary_key false
 
   embedded_schema do
-#    field :lat, :float
-#    field :lon, :float
+    #    field :lat, :float
+    #    field :lon, :float
   end
 
   def changeset(source, params) do

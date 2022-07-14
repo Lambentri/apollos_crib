@@ -9,7 +9,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateGbfsStationStatus do
       add :num_docks_disabled, :integer
       add :station_id, :string
       add :station_status, :string
-      add :num_bikes_disables, :integer
+      add :num_bikes_disabled, :integer
       add :last_reported, :utc_datetime
       add :is_installed, :boolean, default: false, null: false
       add :is_renting, :boolean, default: false, null: false

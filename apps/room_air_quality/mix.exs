@@ -29,7 +29,6 @@ defmodule RoomAirQuality.MixProject do
       {:poison, "~> 5.0"},
       {:parent, "~> 0.12.1"},
       {:timex, "~> 3.7"},
-
       {:room_sanctum, in_umbrella: true}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},

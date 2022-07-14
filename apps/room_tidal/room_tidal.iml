@@ -15,5 +15,42 @@
       <excludeFolder url="file://$MODULE_DIR$/logs" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="cachex" level="project" />
+    <orderEntry type="library" name="csv" level="project" />
+    <orderEntry type="library" name="httpoison" level="project" />
+    <orderEntry type="library" name="protobuf" level="project" />
+    <orderEntry type="library" name="parent" level="project" />
+    <orderEntry type="module" module-name="room_sanctum" />
+    <orderEntry type="library" name="parallel_stream" level="project" />
+    <orderEntry type="library" name="excoveralls" level="project" />
+    <orderEntry type="library" name="benchfella" level="project" />
+    <orderEntry type="library" name="ex_csv" level="project" />
+    <orderEntry type="library" name="csvlixir" level="project" />
+    <orderEntry type="library" name="cesso" level="project" />
+    <orderEntry type="library" name="ex_doc" level="project" />
+    <orderEntry type="library" name="inch_ex" level="project" />
+    <orderEntry type="library" name="earmark" level="project" />
+    <orderEntry type="library" name="hackney" level="project" />
+    <orderEntry type="library" name="mimic" level="project" />
+    <orderEntry type="library" name="jason" level="project" />
+    <orderEntry type="library" name="httparrot" level="project" />
+    <orderEntry type="library" name="dialyxir" level="project" />
+    <orderEntry type="library" name="credo" level="project" />
+    <orderEntry type="library" name="stream_data" level="project" />
+    <orderEntry type="library" name="mox" level="project" />
+    <orderEntry type="library" name="telemetry" level="project" />
+    <orderEntry type="library" name="eternal" level="project" />
+    <orderEntry type="library" name="jumper" level="project" />
+    <orderEntry type="library" name="sleeplocks" level="project" />
+    <orderEntry type="library" name="unsafe" level="project" />
+    <orderEntry type="library" name="local_cluster" level="project" />
+    <orderEntry type="library" name="benchee" level="project" />
+    <orderEntry type="library" name="benchee_html" level="project" />
+    <orderEntry type="library" name="nebulex" level="project" />
+    <orderEntry type="library" name="shards" level="project" />
+    <orderEntry type="library" name="decorator" level="project" />
+    <orderEntry type="library" name="ex2ms" level="project" />
+    <orderEntry type="library" name="mock" level="project" />
+    <orderEntry type="library" name="sobelow" level="project" />
   </component>
 </module>

@@ -23,8 +23,35 @@ defmodule RoomSanctum.Storage.GBFS.V1.SysInfo do
   @doc false
   def changeset(sys_info, attrs) do
     sys_info
-    |> cast(attrs, [:name, :email, :timezone, :short_name, :phone_number, :language, :start_date, :url, :operator, :purchase_url, :license_url, :system_id, :source_id])
+    |> cast(attrs, [
+      :name,
+      :email,
+      :timezone,
+      :short_name,
+      :phone_number,
+      :language,
+      :start_date,
+      :url,
+      :operator,
+      :purchase_url,
+      :license_url,
+      :system_id,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:name, :email, :timezone, :short_name, :phone_number, :language, :start_date, :url, :operator, :purchase_url, :license_url, :system_id])
+    |> validate_required([
+      :name,
+      :email,
+      :timezone,
+      :short_name,
+      :phone_number,
+      :language,
+      :start_date,
+      :url,
+      :operator,
+      :purchase_url,
+      :license_url,
+      :system_id
+    ])
   end
 end

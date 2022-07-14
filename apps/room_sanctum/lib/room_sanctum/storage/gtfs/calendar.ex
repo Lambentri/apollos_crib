@@ -22,8 +22,30 @@ defmodule RoomSanctum.Storage.GTFS.Calendar do
   @doc false
   def changeset(calendar, attrs) do
     calendar
-    |> cast(attrs, [:service_id, :service_name, :monday, :tuesday, :wednesday, :thursday, :friday, :saturday, :sunday, :start_date, :end_date, :source_id])
+    |> cast(attrs, [
+      :service_id,
+      :service_name,
+      :monday,
+      :tuesday,
+      :wednesday,
+      :thursday,
+      :friday,
+      :saturday,
+      :sunday,
+      :start_date,
+      :end_date,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:service_id, :monday, :tuesday, :wednesday, :thursday, :friday, :saturday, :sunday])
+    |> validate_required([
+      :service_id,
+      :monday,
+      :tuesday,
+      :wednesday,
+      :thursday,
+      :friday,
+      :saturday,
+      :sunday
+    ])
   end
 end

@@ -2,14 +2,11 @@ defmodule RoomSanctum.Configuration.Vision do
   use Ecto.Schema
   import Ecto.Changeset
 
-
   schema "cfg_visions" do
     belongs_to :user, RoomSanctum.Accounts.User
     field :name, :string
     field :type, Ecto.Enum, values: [:alerts, :time, :pinned, :background]
     embeds_many :queries, RoomSanctum.Configuration.Vision.Schema, on_replace: :delete
-
-
 
     timestamps()
   end
@@ -31,15 +28,16 @@ defmodule RoomSanctum.Configuration.Vision.Schema do
 
   embedded_schema do
     field :type, Ecto.Enum, values: [:alerts, :time, :pinned, :background]
+
     field :data, PolymorphicEmbed,
-          types: [
-            alerts: RoomSanctum.Configuration.Vision.Schema0Alerts,
-            time: RoomSanctum.Configuration.Vision.Schema1Time,
-            pinned: RoomSanctum.Configuration.Vision.Schema2Pinned,
-            background: RoomSanctum.Configuration.Vision.Schema3Background
-          ],
-          on_type_not_found: :raise,
-          on_replace: :update
+      types: [
+        alerts: RoomSanctum.Configuration.Vision.Schema0Alerts,
+        time: RoomSanctum.Configuration.Vision.Schema1Time,
+        pinned: RoomSanctum.Configuration.Vision.Schema2Pinned,
+        background: RoomSanctum.Configuration.Vision.Schema3Background
+      ],
+      on_type_not_found: :raise,
+      on_replace: :update
   end
 
   def changeset(source, params) do
@@ -49,7 +47,6 @@ defmodule RoomSanctum.Configuration.Vision.Schema do
     |> validate_required([:type])
   end
 end
-
 
 defmodule RoomSanctum.Configuration.Vision.Schema0Alerts do
   use Ecto.Schema

@@ -8,7 +8,7 @@ defmodule RoomSanctum.Configuration.Queries.Weather do
 
   embedded_schema do
     field :foci_id, :integer
-    #has_one :foci, Foci, references: :foci_id
+    # has_one :foci, Foci, references: :foci_id
   end
 
   def changeset(source, params) do

@@ -22,12 +22,14 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
 
   @impl true
   def handle_event("validate", %{"foci" => foci_params}, socket) do
-    foci_params = inj_uid(foci_params, socket)
-                  |> Map.put(
-                       "place",
-                       socket.assigns
-                       |> Map.get(:place)
-                     )
+    foci_params =
+      inj_uid(foci_params, socket)
+      |> Map.put(
+        "place",
+        socket.assigns
+        |> Map.get(:place)
+      )
+
     changeset =
       socket.assigns.foci
       |> Configuration.change_foci(foci_params)
@@ -37,20 +39,22 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
   end
 
   def handle_event("save", %{"foci" => foci_params}, socket) do
-    foci_params = inj_uid(foci_params, socket)
-                  |> Map.put(
-                       "place",
-                       socket.assigns
-                       |> Map.get(:place)
-                     )
+    foci_params =
+      inj_uid(foci_params, socket)
+      |> Map.put(
+        "place",
+        socket.assigns
+        |> Map.get(:place)
+      )
+
     save_foci(socket, socket.assigns.action, foci_params)
   end
 
   def handle_event("map-update", %{"latlng" => latlng}, socket) do
-    lat_lng_pt = %Geo.Point{coordinates: {latlng["lat"], latlng["lng"]}, srid: nil}
+    lat_lng_pt = %Geo.Point{coordinates: {latlng["lat"], latlng["lng"]}, srid: 4326}
     cs = Ecto.Changeset.put_change(socket.assigns.changeset, :place, lat_lng_pt)
     #         |> Map.put(:action, :validate)
-    #cs = socket.assigns.foci |> Configuration.change_foci(%{place: lat_lng_pt}) |> Map.put(:action, :validate)
+    # cs = socket.assigns.foci |> Configuration.change_foci(%{place: lat_lng_pt}) |> Map.put(:action, :validate)
     {
       :noreply,
       socket
@@ -94,8 +98,6 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
   end
 
   defp getlatlng(%{:place => place}) do
-    place |> Map.get(:coordinates, {}) |> Tuple.to_list |> Poison.encode!
+    place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> Poison.encode!()
   end
-
-
 end

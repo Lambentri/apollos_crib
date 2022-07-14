@@ -23,8 +23,31 @@ defmodule RoomSanctum.Storage.GTFS.StopTime do
   @doc false
   def changeset(stop_time, attrs) do
     stop_time
-    |> cast(attrs, [:trip_id, :arrival_time, :departure_time, :stop_id, :stop_sequence, :stop_headsign, :pickup_type, :drop_off_type, :timepoint, :checkpoint_id, :continuous_pickup, :continuous_dropoff, :source_id])
+    |> cast(attrs, [
+      :trip_id,
+      :arrival_time,
+      :departure_time,
+      :stop_id,
+      :stop_sequence,
+      :stop_headsign,
+      :pickup_type,
+      :drop_off_type,
+      :timepoint,
+      :checkpoint_id,
+      :continuous_pickup,
+      :continuous_dropoff,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:trip_id, :arrival_time, :departure_time, :stop_id, :stop_sequence, :pickup_type, :drop_off_type, :timepoint])
+    |> validate_required([
+      :trip_id,
+      :arrival_time,
+      :departure_time,
+      :stop_id,
+      :stop_sequence,
+      :pickup_type,
+      :drop_off_type,
+      :timepoint
+    ])
   end
 end

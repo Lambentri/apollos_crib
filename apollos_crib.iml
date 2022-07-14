@@ -67,6 +67,20 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/combine" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/tzdata" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/timex" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/eternal" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/cachex" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/unsafe" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/jumper" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/sleeplocks" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/decorator" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/shards" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/nebulex" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/solarex" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/topo" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/vector" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/wheretz" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/seg_seg" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/icalendar" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

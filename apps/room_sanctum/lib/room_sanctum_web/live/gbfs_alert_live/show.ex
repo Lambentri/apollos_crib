@@ -13,7 +13,7 @@ defmodule RoomSanctumWeb.AlertLive.Show do
     {:noreply,
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
-     |> assign(:alert, Storage.get_alert!(id))}
+     |> assign(:alert, Storage.get_gbfs_alert!(id))}
   end
 
   defp page_title(:show), do: "Show Alert"

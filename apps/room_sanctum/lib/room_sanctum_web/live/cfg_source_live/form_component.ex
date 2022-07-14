@@ -3,7 +3,6 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
   alias RoomSanctum.Configuration
 
-
   defp inj_uid(params, socket) do
     params |> Map.put("user_id", socket.assigns.current_user.id)
   end
@@ -21,6 +20,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   @impl true
   def handle_event("validate", %{"source" => source_params}, socket) do
     source_params = inj_uid(source_params, socket)
+
     changeset =
       socket.assigns.source
       |> Configuration.change_source(source_params)

@@ -3,6 +3,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateAirnowMonitoringSites do
 
   def change do
     create table(:airnow_monitoring_sites) do
+      add :source_id, references(:cfg_sources, on_delete: :delete_all), null: false
       add :station_id, :string
       add :aqsid, :string
       add :full_aqsid, :string
@@ -27,5 +28,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateAirnowMonitoringSites do
 
       timestamps()
     end
+
+    create unique_index(:airnow_monitoring_sites, [:source_id, :station_id])
   end
 end

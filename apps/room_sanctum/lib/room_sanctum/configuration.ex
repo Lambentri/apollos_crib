@@ -26,7 +26,7 @@ defmodule RoomSanctum.Configuration do
   end
 
   def list_cfg_sources({:user, uid}) do
-    Repo.all from s in Source, where: s.user_id == ^uid
+    Repo.all(from s in Source, where: s.user_id == ^uid)
   end
 
   @doc """
@@ -122,11 +122,11 @@ defmodule RoomSanctum.Configuration do
 
   """
   def list_cfg_queries do
-    Repo.all from q in Query, preload: [:source]
+    Repo.all(from q in Query, preload: [:source])
   end
 
   def list_cfg_queries({:user, uid}) do
-    Repo.all from q in Query, where: q.user_id == ^uid, preload: [:source]
+    Repo.all(from q in Query, where: q.user_id == ^uid, preload: [:source])
   end
 
   @doc """
@@ -143,7 +143,7 @@ defmodule RoomSanctum.Configuration do
       ** (Ecto.NoResultsError)
 
   """
-  def get_query!(id), do: Repo.get!(Query, id)
+  def get_query!(id), do: Repo.get!(Query, id) |> Repo.preload(:source)
 
   @doc """
   Creates a query.
@@ -226,7 +226,7 @@ defmodule RoomSanctum.Configuration do
   end
 
   def list_visions({:user, uid}) do
-    Repo.all from s in Vision, where: s.user_id == ^uid
+    Repo.all(from s in Vision, where: s.user_id == ^uid)
   end
 
   @doc """
@@ -282,8 +282,8 @@ defmodule RoomSanctum.Configuration do
   end
 
   defp inj_fake_ids(attrs) do
-    q = attrs["queries"] |>  Enum.map( fn {ctr, val} -> val |> Map.put("id", ctr) end)
-    Map.put(attrs, "queries", q) |> IO.inspect
+    q = attrs["queries"] |> Enum.map(fn {ctr, val} -> val |> Map.put("id", ctr) end)
+    Map.put(attrs, "queries", q) |> IO.inspect()
   end
 
   @doc """
@@ -331,7 +331,7 @@ defmodule RoomSanctum.Configuration do
   end
 
   def list_focis({:user, uid}) do
-    Repo.all from q in Foci, where: q.user_id == ^uid
+    Repo.all(from q in Foci, where: q.user_id == ^uid)
   end
 
   @doc """

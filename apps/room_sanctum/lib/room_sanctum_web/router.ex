@@ -45,7 +45,6 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/focis/:id", FociLive.Show, :show
     live "/cfg/focis/:id/show/edit", FociLive.Show, :edit
 
-
     live "/storage/gtfs/agencies", AgencyLive.Index, :index
     live "/storage/gtfs/agencies/new", AgencyLive.Index, :new
     live "/storage/gtfs/agencies/:id/edit", AgencyLive.Index, :edit
@@ -130,9 +129,17 @@ defmodule RoomSanctumWeb.Router do
     live "/airnow/monitoring_sites/:id", MonitoringSiteLive.Show, :show
     live "/airnow/monitoring_sites/:id/show/edit", MonitoringSiteLive.Show, :edit
 
+    live "/airnow/hourly_observations", HourlyObsDataLive.Index, :index
+    live "/airnow/hourly_observations/new", HourlyObsDataLive.Index, :new
+    live "/airnow/hourly_observations/:id/edit", HourlyObsDataLive.Index, :edit
+    live "/airnow/hourly_observations/:id", HourlyObsDataLive.Show, :show
+    live "/airnow/hourly_observations/:id/show/edit", HourlyObsDataLive.Show, :edit
 
-
-    # TODO add phx.gen.auth and give configs / queries users, set storages and other bits to be owned by a particular config in the schema
+#    live "/calendar_entries", ICalendarLive.Index, :index
+#    live "/calendar_entries/new", ICalendarLive.Index, :new
+#    live "/calendar_entries/:id/edit", ICalendarLive.Index, :edit
+#    live "/calendar_entries/:id", ICalendarLive.Show, :show
+#    live "/calendar_entries/:id/show/edit", ICalendarLive.Show, :edit
   end
 
   # Other scopes may use custom stacks.

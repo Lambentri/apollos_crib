@@ -10,7 +10,7 @@ defmodule RoomSanctum.Configuration.Queries.Rideshare do
 
   def changeset(source, params) do
     source
-#    |> cast(params, ~w(api_key, provider)a)
-#    |> validate_required([:api_key, :provider])
+    #    |> cast(params, ~w(api_key, provider)a)
+    #    |> validate_required([:api_key, :provider])
   end
 end

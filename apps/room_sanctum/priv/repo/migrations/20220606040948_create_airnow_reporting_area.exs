@@ -24,5 +24,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateAirnowReportingArea do
 
       timestamps()
     end
+
+    create unique_index(:airnow_reporting_area, [:source_id, :site_name, :parameter_name])
   end
 end

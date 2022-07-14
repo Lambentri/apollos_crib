@@ -1,0 +1,35 @@
+<component name="libraryTable">
+  <library name="seg_seg" type="mix">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/seg_seg/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+      <root url="file://$PROJECT_DIR$/deps/seg_seg/lib" />
+    </SOURCES>
+  </library>
+</component>

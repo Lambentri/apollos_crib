@@ -24,8 +24,33 @@ defmodule RoomSanctum.Storage.GTFS.Route do
   @doc false
   def changeset(route, attrs) do
     route
-    |> cast(attrs, [:agency_id, :route_id, :route_short_name, :route_long_name, :route_desc, :route_type, :route_url, :route_color, :route_text_color, :route_sort_order, :route_fare_class, :line_id, :listed_route, :source_id])
+    |> cast(attrs, [
+      :agency_id,
+      :route_id,
+      :route_short_name,
+      :route_long_name,
+      :route_desc,
+      :route_type,
+      :route_url,
+      :route_color,
+      :route_text_color,
+      :route_sort_order,
+      :route_fare_class,
+      :line_id,
+      :listed_route,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:agency_id, :route_id, :route_desc, :route_type, :route_color, :route_text_color, :route_sort_order, :route_fare_class, :line_id])
+    |> validate_required([
+      :agency_id,
+      :route_id,
+      :route_desc,
+      :route_type,
+      :route_color,
+      :route_text_color,
+      :route_sort_order,
+      :route_fare_class,
+      :line_id
+    ])
   end
 end

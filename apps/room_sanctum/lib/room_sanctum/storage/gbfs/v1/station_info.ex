@@ -14,6 +14,7 @@ defmodule RoomSanctum.Storage.GBFS.V1.StationInfo do
     field :rental_methods, {:array, :string}
     field :short_name, :string
     field :station_id, :string
+    field :place, Geo.PostGIS.Geometry
 
     timestamps()
   end
@@ -21,8 +22,33 @@ defmodule RoomSanctum.Storage.GBFS.V1.StationInfo do
   @doc false
   def changeset(station_info, attrs) do
     station_info
-    |> cast(attrs, [:station_id, :name, :short_name, :capacity, :region_id, :legacy_id, :external_id, :lat, :lon, :rental_methods, :source_id])
+    |> cast(attrs, [
+      :station_id,
+      :name,
+      :short_name,
+      :capacity,
+      :region_id,
+      :legacy_id,
+      :external_id,
+      :lat,
+      :lon,
+      :rental_methods,
+      :source_id,
+      :place
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:station_id, :name, :short_name, :capacity, :region_id, :legacy_id, :external_id, :lat, :lon, :rental_methods])
+    |> validate_required([
+      :station_id,
+      :name,
+      :short_name,
+      :capacity,
+      :region_id,
+      :legacy_id,
+      :external_id,
+      :lat,
+      :lon,
+      :rental_methods,
+      :place
+    ])
   end
 end

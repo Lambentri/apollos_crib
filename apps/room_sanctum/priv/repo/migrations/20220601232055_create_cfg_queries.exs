@@ -3,6 +3,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateCfgQueries do
 
   def change do
     execute "CREATE EXTENSION IF NOT EXISTS postgis"
+
     create table(:cfg_queries) do
       add :user_id, references(:users, on_delete: :nilify_all), null: false
       add :name, :string

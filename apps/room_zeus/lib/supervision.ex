@@ -6,18 +6,21 @@ defmodule RoomZeus.DynSupervisor do
   end
 
   def start_child(type, instance_id) do
-    spec = case type do
-      :gtfs -> {RoomGtfs.Worker, [name: instance_id]}
-      :gbfs -> {RoomGbfs.Worker, [name: instance_id]}
-      :aqi -> {RoomAirQuality.Worker, [name: instance_id]}
-      _ -> nil
-    end
+    spec =
+      case type do
+        :gtfs -> {RoomGtfs.Worker, [name: instance_id]}
+        :gbfs -> {RoomGbfs.Worker, [name: instance_id]}
+        :aqi -> {RoomAirQuality.Worker, [name: instance_id]}
+        :tidal -> {RoomTidal.Worker, [name: instance_id]}
+        :weather -> {RoomWeather.Worker, [name: instance_id]}
+        :calendar -> {RoomCalendar.Worker, [name: instance_id]}
+        _ -> nil
+      end
+
     if spec != nil do
       DynamicSupervisor.start_child(__MODULE__, spec)
     end
-
   end
-
 
   @impl true
   def init(init_arg) do
@@ -26,11 +29,14 @@ defmodule RoomZeus.DynSupervisor do
       run: &do_children/0,
       initial_delay: 1000
     )
+
     DynamicSupervisor.init(strategy: :one_for_one)
   end
 
   defp do_children do
-      RoomSanctum.Configuration.list_cfg_sources()
-      |> Enum.map(fn x -> RoomZeus.DynSupervisor.start_child(x.type, x.id |> Integer.to_string) end)
+    RoomSanctum.Configuration.list_cfg_sources()
+    |> Enum.map(fn x ->
+      RoomZeus.DynSupervisor.start_child(x.type, x.id |> Integer.to_string())
+    end)
   end
 end

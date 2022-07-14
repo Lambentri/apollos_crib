@@ -13,7 +13,7 @@
     <%= text_input f, :name %>
     <%= error_tag f, :name %>
 
-    <%= for {fq, ctr} <- Enum.with_index(inputs_for(f, :queries) |> Enum.sort_by(fn x -> x.data.data.order end)) do %>
+    <%= for {fq, ctr} <- Enum.with_index(inputs_for(f, :queries)) do %>
         <%= hidden_inputs_for(fq) %>
         <%= ctr %>
 

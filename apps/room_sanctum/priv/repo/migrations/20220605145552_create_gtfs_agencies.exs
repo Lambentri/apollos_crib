@@ -15,6 +15,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateAgencies do
 
       timestamps()
     end
+
     create unique_index(:gtfs_agencies, [:source_id, :agency_id])
   end
 end

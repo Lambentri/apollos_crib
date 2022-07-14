@@ -91,5 +91,15 @@
     <orderEntry type="library" name="tzdata" level="project" />
     <orderEntry type="library" name="combine" level="project" />
     <orderEntry type="library" name="benchfella" level="project" />
+    <orderEntry type="library" name="wheretz" level="project" />
+    <orderEntry type="library" name="topo" level="project" />
+    <orderEntry type="library" name="inch_ex" level="project" />
+    <orderEntry type="library" name="httpoison" level="project" />
+    <orderEntry type="library" name="seg_seg" level="project" />
+    <orderEntry type="library" name="vector" level="project" />
+    <orderEntry type="library" name="envelope" level="project" />
+    <orderEntry type="library" name="earmark" level="project" />
+    <orderEntry type="library" name="mimic" level="project" />
+    <orderEntry type="library" name="httparrot" level="project" />
   </component>
 </module>

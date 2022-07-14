@@ -9,23 +9,25 @@ defmodule RoomSanctum.Configuration.Source do
     field :public, :boolean, default: true
     field :name, :string
     field :notes, :string
-    field :type, Ecto.Enum, values: [:aqi, :calendar, :ephem, :gbfs, :gtfs, :hass, :rideshare, :tidal, :weather]
+
+    field :type, Ecto.Enum,
+      values: [:aqi, :calendar, :ephem, :gbfs, :gtfs, :hass, :rideshare, :tidal, :weather]
 
     field :config, PolymorphicEmbed,
-                   types: [
-                     aqi: RoomSanctum.Configuration.Configs.AQI,
-                     calendar: RoomSanctum.Configuration.Configs.Calendar,
-                     ephem: RoomSanctum.Configuration.Configs.Ephem,
-                     gbfs: RoomSanctum.Configuration.Configs.GBFS,
-                     gtfs: RoomSanctum.Configuration.Configs.GTFS,
-                     hass: RoomSanctum.Configuration.Configs.Hass,
-                     rideshare: RoomSanctum.Configuration.Configs.Rideshare,
-                     tidal: RoomSanctum.Configuration.Configs.Tidal,
-                     weather: RoomSanctum.Configuration.Configs.Weather,
-                     email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]]
-                   ],
-                   on_type_not_found: :raise,
-                   on_replace: :update
+      types: [
+        aqi: RoomSanctum.Configuration.Configs.AQI,
+        calendar: RoomSanctum.Configuration.Configs.Calendar,
+        ephem: RoomSanctum.Configuration.Configs.Ephem,
+        gbfs: RoomSanctum.Configuration.Configs.GBFS,
+        gtfs: RoomSanctum.Configuration.Configs.GTFS,
+        hass: RoomSanctum.Configuration.Configs.Hass,
+        rideshare: RoomSanctum.Configuration.Configs.Rideshare,
+        tidal: RoomSanctum.Configuration.Configs.Tidal,
+        weather: RoomSanctum.Configuration.Configs.Weather,
+        email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]]
+      ],
+      on_type_not_found: :raise,
+      on_replace: :update
 
     timestamps()
   end

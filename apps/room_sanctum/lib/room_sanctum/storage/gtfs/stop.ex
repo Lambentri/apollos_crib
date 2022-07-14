@@ -26,8 +26,35 @@ defmodule RoomSanctum.Storage.GTFS.Stop do
   @doc false
   def changeset(stop, attrs) do
     stop
-    |> cast(attrs, [:stop_id, :stop_code, :stop_name, :stop_desc, :platform_code, :platform_name, :stop_lat, :stop_lon, :zone_id, :stop_address, :stop_url, :level_id, :location_type, :parent_station, :wheelchair_boarding, :source_id])
+    |> cast(attrs, [
+      :stop_id,
+      :stop_code,
+      :stop_name,
+      :stop_desc,
+      :platform_code,
+      :platform_name,
+      :stop_lat,
+      :stop_lon,
+      :zone_id,
+      :stop_address,
+      :stop_url,
+      :level_id,
+      :location_type,
+      :parent_station,
+      :wheelchair_boarding,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:stop_id, :stop_code, :stop_name, :stop_lat, :stop_lon, :zone_id, :stop_url,:location_type, :wheelchair_boarding])
+    |> validate_required([
+      :stop_id,
+      :stop_code,
+      :stop_name,
+      :stop_lat,
+      :stop_lon,
+      :zone_id,
+      :stop_url,
+      :location_type,
+      :wheelchair_boarding
+    ])
   end
 end

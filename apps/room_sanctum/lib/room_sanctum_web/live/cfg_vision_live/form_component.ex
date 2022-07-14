@@ -9,7 +9,13 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   defp inj_types(params) do
-    params |> Map.put("queries", params["queries"] |> Enum.map(fn {k, v} -> {k, v |> Kernel.put_in(["data", "__type__"], v["type"])} end)  |> Enum.into(%{}))
+    params
+    |> Map.put(
+      "queries",
+      params["queries"]
+      |> Enum.map(fn {k, v} -> {k, v |> Kernel.put_in(["data", "__type__"], v["type"])} end)
+      |> Enum.into(%{})
+    )
   end
 
   @impl true
@@ -23,24 +29,24 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
       |> assign(:changeset, changeset)
       |> assign(:cfg_queries, list_cfg_queries(assigns.current_user.id))
       |> assign(
-           :cfg_queries_sel,
-           list_cfg_queries(assigns.current_user.id)
-           |> Enum.map(fn x -> {"#{x.name} (#{x.source.type})", x.id} end)
-           |> Enum.into(%{})
-         )
+        :cfg_queries_sel,
+        list_cfg_queries(assigns.current_user.id)
+        |> Enum.map(fn x -> {"#{x.name} (#{x.source.type})", x.id} end)
+        |> Enum.into(%{})
+      )
     }
-
   end
 
   @impl true
   def handle_event("validate", %{"vision" => vision_params}, socket) do
     IO.puts("cvl-valid")
     vision_params = inj_uid(vision_params, socket)
+
     changeset =
       socket.assigns.vision
       |> Configuration.change_vision(vision_params)
       |> Map.put(:action, :validate)
-      |> IO.inspect
+      |> IO.inspect()
 
     {:noreply, assign(socket, :changeset, changeset)}
   end
@@ -52,17 +58,26 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   def handle_event("add-entry", data, socket) do
-    existing_as_simple = socket.assigns.vision.queries |> Enum.map(fn x -> x |> Poison.encode! |> Poison.decode! end)
-    combined = [%{
-      "data" => %{"__type__" => "alerts", "query" => 0},
-      "id" => nil,
-      "type" => "alerts"
-    }] ++ existing_as_simple
+    existing_as_simple =
+      socket.assigns.vision.queries
+      |> Enum.map(fn x -> x |> Poison.encode!() |> Poison.decode!() end)
+
+    combined =
+      existing_as_simple ++
+        [
+          %{
+            "data" => %{"__type__" => "alerts", "query" => 0},
+            "id" => nil,
+            "type" => "alerts",
+            "order" => 0
+          }
+        ]
+
     changeset =
       socket.assigns.vision
       |> Configuration.change_vision(%{queries: combined})
       |> Map.put(:action, :validate)
-      |> IO.inspect
+      |> IO.inspect()
 
     {
       :noreply,
@@ -73,7 +88,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp save_vision(socket, :edit, vision_params) do
     case Configuration.update_vision(socket.assigns.vision, vision_params)
-         |> IO.inspect do
+         |> IO.inspect() do
       {:ok, _vision} ->
         {
           :noreply,
@@ -89,7 +104,8 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp save_vision(socket, :new, vision_params) do
     IO.inspect(vision_params)
-    case Configuration.create_vision(vision_params) |> IO.inspect do
+
+    case Configuration.create_vision(vision_params) |> IO.inspect() do
       {:ok, _vision} ->
         {
           :noreply,
@@ -108,19 +124,32 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   defp etuple(:U) do
-    {"Sunday", "U"} end
+    {"Sunday", "U"}
+  end
+
   defp etuple(:M) do
-    {"Monday", "M"} end
+    {"Monday", "M"}
+  end
+
   defp etuple(:T) do
-    {"Tuesday", "T"} end
+    {"Tuesday", "T"}
+  end
+
   defp etuple(:W) do
-    {"Wednesday", "W"} end
+    {"Wednesday", "W"}
+  end
+
   defp etuple(:R) do
-    {"Thursday", "R"} end
+    {"Thursday", "R"}
+  end
+
   defp etuple(:F) do
-    {"Friday", "F"} end
+    {"Friday", "F"}
+  end
+
   defp etuple(:S) do
-    {"Saturday", "S"} end
+    {"Saturday", "S"}
+  end
 
   defp gfv(changeset, fq, ctr) do
     #    IO.puts("GFV")
@@ -136,16 +165,19 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     #      |> Map.get(:type)
     #    )
 
-    q = changeset.changes
-        |> Map.get(:queries, [])
-        |> Enum.at(ctr, %{})
+    q =
+      changeset.changes
+      |> Map.get(:queries, [])
+      |> Enum.at(ctr, %{})
+      |> Map.get(:changes, %{})
+      |> Map.get(:type) ||
+        fq.data
+        |> Map.get(:source, %{})
         |> Map.get(:changes, %{})
-        |> Map.get(:type) || fq.data
-                             |> Map.get(:source, %{})
-                             |> Map.get(:changes, %{})
-                             |> Map.get(:type) || fq.source
-                                                  |> Map.get(:data, %{})
-                                                  |> Map.get(:type)
+        |> Map.get(:type) ||
+        fq.source
+        |> Map.get(:data, %{})
+        |> Map.get(:type)
 
     #    IO.puts("xxxxx")
     #    IO.inspect(q)

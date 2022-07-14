@@ -131,10 +131,17 @@
     <%= :weather -> %>
     <%= polymorphic_embed_inputs_for f, :config, :weather, fn weather_form -> %>
     <div class="api-key-inputs">
-        <label>Base URL</label>
-        <%= text_input weather_form, :base_url %>
+        <label>OpenWeatherMap API Key</label>
+        <%= text_input weather_form, :api_key %>
         <div class="error">
-            <%= error_tag weather_form, :base_url %>
+            <%= error_tag weather_form, :api_key %>
+        </div>
+    </div>
+    <div class="unit-inputs">
+        <label>Units</label>
+        <%= select weather_form, :units, [:standard, :metric, :imperial] %>
+        <div class="error">
+            <%= error_tag weather_form, :units %>
         </div>
     </div>
     <% end %>

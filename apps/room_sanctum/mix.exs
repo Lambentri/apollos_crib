@@ -54,12 +54,14 @@ defmodule RoomSanctum.MixProject do
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
-
       {:timex, "~> 3.7.8"},
       {:poison, "~> 5.0", override: true},
 
-      #{:polymorphic_embed, "~> 1.9.0"},
-      {:polymorphic_embed, git: "git@github.com:woylie/polymorphic_embed.git", branch: "inputs-for-liveview"},
+      {:wheretz, "~> 0.1.16"},
+
+      # {:polymorphic_embed, "~> 1.9.0"},
+      {:polymorphic_embed,
+       git: "git@github.com:woylie/polymorphic_embed.git", branch: "inputs-for-liveview"},
       {:geo_postgis, "~> 3.4"},
       {:tzdata, "~> 1.1"}
     ]

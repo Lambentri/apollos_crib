@@ -17,7 +17,7 @@
 
   <li>
     <strong>Name:</strong>
-    <%= @query.name %>
+    <%= @query.name %> from "<%= @query.source.name %>"
   </li>
 
   <li>
@@ -29,6 +29,31 @@
     <strong>Query:</strong>
     <%= @query.query |> Poison.encode! %>
   </li>
+
+  <h2>Preview</h2>
+  <%= for x <- @preview do %>
+    <%= case @type do %>
+      <%= :gtfs -> %>
+        <%= x.trip.route_id %> @ <%= x.arrival_time %>
+      <%= :gbfs -> %>
+        <%= x.num_bikes_available %> /
+        <%= x.capacity %>
+      <%= :tidal -> %>
+        @<%= x.t %> <%= x.type %> <%= x.v %> Meters
+      <%= :weather -> %>
+        <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
+      <%= :aqi -> %>
+        <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
+        <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
+        <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
+        <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
+      <%= :ephem -> %>
+        <%= x.period %> @ <%= x.result %>
+      <%= :calendar -> %>
+        <%= x.date_start %> <%= x.blob["description"] %>
+    <% end %>
+  <br />
+  <% end %>
 
 </ul>
 

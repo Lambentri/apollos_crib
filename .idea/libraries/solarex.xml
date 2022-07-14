@@ -1,0 +1,35 @@
+<component name="libraryTable">
+  <library name="solarex" type="mix">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/solarex/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+      <root url="file://$PROJECT_DIR$/deps/solarex/lib" />
+    </SOURCES>
+  </library>
+</component>

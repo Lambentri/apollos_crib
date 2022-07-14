@@ -34,11 +34,32 @@
   <% end %>
   <%= :calendar -> %>
   <%= polymorphic_embed_inputs_for f, :query, :calendar, fn cal_form -> %>
-  <div class="url-inputs">
+  <!-- <div class="filter-inputs">
     <label>filters?</label>
     <%= text_input cal_form, :filters %>
     <div class="error">
       <%= error_tag cal_form, :filters %>
+    </div>
+  </div> -->
+  <div class="day-inputs">
+    <label>Number of days to get</label>
+    <%= number_input cal_form, :days %>
+    <div class="error">
+      <%= error_tag cal_form, :days %>
+    </div>
+  </div>
+  <div class="limit-inputs">
+    <label>Limit</label>
+    <%= number_input cal_form, :limit %>
+    <div class="error">
+      <%= error_tag cal_form, :limit %>
+    </div>
+  </div>
+  <div class="foci-inputs">
+    <label>Foci</label>
+    <%= select cal_form, :foci_id, @cfg_foci_sel %>
+    <div class="error">
+      <%= error_tag cal_form, :foci_id %>
     </div>
   </div>
   <% end %>

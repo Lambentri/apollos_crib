@@ -3,6 +3,7 @@ defmodule RoomSanctum.Storage.AirNow.MonitoringSite do
   import Ecto.Changeset
 
   schema "airnow_monitoring_sites" do
+    belongs_to :source, RoomSanctum.Configuration.Source
     field :agency_id, :string
     field :agency_name, :string
     field :aqsid, :string
@@ -31,7 +32,41 @@ defmodule RoomSanctum.Storage.AirNow.MonitoringSite do
   @doc false
   def changeset(monitoring_site, attrs) do
     monitoring_site
-    |> cast(attrs, [:station_id, :aqsid, :full_aqsid, :monitor_type, :parameter, :site_code, :site_name, :status, :agency_id, :agency_name, :epa_region, :point, :elevation, :gmp_offset, :country_fips, :cbsa_id, :cbsa_name, :state_aqs_code, :state_abbreviation, :county_aqs_code, :county_name])
-    |> validate_required([:station_id, :aqsid, :full_aqsid, :monitor_type, :parameter, :site_code, :site_name, :status, :agency_id, :agency_name, :epa_region, :point, :elevation, :gmp_offset, :country_fips, :cbsa_id, :cbsa_name, :state_aqs_code, :state_abbreviation, :county_aqs_code, :county_name])
+    |> cast(attrs, [
+      :station_id,
+      :aqsid,
+      :full_aqsid,
+      :monitor_type,
+      :parameters,
+      :site_code,
+      :site_name,
+      :agency_id,
+      :agency_name,
+      :epa_region,
+      :point,
+      :gmt_offset,
+      :country_fips,
+      :cbsa_id,
+      :cbsa_name,
+      :state_aqs_code,
+      :state_abbreviation,
+      :county_aqs_code,
+      :county_name,
+      :source_id
+    ])
+    |> foreign_key_constraint(:source_id)
+    |> validate_required([
+      :station_id,
+      :aqsid,
+      :full_aqsid,
+      :monitor_type,
+      :parameters,
+      :site_code,
+      :site_name,
+      :agency_id,
+      :agency_name,
+      :point,
+      :gmt_offset
+    ])
   end
 end

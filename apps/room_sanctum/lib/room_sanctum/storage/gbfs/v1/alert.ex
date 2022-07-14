@@ -20,8 +20,29 @@ defmodule RoomSanctum.Storage.GBFS.V1.Alert do
   @doc false
   def changeset(alert, attrs) do
     alert
-    |> cast(attrs, [:alert_id, :type, :times, :station_ids, :region_ids, :url, :summary, :description, :last_updated, :source_id])
+    |> cast(attrs, [
+      :alert_id,
+      :type,
+      :times,
+      :station_ids,
+      :region_ids,
+      :url,
+      :summary,
+      :description,
+      :last_updated,
+      :source_id
+    ])
     |> foreign_key_constraint(:source_id)
-    |> validate_required([:alert_id, :type, :times, :station_ids, :region_ids, :url, :summary, :description, :last_updated])
+    |> validate_required([
+      :alert_id,
+      :type,
+      :times,
+      :station_ids,
+      :region_ids,
+      :url,
+      :summary,
+      :description,
+      :last_updated
+    ])
   end
 end

@@ -50,6 +50,9 @@
   <button phx-click="do-update" phx-value-type="gbfs" phx-value-id={@source.id}>Update</button>
   <% :aqi -> %>
   <button phx-click="do-update" phx-value-type="aqi" phx-value-id={@source.id}>Update</button>
+  <% :ephem -> %>
+  <% :calendar -> %>
+  <button phx-click="do-update" phx-value-type="ical" phx-value-id={@source.id}>Update</button>
 <% end %>
 <h2>Worker Status</h2>
   <%= @status %>
@@ -62,6 +65,9 @@
     <button phx-click="do-stats" phx-value-type="gbfs" phx-value-id={@source.id}>Calculate</button>
   <% :aqi -> %>
     <button phx-click="do-stats" phx-value-type="aqi" phx-value-id={@source.id}>Calculate</button>
+  <% :ephem -> %>
+  <% :calendar -> %>
+    <button phx-click="do-stats" phx-value-type="calendar" phx-value-id={@source.id}>Calculate</button>
 <% end %>
 <br />
 <span><%= live_patch "Edit", to: Routes.source_show_path(@socket, :edit, @source), class: "button" %></span> |

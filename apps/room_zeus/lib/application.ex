@@ -13,8 +13,9 @@ defmodule RoomZeus.Application do
       # Starts a worker by calling: RoomGtfs.Worker.start_link(arg)
       # {RoomGtfs.Worker, arg}
       #      RoomSanctum.Repo,
+      RoomZeus.Cache,
       {RoomZeus.DynSupervisor, strategy: :one_for_one, subtype: :gtfs, name: :gtfs},
-#      Supervisor.child_spec({RoomZeus.DynSupervisor, strategy: :one_for_one, subtype: :gbfs, name: :gbfs}, id: :zgbfs),
+      #      Supervisor.child_spec({RoomZeus.DynSupervisor, strategy: :one_for_one, subtype: :gbfs, name: :gbfs}, id: :zgbfs),
       {Registry, [keys: :unique, name: @registry]}
     ]
 

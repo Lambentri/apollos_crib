@@ -16,10 +16,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
     source = Configuration.get_source!(id)
+
     case source.type do
       :gtfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs")
       :gbfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gbfs")
       :aqi -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "aqi")
+      :ephem -> :ok
+      :calendar -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "ical")
     end
 
     {
@@ -28,10 +31,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:page_title, page_title(socket.assigns.live_action))
       |> assign(:source, source)
       |> assign(
-           :source_id,
-           id
-           |> String.to_integer
-         )
+        :source_id,
+        id
+        |> String.to_integer()
+      )
     }
   end
 
@@ -39,23 +42,22 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   defp page_title(:edit), do: "Edit Offering"
 
   def handle_event("do-update", %{"type" => type, "id" => id}, socket) do
+    id = id |> String.to_integer()
+
     case type do
       "gtfs" ->
-        RoomGtfs.Worker.update_static_data(
-          id
-          |> String.to_integer
-        )
+        RoomGtfs.Worker.update_static_data(id)
+
       "gbfs" ->
-        RoomGbfs.Worker.update_static_data(
-          id
-          |> String.to_integer
-        )
+        RoomGbfs.Worker.update_static_data(id)
+
       "aqi" ->
-        RoomAirQuality.Worker.update_static_data(
-          id
-          |> String.to_integer
-        )
+        RoomAirQuality.Worker.update_static_data(id)
+
+      "ical" ->
+        RoomCalendar.Worker.update_static_data(id)
     end
+
     {:noreply, socket}
   end
 
@@ -65,11 +67,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       "gtfs",
       {:gtfs, socket.assigns.source_id, :alerts, 1, 3}
     )
+
     {:noreply, socket}
   end
 
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
     IO.puts("calc")
+
     {
       :noreply,
       socket
@@ -79,7 +83,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   defp percent(num, denom) do
     (num / denom * 100)
-    |> Float.floor
+    |> Float.floor()
   end
 
   def handle_info({:gbfs, id, file, message} = info, socket) do
@@ -91,7 +95,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_info({:gbfs, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id |> String.to_integer do
+    if socket.assigns.source_id == id |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -99,7 +103,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_info({:gtfs, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id |> String.to_integer do
+    if socket.assigns.source_id == id |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -107,7 +111,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_info({:aqi, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id |> String.to_integer do
+    if socket.assigns.source_id == id |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -115,48 +119,55 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def gen_pct(file, complete, total, socket) do
-      case file do
-        :downloading ->
-          {
-            :noreply,
-            socket
-            |> assign(:status, "Retrieving Bundle #{percent(complete, total)}%")
-          }
-        :parsing ->
-          {
-            :noreply,
-            socket
-            |> assign(:status, "Parsing Bundle #{percent(complete, total)}%")
-          }
-        :extracting ->
-          {
-            :noreply,
-            socket
-            |> assign(:status, "Extracting Bundle #{percent(complete, total)}%")
-          }
-        :error ->
-          {
-            :noreply,
-            socket
-            |> assign(:status, "Error downloading/extracting the bundle specified")
-          }
-        _ ->
-          case complete == total do
-            true ->
-              status = :idle
-              {
-                :noreply,
-                socket
-                |> assign(:status, status)
-              }
-            false ->
-              status = "File: '#{file}' #{percent(complete, total)}%"
-              {
-                :noreply,
-                socket
-                |> assign(:status, status)
-              }
-          end
-      end
+    case file do
+      :downloading ->
+        {
+          :noreply,
+          socket
+          |> assign(:status, "Retrieving Bundle #{percent(complete, total)}%")
+        }
+
+      :parsing ->
+        {
+          :noreply,
+          socket
+          |> assign(:status, "Parsing Bundle #{percent(complete, total)}%")
+        }
+
+      :extracting ->
+        {
+          :noreply,
+          socket
+          |> assign(:status, "Extracting Bundle #{percent(complete, total)}%")
+        }
+
+      :error ->
+        {
+          :noreply,
+          socket
+          |> assign(:status, "Error downloading/extracting the bundle specified")
+        }
+
+      _ ->
+        case complete == total do
+          true ->
+            status = :idle
+
+            {
+              :noreply,
+              socket
+              |> assign(:status, status)
+            }
+
+          false ->
+            status = "File: '#{file}' #{percent(complete, total)}%"
+
+            {
+              :noreply,
+              socket
+              |> assign(:status, status)
+            }
+        end
+    end
   end
 end

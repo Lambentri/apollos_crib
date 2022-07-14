@@ -20,23 +20,24 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> assign(:cfg_sources, list_cfg_sources(assigns.current_user.id))
       |> assign(:cfg_foci, list_cfg_foci(assigns.current_user.id))
       |> assign(
-           :cfg_sources_sel,
-           list_cfg_sources(assigns.current_user.id)
-           |> Enum.map(fn x -> {x.name, x.id} end)
-           |> Enum.into(%{})
-         )
+        :cfg_sources_sel,
+        list_cfg_sources(assigns.current_user.id)
+        |> Enum.map(fn x -> {x.name, x.id} end)
+        |> Enum.into(%{})
+      )
       |> assign(
-           :cfg_foci_sel,
-           list_cfg_foci(assigns.current_user.id)
-           |> Enum.map(fn x -> {x.name, x.id} end)
-           |> Enum.into(%{})
-         )
+        :cfg_foci_sel,
+        list_cfg_foci(assigns.current_user.id)
+        |> Enum.map(fn x -> {x.name, x.id} end)
+        |> Enum.into(%{})
+      )
     }
   end
 
   @impl true
   def handle_event("validate", %{"query" => query_params}, socket) do
     query_params = inj_uid(query_params, socket)
+
     changeset =
       socket.assigns.query
       |> Configuration.change_query(query_params)
@@ -80,7 +81,6 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     end
   end
 
-
   defp list_cfg_sources(uid) do
     Configuration.list_cfg_sources({:user, uid})
   end
@@ -90,15 +90,19 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
   end
 
   defp get_current_type(changeset) do
-    id = changeset.changes
-         |> Map.get(:source_id) || changeset.data
-                                   |> Map.get(:source_id)
+    id =
+      changeset.changes
+      |> Map.get(:source_id) ||
+        changeset.data
+        |> Map.get(:source_id)
+
     case id do
-      nil -> :ok
+      nil ->
+        :ok
+
       _ ->
         s = Configuration.get_source!(id)
         s.type
     end
   end
-
 end
