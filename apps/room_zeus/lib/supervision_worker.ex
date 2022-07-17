@@ -23,7 +23,7 @@ defmodule RoomZeus.DynSupervisor do
   end
 
   @impl true
-  def init(init_arg) do
+  def init(_init_arg) do
     Periodic.start_link(
       every: :timer.seconds(10),
       run: &do_children/0,

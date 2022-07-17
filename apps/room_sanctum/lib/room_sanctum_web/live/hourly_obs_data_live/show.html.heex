@@ -1,0 +1,186 @@
+<h1>Show Hourly obs data</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.hourly_obs_data_show_path(@socket, :show, @hourly_obs_data)}>
+    <.live_component
+      module={RoomSanctumWeb.HourlyObsDataLive.FormComponent}
+      id={@hourly_obs_data.id}
+      title={@page_title}
+      action={@live_action}
+      hourly_obs_data={@hourly_obs_data}
+      return_to={Routes.hourly_obs_data_show_path(@socket, :show, @hourly_obs_data)}
+    />
+  </.modal>
+<% end %>
+
+<ul>
+
+  <li>
+    <strong>Aqsid:</strong>
+    <%= @hourly_obs_data.aqsid %>
+  </li>
+
+  <li>
+    <strong>Site name:</strong>
+    <%= @hourly_obs_data.site_name %>
+  </li>
+
+  <li>
+    <strong>Status:</strong>
+    <%= @hourly_obs_data.status %>
+  </li>
+
+  <li>
+    <strong>Epa region:</strong>
+    <%= @hourly_obs_data.epa_region %>
+  </li>
+
+  <li>
+    <strong>Lat:</strong>
+    <%= @hourly_obs_data.lat %>
+  </li>
+
+  <li>
+    <strong>Lon:</strong>
+    <%= @hourly_obs_data.lon %>
+  </li>
+
+  <li>
+    <strong>Point:</strong>
+    <%= @hourly_obs_data.point %>
+  </li>
+
+  <li>
+    <strong>Elevation:</strong>
+    <%= @hourly_obs_data.elevation %>
+  </li>
+
+  <li>
+    <strong>Gmt offset:</strong>
+    <%= @hourly_obs_data.gmt_offset %>
+  </li>
+
+  <li>
+    <strong>Country code:</strong>
+    <%= @hourly_obs_data.country_code %>
+  </li>
+
+  <li>
+    <strong>State name:</strong>
+    <%= @hourly_obs_data.state_name %>
+  </li>
+
+  <li>
+    <strong>Valid date:</strong>
+    <%= @hourly_obs_data.valid_date %>
+  </li>
+
+  <li>
+    <strong>Valid time:</strong>
+    <%= @hourly_obs_data.valid_time %>
+  </li>
+
+  <li>
+    <strong>Data source:</strong>
+    <%= @hourly_obs_data.data_source %>
+  </li>
+
+  <li>
+    <strong>Reporting areas:</strong>
+    <%= @hourly_obs_data.reporting_areas %>
+  </li>
+
+  <li>
+    <strong>Ozone aqi:</strong>
+    <%= @hourly_obs_data.ozone_aqi %>
+  </li>
+
+  <li>
+    <strong>Pm10 aqi:</strong>
+    <%= @hourly_obs_data.pm10_aqi %>
+  </li>
+
+  <li>
+    <strong>Pm25 aqi:</strong>
+    <%= @hourly_obs_data.pm25_aqi %>
+  </li>
+
+  <li>
+    <strong>No2 aqi:</strong>
+    <%= @hourly_obs_data.no2_aqi %>
+  </li>
+
+  <li>
+    <strong>Ozone measured:</strong>
+    <%= @hourly_obs_data.ozone_measured %>
+  </li>
+
+  <li>
+    <strong>Pm10 measured:</strong>
+    <%= @hourly_obs_data.pm10_measured %>
+  </li>
+
+  <li>
+    <strong>Pm25 measured:</strong>
+    <%= @hourly_obs_data.pm25_measured %>
+  </li>
+
+  <li>
+    <strong>No2 measured:</strong>
+    <%= @hourly_obs_data.no2_measured %>
+  </li>
+
+  <li>
+    <strong>Pm25:</strong>
+    <%= @hourly_obs_data.pm25 %>
+  </li>
+
+  <li>
+    <strong>Pm25 unit:</strong>
+    <%= @hourly_obs_data.pm25_unit %>
+  </li>
+
+  <li>
+    <strong>Ozone:</strong>
+    <%= @hourly_obs_data.ozone %>
+  </li>
+
+  <li>
+    <strong>Ozone unit:</strong>
+    <%= @hourly_obs_data.ozone_unit %>
+  </li>
+
+  <li>
+    <strong>Co:</strong>
+    <%= @hourly_obs_data.co %>
+  </li>
+
+  <li>
+    <strong>Co unit:</strong>
+    <%= @hourly_obs_data.co_unit %>
+  </li>
+
+  <li>
+    <strong>So2:</strong>
+    <%= @hourly_obs_data.so2 %>
+  </li>
+
+  <li>
+    <strong>So2 unit:</strong>
+    <%= @hourly_obs_data.so2_unit %>
+  </li>
+
+  <li>
+    <strong>Pm10:</strong>
+    <%= @hourly_obs_data.pm10 %>
+  </li>
+
+  <li>
+    <strong>Pm10 unit:</strong>
+    <%= @hourly_obs_data.pm10_unit %>
+  </li>
+
+</ul>
+
+<span><%= live_patch "Edit", to: Routes.hourly_obs_data_show_path(@socket, :edit, @hourly_obs_data), class: "button" %></span> |
+<span><%= live_redirect "Back", to: Routes.hourly_obs_data_index_path(@socket, :index) %></span>

@@ -1,0 +1,103 @@
+<h1>Listing Hourly observations</h1>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.hourly_obs_data_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.HourlyObsDataLive.FormComponent}
+      id={@hourly_obs_data.id || :new}
+      title={@page_title}
+      action={@live_action}
+      hourly_obs_data={@hourly_obs_data}
+      return_to={Routes.hourly_obs_data_index_path(@socket, :index)}
+    />
+  </.modal>
+<% end %>
+
+<table>
+  <thead>
+    <tr>
+      <th>Aqsid</th>
+      <th>Site name</th>
+      <th>Status</th>
+      <th>Epa region</th>
+      <th>Lat</th>
+      <th>Lon</th>
+      <th>Point</th>
+      <th>Elevation</th>
+      <th>Gmt offset</th>
+      <th>Country code</th>
+      <th>State name</th>
+      <th>Valid date</th>
+      <th>Valid time</th>
+      <th>Data source</th>
+      <th>Reporting areas</th>
+      <th>Ozone aqi</th>
+      <th>Pm10 aqi</th>
+      <th>Pm25 aqi</th>
+      <th>No2 aqi</th>
+      <th>Ozone measured</th>
+      <th>Pm10 measured</th>
+      <th>Pm25 measured</th>
+      <th>No2 measured</th>
+      <th>Pm25</th>
+      <th>Pm25 unit</th>
+      <th>Ozone</th>
+      <th>Ozone unit</th>
+      <th>Co</th>
+      <th>Co unit</th>
+      <th>So2</th>
+      <th>So2 unit</th>
+      <th>Pm10</th>
+      <th>Pm10 unit</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="hourly_observations">
+    <%= for hourly_obs_data <- @hourly_observations do %>
+      <tr id={"hourly_obs_data-#{hourly_obs_data.id}"}>
+        <td><%= hourly_obs_data.aqsid %></td>
+        <td><%= hourly_obs_data.site_name %></td>
+        <td><%= hourly_obs_data.status %></td>
+        <td><%= hourly_obs_data.epa_region %></td>
+        <td><%= hourly_obs_data.lat %></td>
+        <td><%= hourly_obs_data.lon %></td>
+        <td><%= hourly_obs_data.point %></td>
+        <td><%= hourly_obs_data.elevation %></td>
+        <td><%= hourly_obs_data.gmt_offset %></td>
+        <td><%= hourly_obs_data.country_code %></td>
+        <td><%= hourly_obs_data.state_name %></td>
+        <td><%= hourly_obs_data.valid_date %></td>
+        <td><%= hourly_obs_data.valid_time %></td>
+        <td><%= hourly_obs_data.data_source %></td>
+        <td><%= hourly_obs_data.reporting_areas %></td>
+        <td><%= hourly_obs_data.ozone_aqi %></td>
+        <td><%= hourly_obs_data.pm10_aqi %></td>
+        <td><%= hourly_obs_data.pm25_aqi %></td>
+        <td><%= hourly_obs_data.no2_aqi %></td>
+        <td><%= hourly_obs_data.ozone_measured %></td>
+        <td><%= hourly_obs_data.pm10_measured %></td>
+        <td><%= hourly_obs_data.pm25_measured %></td>
+        <td><%= hourly_obs_data.no2_measured %></td>
+        <td><%= hourly_obs_data.pm25 %></td>
+        <td><%= hourly_obs_data.pm25_unit %></td>
+        <td><%= hourly_obs_data.ozone %></td>
+        <td><%= hourly_obs_data.ozone_unit %></td>
+        <td><%= hourly_obs_data.co %></td>
+        <td><%= hourly_obs_data.co_unit %></td>
+        <td><%= hourly_obs_data.so2 %></td>
+        <td><%= hourly_obs_data.so2_unit %></td>
+        <td><%= hourly_obs_data.pm10 %></td>
+        <td><%= hourly_obs_data.pm10_unit %></td>
+
+        <td>
+          <span><%= live_redirect "Show", to: Routes.hourly_obs_data_show_path(@socket, :show, hourly_obs_data) %></span>
+          <span><%= live_patch "Edit", to: Routes.hourly_obs_data_index_path(@socket, :edit, hourly_obs_data) %></span>
+          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: hourly_obs_data.id, data: [confirm: "Are you sure?"] %></span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<span><%= live_patch "New Hourly obs data", to: Routes.hourly_obs_data_index_path(@socket, :new) %></span>

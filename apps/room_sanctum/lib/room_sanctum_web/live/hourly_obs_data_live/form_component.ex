@@ -1,0 +1,55 @@
+defmodule RoomSanctumWeb.HourlyObsDataLive.FormComponent do
+  use RoomSanctumWeb, :live_component
+
+  alias RoomSanctum.Storage.AirNow
+
+  @impl true
+  def update(%{hourly_obs_data: hourly_obs_data} = assigns, socket) do
+    changeset = AirNow.change_hourly_obs_data(hourly_obs_data)
+
+    {:ok,
+     socket
+     |> assign(assigns)
+     |> assign(:changeset, changeset)}
+  end
+
+  @impl true
+  def handle_event("validate", %{"hourly_obs_data" => hourly_obs_data_params}, socket) do
+    changeset =
+      socket.assigns.hourly_obs_data
+      |> AirNow.change_hourly_obs_data(hourly_obs_data_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign(socket, :changeset, changeset)}
+  end
+
+  def handle_event("save", %{"hourly_obs_data" => hourly_obs_data_params}, socket) do
+    save_hourly_obs_data(socket, socket.assigns.action, hourly_obs_data_params)
+  end
+
+  defp save_hourly_obs_data(socket, :edit, hourly_obs_data_params) do
+    case AirNow.update_hourly_obs_data(socket.assigns.hourly_obs_data, hourly_obs_data_params) do
+      {:ok, _hourly_obs_data} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Hourly obs data updated successfully")
+         |> push_redirect(to: socket.assigns.return_to)}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, :changeset, changeset)}
+    end
+  end
+
+  defp save_hourly_obs_data(socket, :new, hourly_obs_data_params) do
+    case AirNow.create_hourly_obs_data(hourly_obs_data_params) do
+      {:ok, _hourly_obs_data} ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Hourly obs data created successfully")
+         |> push_redirect(to: socket.assigns.return_to)}
+
+      {:error, %Ecto.Changeset{} = changeset} ->
+        {:noreply, assign(socket, changeset: changeset)}
+    end
+  end
+end

@@ -14,7 +14,8 @@ defmodule RoomZeus.Application do
       # {RoomGtfs.Worker, arg}
       #      RoomSanctum.Repo,
       RoomZeus.Cache,
-      {RoomZeus.DynSupervisor, strategy: :one_for_one, subtype: :gtfs, name: :gtfs},
+      {RoomZeus.DynSupervisor, strategy: :one_for_one},
+      {RoomZeus.VisionSupervisor, strategy: :one_for_one},
       #      Supervisor.child_spec({RoomZeus.DynSupervisor, strategy: :one_for_one, subtype: :gbfs, name: :gbfs}, id: :zgbfs),
       {Registry, [keys: :unique, name: @registry]}
     ]
