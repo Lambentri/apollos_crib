@@ -61,5 +61,6 @@
     <orderEntry type="library" name="sobelow" level="project" />
     <orderEntry type="library" name="mox" level="project" />
     <orderEntry type="module" module-name="room_sanctum" />
+    <orderEntry type="library" name="telemetry" level="project" />
   </component>
 </module>

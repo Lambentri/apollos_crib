@@ -59,9 +59,8 @@ defmodule RoomSanctum.MixProject do
 
       {:wheretz, "~> 0.1.16"},
 
-      # {:polymorphic_embed, "~> 1.9.0"},
-      {:polymorphic_embed,
-       git: "git@github.com:woylie/polymorphic_embed.git", branch: "inputs-for-liveview"},
+      {:polymorphic_embed, "~> 2.0.0"},
+
       {:geo_postgis, "~> 3.4"},
       {:tzdata, "~> 1.1"}
     ]

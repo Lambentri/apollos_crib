@@ -11,6 +11,6 @@ defmodule RoomSanctum.Repo.Migrations.CreateVisions do
       timestamps()
     end
 
-    create index(:visions, [:user_id])
+    create index(:cfg_visions, [:user_id])
   end
 end

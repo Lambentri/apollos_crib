@@ -10,6 +10,6 @@ defmodule RoomSanctum.Repo.Migrations.CreateFocis do
       timestamps()
     end
 
-    create index(:focis, [:user_id])
+    create index(:cfg_focis, [:user_id])
   end
 end

@@ -1,6 +1,14 @@
 defmodule RoomSanctum.Repo.Migrations.CreateGbfsStationInformation do
   use Ecto.Migration
 
+  def up do
+    execute "CREATE EXTENSION IF NOT EXISTS postgis"
+  end
+
+  def down do
+    execute "DROP EXTENSION IF EXISTS postgis"
+  end
+
   def change do
     create table(:gbfs_station_information) do
       add :source_id, references(:cfg_sources, on_delete: :delete_all), null: false

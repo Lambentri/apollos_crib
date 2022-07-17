@@ -42,5 +42,7 @@
     <orderEntry type="module" module-name="room_sanctum" />
     <orderEntry type="library" name="csv" level="project" />
     <orderEntry type="library" name="protobuf" level="project" />
+    <orderEntry type="library" name="csv" level="project" />
+    <orderEntry type="library" name="protobuf" level="project" />
   </component>
 </module>

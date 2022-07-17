@@ -4,18 +4,6 @@
       <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/file_system/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -26,15 +14,6 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="file://$PROJECT_DIR$/deps/file_system/lib" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/priv" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/c_src" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/lib" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/priv" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/c_src" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/lib" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/priv" />
-      <root url="file://$PROJECT_DIR$/deps/file_system/c_src" />
       <root url="file://$PROJECT_DIR$/deps/file_system/lib" />
       <root url="file://$PROJECT_DIR$/deps/file_system/priv" />
       <root url="file://$PROJECT_DIR$/deps/file_system/c_src" />

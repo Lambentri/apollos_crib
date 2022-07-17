@@ -4,18 +4,6 @@
       <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/unicode_util_compat/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -26,8 +14,6 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="file://$PROJECT_DIR$/deps/unicode_util_compat/src" />
-      <root url="file://$PROJECT_DIR$/deps/unicode_util_compat/src" />
       <root url="file://$PROJECT_DIR$/deps/unicode_util_compat/src" />
       <root url="file://$PROJECT_DIR$/deps/unicode_util_compat/src" />
       <root url="file://$PROJECT_DIR$/deps/unicode_util_compat/src" />
