@@ -84,6 +84,14 @@
   cursor: pointer;
 }
 
+.p {
+  color: #201D65;
+  background-color: #7B79B5;
+  toast-color: #38357F;
+  foo-color: #ACABD5;
+  cream-color: #feffe7;
+}
+
 .fade-in-scale {
   animation: 0.2s ease-in 0s normal forwards 1 fade-in-scale-keys;
 }
