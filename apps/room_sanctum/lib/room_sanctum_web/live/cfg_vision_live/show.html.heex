@@ -23,8 +23,20 @@ current_user={@current_user}
 
   <li>
     <strong>Queries:</strong>
-    <%= @vision.queries %>
+    <%= for q <- @queries do %>
+
+    <% end %>
   </li>
+
+  <%= for {k, p} <- @preview do %>
+    <%= k |> Poison.encode!  %>
+    <%= p |> Poison.encode! %>
+    <br />
+    <pre><%= condense(k, p) |> Poison.encode! %></pre>
+    <br />
+    <br />
+  <% end %>
+
 
 </ul>
 

@@ -17,7 +17,8 @@ RUN cd ${phoenix_subdir}/apps/room_sanctum/assets \
     && cd ../ \
     && mix phx.digest \
     && mix assets.deploy \
-    && cd ../../
+    && cd ../../ \
+RUN mix download_data
 RUN mix release ${app_name} \
     && mv _build/${build_env}/rel/${app_name} /opt/release \
     && mv /opt/release/bin/${app_name} /opt/release/bin/start_server

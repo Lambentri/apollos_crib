@@ -15,7 +15,19 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   def init(opts) do
-    {:ok, %{id: opts[:id]}}
+    Periodic.start_link(
+      every: :timer.seconds(4),
+      run: fn -> RoomSanctum.Worker.Vision.refresh_db_cfg(opts[:id]) end,
+      initial_delay: 10
+    )
+
+    Periodic.start_link(
+      every: :timer.seconds(30),
+      run: fn -> RoomSanctum.Worker.Vision.query_workers(opts[:id]) end,
+      initial_delay: 100
+    )
+
+    {:ok, %{id: opts[:id], vision: nil, vision_q: [], data: []}}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -27,11 +39,76 @@ defmodule RoomSanctum.Worker.Vision do
     |> GenServer.cast(:refresh_db_cfg)
   end
 
+  def query_workers(name) do
+    "vision#{name}"
+    |> via_tuple()
+    |> GenServer.cast(:query_workers)
+  end
+
+  def get_state(name) do
+    "vision#{name}"
+    |> via_tuple
+    |> GenServer.call(:return_state)
+  end
+
+  #
+
   def handle_cast(:refresh_db_cfg, state) do
-    {:noreply, state}
+    v = Configuration.get_vision!(state[:id])
+    queries = v.queries |> Enum.map(fn x -> x.data.query end) |> Configuration.get_queries!()
+    {:noreply, state |> Map.put(:vision, v) |> Map.put(:vision_q, queries)}
+  end
+
+  def handle_cast(:query_workers, state) do
+    queried = state.vision_q |> Enum.map(fn q -> # todo filter out things deemed irrelevant by various timers
+      r = case q.source.type do
+        :gtfs ->
+          RoomGtfs.Worker.query_stop(q.source.id, q.query)
+
+        :gbfs ->
+          RoomGbfs.Worker.query_stop(q.source.id, q.query)
+
+        :tidal ->
+          RoomTidal.Worker.query_tides(q.source.id, q.query)
+
+        :weather ->
+          RoomWeather.Worker.query_weather(
+            q.source.id,
+            q.query
+          )
+
+        :aqi ->
+          RoomAirQuality.Worker.query_place(
+            q.source.id,
+            q.query
+          )
+
+        :ephem ->
+          RoomEphem.Worker.query_ephem(
+            q.source.id,
+            q.query
+          )
+
+        :calendar ->
+          RoomCalendar.Worker.query_calendar(
+            q.source.id,
+            q.query
+          )
+      end
+    {{q.id,q.source.type}, r}
+    end) |> Enum.into(%{})
+    {:noreply, state |> Map.put(:data, queried)}
   end
 
   def handle_cast(_msg, state) do
     {:noreply, state}
+  end
+
+  def handle_call(:return_state, _from, state) do
+    {:reply, %{data: state.data, queries: state.vision_q}, state}
+  end
+
+  def handle_call(_msg, _from, state) do
+    {:reply, :ok, state}
   end
 end

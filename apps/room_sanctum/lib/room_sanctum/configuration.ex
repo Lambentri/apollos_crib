@@ -145,6 +145,10 @@ defmodule RoomSanctum.Configuration do
   """
   def get_query!(id), do: Repo.get!(Query, id) |> Repo.preload(:source)
 
+  def get_queries!(ids) do
+    from( q in Query, where: q.id in ^ids) |> Repo.all |> Repo.preload(:source)
+  end
+
   @doc """
   Creates a query.
 

@@ -104,4 +104,29 @@ defmodule RoomSanctum.Storage.AirNow.HourlyObsData do
       :no2_measured
     ])
   end
+
+  def compile_pairs(entry) do
+    r = %{}
+    r = if entry.ozone_measured do
+      r |> Map.put(:ozone, entry.ozone_aqi)
+      else
+      r
+    end
+    r = if entry.pm25_measured do
+      r |> Map.put(:pm25, entry.pm25_aqi)
+    else
+      r
+    end
+    r = if entry.pm10_measured do
+      r |> Map.put(:pm10, entry.pm10_aqi)
+    else
+      r
+    end
+    r = if entry.no2_measured do
+      r |> Map.put(:no2, entry.no2_aqi)
+    else
+      r
+    end
+    r
+  end
 end
