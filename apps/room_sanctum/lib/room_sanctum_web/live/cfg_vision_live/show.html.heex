@@ -32,7 +32,7 @@ current_user={@current_user}
     <%= k |> Poison.encode!  %>
     <%= p |> Poison.encode! %>
     <br />
-    <pre><%= condense(k, p) |> Poison.encode! %></pre>
+    <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
     <br />
     <br />
   <% end %>

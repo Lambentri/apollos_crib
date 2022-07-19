@@ -89,8 +89,25 @@
   background-color: #7B79B5;
   toast-color: #38357F;
   foo-color: #ACABD5;
+
+  fbutter-color: #fbff9b;
+  fbutter-comp: #b7b4ff;
+  fbutter-analogous-r: #ffddb4;
+  fbutter-analogous-g: #d7ffb4;
+
+  mbutter-color:#fcffb4;
+  lbutter-color: #fdffce;
+
   cream-color: #feffe7;
+  cream-comp-color: #e8e7ff;
+  cream-analogous-r: #fff4e7;
+  cream-analogous-g: #f2ffe7;
 }
+
+/*body {*/
+/*  background-color: #201D65;*/
+/*  color: #feffe7*/
+/*}*/
 
 .fade-in-scale {
   animation: 0.2s ease-in 0s normal forwards 1 fade-in-scale-keys;
