@@ -7,8 +7,27 @@
 # General application configuration
 import Config
 
+config :room_hermes,
+       ecto_repos: [RoomHermes.Repo]
+
+# Configures the endpoint
+config :room_hermes,
+       RoomHermesWeb.Endpoint,
+       url: [
+         host: "localhost"
+       ],
+       render_errors: [
+         view: RoomHermesWeb.ErrorView,
+         accepts: ~w(html json),
+         layout: false
+       ],
+       pubsub_server: RoomHermesWeb.PubSub,
+       live_view: [
+         signing_salt: "Vucluw0A"
+       ]
+
 config :room_sanctum,
-  ecto_repos: [RoomSanctum.Repo]
+       ecto_repos: [RoomSanctum.Repo]
 
 # Configures the endpoint
 config :room_sanctum,
