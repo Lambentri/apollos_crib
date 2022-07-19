@@ -3,14 +3,22 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   import MapMerge
 
   def condense({id, type}, data) do
-    IO.inspect({id, type, data})
+    if type == :tidal do
+      IO.inspect({id, type, data})
+    end
 
     case type do
       :gtfs ->
         data
         |> Enum.map(fn f ->
-          %{time: f.arrival_time, destination: f.trip.trip_headsign, direction: f.trip.direction.direction, route: f.trip.route_id}
+          %{
+            time: f.arrival_time,
+            destination: f.trip.trip_headsign,
+            direction: f.trip.direction.direction,
+            route: f.trip.route_id
+          }
         end)
+
       :gbfs ->
         data
         |> Enum.map(fn f ->
@@ -18,7 +26,17 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         end)
 
       :tidal ->
-        :ok
+        data
+        |> Enum.group_by(fn x -> x.type end)
+        |> Enum.map(fn {extreme, data} ->
+          [first, second] = data
+          k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+          k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
+          kv1 = "first_v#{extreme |> String.downcase()}" |> String.to_atom()
+          kv2 = "second_v#{extreme |> String.downcase()}" |> String.to_atom()
+          %{k1 => first.t, k2 => second.t, kv1 => first.v, kv2 => second.v}
+        end)
+        |> Enum.reduce(&Map.merge/2)
 
       :weather ->
         data
@@ -41,10 +59,16 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         end)
 
       :ephem ->
-        :ok
+        data |> Enum.map(fn f -> {f.period, f.result} end) |> Enum.into(%{})
 
       :calendar ->
-        :ok
+        data
+        |> Enum.map(fn f ->
+          %{
+            date_start: f.date_start |> DateTime.to_date(),
+            description: f.blob["description"]
+          }
+        end)
     end
   end
 end
