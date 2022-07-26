@@ -1,74 +1,122 @@
-<h1>Show Offering</h1>
+<.itb icon="fa-chevron-left" to={Routes.source_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.source_show_path(@socket, :edit, @source)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Offering Detail</h1>
 
 <%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.source_show_path(@socket, :show, @source)}>
-    <.live_component
-      module={RoomSanctumWeb.SourceLive.FormComponent}
-      id={@source.id}
-      title={@page_title}
-      action={@live_action}
-      source={@source}
-      return_to={Routes.source_show_path(@socket, :show, @source)}
-    />
-  </.modal>
+<.modal return_to={Routes.source_show_path(@socket, :show, @source)}>
+<.live_component
+module={RoomSanctumWeb.SourceLive.FormComponent}
+id={@source.id}
+title={@page_title}
+action={@live_action}
+source={@source}
+return_to={Routes.source_show_path(@socket, :show, @source)}
+current_user={@current_user}
+/>
+</.modal>
 <% end %>
+<div class="mx-4 py-2">
+    <div class="flex">
+        <h2 class="text-2xl font-bold text-accent-300"><%= @source.name %> (<%= @source.type %>)</h2>
+    </div>
+    <div class="flex">
+        <div class="card card-compact w-1/8 bg-base-100 shadow-xl m-2">
+            <div class="card-body text-center">
+                <%= case @source.enabled do %>
+                <%= true -> %>
+                <i class="fa-solid fa-check fa-6x" phx-click="toggle-source-enabled" phx-value-current="true"></i>
+                <span class="text-xs">Enabled</span>
+                <%= false -> %>
+                <i class="fa-solid fa-times" phx-click="toggle-source-enabled" phx-value-current="false"></i>
+                <span class="text-xs">Disabled</span>
+                <% end %>
+            </div>
+        </div>
+        <%= if @source.notes do %>
+        <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">User Notes:</h3>
+                <p><%= @source.notes %></p>
+            </div>
+        </div>
+        <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Config</h3>
+                <pre><%= @source.config |> Poison.encode!( pretty: true) %></pre>
+            </div>
+        </div>
+        <% end %>
+    </div>
+    <div class="flex">
+        <div class="card card-compact w-1/4 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Control</h3>
+                <%= case @source.type do %>
+                    <% :gtfs -> %>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gtfs" phx-value-id={@source.id}>
+                    Update
+                </button>
+                <% :gbfs -> %>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gbfs" phx-value-id={@source.id}>
+                    Update
+                </button>
+                <% :aqi -> %>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="aqi" phx-value-id={@source.id}>
+                    Update
+                </button>
+                <% :calendar -> %>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="ical" phx-value-id={@source.id}>
+                    Update
+                </button>
+                <% _default -> %>
 
-<ul>
+                <% end %>
+            </div>
+        </div>
+        <div class="card card-compact w-1/4 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Worker Status</h3>
+                <%= @status %>
+                <progress class="progress progress-secondary w-100" value={@status_val} max="100"></progress>
+            </div>
+        </div>
+        <div class="card card-compact w-1/4 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Stats</h3>
+                <%= case @source.type do %>
+                    <% :gtfs -> %>
+                <button class="btn btn-secondary" phx-click="do-stats" phx-value-type="gtfs" phx-value-id={@source.id}>
+                    Calculate
+                </button>
+                <% :gbfs -> %>
+                <button class="btn btn-secondary" phx-click="do-stats" phx-value-type="gbfs" phx-value-id={@source.id}>
+                    Calculate
+                </button>
+                <% :aqi -> %>
+                <button class="btn btn-secondary" phx-click="do-stats" phx-value-type="aqi" phx-value-id={@source.id}>
+                    Calculate
+                </button>
+                <% :calendar -> %>
+                <button class="btn btn-secondary" phx-click="do-stats" phx-value-type="calendar"
+                        phx-value-id={@source.id}>Calculate
+                </button>
+                <% _default -> %>
+                <% end %>
+            </div>
+        </div>
+    </div>
+    <!--
+    <%= if @stats != nil do %>
+    <div class="flex">
+        <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Calculated Results</h3>
+                <%= @stats %>
+            </div>
+        </div>
+    </div>
+    <% end %>
+    -->
 
-  <li>
-    <strong>Name:</strong>
-    <%= @source.name %>
-  </li>
-
-  <li>
-    <strong>Notes:</strong>
-    <%= @source.notes %>
-  </li>
-
-  <li>
-    <strong>Type:</strong>
-    <%= @source.type %>
-  </li>
-
-  <li>
-    <strong>Enabled:</strong>
-    <%= @source.enabled %>
-  </li>
-
-  <li>
-    <strong>Config:</strong>
-  </li>
-
-</ul>
-
-<h2>Controls</h2>
-<%= case @source.type do %>
-  <% :gtfs -> %>
-  <button phx-click="do-update" phx-value-type="gtfs" phx-value-id={@source.id}>Update</button>
-  <button phx-click="do-status" >Status-Test</button>
-  <% :gbfs -> %>
-  <button phx-click="do-update" phx-value-type="gbfs" phx-value-id={@source.id}>Update</button>
-  <% :aqi -> %>
-  <button phx-click="do-update" phx-value-type="aqi" phx-value-id={@source.id}>Update</button>
-  <% :ephem -> %>
-  <% :calendar -> %>
-  <button phx-click="do-update" phx-value-type="ical" phx-value-id={@source.id}>Update</button>
-<% end %>
-<h2>Worker Status</h2>
-  <%= @status %>
-<h2>Database Stats</h2>
-  <%= @stats %>
-<%= case @source.type do %>
-  <% :gtfs -> %>
-    <button phx-click="do-stats" phx-value-type="gtfs" phx-value-id={@source.id}>Calculate</button>
-  <% :gbfs -> %>
-    <button phx-click="do-stats" phx-value-type="gbfs" phx-value-id={@source.id}>Calculate</button>
-  <% :aqi -> %>
-    <button phx-click="do-stats" phx-value-type="aqi" phx-value-id={@source.id}>Calculate</button>
-  <% :ephem -> %>
-  <% :calendar -> %>
-    <button phx-click="do-stats" phx-value-type="calendar" phx-value-id={@source.id}>Calculate</button>
-<% end %>
-<br />
-<span><%= live_patch "Edit", to: Routes.source_show_path(@socket, :edit, @source), class: "button" %></span> |
-<span><%= live_redirect "Back", to: Routes.source_index_path(@socket, :index) %></span>
+</div>

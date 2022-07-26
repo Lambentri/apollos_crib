@@ -1,48 +1,63 @@
-<h1>Listing Offerings</h1>
-
+<.itb icon="fa-plus" to={Routes.source_index_path(@socket, :new)} what="Offering"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Offerings</h1>
 <%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.source_index_path(@socket, :index)}>
-    <.live_component
-      module={RoomSanctumWeb.SourceLive.FormComponent}
-      id={@source.id || :new}
-      title={@page_title}
-      action={@live_action}
-      source={@source}
-      return_to={Routes.source_index_path(@socket, :index)}
-      current_user={@current_user}
-    />
-  </.modal>
+<.modal return_to={Routes.source_index_path(@socket, :index)}>
+<.live_component
+module={RoomSanctumWeb.SourceLive.FormComponent}
+id={@source.id || :new}
+title={@page_title}
+action={@live_action}
+source={@source}
+return_to={Routes.source_index_path(@socket, :index)}
+current_user={@current_user}
+/>
+</.modal>
 <% end %>
 
-<table>
-  <thead>
+<table class="table table-compact w-full mx-6">
+    <thead>
     <tr>
-      <th>Name</th>
-      <th>Notes</th>
-      <th>Type</th>
-      <th>Enabled</th>
-      <th>Config</th>
+        <th>Name</th>
+        <th>Type</th>
+        <th>Enabled</th>
 
-      <th></th>
+        <th></th>
     </tr>
-  </thead>
-  <tbody id="cfg_sources">
+    </thead>
+    <tbody id="cfg_sources">
     <%= for source <- @cfg_sources do %>
-      <tr id={"source-#{source.id}"}>
+    <tr id={"source-#{source.id}"}>
         <td><%= source.name %></td>
-        <td><%= source.notes %></td>
-        <td><%= source.type %></td>
-        <td><%= source.enabled %></td>
-        <td>$cfg</td>
+        <td>
+            <span class="tooltip" data-tip={source.type}>
+                <i class={"fas #{icon(source.type)}"}></i>
+            </span>
+        </td>
+        <td>
+            <%= case source.enabled do %>
+            <%= true -> %>
+            <i class="fa-solid fa-check" phx-click="toggle-source-enabled" phx-value-id={source.id}
+               phx-value-current="true"></i>
+            <%= false -> %>
+            <i class="fa-solid fa-times" phx-click="toggle-source-enabled" phx-value-id={source.id}
+               phx-value-current="false"></i>
+            <% end %>
+        </td>
 
         <td>
-          <span><%= live_redirect "Show", to: Routes.source_show_path(@socket, :show, source) %></span>
-          <span><%= live_patch "Edit", to: Routes.source_index_path(@socket, :edit, source) %></span>
-          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: source.id, data: [confirm: "Are you sure?"] %></span>
+          <span>
+            <.ib icon="fa-eye" to={Routes.source_show_path(@socket, :show, source)} function={:live_redirect}></.ib>
+            </span>
+            <span>
+            <.ib icon="fa-pencil" to={Routes.source_index_path(@socket, :edit, source)}></.ib>
+            </span>
+            <span>
+            <%= link to: "#", phx_click: "delete", phx_value_id: source.id, data: [confirm: "Are you sure?"], class: "btn btn-square btn-xs" do %>
+              <i class="fa-solid fa-trash"></i>
+             <% end %>
+          </span>
         </td>
-      </tr>
+    </tr>
     <% end %>
-  </tbody>
+    </tbody>
 </table>
-
-<span><%= live_patch "New Offering", to: Routes.source_index_path(@socket, :new) %></span>

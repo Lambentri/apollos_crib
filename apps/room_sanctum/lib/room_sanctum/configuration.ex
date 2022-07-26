@@ -110,6 +110,11 @@ defmodule RoomSanctum.Configuration do
     Source.changeset(source, attrs)
   end
 
+  def toggle_source!(id, tgt) do
+    src = get_source!(id)
+    update_source(src, %{enabled: tgt})
+  end
+
   alias RoomSanctum.Configuration.Query
 
   @doc """

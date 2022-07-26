@@ -5,9 +5,15 @@
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
     </CLASSES>
     <JAVADOC />
     <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/html_entities/lib" />
+      <root url="file://$PROJECT_DIR$/deps/html_entities/lib" />
       <root url="file://$PROJECT_DIR$/deps/html_entities/lib" />
       <root url="file://$PROJECT_DIR$/deps/html_entities/lib" />
       <root url="file://$PROJECT_DIR$/deps/html_entities/lib" />

@@ -1,14 +1,15 @@
 import Config
 
 # Configure your database
-config :room_sanctum, RoomSanctum.Repo,
-  username: "postgres",
-  password: "postgres",
-  hostname: "localhost",
-  database: "room_sanctum_dev",
-  show_sensitive_data_on_connection_error: true,
-  pool_size: 10,
-  types: RoomSanctum.PostgresTypes
+config :room_sanctum,
+       RoomSanctum.Repo,
+       username: "postgres",
+       password: "postgres",
+       hostname: "localhost",
+       database: "room_sanctum_dev",
+       show_sensitive_data_on_connection_error: true,
+       pool_size: 10,
+       types: RoomSanctum.PostgresTypes
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -16,18 +17,23 @@ config :room_sanctum, RoomSanctum.Repo,
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we use it
 # with esbuild to bundle .js and .css sources.
-config :room_sanctum, RoomSanctumWeb.Endpoint,
-  # Binding to loopback ipv4 address prevents access from other machines.
-  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-  http: [ip: {0, 0, 0, 0}, port: 4000],
-  check_origin: false,
-  code_reloader: true,
-  debug_errors: true,
-  secret_key_base: "nR87VvTmXqWa9xbkvE2hYZpzHRgFG9QOOey5Wo76hyLBs9vP34a7pFdLLooZI6Xo",
-  watchers: [
-    # Start the esbuild watcher by calling Esbuild.install_and_run(:default, args)
-    esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]}
-  ]
+config :room_sanctum,
+       RoomSanctumWeb.Endpoint,
+       # Binding to loopback ipv4 address prevents access from other machines.
+       # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
+       http: [
+         ip: {0, 0, 0, 0},
+         port: 4000
+       ],
+       check_origin: false,
+       code_reloader: true,
+       debug_errors: true,
+       secret_key_base: "nR87VvTmXqWa9xbkvE2hYZpzHRgFG9QOOey5Wo76hyLBs9vP34a7pFdLLooZI6Xo",
+       watchers: [
+         # Start the esbuild watcher by calling Esbuild.install_and_run(:default, args)
+         esbuild: {Esbuild, :install_and_run, [:default, ~w(--sourcemap=inline --watch)]},
+         tailwind: {Tailwind, :install_and_run, [:default, ~w(--watch)]}
+       ]
 
 # ## SSL Support
 #
@@ -54,15 +60,16 @@ config :room_sanctum, RoomSanctumWeb.Endpoint,
 # different ports.
 
 # Watch static and templates for browser reloading.
-config :room_sanctum, RoomSanctumWeb.Endpoint,
-  live_reload: [
-    patterns: [
-      ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
-      ~r"priv/gettext/.*(po)$",
-      ~r"lib/room_sanctum_web/(live|views)/.*(ex)$",
-      ~r"lib/room_sanctum_web/templates/.*(eex)$"
-    ]
-  ]
+config :room_sanctum,
+       RoomSanctumWeb.Endpoint,
+       live_reload: [
+         patterns: [
+           ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
+           ~r"priv/gettext/.*(po)$",
+           ~r"lib/room_sanctum_web/(live|views)/.*(ex)$",
+           ~r"lib/room_sanctum_web/templates/.*(eex)$"
+         ]
+       ]
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n"

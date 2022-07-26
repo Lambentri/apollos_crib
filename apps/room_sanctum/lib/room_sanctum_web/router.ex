@@ -18,9 +18,14 @@ defmodule RoomSanctumWeb.Router do
   end
 
   scope "/", RoomSanctumWeb do
+    pipe_through [:browser]
+    get "/", PageController, :index
+  end
+
+  scope "/", RoomSanctumWeb do
     pipe_through [:browser, :require_authenticated_user]
 
-    get "/", PageController, :index
+
     live "/cfg/offerings", SourceLive.Index, :index
     live "/cfg/offerings/new", SourceLive.Index, :new
     live "/cfg/offerings/:id/edit", SourceLive.Index, :edit
@@ -45,7 +50,7 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/focis/:id", FociLive.Show, :show
     live "/cfg/focis/:id/show/edit", FociLive.Show, :edit
 
-#    live "/storage/gtfs/agencies", AgencyLive.Index, :index
+    #    live "/storage/gtfs/agencies", AgencyLive.Index, :index
 #    live "/storage/gtfs/agencies/new", AgencyLive.Index, :new
 #    live "/storage/gtfs/agencies/:id/edit", AgencyLive.Index, :edit
 #    live "/storage/gtfs/agencies/:id", AgencyLive.Show, :show
@@ -135,7 +140,7 @@ defmodule RoomSanctumWeb.Router do
 #    live "/airnow/hourly_observations/:id", HourlyObsDataLive.Show, :show
 #    live "/airnow/hourly_observations/:id/show/edit", HourlyObsDataLive.Show, :edit
 
-#    live "/calendar_entries", ICalendarLive.Index, :index
+    #    live "/calendar_entries", ICalendarLive.Index, :index
 #    live "/calendar_entries/new", ICalendarLive.Index, :new
 #    live "/calendar_entries/:id/edit", ICalendarLive.Index, :edit
 #    live "/calendar_entries/:id", ICalendarLive.Show, :show

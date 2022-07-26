@@ -57,12 +57,19 @@ defmodule RoomSanctum.MixProject do
       {:timex, "~> 3.7.8"},
       {:poison, "~> 5.0", override: true},
 
+      # tz provider, less shitty than tzworld
       {:wheretz, "~> 0.1.16"},
+      {:tzdata, "~> 1.1"},
 
+      # makes the configs go Vroom
       {:polymorphic_embed, "~> 2.0.0"},
 
+      # for the foci
       {:geo_postgis, "~> 3.4"},
-      {:tzdata, "~> 1.1"}
+
+      # UI
+      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev}
+
     ]
   end
 
@@ -78,7 +85,7 @@ defmodule RoomSanctum.MixProject do
       "ecto.setup": ["ecto.create", "ecto.migrate", "run priv/repo/seeds.exs"],
       "ecto.reset": ["ecto.drop", "ecto.setup"],
       test: ["ecto.create --quiet", "ecto.migrate --quiet", "test"],
-      "assets.deploy": ["esbuild default --minify", "phx.digest"]
+      "assets.deploy": ["tailwind default --minify", "esbuild default --minify", "phx.digest"]
     ]
   end
 end

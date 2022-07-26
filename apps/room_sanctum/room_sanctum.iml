@@ -117,5 +117,6 @@
     <orderEntry type="library" name="gettext" level="project" />
     <orderEntry type="library" name="jason" level="project" />
     <orderEntry type="library" name="plug_cowboy" level="project" />
+    <orderEntry type="library" name="tailwind" level="project" />
   </component>
 </module>

@@ -9,6 +9,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       :ok,
       socket
       |> assign(:status, :idle)
+      |> assign(:status_val, 0)
       |> assign(:stats, [])
     }
   end
@@ -21,8 +22,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       :gtfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs")
       :gbfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gbfs")
       :aqi -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "aqi")
-      :ephem -> :ok
       :calendar -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "ical")
+      _default -> :ok
     end
 
     {
@@ -31,18 +32,19 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:page_title, page_title(socket.assigns.live_action))
       |> assign(:source, source)
       |> assign(
-        :source_id,
-        id
-        |> String.to_integer()
-      )
+           :source_id,
+           id
+           |> String.to_integer()
+         )
     }
   end
 
-  defp page_title(:show), do: "Show Offering"
-  defp page_title(:edit), do: "Edit Offering"
+  defp page_title(:show), do: "Offering Detail"
+  defp page_title(:edit), do: "Modify Offering"
 
   def handle_event("do-update", %{"type" => type, "id" => id}, socket) do
-    id = id |> String.to_integer()
+    id = id
+         |> String.to_integer()
 
     case type do
       "gtfs" ->
@@ -95,7 +97,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_info({:gbfs, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id |> String.to_integer() do
+    if socket.assigns.source_id == id
+                                   |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -103,7 +106,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_info({:gtfs, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id |> String.to_integer() do
+    if socket.assigns.source_id == id
+                                   |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -111,7 +115,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_info({:aqi, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id |> String.to_integer() do
+    if socket.assigns.source_id == id
+                                   |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -124,21 +129,24 @@ defmodule RoomSanctumWeb.SourceLive.Show do
         {
           :noreply,
           socket
-          |> assign(:status, "Retrieving Bundle #{percent(complete, total)}%")
+          |> assign(:status, "Retrieving Bundle")
+          |> assign(:status_val, percent(complete, total))
         }
 
       :parsing ->
         {
           :noreply,
           socket
-          |> assign(:status, "Parsing Bundle #{percent(complete, total)}%")
+          |> assign(:status, "Parsing Bundle")
+          |> assign(:status_val, percent(complete, total))
         }
 
       :extracting ->
         {
           :noreply,
           socket
-          |> assign(:status, "Extracting Bundle #{percent(complete, total)}%")
+          |> assign(:status, "Extracting Bundle")
+          |> assign(:status_val, percent(complete, total))
         }
 
       :error ->
@@ -146,6 +154,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           :noreply,
           socket
           |> assign(:status, "Error downloading/extracting the bundle specified")
+          |> assign(:status_val, 0)
         }
 
       _ ->
@@ -157,17 +166,65 @@ defmodule RoomSanctumWeb.SourceLive.Show do
               :noreply,
               socket
               |> assign(:status, status)
+              |> assign(:status_val, 0)
             }
 
           false ->
-            status = "File: '#{file}' #{percent(complete, total)}%"
+            status = "File: '#{file}'"
 
             {
               :noreply,
               socket
               |> assign(:status, status)
+              |> assign(:status_val, percent(complete, total))
             }
         end
+    end
+  end
+
+  defp icon(source_type) do
+    case source_type do
+      :calendar ->
+        "fa-calendar-alt"
+      :rideshare ->
+        "fa-taxi"
+      :hass ->
+        "fa-home"
+      :gtfs ->
+        "fa-bus-alt"
+      :gbfs ->
+        "fa-bicycle"
+      :tidal ->
+        "fa-water"
+      :ephem ->
+        "fa-moon"
+      :weather ->
+        "fa-cloud-sun"
+      :aqi ->
+        "fa-lungs"
+    end
+  end
+
+  defp icon_code(source_type) do
+    case source_type do
+      :calendar ->
+        "f073"
+      :rideshare ->
+        "f1ba"
+      :hass ->
+        "f015"
+      :gtfs ->
+        "f55e"
+      :gbfs ->
+        "f206"
+      :tidal ->
+        "f773"
+      :ephem ->
+        "f186"
+      :weather ->
+        "f6c4"
+      :aqi ->
+        "f604"
     end
   end
 end

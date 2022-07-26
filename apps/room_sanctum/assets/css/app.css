@@ -1,5 +1,9 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+@import "@fortawesome/fontawesome-free/css/all.css";
+
 /* This file is for your main application CSS */
-@import "./phoenix.css";
 
 /* Alerts and form errors used by phx.new */
 .alert {
@@ -134,12 +138,32 @@
   100% { scale: 0.95; opacity: 0; }
 }
 
-@keyframes fade-in-keys{
-  0% { opacity: 0; }
-  100% { opacity: 1; }
+@keyframes fade-in-keys {
+  0% {
+    opacity: 0;
+  }
+  100% {
+    opacity: 1;
+  }
 }
 
-@keyframes fade-out-keys{
-  0% { opacity: 1; }
-  100% { opacity: 0; }
+@keyframes fade-out-keys {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.gtfs-bg {
+  position: relative;
+}
+
+.gtfs-bg:before {
+  position: absolute;
+  font-family: 'FontAwesome';
+  bottom: 0;
+  right: 10px;
+  content: "\f005";
 }
