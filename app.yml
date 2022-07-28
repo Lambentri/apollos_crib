@@ -1,0 +1,150 @@
+#cat <<EOF | kubectl apply -f -
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: apollos-crib
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apollos-crib
+  namespace: apollos-crib
+  labels:
+    name: apollos-crib
+    keel.sh/policy: force
+    keel.sh/trigger: poll
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: apollos-crib
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  template:
+    metadata:
+      labels:
+        name: apollos-crib
+      annotations:
+    spec:
+      containers:
+        - image: r.g.gmp.io/lambentri/apollos-crib:latest
+          imagePullPolicy: Always
+          env:
+            #            - name: RAVEN_DSN
+            #              valueFrom:
+            #                secretKeyRef:
+            #                  name: wed4u-secrets
+            #                  key: sentrydsn
+            - name: PORT
+              value: "8080"
+
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef:
+                  name: elixir-args
+                  key: secret_key_base
+
+            - name: POSTGRES_HOST
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-auth
+                  key: host
+
+            - name: POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-auth
+                  key: port
+
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-auth
+                  key: user
+
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-auth
+                  key: password
+
+            - name: AMQP_USER
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-default-user
+                  key: username
+
+            - name: AMQP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: rabbitmq-default-user
+                  key: password
+
+            - name: DATABASE_URL
+              value: ecto://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@$(POSTGRES_HOST):$(POSTGRES_PORT)/csnap
+
+            - name: RABBIT_URL
+              value: amqp://$(AMQP_USER_USER):$(AMQP_PASS)@rabbitmq:5672
+
+          name: apollos-crib
+          ports:
+            - containerPort: 8080
+
+      imagePullSecrets:
+        - name: gitlabgmp
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apollos-crib-svc
+  namespace: apollos-crib
+spec:
+  ports:
+    - port: 80
+      targetPort: 8080
+      protocol: TCP
+  selector:
+    app: apollos-crib
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: apollos-crib-ingress
+  namespace: apollos-crib
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+    - hosts:
+        # CHANGE ME
+        - ac.gmp.io
+        - apollos-crib.gmp.io
+      secretName: apollos-crib-tls
+  rules:
+    # CHANGE ME
+    - host: ac.gmp.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: apollos-crib-svc
+                port:
+                  number: 80
+    - host: apollos-crib.gmp.io
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: apollos-crib-svc
+                port:
+                  number: 80
+
+#  EOF
