@@ -1,4 +1,7 @@
-<h1>Show Query</h1>
+<.itb icon="fa-chevron-left" to={Routes.query_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.query_show_path(@socket, :edit, @query)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Query Detail</h1>
 
 <%= if @live_action in [:edit] do %>
   <.modal return_to={Routes.query_show_path(@socket, :show, @query)}>
@@ -9,53 +12,71 @@
       action={@live_action}
       query={@query}
       return_to={Routes.query_show_path(@socket, :show, @query)}
+      current_user={@current_user}
     />
   </.modal>
 <% end %>
 
-<ul>
-
-  <li>
-    <strong>Name:</strong>
-    <%= @query.name %> from "<%= @query.source.name %>"
-  </li>
-
-  <li>
-    <strong>Notes:</strong>
-    <%= @query.notes %>
-  </li>
-
-  <li>
-    <strong>Query:</strong>
-    <%= @query.query |> Poison.encode! %>
-  </li>
-
-  <h2>Preview</h2>
-  <%= for x <- @preview do %>
-    <%= case @type do %>
-      <%= :gtfs -> %>
-        <%= x.trip.route_id %> @ <%= x.arrival_time %>
-      <%= :gbfs -> %>
-        <%= x.num_bikes_available %> /
-        <%= x.capacity %>
-      <%= :tidal -> %>
-        @<%= x.t %> <%= x.type %> <%= x.v %> Meters
-      <%= :weather -> %>
-        <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
-      <%= :aqi -> %>
-        <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
-        <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
-        <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
-        <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
-      <%= :ephem -> %>
-        <%= x.period %> @ <%= x.result %>
-      <%= :calendar -> %>
-        <%= x.date_start %> <%= x.blob["description"] %>
+<div class="mx-4 py-2">
+  <div class="flex">
+    <h2 class="text-2xl font-bold text-accent-300"><%= @query.name %>
+      <a href={Routes.source_show_path(@socket, :show, @query.source)} class="text-xl hover:underline text-secondary">
+      (<%= @query.source.name %> // <%= @query.source.type %>)
+      </a>
+    </h2>
+  </div>
+  <div class="flex">
+    <%= if @query.notes do %>
+    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">User Notes:</h3>
+        <p><%= @query.notes %></p>
+      </div>
+    </div>
     <% end %>
-  <br />
-  <% end %>
-
-</ul>
-
-<span><%= live_patch "Edit", to: Routes.query_show_path(@socket, :edit, @query), class: "button" %></span> |
-<span><%= live_redirect "Back", to: Routes.query_index_path(@socket, :index) %></span>
+    <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Query</h3>
+        <pre><%= @query.query |> Poison.encode!( pretty: true) %></pre>
+      </div>
+    </div>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Preview</h3>
+        <p>
+          <%= for x <- @preview do %>
+          <%= case @type do %>
+          <%= :gtfs -> %>
+          <%= x.trip.route_id %> <i class="fas fa-arrow-right"></i> <%= x.trip.trip_headsign %>  @ <%= x.arrival_time %>
+          <%= :gbfs -> %>
+          <%= x.num_bikes_available %> /
+          <%= x.capacity %>
+          <%= :tidal -> %>
+          @<%= x.t %> <%= x.type %> <%= x.v %> Meters
+          <%= :weather -> %>
+          <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
+          <%= :aqi -> %>
+          <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
+          <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
+          <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
+          <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
+          <%= :ephem -> %>
+          <%= x.period %> @ <%= x.result %>
+          <%= :calendar -> %>
+          <%= x.date_start %> <%= x.blob["description"] %>
+    <% end %>
+          <br />
+          <% end %>
+        </p>
+      </div>
+    </div>
+    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Visions</h3>
+        TODO
+      </div>
+    </div>
+  </div>
+</div>

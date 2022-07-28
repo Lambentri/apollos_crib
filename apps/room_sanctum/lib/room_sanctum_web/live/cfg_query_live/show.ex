@@ -1,5 +1,5 @@
 defmodule RoomSanctumWeb.QueryLive.Show do
-  use RoomSanctumWeb, :live_view
+  use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Configuration
 
@@ -62,6 +62,6 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     {:noreply, assign(socket, :preview, result)}
   end
 
-  defp page_title(:show), do: "Show Query"
-  defp page_title(:edit), do: "Edit Query"
+  defp page_title(:show), do: "Query Detail"
+  defp page_title(:edit), do: "Modify Query"
 end

@@ -1,5 +1,6 @@
 <.itb icon="fa-plus" to={Routes.source_index_path(@socket, :new)} what="Offering"></.itb>
 <h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Offerings</h1>
+
 <%= if @live_action in [:new, :edit] do %>
 <.modal return_to={Routes.source_index_path(@socket, :index)}>
 <.live_component

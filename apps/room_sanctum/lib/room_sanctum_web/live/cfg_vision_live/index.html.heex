@@ -1,4 +1,5 @@
-<h1>Listing Visions</h1>
+<.itb icon="fa-plus" to={Routes.vision_index_path(@socket, :new)} what="Vision"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Visions</h1>
 
 <%= if @live_action in [:new, :edit] do %>
   <.modal return_to={Routes.vision_index_path(@socket, :index)}>
@@ -14,7 +15,7 @@
   </.modal>
 <% end %>
 
-<table>
+<table class="table table-compact w-full mx-6">
   <thead>
     <tr>
       <th>Name</th>
@@ -30,13 +31,19 @@
         <td>$query</td>
 
         <td>
-          <span><%= live_redirect "Show", to: Routes.vision_show_path(@socket, :show, vision) %></span>
-          <span><%= live_patch "Edit", to: Routes.vision_index_path(@socket, :edit, vision) %></span>
-          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: vision.id, data: [confirm: "Are you sure?"] %></span>
+          <span>
+            <.ib icon="fa-eye" to={Routes.vision_show_path(@socket, :show, vision)} function={:live_redirect}></.ib>
+          </span>
+          <span>
+            <.ib icon="fa-pencil" to={Routes.vision_index_path(@socket, :edit, vision)}></.ib>
+          </span>
+          <span>
+            <%= link to: "#", phx_click: "delete", phx_value_id: vision.id, data: [confirm: "Are you sure?"], class: "btn btn-square btn-xs" do %>
+              <i class="fa-solid fa-trash"></i>
+             <% end %>
+          </span>
         </td>
       </tr>
     <% end %>
   </tbody>
 </table>
-
-<span><%= live_patch "New Vision", to: Routes.vision_index_path(@socket, :new) %></span>

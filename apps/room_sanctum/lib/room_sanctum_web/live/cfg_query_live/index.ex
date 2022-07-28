@@ -16,19 +16,19 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
-    |> assign(:page_title, "Edit Query")
+    |> assign(:page_title, "Modify Query")
     |> assign(:query, Configuration.get_query!(id))
   end
 
   defp apply_action(socket, :new, _params) do
     socket
-    |> assign(:page_title, "New Query")
+    |> assign(:page_title, "Make a Query")
     |> assign(:query, %Query{})
   end
 
   defp apply_action(socket, :index, _params) do
     socket
-    |> assign(:page_title, "Listing Cfg queries")
+    |> assign(:page_title, "Available Queries")
     |> assign(:query, nil)
   end
 

@@ -1,4 +1,8 @@
-<h1>Show Vision</h1>
+<.itb icon="fa-chevron-left" to={Routes.vision_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.vision_show_path(@socket, :edit, @vision)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Vision Detail</h1>
+
 
 <%= if @live_action in [:edit] do %>
   <.modal return_to={Routes.vision_show_path(@socket, :show, @vision)}>
@@ -9,36 +13,84 @@
       action={@live_action}
       vision={@vision}
       return_to={Routes.vision_show_path(@socket, :show, @vision)}
-current_user={@current_user}
+      current_user={@current_user}
     />
   </.modal>
 <% end %>
 
-<ul>
-
-  <li>
-    <strong>Name:</strong>
-    <%= @vision.name %>
-  </li>
-
-  <li>
-    <strong>Queries:</strong>
-    <%= for q <- @queries do %>
-
-    <% end %>
-  </li>
-
-  <%= for {k, p} <- @preview do %>
-    <%= k |> Poison.encode!  %>
-    <%= p |> Poison.encode! %>
-    <br />
-    <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
-    <br />
-    <br />
-  <% end %>
-
-
-</ul>
-
-<span><%= live_patch "Edit", to: Routes.vision_show_path(@socket, :edit, @vision), class: "button" %></span> |
-<span><%= live_redirect "Back", to: Routes.vision_index_path(@socket, :index) %></span>
+<div class="mx-4 py-2">
+  <div class="flex">
+    <h2 class="text-2xl font-bold text-accent-300"><%= @vision.name %></h2>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+      <div class="card-body text-left">
+        <h3 class="card-title">Queries</h3>
+        <p>
+        <%= for q <- @queries do %>
+          <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+          <i class={"fas #{icon(q.source.type)}"}></i>&emsp;<%= q.name %>
+          <% end %>
+        <% end %>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Vision</h3>
+        <table class="table table-compact">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Query</th>
+                    <th>Schedule</th>
+                </tr>
+            </thead>
+          <tbody>
+            <%= for q <- @vision.queries |> Enum.sort_by(&{sortert(&1.type), &1.data.order}) do %>
+              <tr>
+                <td><%= q.type %></td>
+                <td>
+                  <i class={"fas #{get_query_data_icon(q.data.query, @queries)}"}></i>
+                  <%= get_query_data(q.data.query, @queries) %>
+                </td>
+                <td>
+                  <%= if q.data |> Map.get(:weekdays) do %>
+                  <%= for w <- weekdays() do %>
+                  <div class={badge_weekday(w, q.data.weekdays)}><%= w %></div>
+                  <% end %>
+                  &emsp;
+                  <i class="fas fa-clock"></i>
+                  <%= q.data.time_start %>
+                  <i class="fas fa-arrow-right"></i>
+                  <%= q.data.time_end %>
+                  <% else %>
+                  <div class="badge">N/A</div>
+                  <% end %>
+                </td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Preview</h3>
+        <%= for {k, p} <- @preview do %>
+        <div class="flex">
+          <div class="w-16">
+            <i class={"fas fa-fw fa-2xl #{icon(k |> elem(1))}"}></i>
+          </div>
+          <div class="w-7/8">
+            <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+            <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
+          </div>
+        </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

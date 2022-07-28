@@ -16,19 +16,19 @@ defmodule RoomSanctumWeb.VisionLive.Index do
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
-    |> assign(:page_title, "Edit Vision")
+    |> assign(:page_title, "Modify Vision")
     |> assign(:vision, Configuration.get_vision!(id))
   end
 
   defp apply_action(socket, :new, _params) do
     socket
-    |> assign(:page_title, "New Vision")
+    |> assign(:page_title, "Induce Vision")
     |> assign(:vision, %Vision{})
   end
 
   defp apply_action(socket, :index, _params) do
     socket
-    |> assign(:page_title, "Listing Visions")
+    |> assign(:page_title, "Available Visions")
     |> assign(:vision, nil)
   end
 

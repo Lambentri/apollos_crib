@@ -1,5 +1,5 @@
 defmodule RoomSanctumWeb.VisionLive.Show do
-  use RoomSanctumWeb, :live_view
+  use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Configuration
 
@@ -27,10 +27,56 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
   end
 
-  defp page_title(:show), do: "Show Vision"
-  defp page_title(:edit), do: "Edit Vision"
+  defp page_title(:show), do: "Vision Detail"
+  defp page_title(:edit), do: "Modify Vision"
 
   defp condense({id, type}, data) do
     RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+  end
+
+  defp icon(type) do
+    RoomSanctumWeb.IconHelpers.icon(type)
+  end
+
+  defp sortert(type) do
+    case type do
+      :alerts -> 0
+      :time -> 1
+      :pinned -> 2
+      :background -> 3
+    end
+  end
+
+  defp weekdays do
+    [:U, :M, :T, :W, :R, :F, :S]
+  end
+
+  defp badge_weekday(current, list) do
+    case Enum.member?(list, current) do
+      true -> "badge badge-lg badge-primary"
+      false -> "badge badge-lg"
+    end
+  end
+
+  defp get_query_data(item, queries, size \\ 8) do
+    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+    case Map.get(as_map, item) do
+      nil -> item
+      _val ->
+        case (_val.name |> String.length > size) do
+        true -> s = _val.name |> String.slice(0, size)
+                s <> "..."
+        false -> _val.name
+      end
+    end
+  end
+
+
+  defp get_query_data_icon(item, queries) do
+    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+    case Map.get(as_map, item) do
+      nil -> ""
+      _val -> icon(_val.source.type)
+    end
   end
 end

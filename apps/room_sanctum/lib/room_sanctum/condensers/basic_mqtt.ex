@@ -3,9 +3,9 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   import MapMerge
 
   def condense({id, type}, data) do
-    if type == :tidal do
-      IO.inspect({id, type, data})
-    end
+#    if type == :tidal do
+#      IO.inspect({id, type, data})
+#    end
 
     case type do
       :gtfs ->
@@ -29,12 +29,19 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         data
         |> Enum.group_by(fn x -> x.type end)
         |> Enum.map(fn {extreme, data} ->
-          [first, second] = data
-          k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
-          k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
-          kv1 = "first_v#{extreme |> String.downcase()}" |> String.to_atom()
-          kv2 = "second_v#{extreme |> String.downcase()}" |> String.to_atom()
-          %{k1 => first.t, k2 => second.t, kv1 => first.v, kv2 => second.v}
+        case data do
+          [first, second] ->
+            [first, second] = data
+            k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+            k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
+            kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
+            kv2 = "second_#{extreme |> String.downcase()}v" |> String.to_atom()
+            %{k1 => first.t, k2 => second.t, kv1 => first.v, kv2 => second.v}
+          [solo] ->
+            k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+            kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
+            %{k1 => solo.t, kv1 => solo.v}
+        end
         end)
         |> Enum.reduce(&Map.merge/2)
 
