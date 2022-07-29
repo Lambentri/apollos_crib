@@ -12,6 +12,8 @@ defmodule ApollosCrib.MixProject do
           include_erts: true,
           include_executables_for: [:unix],
           applications: [
+            room_sanctum: :permanent,
+            room_hermes: :permanent,
             runtime_tools: :permanent
           ]
         ]
