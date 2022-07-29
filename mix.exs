@@ -16,7 +16,16 @@ defmodule ApollosCrib.MixProject do
             room_hermes: :permanent,
             room_zeus: :permanent,
 
+            room_air_quality: :permanent,
+            room_calendar: :peermanent,
+            room_ephem: :permanent,
+            room_gbfs: :permanent,
             room_gtfs: :permanent,
+            room_hass: :permanent,
+            room_rideshare: :permanent,
+            room_tidal: :permanent,
+            room_weather: :permanent,
+
             runtime_tools: :permanent
           ]
         ]
