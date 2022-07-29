@@ -27,8 +27,7 @@ config :room_hermes,
        ]
 
 config :room_sanctum,
-       ecto_repos: [RoomSanctum.Repo],
-       types: RoomSanctum.PostgresTypes
+       ecto_repos: [RoomSanctum.Repo]
 
 # Configures the endpoint
 config :room_sanctum,
