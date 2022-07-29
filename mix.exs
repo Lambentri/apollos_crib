@@ -17,7 +17,7 @@ defmodule ApollosCrib.MixProject do
             room_zeus: :permanent,
 
             room_air_quality: :permanent,
-            room_calendar: :peermanent,
+            room_calendar: :permanent,
             room_ephem: :permanent,
             room_gbfs: :permanent,
             room_gtfs: :permanent,
