@@ -14,6 +14,7 @@ defmodule ApollosCrib.MixProject do
           applications: [
             room_sanctum: :permanent,
             room_hermes: :permanent,
+            room_zeus: :permanent,
             runtime_tools: :permanent
           ]
         ]
