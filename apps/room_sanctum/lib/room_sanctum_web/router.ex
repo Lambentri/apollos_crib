@@ -1,6 +1,9 @@
 defmodule RoomSanctumWeb.Router do
   use RoomSanctumWeb, :router
 
+  forward("/health/live", Healthchex.Probes.Liveness)
+  forward("/health/ready", Healthchex.Probes.Readiness)
+
   import RoomSanctumWeb.UserAuth
 
   pipeline :browser do

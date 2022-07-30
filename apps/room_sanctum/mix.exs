@@ -68,8 +68,10 @@ defmodule RoomSanctum.MixProject do
       {:geo_postgis, "~> 3.4"},
 
       # UI
-      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev}
+      {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
 
+      # kube
+      {:healthchex, "~> 0.2"}
     ]
   end
 

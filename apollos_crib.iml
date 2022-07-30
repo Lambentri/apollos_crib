@@ -82,6 +82,7 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/seg_seg" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/icalendar" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/tailwind" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/healthchex" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
