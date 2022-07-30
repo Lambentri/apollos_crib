@@ -32,6 +32,21 @@ spec:
       containers:
         - image: r.g.gmp.io/lambentri/apollos-crib:latest
           imagePullPolicy: Always
+          livenessProbe:
+            httpGet:
+              path: /health/live
+              port: 4040
+
+            initialDelaySeconds: 15
+            periodSeconds: 3
+
+          readinessProbe:
+            httpGet:
+              path: /health/ready
+              port: 4040
+
+            initialDelaySeconds: 3
+            periodSeconds: 3
           env:
             #            - name: RAVEN_DSN
             #              valueFrom:
