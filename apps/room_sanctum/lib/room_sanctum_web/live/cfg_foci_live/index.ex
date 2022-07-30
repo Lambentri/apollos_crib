@@ -16,19 +16,19 @@ defmodule RoomSanctumWeb.FociLive.Index do
 
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
-    |> assign(:page_title, "Edit Foci")
+    |> assign(:page_title, "Modify Foci")
     |> assign(:foci, Configuration.get_foci!(id))
   end
 
   defp apply_action(socket, :new, _params) do
     socket
-    |> assign(:page_title, "New Foci")
+    |> assign(:page_title, "Register Foci")
     |> assign(:foci, %Foci{})
   end
 
   defp apply_action(socket, :index, _params) do
     socket
-    |> assign(:page_title, "Listing Focis")
+    |> assign(:page_title, "Available Foci")
     |> assign(:foci, nil)
   end
 

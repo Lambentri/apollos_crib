@@ -1,4 +1,5 @@
-<h1>Listing Focis</h1>
+<.itb icon="fa-plus" to={Routes.foci_index_path(@socket, :new)} what="Foci"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Foci</h1>
 
 <%= if @live_action in [:new, :edit] do %>
   <.modal return_to={Routes.foci_index_path(@socket, :index)}>
@@ -14,11 +15,10 @@
   </.modal>
 <% end %>
 
-<table>
+<table class="table table-compact w-full mx-6">
   <thead>
     <tr>
       <th>Name</th>
-      <th>Place</th>
 
       <th></th>
     </tr>
@@ -27,16 +27,21 @@
     <%= for foci <- @focis do %>
       <tr id={"foci-#{foci.id}"}>
         <td><%= foci.name %></td>
-        <td>$place</td>
 
         <td>
-          <span><%= live_redirect "Show", to: Routes.foci_show_path(@socket, :show, foci) %></span>
-          <span><%= live_patch "Edit", to: Routes.foci_index_path(@socket, :edit, foci) %></span>
-          <span><%= link "Delete", to: "#", phx_click: "delete", phx_value_id: foci.id, data: [confirm: "Are you sure?"] %></span>
+          <span>
+            <.ib icon="fa-eye" to={Routes.foci_show_path(@socket, :show, foci)} function={:live_redirect}></.ib>
+          </span>
+          <span>
+            <.ib icon="fa-pencil" to={Routes.foci_index_path(@socket, :edit, foci)}></.ib>
+          </span>
+          <span>
+            <%= link to: "#", phx_click: "delete", phx_value_id: foci.id, data: [confirm: "Are you sure?"], class: "btn btn-square btn-xs" do %>
+              <i class="fa-solid fa-trash"></i>
+             <% end %>
+          </span>
         </td>
       </tr>
     <% end %>
   </tbody>
 </table>
-
-<span><%= live_patch "New Foci", to: Routes.foci_index_path(@socket, :new) %></span>

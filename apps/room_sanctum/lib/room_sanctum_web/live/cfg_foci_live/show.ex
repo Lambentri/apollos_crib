@@ -16,6 +16,6 @@ defmodule RoomSanctumWeb.FociLive.Show do
      |> assign(:foci, Configuration.get_foci!(id))}
   end
 
-  defp page_title(:show), do: "Show Foci"
-  defp page_title(:edit), do: "Edit Foci"
+  defp page_title(:show), do: "Foci Detail"
+  defp page_title(:edit), do: "Modify Foci"
 end

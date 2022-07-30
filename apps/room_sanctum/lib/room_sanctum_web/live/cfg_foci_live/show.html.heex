@@ -1,4 +1,7 @@
-<h1>Show Foci</h1>
+<.itb icon="fa-chevron-left" to={Routes.foci_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.foci_show_path(@socket, :edit, @foci)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Foci Detail</h1>
 
 <%= if @live_action in [:edit] do %>
   <.modal return_to={Routes.foci_show_path(@socket, :show, @foci)}>
@@ -12,20 +15,17 @@
     />
   </.modal>
 <% end %>
-
-<ul>
-
-  <li>
-    <strong>Name:</strong>
-    <%= @foci.name %>
-  </li>
-
-  <li>
-    <strong>Place:</strong>
-    <%= @foci.place %>
-  </li>
-
-</ul>
-
-<span><%= live_patch "Edit", to: Routes.foci_show_path(@socket, :edit, @foci), class: "button" %></span> |
-<span><%= live_redirect "Back", to: Routes.foci_index_path(@socket, :index) %></span>
+<div class="mx-4 py-2">
+  <div class="flex">
+    <h2 class="text-2xl font-bold text-accent-300"><%= @foci.name %>
+    </h2>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Place</h3>
+        <pre>@foci.place</pre>
+      </div>
+    </div>
+  </div>
+</div>
