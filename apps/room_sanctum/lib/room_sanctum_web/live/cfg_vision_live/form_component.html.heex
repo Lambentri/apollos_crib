@@ -30,7 +30,7 @@
                 <%= hidden_inputs_for(fq) %>
                 <%= ctr %>
             </div>
-            <div class="flex-none w-32">
+            <div class="flex-none w-32 p-1">
                 <div class="form-control">
                 <%= label fq, :type %>
                 <%= select fq, :type, Ecto.Enum.values(RoomSanctum.Configuration.Vision, :type), prompt: "Choose a value", class: "select w-full max-w-xs" %>
@@ -40,7 +40,7 @@
 
         <%= for fd <- polymorphic_embed_inputs_for fq, :data do %>
             <%= hidden_inputs_for(fd) %>
-            <div class="flex-none w-16">
+            <div class="flex-none w-24 p-1">
                 <div class="form-control">
                     <label>Order</label>
                     <%= number_input fd, :order,  class: "input w-full max-w-xs" %>
@@ -49,7 +49,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex-1 w-64">
+            <div class="flex-1 w-64 p-1">
                 <div class="form-control">
                     <label>Query</label>
                     <%= select fd, :query, @cfg_queries_sel, class: "select w-full max-w-xs" %>
@@ -58,7 +58,7 @@
                     </div>
                 </div>
             </div>
-            <div class="flex-1 w-64">
+            <div class="flex-1 w-64 p-1">
             <%= case gfv(@changeset, fq, ctr) do %>
                 <% :time -> %>
                     <div class="form-control">
@@ -73,19 +73,21 @@
                             <%= error_tag fd, :weekdays %>
                         </div>
                     </div>
+                    <div class="card card-compact rounded-md bg-base-100 shadow-xl p-2 my-1">
                     <div class="time-inputs">
-                        <label>Start Time</label>
-                        <%= time_select fd, :time_start,  class: "input w-full max-w-xs" %>
+                        <label><i class="fa-solid fa-forward-step"></i></label>
+                        <%= time_select fd, :time_start,  class: "select w-full max-w-xs" %>
                         <div class="error">
                             <%= error_tag fd, :time_start %>
                         </div>
                     </div>
                     <div class="time-inputs">
-                        <label>End Time</label>
-                        <%= time_select fd, :time_end,  class: "input w-full max-w-xs" %>
+                        <label><i class="fa-solid fa-backward-step"></i></label>
+                        <%= time_select fd, :time_end,  class: "select w-full max-w-xs" %>
                         <div class="error">
                             <%= error_tag fd, :time_end %>
                         </div>
+                    </div>
                     </div>
                 <% _ -> %>
             <% end %>
