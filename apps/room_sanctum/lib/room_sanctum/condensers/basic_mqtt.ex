@@ -18,6 +18,13 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             route: f.trip.route_id
           }
         end)
+        |> Enum.reduce(%{}, fn %{time: time, destination: dest, direction: dir, route: route}, acc ->
+          update_in(acc, [{route, dest, dir}], fn
+            nil -> %{route: route, dest: dest, dir: dir, times: [time]}
+            refs -> %{refs | times: [time | refs.times]}
+          end)
+        end)
+        |> Enum.map(fn {k,v} -> v end)
 
       :gbfs ->
         data
