@@ -1,26 +1,45 @@
-<h1>Reset password</h1>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Reset password</h1>
+<div class="mx-4">
+    <div class="flex">
+        <div class="w-1/2">
+            <.form let={f} for={@changeset} action={Routes.user_reset_password_path(@conn, :update, @token)}>
+              <%= if @changeset.action do %>
+                <div class="alert alert-danger">
+                  <p>Oops, something went wrong! Please check the errors below.</p>
+                </div>
+              <% end %>
 
-<.form let={f} for={@changeset} action={Routes.user_reset_password_path(@conn, :update, @token)}>
-  <%= if @changeset.action do %>
-    <div class="alert alert-danger">
-      <p>Oops, something went wrong! Please check the errors below.</p>
+            <div class="form-control">
+              <%= label f, :password, "New password" %>
+              <%= password_input f, :password, required: true %>
+                <label class="label">
+                 <span class="label-text-alt text-error">
+                  <%= error_tag f, :password %>
+                 </span>
+                </label>
+            </div>
+
+            <div class="form-control">
+              <%= label f, :password_confirmation, "Confirm new password" %>
+              <%= password_input f, :password_confirmation, required: true %>
+                <label class="label">
+                 <span class="label-text-alt text-error">
+                    <%= error_tag f, :password_confirmation %>
+                 </span>
+                </label>
+            </div>
+
+              <div>
+                <%= submit "Reset password", class: "btn btn-secondary" %>
+              </div>
+            </.form>
+        </div>
+        <div class="w-1/2">
+            <div>
+                <%= link "Register", to: Routes.user_registration_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
+                <div class="divider divider-horizontal">OR</div>
+                <%= link "Log in", to: Routes.user_session_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
+            </div>
+        </div>
     </div>
-  <% end %>
-
-  <%= label f, :password, "New password" %>
-  <%= password_input f, :password, required: true %>
-  <%= error_tag f, :password %>
-
-  <%= label f, :password_confirmation, "Confirm new password" %>
-  <%= password_input f, :password_confirmation, required: true %>
-  <%= error_tag f, :password_confirmation %>
-
-  <div>
-    <%= submit "Reset password" %>
-  </div>
-</.form>
-
-<p>
-  <%= link "Register", to: Routes.user_registration_path(@conn, :new) %> |
-  <%= link "Log in", to: Routes.user_session_path(@conn, :new) %>
-</p>
+</div>

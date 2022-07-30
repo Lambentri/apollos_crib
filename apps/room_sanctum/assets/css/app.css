@@ -33,17 +33,17 @@
 .alert:empty {
   display: none;
 }
-.invalid-feedback {
-  color: #a94442;
-  display: block;
-  margin: -1rem 0 2rem;
-}
+/*.invalid-feedback {*/
+/*  color: #a94442;*/
+/*  display: block;*/
+/*  margin: -1rem 0 2rem;*/
+/*}*/
 
 /* LiveView specific classes for your customization */
-.phx-no-feedback.invalid-feedback,
-.phx-no-feedback .invalid-feedback {
-  display: none;
-}
+/*.phx-no-feedback.invalid-feedback,*/
+/*.phx-no-feedback .invalid-feedback {*/
+/*  display: none;*/
+/*}*/
 
 .phx-click-loading {
   opacity: 0.5;

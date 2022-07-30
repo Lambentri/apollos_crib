@@ -5,12 +5,12 @@ defmodule RoomSanctum.Configuration.Configs.AQI do
   @primary_key false
 
   embedded_schema do
-    field :api_key, :string
+#    field :api_key, :string
   end
 
   def changeset(source, params) do
     source
-    |> cast(params, ~w(api_key)a)
-    |> validate_required(:api_key)
+    |> cast(params, [])
+    |> validate_required([])
   end
 end

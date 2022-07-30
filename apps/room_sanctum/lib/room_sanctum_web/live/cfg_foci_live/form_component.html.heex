@@ -7,7 +7,7 @@
             crossorigin=""></script>
     <script type="text/javascript" src={Routes.static_path(@socket, "/assets/leaflet-centermarker.js")}></script>
 
-    <h2><%= @title %></h2>
+    <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
 
     <.form
     let={f}
@@ -17,18 +17,34 @@
     phx-change="validate"
     phx-submit="save">
 
-    <%= label f, :name %>
-    <%= text_input f, :name %>
-    <%= error_tag f, :name %>
-
-    <%= label f, :place %>
-    <div id="structural-shim" phx-update="ignore">
-        <div id="map" style="height: 400px; width: 600px" phx-hook="mkMap" data-latlng={@foci |>getlatlng}></div>
+    <div class="flex">
+        <div class="w-full">
+            <div class="form-control">
+                <%= label f, :name %>
+                <%= text_input f, :name, class: "input w-full max-w-xs"%>
+                <label class="label">
+                     <span class="label-text-alt text-error">
+                        <%= error_tag f, :name %>
+                     </span>
+                </label>
+            </div>
+        </div>
     </div>
-    <%= error_tag f, :place %>
+    <div>
+        <div class="w-full">
+            <div class="form-control">
+                <%= label f, :place %>
+                <div id="structural-shim" phx-update="ignore">
+                    <div id="map" style="height: 400px; width: 600px" phx-hook="mkMap" data-latlng={@foci |>getlatlng} class="rounded-sm"></div>
+                </div>
+                <%= error_tag f, :place %>
+            </div>
+        </div>
+    </div>
+
 
     <div>
-        <%= submit "Save", phx_disable_with: "Saving..." %>
+        <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary" %>
     </div>
 </.form>
 

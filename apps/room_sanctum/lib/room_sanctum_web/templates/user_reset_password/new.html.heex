@@ -1,15 +1,31 @@
-<h1>Forgot your password?</h1>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Forgot your password?</h1>
 
-<.form let={f} for={:user} action={Routes.user_reset_password_path(@conn, :create)}>
-  <%= label f, :email %>
-  <%= email_input f, :email, required: true %>
+<div class="mx-4">
+    <div class="flex">
+        <div class="w-1/2">
+            <.form let={f} for={:user} action={Routes.user_reset_password_path(@conn, :create)}>
+                <div class="form-control">
+                  <%= label f, :email %>
+                  <%= email_input f, :email, required: true, class: "input w-full max-w-xs" %>
+                  <label class="label">
+                     <span class="label-text-alt text-error">
+                        <%= error_tag f, :email %>
+                     </span>
+                  </label>
+                </div>
 
-  <div>
-    <%= submit "Send instructions to reset password" %>
-  </div>
-</.form>
+                <div>
+                    <%= submit "Send instructions to reset password", class: "btn btn-secondary" %>
+                </div>
+            </.form>
 
-<p>
-  <%= link "Register", to: Routes.user_registration_path(@conn, :new) %> |
-  <%= link "Log in", to: Routes.user_session_path(@conn, :new) %>
-</p>
+        </div>
+        <div class="w-1/2">
+            <div>
+                <%= link "Register", to: Routes.user_registration_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
+                <div class="divider divider-horizontal">OR</div>
+                <%= link "Log in", to: Routes.user_session_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
+            </div>
+        </div>
+    </div>
+</div>

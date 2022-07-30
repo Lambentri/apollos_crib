@@ -1,5 +1,5 @@
 <div>
-  <h2><%= @title %></h2>
+  <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
 
   <.form
     let={f}
@@ -9,123 +9,160 @@
     phx-change="validate"
     phx-submit="save">
 
-    <%= label f, :source_id %>
-    <%= select f, :source_id, @cfg_sources_sel %>
-    <%= error_tag f, :source_id %>
-  
-    <%= label f, :name %>
-    <%= text_input f, :name %>
-    <%= error_tag f, :name %>
-  
-    <%= label f, :notes %>
-    <%= text_input f, :notes %>
-    <%= error_tag f, :notes %>
+  <div class="flex">
+    <div class="w-full">
+      <div class="form-control">
+        <%= label f, :source_id, "Offering" %>
+        <%= select f, :source_id, @cfg_sources_sel, class: "select w-full max-w-xs" %>
+        <label class="label">
+            <span class="label-text-alt text-error">
+            <%= error_tag f, :source_id %>
+            </span>
+        </label>
+      </div>
 
+      <div class="form-control">
+        <%= label f, :name %>
+        <%= text_input f, :name, class: "input w-full max-w-xs"%>
+        <label class="label">
+            <span class="label-text-alt text-error">
+            <%= error_tag f, :name %>
+            </span>
+        </label>
+      </div>
+
+      <div class="form-control">
+        <%= label f, :notes %>
+        <%= text_input f, :notes, class: "input w-full max-w-xs" %>
+        <label class="label">
+            <span class="label-text-alt text-error">
+            <%= error_tag f, :notes %>
+            </span>
+        </label>
+      </div>
+    </div>
+  </div>
+  <div class="flex">
+    <div class="w-full">
   <%= case get_current_type(@changeset) do %>
   <%= :aqi -> %>
   <%= polymorphic_embed_inputs_for f, :query, :aqi, fn aqi_form -> %>
-  <div class="foci-inputs">
+  <div class="form-control">
     <label>Foci</label>
-    <%= select aqi_form, :foci_id, @cfg_foci_sel %>
-    <div class="error">
+    <%= select aqi_form, :foci_id, @cfg_foci_sel, class: "select w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag aqi_form, :foci_id %>
-    </div>
+      </span>
+    </label>
   </div>
   <% end %>
   <%= :calendar -> %>
   <%= polymorphic_embed_inputs_for f, :query, :calendar, fn cal_form -> %>
-  <!-- <div class="filter-inputs">
-    <label>filters?</label>
-    <%= text_input cal_form, :filters %>
-    <div class="error">
-      <%= error_tag cal_form, :filters %>
-    </div>
-  </div> -->
-  <div class="day-inputs">
-    <label>Number of days to get</label>
-    <%= number_input cal_form, :days %>
-    <div class="error">
+  <div class="form-control">
+    <label>Max of days to get</label>
+    <%= number_input cal_form, :days,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag cal_form, :days %>
-    </div>
+      </span>
+    </label>
   </div>
-  <div class="limit-inputs">
-    <label>Limit</label>
-    <%= number_input cal_form, :limit %>
-    <div class="error">
+  <div class="form-control">
+    <label>Max events</label>
+    <%= number_input cal_form, :limit,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag cal_form, :limit %>
-    </div>
+      </span>
+    </label>
   </div>
-  <div class="foci-inputs">
+  <div class="form-control">
     <label>Foci</label>
-    <%= select cal_form, :foci_id, @cfg_foci_sel %>
-    <div class="error">
+    <%= select cal_form, :foci_id, @cfg_foci_sel,  class: "select w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag cal_form, :foci_id %>
-    </div>
+      </span>
+    </label>
   </div>
   <% end %>
 
   <%= :ephem -> %>
   <%= polymorphic_embed_inputs_for f, :query, :ephem, fn ephem_form -> %>
-  <div class="foci-inputs">
+      <div class="form-control">
     <label>Foci</label>
-    <%= select ephem_form, :foci_id, @cfg_foci_sel %>
-    <div class="error">
-      <%= error_tag ephem_form, :foci_id %>
-    </div>
+    <%= select ephem_form, :foci_id, @cfg_foci_sel,  class: "select w-full max-w-xs" %>
+        <label class="label">
+          <span class="label-text-alt text-error">
+          <%= error_tag ephem_form, :foci_id %>
+          </span>
+        </label>
   </div>
   <% end %>
 
   <%= :gbfs -> %>
   <%= polymorphic_embed_inputs_for f, :query, :gbfs, fn gbfs_form -> %>
-  <div class="url-inputs">
+  <div class="form-control">
     <label>Stop ID</label>
-    <%= text_input gbfs_form, :stop_id %>
-    <div class="error">
-      <%= error_tag gbfs_form, :stop_id %>
-    </div>
+    <%= text_input gbfs_form, :stop_id, class: "input w-full max-w-xs" %>
+      <label class="label">
+      <span class="label-text-alt text-error">
+        <%= error_tag gbfs_form, :stop_id %>
+      </span>
+      </label>
   </div>
   <% end %>
 
   <%= :gtfs -> %>
   <%= polymorphic_embed_inputs_for f, :query, :gtfs, fn gtfs_form -> %>
-  <div class="stop-inputs">
+  <div class="form-control">
     <label>Stop</label>
-    <%= text_input gtfs_form, :stop %>
-    <div class="error">
+    <%= text_input gtfs_form, :stop,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag gtfs_form, :stop %>
-    </div>
+      </span>
+    </label>
   </div>
-  <div class="routes-inputs">
-    <label>Routes</label>
-    <%= text_input gtfs_form, :routes %>
-    <div class="error">
+  <div class="form-control">
+    <label>Route Filter</label>
+    <%= text_input gtfs_form, :routes,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag gtfs_form, :routes %>
-    </div>
+      </span>
+    </label>
   </div>
   <% end %>
 
   <%= :hass -> %>
   <%= polymorphic_embed_inputs_for f, :query, :hass, fn hass_form -> %>
-  <div class="entity-inputs">
+  <div class="form-control">
     <label>Entity</label>
-    <%= text_input hass_form, :entity %>
-    <div class="error">
+    <%= text_input hass_form, :entity,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag hass_form, :entity %>
-    </div>
+      </span>
+    </label>
   </div>
 
-  <div class="property-inputs">
+  <div class="form-control">
     <label>Properties</label>
-    <%= text_input hass_form, :properties %>
-    <div class="error">
+    <%= text_input hass_form, :properties,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag hass_form, :properties %>
-    </div>
+      </span>
+    </label>
   </div>
   <% end %>
 
   <%= :rideshare -> %>
   <%= polymorphic_embed_inputs_for f, :query, :rideshare, fn rs_form -> %>
   <div class="provider-inputs">
+    TODOTODOTODO
     <label>Provider</label>
     <%= text_input rs_form, :provider %>
     <div class="error">
@@ -142,29 +179,35 @@
   <% end %>
   <%= :tidal -> %>
   <%= polymorphic_embed_inputs_for f, :query, :tidal, fn tidal_form -> %>
-  <div class="url-inputs">
+  <div class="form-control">
     <label>Station ID</label>
-    <%= text_input tidal_form, :station_id %>
-    <div class="error">
+    <%= text_input tidal_form, :station_id,  class: "input w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag tidal_form, :station_id %>
-    </div>
+      </span>
+    </label>
   </div>
   <% end %>
   <%= :weather -> %>
   <%= polymorphic_embed_inputs_for f, :query, :weather, fn weather_form -> %>
-  <div class="foci-inputs">
+  <div class="form-control">
     <label>Foci</label>
-    <%= select weather_form, :foci_id, @cfg_foci_sel %>
-    <div class="error">
+    <%= select weather_form, :foci_id, @cfg_foci_sel,  class: "select w-full max-w-xs" %>
+    <label class="label">
+      <span class="label-text-alt text-error">
       <%= error_tag weather_form, :foci_id %>
-    </div>
+      </span>
+    </label>
   </div>
   <% end %>
     <% _ -> %>
-  nada
+    <span class="text-xs">Pick an offering above</span>
   <% end %>
+    </div>
+  </div>
     <div>
-      <%= submit "Save", phx_disable_with: "Saving..." %>
+      <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary" %>
     </div>
   </.form>
 </div>
