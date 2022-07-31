@@ -27,7 +27,12 @@
   <tbody id="cfg_queries">
     <%= for query <- @cfg_queries do %>
       <tr id={"query-#{query.id}"}>
-        <td><%= query.source.name %></td>
+        <td>
+          <span class="tooltip tooltip-primary" data-tip={query.source.type}>
+                <i class={"fas fa-fw #{icon(query.source.type)}"}></i>
+            </span>
+          <%= query.source.name %>
+        </td>
         <td><%= query.name %></td>
 
         <td>

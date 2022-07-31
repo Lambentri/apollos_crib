@@ -43,4 +43,8 @@ defmodule RoomSanctumWeb.QueryLive.Index do
   defp list_cfg_queries(uid) do
     Configuration.list_cfg_queries({:user, uid})
   end
+
+  defp icon(type) do
+    RoomSanctumWeb.IconHelpers.icon(type)
+  end
 end

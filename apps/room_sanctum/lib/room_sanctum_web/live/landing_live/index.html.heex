@@ -1,0 +1,75 @@
+<div class="hero min-h-[80%] bg-accent-100 m-10 pt-12">
+    <div class="hero-content text-center">
+        <div class="max-w-md">
+            <h1 class="text-5xl font-bold text-accent">Hello there</h1>
+            <p class="py-6">Welcome to the crib. Check out a preview of what's happening below, or...</p>
+            <%= if @current_user do %>
+            <%= link "Offerings", to: Routes.source_index_path(@socket, :index), class: "btn btn-primary" %>
+            <%= link "Queries", to: Routes.query_index_path(@socket, :index), class: "btn btn-primary"  %>
+            <%= link "Visions", to: Routes.vision_index_path(@socket, :index), class: "btn btn-primary"  %>
+            <%= link "Foci", to: Routes.foci_index_path(@socket, :index), class: "btn btn-primary"  %>
+      <% else %>
+            <button class="btn btn-primary">
+                <%= link "Log in", to: Routes.user_session_path(@socket, :new) %>
+            </button>
+            <% end %>
+        </div>
+    </div>
+</div>
+<div class="carousel rounded-box">
+    <div class="carousel-item w-1/5">
+        <div class="card bg-base-100 shadow-xl m-4">
+            <div class="card-body">
+                <h2 class="card-title">DATA!</h2>
+                <p>If a dog chews shoes whose shoes does he choose?</p>
+                <div class="card-actions justify-end">
+                    <button class="btn btn-primary">Buy Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="carousel-item w-1/5">
+        <div class="card bg-base-100 shadow-xl m-4">
+            <div class="card-body">
+                <h2 class="card-title">DATA!</h2>
+                <p>If a dog chews shoes whose shoes does he choose?</p>
+                <div class="card-actions justify-end">
+                    <button class="btn btn-primary">Buy Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="carousel-item  w-1/5">
+        <div class="card bg-base-100 shadow-xl m-4">
+            <div class="card-body">
+                <h2 class="card-title">DATA!</h2>
+                <p>If a dog chews shoes whose shoes does he choose?</p>
+                <div class="card-actions justify-end">
+                    <button class="btn btn-primary">Buy Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="carousel-item w-1/5">
+        <div class="card bg-base-100 shadow-xl m-4">
+            <div class="card-body">
+                <h2 class="card-title">DATA!</h2>
+                <p>If a dog chews shoes whose shoes does he choose?</p>
+                <div class="card-actions justify-end">
+                    <button class="btn btn-primary">Buy Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="carousel-item w-1/5">
+        <div class="card bg-base-100 shadow-xl m-4">
+            <div class="card-body">
+                <h2 class="card-title">DATA!</h2>
+                <p>If a dog chews shoes whose shoes does he choose?</p>
+                <div class="card-actions justify-end">
+                    <button class="btn btn-primary">Buy Now</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

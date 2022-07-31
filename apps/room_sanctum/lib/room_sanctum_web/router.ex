@@ -22,7 +22,7 @@ defmodule RoomSanctumWeb.Router do
 
   scope "/", RoomSanctumWeb do
     pipe_through [:browser]
-    get "/", PageController, :index
+    live "/", LandingLive.Index, :index
   end
 
   scope "/", RoomSanctumWeb do
