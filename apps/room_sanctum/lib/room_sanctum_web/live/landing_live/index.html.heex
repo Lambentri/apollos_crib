@@ -1,4 +1,4 @@
-<div class="hero min-h-[80%] bg-accent-100 m-10 pt-12">
+<div class="min-h-[80%] bg-accent-100 m-10 pt-12">
     <div class="hero-content text-center">
         <div class="max-w-md">
             <h1 class="text-5xl font-bold text-accent">Hello there</h1>
@@ -17,59 +17,28 @@
     </div>
 </div>
 <div class="carousel rounded-box">
-    <div class="carousel-item w-1/5">
+    <%= for {k, p} <- @preview do %>
+    <div class="flex">
+        <div class="w-16">
+            <i class={"fas fa-fw fa-2xl #{icon(k |> elem(1))}"}></i>
+        </div>
+        <div class="w-7/8">
+            <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+            <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
+        </div>
+    </div>
+    <div class="carousel-item w-1/4">
         <div class="card bg-base-100 shadow-xl m-4">
             <div class="card-body">
-                <h2 class="card-title">DATA!</h2>
-                <p>If a dog chews shoes whose shoes does he choose?</p>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary">Buy Now</button>
-                </div>
+                <h2 class="card-title">
+                    <i class={"fas fa-fw fa-xl #{icon(k |> elem(1))}"}></i>
+                    <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+                </h2>
+                <pre>
+                    <%= condense(k, p) |> preview(k) |> Poison.encode!(pretty: true) %>
+                </pre>
             </div>
         </div>
     </div>
-    <div class="carousel-item w-1/5">
-        <div class="card bg-base-100 shadow-xl m-4">
-            <div class="card-body">
-                <h2 class="card-title">DATA!</h2>
-                <p>If a dog chews shoes whose shoes does he choose?</p>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary">Buy Now</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="carousel-item  w-1/5">
-        <div class="card bg-base-100 shadow-xl m-4">
-            <div class="card-body">
-                <h2 class="card-title">DATA!</h2>
-                <p>If a dog chews shoes whose shoes does he choose?</p>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary">Buy Now</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="carousel-item w-1/5">
-        <div class="card bg-base-100 shadow-xl m-4">
-            <div class="card-body">
-                <h2 class="card-title">DATA!</h2>
-                <p>If a dog chews shoes whose shoes does he choose?</p>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary">Buy Now</button>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="carousel-item w-1/5">
-        <div class="card bg-base-100 shadow-xl m-4">
-            <div class="card-body">
-                <h2 class="card-title">DATA!</h2>
-                <p>If a dog chews shoes whose shoes does he choose?</p>
-                <div class="card-actions justify-end">
-                    <button class="btn btn-primary">Buy Now</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <% end %>
 </div>

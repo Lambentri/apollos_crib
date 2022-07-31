@@ -292,7 +292,7 @@ defmodule RoomSanctum.Configuration do
 
   defp inj_fake_ids(attrs) do
     q = attrs["queries"] |> Enum.map(fn {ctr, val} -> val |> Map.put("id", ctr) end)
-    Map.put(attrs, "queries", q) |> IO.inspect()
+    Map.put(attrs, "queries", q)
   end
 
   @doc """
@@ -323,6 +323,17 @@ defmodule RoomSanctum.Configuration do
   def change_vision(%Vision{} = vision, attrs \\ %{}) do
     Vision.changeset(vision, attrs)
   end
+
+  #
+  def get_landing_vision() do
+    q = from v in Vision,
+             where: v.public == true,
+             order_by: fragment("RANDOM()"),
+             limit: 1
+    q
+    |> Repo.one
+  end
+
 
   alias RoomSanctum.Configuration.Foci
 
