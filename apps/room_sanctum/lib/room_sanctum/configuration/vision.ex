@@ -7,6 +7,7 @@ defmodule RoomSanctum.Configuration.Vision do
     field :name, :string
     field :type, Ecto.Enum, values: [:alerts, :time, :pinned, :background]
     embeds_many :queries, RoomSanctum.Configuration.Vision.Schema, on_replace: :delete
+    field :public, :boolean
 
     timestamps()
   end
