@@ -1,8 +1,8 @@
-<div class="min-h-[80%] bg-accent-100 m-10 pt-12">
-    <div class="hero-content text-center">
+<div class="min-h-[80%] bg-accent-100 m-10 pt-12 flex justify-center">
+    <div class="max-w-max text-center">
         <div class="max-w-md">
             <h1 class="text-5xl font-bold text-accent">Hello there</h1>
-            <p class="py-6">Welcome to the crib. Check out a preview of what's happening below, or...</p>
+            <p class="py-6">Welcome to the crib. Check out a preview of what's happening on this instance below, or...</p>
             <%= if @current_user do %>
             <%= link "Offerings", to: Routes.source_index_path(@socket, :index), class: "btn btn-primary" %>
             <%= link "Queries", to: Routes.query_index_path(@socket, :index), class: "btn btn-primary"  %>
@@ -16,29 +16,26 @@
         </div>
     </div>
 </div>
-<div class="carousel rounded-box">
+<div class="grid grid-cols-3 grid-flow-dense gap-4">
     <%= for {k, p} <- @preview do %>
-    <div class="flex">
-        <div class="w-16">
-            <i class={"fas fa-fw fa-2xl #{icon(k |> elem(1))}"}></i>
-        </div>
-        <div class="w-7/8">
-            <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-            <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
-        </div>
-    </div>
-    <div class="carousel-item w-1/4">
-        <div class="card bg-base-100 shadow-xl m-4">
+        <div class="card bg-base-100 shadow-xl basis-1/3">
             <div class="card-body">
                 <h2 class="card-title">
                     <i class={"fas fa-fw fa-xl #{icon(k |> elem(1))}"}></i>
                     <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
                 </h2>
-                <pre>
-                    <%= condense(k, p) |> preview(k) |> Poison.encode!(pretty: true) %>
-                </pre>
+
+                    <%= case k do %>
+                    <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
+                    <%= {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
+                    <%= {_, :tidal} -> %>  <.p_tidal entries={condense(k, p) |> preview(k)}> </.p_tidal>
+                    <%= {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}> </.p_weather>
+                    <%= {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
+                    <%= {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
+                    <%= {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
+                    <% end %>
+
             </div>
         </div>
-    </div>
     <% end %>
 </div>

@@ -102,6 +102,9 @@ defmodule RoomSanctumWeb do
       import Phoenix.LiveView.Helpers
       import RoomSanctumWeb.LiveHelpers
 
+      # import custom widgets to preview data
+      import RoomSanctumWeb.LivePreview
+
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
 

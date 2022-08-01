@@ -35,7 +35,8 @@ defmodule RoomEphem.Worker do
           |> DateTime.shift_zone!(tz)
           |> DateTime.to_time()
       },
-      %{period: :phase, result: phase}
+      %{period: :phase, result: phase},
+      %{name: foci.name}
     ]
   end
 end

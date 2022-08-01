@@ -2,6 +2,25 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   alias RoomSanctum.Storage.AirNow.HourlyObsData
   import MapMerge
 
+  defp gtfs_mode(route_type) do # todo move me
+    case route_type do
+      "0" -> "LightRail"
+      "1" -> "Subway"
+      "2" -> "Rail"
+      "3" -> "Bus"
+      "4" -> "Ferry"
+      "5" -> "CableCar"
+      "6" -> "Gondola"
+      "7" -> "Funicular"
+      "11" -> "Trolleybus"
+      "12" -> "Monorail"
+    end
+  end
+
+  defp wrap(item) do
+    [item]
+  end
+
   def condense({id, type}, data) do
 #    if type == :tidal do
 #      IO.inspect({id, type, data})
@@ -15,16 +34,17 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             time: f.arrival_time,
             destination: f.trip.trip_headsign,
             direction: f.trip.direction.direction,
-            route: f.trip.route_id
+            route: f.trip.route_id,
+            mode: f.trip.route.route_type |> gtfs_mode
           }
         end)
-        |> Enum.reduce(%{}, fn %{time: time, destination: dest, direction: dir, route: route}, acc ->
+        |> Enum.reduce(%{}, fn %{time: time, destination: dest, direction: dir, route: route, mode: mode}, acc ->
           update_in(acc, [{route, dest, dir}], fn
-            nil -> %{route: route, dest: dest, dir: dir, times: [time]}
+            nil -> %{route: route, dest: dest, dir: dir, mode: mode, times: [time]}
             refs -> %{refs | times: [time | refs.times]}
           end)
         end)
-        |> Enum.map(fn {k,v} -> v end)
+        |> Enum.map(fn {k,v} -> v |> Map.put(:times, v.times |> Enum.reverse) end)
 
       :gbfs ->
         data
@@ -51,6 +71,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         end
         end)
         |> Enum.reduce(&Map.merge/2)
+        |> wrap
 
       :weather ->
         data
@@ -73,7 +94,12 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         end)
 
       :ephem ->
-        data |> Enum.map(fn f -> {f.period, f.result} end) |> Enum.into(%{})
+        data |> Enum.map(fn f ->
+        case Map.get(f, :period) do
+          nil -> {:name, f.name}
+          val -> {f.period, f.result}
+        end
+        end) |> Enum.into(%{}) |> wrap
 
       :calendar ->
         data
