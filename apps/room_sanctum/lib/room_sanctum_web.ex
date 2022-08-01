@@ -60,6 +60,15 @@ defmodule RoomSanctumWeb do
     end
   end
 
+  def live_view_ca do
+    quote do
+      use Phoenix.LiveView,
+          layout: {RoomSanctumWeb.LayoutView, "live.html"}
+      on_mount RoomSanctum.UserLiveCanAuth
+      unquote(view_helpers())
+    end
+  end
+
   def live_component do
     quote do
       use Phoenix.LiveComponent

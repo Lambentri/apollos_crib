@@ -1,5 +1,5 @@
 defmodule RoomSanctumWeb.LandingLive.Index do
-  use RoomSanctumWeb, :live_view_a
+  use RoomSanctumWeb, :live_view_ca
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Configuration.Query
