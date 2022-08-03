@@ -79,55 +79,48 @@
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
       <div class="card-body">
 
-        <div class="flex">
-          <div class="flex-auto basis-4/5">
-            <h3 class="card-title w-full">Preview</h3>
+          <div class="flex">
+            <div class="flex-auto basis-4/5">
+              <h3 class="card-title w-full">Preview</h3>
+            </div>
+            <div class="flex-1 w-3/4">
+              &nbsp;
+            </div>
+            <div class="flex-none w-20">
+              <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
+            </div>
           </div>
-          <div class="flex-1 w-3/4">
-            &nbsp;
-          </div>
-          <div class="flex-none w-20">
-            <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
-          </div>
-        </div>
         <%= case @preview_mode do %>
         <%= :basic -> %>
-        <%= for {k, p} <- @preview do %>
-        <div class="flex gap-2">
-          <i class={"fas fa-fw fa-xl #{icon(k |> elem(1))}"}></i>
-          <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-        </div>
-        <%= case k do %>
-        <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}>
-      </
-      .p_gtfs>
-      <%= {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}>
-    </
-    .p_gbfs>
-    <%= {_, :tidal} -> %> <.p_tidal entries={condense(k, p) |> preview(k)}>
-  </
-  .p_tidal>
-  <%= {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}>
-</.p_weather>
-<%= {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
-<%= {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
-<%= {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
-<% end %>
+          <%= for {k, p} <- @preview do %>
+            <div class="flex gap-2">
+              <i class={"fas fa-fw fa-xl #{icon(k |> elem(1))}"}></i>
+              <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+            </div>
+            <%= case k do %>
+              <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
+              <%= {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
+              <%= {_, :tidal} -> %>  <.p_tidal entries={condense(k, p) |> preview(k)}> </.p_tidal>
+              <%= {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}> </.p_weather>
+              <%= {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
+              <%= {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
+              <%= {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
+            <% end %>
           <% end %>
-<%= :raw -> %>
-<%= for {k, p} <- @preview do %>
-<div class="flex">
-  <div class="w-16">
-    <i class={"fas fa-fw fa-2xl #{icon(k |> elem(1))}"}></i>
-  </div>
-  <div class="w-7/8">
-    <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-    <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
-  </div>
-</div>
-<% end %>
+        <%= :raw -> %>
+          <%= for {k, p} <- @preview do %>
+          <div class="flex">
+            <div class="w-16">
+              <i class={"fas fa-fw fa-2xl #{icon(k |> elem(1))}"}></i>
+            </div>
+            <div class="w-7/8">
+              <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+              <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
+            </div>
+          </div>
+          <% end %>
         <% end %>
-</div>
-</div>
-</div>
+      </div>
+    </div>
+  </div>
 </div>

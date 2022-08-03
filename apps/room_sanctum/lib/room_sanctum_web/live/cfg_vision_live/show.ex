@@ -12,25 +12,20 @@ defmodule RoomSanctumWeb.VisionLive.Show do
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
     {:noreply,
-      socket
-      |> assign(:page_title, page_title(socket.assigns.live_action))
-      |> assign(:vision, Configuration.get_vision!(id))
-      |> assign(:vision_id, id)
-      |> assign(:preview, [])
-      |> assign(:queries, [])
-      |> assign(:preview_mode, :basic)
+     socket
+     |> assign(:page_title, page_title(socket.assigns.live_action))
+     |> assign(:vision, Configuration.get_vision!(id))
+     |> assign(:vision_id, id)
+     |> assign(:preview, [])
+     |> assign(:queries, [])
+     |> assign(:preview_mode, :basic)
     }
   end
 
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 15000)
     %{data: data, queries: queries} = RoomSanctum.Worker.Vision.get_state(socket.assigns.vision_id)
-    {
-      :noreply,
-      socket
-      |> assign(:preview, data)
-      |> assign(:queries, queries)
-    }
+    {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
   end
 
   defp do_toggle(state) do
@@ -41,11 +36,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
   end
 
   def handle_event("toggle-preview-mode", _params, socket) do
-    {
-      :noreply,
-      socket
-      |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))
-    }
+    {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
   end
 
   defp page_title(:show), do: "Vision Detail"
@@ -94,9 +85,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
 
 
   defp get_query_data_icon(item, queries) do
-    as_map = queries
-             |> Enum.map(fn x -> {x.id, x} end)
-             |> Enum.into(%{})
+    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
     case Map.get(as_map, item) do
       nil -> ""
       _val -> icon(_val.source.type)
