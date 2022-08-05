@@ -74,7 +74,10 @@ defmodule RoomSanctum.MixProject do
       {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
 
       # kube
-      {:healthchex, "~> 0.2"}
+      {:healthchex, "~> 0.2"},
+
+      # hermes
+#      {:room_hermes, in_umbrella: true}
     ]
   end
 
