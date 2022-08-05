@@ -23,7 +23,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
   defp apply_action(socket, :new, _params) do
     socket
     |> assign(:page_title, "Register Ankyra")
-    |> assign(:ankyra, %RabbitUser{})
+    |> assign(:ankyra, %RoomSanctum.Accounts.RabbitUser{})
   end
 
   defp apply_action(socket, :index, _params) do
