@@ -1,8 +1,8 @@
 defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
   use RoomSanctumWeb, :live_component
 
-  alias RoomHermes.Accounts
-  alias RoomHermes.Accounts.RabbitUser
+  alias RoomSanctum.Accounts
+  alias RoomSanctum.Accounts.RabbitUser
 
   def convert_to_map(%model{} = schema) do
     Map.take(schema, model.__schema__(:fields))
