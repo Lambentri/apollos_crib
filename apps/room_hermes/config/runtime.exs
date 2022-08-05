@@ -43,7 +43,7 @@ if config_env() == :prod do
       """
 
   host = System.get_env("PHX_HOST") || "example.com"
-  port = String.to_integer(System.get_env("PORT") || "4000")
+  port = String.to_integer(System.get_env("PORT") || "4001")
 
   config :room_sanctum,
          RoomHermesWeb.Endpoint,
