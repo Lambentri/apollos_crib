@@ -1,5 +1,14 @@
 <.itb icon="fa-plus" to={Routes.vision_index_path(@socket, :new)} what="Vision"></.itb>
-<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Visions</h1>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Visions <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+<%= if @show_info do %>
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+  <div class="card-body">
+    <h3 class="card-title italic">Vision:</h3>
+    <p>Combine queries to induce a vision.</p>
+  </div>
+</div>
+<% end %>
 
 <%= if @live_action in [:new, :edit] do %>
   <.modal return_to={Routes.vision_index_path(@socket, :index)}>

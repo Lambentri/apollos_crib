@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id))}
+    {:ok, socket |> assign(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id)) |> assign(:show_info, false)}
   end
 
   @impl true
@@ -38,6 +38,10 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     {:ok, _} = Configuration.delete_query(query)
 
     {:noreply, assign(socket, :cfg_queries, list_cfg_queries(socket.assigns.current_user.id))}
+  end
+
+  def handle_event("info", _params, socket) do
+    {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
 
   defp list_cfg_queries(uid) do

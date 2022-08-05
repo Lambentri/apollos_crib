@@ -83,6 +83,7 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/icalendar" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/tailwind" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/healthchex" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/friendlyid" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>

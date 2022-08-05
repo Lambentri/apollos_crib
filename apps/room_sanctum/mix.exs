@@ -67,6 +67,9 @@ defmodule RoomSanctum.MixProject do
       # for the foci
       {:geo_postgis, "~> 3.4"},
 
+      # for Hermes
+      {:friendlyid, "~> 0.2.0"},
+
       # UI
       {:tailwind, "~> 0.1", runtime: Mix.env() == :dev},
 

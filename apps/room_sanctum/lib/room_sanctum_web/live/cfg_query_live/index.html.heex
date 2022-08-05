@@ -1,5 +1,14 @@
 <.itb icon="fa-plus" to={Routes.query_index_path(@socket, :new)} what="Query"></.itb>
-<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Queries</h1>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Queries <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+<%= if @show_info do %>
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+  <div class="card-body">
+    <h3 class="card-title italic">Query:</h3>
+    <p>For a given offering, make a query.</p>
+  </div>
+</div>
+<% end %>
 
 <%= if @live_action in [:new, :edit] do %>
   <.modal return_to={Routes.query_index_path(@socket, :index)}>

@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :cfg_sources, list_cfg_sources(socket.assigns.current_user.id))}
+    {:ok, socket |> assign(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id)) |> assign(:show_info, false)}
   end
 
   @impl true
@@ -55,6 +55,10 @@ defmodule RoomSanctumWeb.SourceLive.Index do
     }
   end
 
+  def handle_event("info", _params, socket) do
+    {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
+  end
+
   defp list_cfg_sources(uid) do
     Configuration.list_cfg_sources({:user, uid})
   end
@@ -86,4 +90,5 @@ defmodule RoomSanctumWeb.SourceLive.Index do
     <i class={"fas #{icon(assigns.type)}"}></i>
     """
   end
+
 end

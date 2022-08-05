@@ -12,6 +12,7 @@ defmodule RoomHermes.Application do
       RoomHermes.Telemetry,
       # Start the Endpoint (http/https)
       RoomHermesWeb.Endpoint,
+      RoomHermes.Repo,
       {Phoenix.PubSub, name: RoomHermes.PubSub}
 
       # Start a worker by calling: RoomHermes.Worker.start_link(arg)

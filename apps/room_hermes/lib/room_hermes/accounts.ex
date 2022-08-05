@@ -21,6 +21,10 @@ defmodule RoomHermes.Accounts do
     Repo.all(RabbitUser)
   end
 
+  def list_users_rabbit({:user, uid}) do
+    Repo.all(from r in RabbitUser, where: r.user_id == ^uid)
+  end
+
   @doc """
   Gets a single rabbit_user.
 
@@ -100,5 +104,13 @@ defmodule RoomHermes.Accounts do
   """
   def change_rabbit_user(%RabbitUser{} = rabbit_user, attrs \\ %{}) do
     RabbitUser.changeset(rabbit_user, attrs)
+  end
+
+  def find_rabbit_user(username) do
+    from(r in RabbitUser, where: r.username == ^username) |> Repo.one
+  end
+
+  def find_rabbit_user(username, password) do
+    from(r in RabbitUser, where: r.username == ^username and r.password == ^password) |> Repo.one
   end
 end

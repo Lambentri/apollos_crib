@@ -119,5 +119,6 @@
     <orderEntry type="library" name="plug_cowboy" level="project" />
     <orderEntry type="library" name="tailwind" level="project" />
     <orderEntry type="library" name="healthchex" level="project" />
+    <orderEntry type="library" name="friendlyid" level="project" />
   </component>
 </module>

@@ -53,6 +53,12 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/focis/:id", FociLive.Show, :show
     live "/cfg/focis/:id/show/edit", FociLive.Show, :edit
 
+    live "/cfg/ankyra", AnkyraLive.Index, :index
+    live "/cfg/ankyra/new", AnkyraLive.Index, :new
+    live "/cfg/ankyra/:id/edit", AnkyraLive.Index, :edit
+    live "/cfg/ankyra/:id", AnkyraLive.Show, :show
+    live "/cfg/ankyra/:id/show/edit", AnkyraLive.Show, :edit
+
     #    live "/storage/gtfs/agencies", AgencyLive.Index, :index
 #    live "/storage/gtfs/agencies/new", AgencyLive.Index, :new
 #    live "/storage/gtfs/agencies/:id/edit", AgencyLive.Index, :edit

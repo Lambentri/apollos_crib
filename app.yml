@@ -22,7 +22,7 @@ spec:
     type: RollingUpdate
     rollingUpdate:
       maxSurge: 1
-      maxUnavailable: 0
+      maxUnavailable: 1
   template:
     metadata:
       labels:
@@ -31,22 +31,30 @@ spec:
     spec:
       containers:
         - image: r.g.gmp.io/lambentri/apollos-crib:latest
+          resources:
+            requests:
+              memory: "1536Mi"
+              cpu: "250m"
+            limits:
+              memory: "3000Mi"
+              cpu: "500m"
+
           imagePullPolicy: Always
-          livenessProbe:
-            httpGet:
-              path: /health/live
-              port: 4040
-
-            initialDelaySeconds: 15
-            periodSeconds: 3
-
-          readinessProbe:
-            httpGet:
-              path: /health/ready
-              port: 4040
-
-            initialDelaySeconds: 3
-            periodSeconds: 3
+#          livenessProbe:
+#            httpGet:
+#              path: /health/live
+#              port: 4040
+#
+#            initialDelaySeconds: 90
+#            periodSeconds: 3
+#
+#          readinessProbe:
+#            httpGet:
+#              path: /health/ready
+#              port: 4040
+#
+#            initialDelaySeconds: 90
+#            periodSeconds: 3
           env:
             #            - name: RAVEN_DSN
             #              valueFrom:
@@ -107,7 +115,7 @@ spec:
           name: apollos-crib
           ports:
             - containerPort: 4000
-            - containerPort: 4001
+            - containerPort: 4041
 
       imagePullSecrets:
         - name: gitlabgmp

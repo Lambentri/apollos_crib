@@ -1,0 +1,56 @@
+<.itb icon="fa-plus" to={Routes.ankyra_index_path(@socket, :new)} what="Ankyra"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Ankyra <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+<%= if @show_info do %>
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+  <div class="card-body">
+    <h3 class="card-title italic">Ankyra:</h3>
+    <p>A trio of phrases used to greet the pythi&aelig;.</p>
+  </div>
+</div>
+<% end %>
+
+<%= if @live_action in [:new, :edit] do %>
+  <.modal return_to={Routes.ankyra_index_path(@socket, :index)}>
+    <.live_component
+      module={RoomSanctumWeb.AnkyraLive.FormComponent}
+      id={@ankyra.id || :new}
+      title={@page_title}
+      action={@live_action}
+      rabbit_user={@ankyra}
+      return_to={Routes.ankyra_index_path(@socket, :index)}
+      current_user={@current_user}
+    />
+  </.modal>
+<% end %>
+
+<table class="table table-compact w-full mx-6">
+  <thead>
+    <tr>
+      <th>Name</th>
+
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="ankyras">
+    <%= for ankyra <- @ankyras do %>
+      <tr id={"ankyra-#{ankyra.id}"}>
+        <td><%= ankyra.topic %></td>
+
+        <td>
+          <span>
+            <.ib icon="fa-eye" to={Routes.ankyra_show_path(@socket, :show, ankyra)} function={:live_redirect}></.ib>
+          </span>
+          <span>
+            <.ib icon="fa-pencil" to={Routes.ankyra_index_path(@socket, :edit, ankyra)}></.ib>
+          </span>
+          <span>
+            <%= link to: "#", phx_click: "delete", phx_value_id: ankyra.id, data: [confirm: "Are you sure?"], class: "btn btn-square btn-xs" do %>
+              <i class="fa-solid fa-trash"></i>
+             <% end %>
+          </span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

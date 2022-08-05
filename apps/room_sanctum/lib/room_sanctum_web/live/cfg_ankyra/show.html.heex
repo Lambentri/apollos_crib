@@ -1,0 +1,43 @@
+<.itb icon="fa-chevron-left" to={Routes.ankyra_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.ankyra_show_path(@socket, :edit, @ankyra)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Ankyra Detail</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.ankyra_show_path(@socket, :show, @ankyra)}>
+    <.live_component
+      module={RoomSanctumWeb.AnkyraLive.FormComponent}
+      id={@ankyra.id}
+      title={@page_title}
+      action={@live_action}
+      rabbit_user={@ankyra}
+      return_to={Routes.ankyra_show_path(@socket, :show, @ankyra)}
+      current_user={@current_user}
+    />
+  </.modal>
+<% end %>
+<div class="mx-4 py-2">
+  <div class="flex">
+    <h2 class="text-2xl font-bold text-accent-300"><%= @ankyra.topic %>
+    </h2>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-2/4 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">MQTT Credentials</h3>
+        <ul class="menu p-3 bg-base-200 rounded-xl">
+          <li><a>Username: <pre><%= @ankyra.username %></pre></a></li>
+          <li><a>Password: <pre><%= @ankyra.password %></pre></a></li>
+          <li><a>Topic: <pre><%= @ankyra.topic %></pre> </a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="card card-compact w-2/4 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Mosquitto Example Commands</h3>
+        <pre class="whitespace-pre-line">mosquitto_sub -h $HOSTNAME -u <%= @ankyra.username %> -P <%= @ankyra.password %> -t <%= @ankyra.topic %></pre>
+        <pre class="whitespace-pre-line">mosquitto_pub -h $HOSTNAME -u <%= @ankyra.username %> -P <%= @ankyra.password %> -t <%= @ankyra.topic %> -m "$message"</pre>
+      </div>
+    </div>
+  </div>
+</div>

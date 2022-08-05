@@ -1,0 +1,61 @@
+<div>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+          integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+          crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+            integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+            crossorigin=""></script>
+    <script type="text/javascript" src={Routes.static_path(@socket, "/assets/leaflet-centermarker.js")}></script>
+
+    <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
+
+    <.form
+    let={f}
+    for={@changeset}
+    id="ankyra-form"
+    phx-target={@myself}
+    phx-change="validate"
+    phx-submit="save">
+
+    <div class="flex">
+        <div class="w-full">
+            <%= if @rabbit_user.id == nil do %>
+            <div class="form-control">
+                <%= label f, :topic, class: "label" %>
+                <div class="input-group">
+                    <btn class="btn btn-accent" phx-click="generate-new-topic" phx-target={@myself}>
+                        <i class="fa-solid fa-arrows-rotate"></i>
+                    </btn>
+                    <%= text_input f, :topic, class: "input w-full max-w-md", disabled: :disabled %>
+                </div>
+                <label class="label">
+                     <span class="label-text-alt text-error">
+                        <%= error_tag f, :topic %>
+                     </span>
+                </label>
+            </div>
+            <% end %>
+            <div class="form-control">
+                <%= label f, :password, class: "label" %>
+                <div class="input-group">
+                <btn class="btn btn-accent" phx-click="generate-new-password" phx-target={@myself}>
+                    <i class="fa-solid fa-arrows-rotate"></i>
+                </btn>
+                <%= text_input f, :password, class: "input w-full max-w-md", disabled: :disabled %>
+                </div>
+                <label class="label">
+                     <span class="label-text-alt text-error">
+                        <%= error_tag f, :password %>
+                     </span>
+                </label>
+            </div>
+        </div>
+    </div>
+
+
+    <div>
+        <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary" %>
+    </div>
+</.form>
+
+</div>

@@ -4,7 +4,8 @@ defmodule RoomHermes.Accounts.RabbitUser do
 
   schema "users_rabbit" do
     field :password, :string
-    field :username, :string
+    field :username, :binary_id
+    field :topic, :string
     belongs_to :user, RoomSanctum.Accounts.User
 
     timestamps()
@@ -13,7 +14,7 @@ defmodule RoomHermes.Accounts.RabbitUser do
   @doc false
   def changeset(rabbit_user, attrs) do
     rabbit_user
-    |> cast(attrs, [:username, :password])
-    |> validate_required([:username, :password])
+    |> cast(attrs, [:username, :password, :topic, :user_id])
+    |> validate_required([:username, :password, :topic])
   end
 end

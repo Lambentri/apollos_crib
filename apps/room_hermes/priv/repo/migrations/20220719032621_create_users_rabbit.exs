@@ -3,8 +3,9 @@ defmodule RoomHermes.Repo.Migrations.CreateUsersRabbit do
 
   def change do
     create table(:users_rabbit) do
-      add :username, :string
+      add :username, :binary_id
       add :password, :string
+      add :topic, :string
       add :user_id, references(:users, on_delete: :nilify_all), null: false
 
       timestamps()

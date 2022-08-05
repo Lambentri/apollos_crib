@@ -6,19 +6,25 @@ defmodule RoomHermesWeb.Router do
     plug :fetch_session
     plug :fetch_live_flash
     plug :put_root_layout, {RoomHermes.LayoutView, :root}
-    plug :protect_from_forgery
     plug :put_secure_browser_headers
   end
 
+  pipeline :csrf do
+    plug :protect_from_forgery
+  end
   pipeline :api do
     plug :accepts, ["json"]
   end
 
-  scope "/", RoomHermes do
+  scope "/", RoomHermesWeb do
     pipe_through :browser
 
     #    get "/", PageController, :index
-    resources "/users_rabbit", RabbitUserController, except: [:new, :edit]
+    # resources "/users_rabbit", RabbitUserController, except: [:new, :edit]
+    resources "/auth/user", UserController, only: [:create]
+    resources "/auth/vhost", VHostController, only: [:create]
+    resources "/auth/resource", ResourceController, only: [:create]
+    resources "/auth/topic", TopicController, only: [:create]
   end
 
   # Other scopes may use custom stacks.

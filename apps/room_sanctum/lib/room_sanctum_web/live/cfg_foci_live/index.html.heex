@@ -1,5 +1,13 @@
 <.itb icon="fa-plus" to={Routes.foci_index_path(@socket, :new)} what="Foci"></.itb>
-<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Foci</h1>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Foci <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+<%= if @show_info do %>
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+  <div class="card-body">
+    <h3 class="card-title italic">Foci:</h3>
+    <p>A place of focus, used to bind a query to a point in space. It beats typing coordinates into a textbox.</p>
+  </div>
+</div>
+<% end %>
 
 <%= if @live_action in [:new, :edit] do %>
   <.modal return_to={Routes.foci_index_path(@socket, :index)}>

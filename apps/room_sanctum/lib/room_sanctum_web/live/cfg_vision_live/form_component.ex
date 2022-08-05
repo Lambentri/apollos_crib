@@ -58,6 +58,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   def handle_event("add-entry", data, socket) do
+    # TODO: Make this behave the ankyra key generators do
     existing_as_simple =
       socket.assigns.vision.queries
       |> Enum.map(fn x -> x |> Poison.encode!() |> Poison.decode!() end)

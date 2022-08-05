@@ -12,6 +12,21 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_MULTIPLE_EXTENSIONS=postgis,hstore,postgis_topology
-
+  rabbitmq:
+    restart: always
+    image: rabbitmq:management-alpine
+    ports:
+      # The standard AMQP protocol port
+      - '5672:5672'
+      # HTTP management UI
+      - '15672:15672'
+      # MQTT
+      - '1883:1883'
+    environment:
+      - RABBITMQ_DEFAULT_USER=hermes
+      - RABBITMQ_DEFAULT_PASS=hermes
+    volumes:
+      - ./rabbit/rabbit.conf:/etc/rabbitmq/rabbitmq.conf
+      - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
 volumes:
   pgdata: {}
