@@ -120,5 +120,7 @@
     <orderEntry type="library" name="tailwind" level="project" />
     <orderEntry type="library" name="healthchex" level="project" />
     <orderEntry type="library" name="friendlyid" level="project" />
+    <orderEntry type="module" module-name="room_hermes" />
+    <orderEntry type="module" module-name="room_hermes" />
   </component>
 </module>

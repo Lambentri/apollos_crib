@@ -1,8 +1,8 @@
 defmodule RoomSanctumWeb.AnkyraLive.Index do
   use RoomSanctumWeb, :live_view_a
 
-  alias RoomHermes.Accounts
-  alias RoomHermes.Accounts.RabbitUser
+  alias RoomSanctum.Accounts
+  alias RoomSanctum.Accounts.RabbitUser
 
   @impl true
   def mount(_params, _session, socket) do
