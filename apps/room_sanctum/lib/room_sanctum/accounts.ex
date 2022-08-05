@@ -353,7 +353,7 @@ defmodule RoomSanctum.Accounts do
 
 
   ### Copied from hermes because of fuckery
-  alias RoomHermes.Accounts.RabbitUser
+  alias RoomSanctum.Accounts.RabbitUser
 
   @doc """
   Returns the list of users_rabbit.

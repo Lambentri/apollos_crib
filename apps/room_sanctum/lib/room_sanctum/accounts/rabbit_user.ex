@@ -1,4 +1,4 @@
-defmodule RoomHermes.Accounts.RabbitUser do
+defmodule RoomSanctum.Accounts.RabbitUser do
   use Ecto.Schema
   import Ecto.Changeset
 

@@ -40,6 +40,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
     {:noreply, assign(socket, :ankyras, list_ankyras(socket.assigns.current_user.id))}
   end
 
+  @impl true
   def handle_event("info", _params, socket) do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
