@@ -50,7 +50,6 @@ defmodule RoomSanctum.Storage.GBFS.V1.SysInfo do
       :url,
       :operator,
       :purchase_url,
-      :license_url,
       :system_id
     ])
   end

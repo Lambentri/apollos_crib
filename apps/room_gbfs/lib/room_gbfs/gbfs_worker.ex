@@ -87,7 +87,7 @@ defmodule RoomGbfs.Worker do
                 Repo.insert(
                   RoomSanctum.Storage.change_sys_info(
                     %RoomSanctum.Storage.GBFS.V1.SysInfo{},
-                    json.data
+                    json.data |> Map.put(:source_id, id |> intify)
                   ),
                   on_conflict: {:replace_all_except, [:id]},
                   conflict_target: [:source_id, :system_id]
