@@ -18,7 +18,7 @@ defmodule RoomWeather.Worker do
 
   @decorate cacheable(cache: RoomZeus.Cache, opts: [ttl: @ttl])
   def query_weather(name, query) do
-    "weather#{name}" |> via_tuple() |> GenServer.call({:query_weather, query}) |> IO.inspect()
+    "weather#{name}" |> via_tuple() |> GenServer.call({:query_weather, query})
   end
 
   def init(opts) do
@@ -40,7 +40,7 @@ defmodule RoomWeather.Worker do
            }
          ) do
       {:ok, result} ->
-        decoded = result.body |> Poison.decode!(keys: :atoms)
+        decoded = result.body |> Poison.decode!(keys: :atoms) |> Map.put(:units, state.src.config.units)
         {:reply, [decoded], state}
 
       {:error, reason} ->

@@ -553,8 +553,26 @@ defmodule RoomSanctum.Storage do
       %Ecto.Changeset{data: %StopTime{}}
 
   """
+  defp convert_gtfs_time(time) do
+    [hour, min, second] = time |> String.split(":")
+    hour = hour |> String.to_integer()
+
+    hour = cond do
+      hour >= 24 -> hour - 24
+      true -> hour
+    end
+    hourzf = hour |> Integer.to_string |> String.pad_leading(2, "0")
+    "#{hourzf}:#{min}:#{second}"
+  end
+
+  defp convert_gtfs(attrs) do
+    attrs
+    |> Map.put("arrival_time", attrs["arrival_time"] |> convert_gtfs_time)
+    |> Map.put("departure_time", attrs["departure_time"] |> convert_gtfs_time)
+  end
+
   def change_stop_time(%StopTime{} = stop_time, attrs \\ %{}) do
-    StopTime.changeset(stop_time, attrs)
+    StopTime.changeset(stop_time, attrs |> convert_gtfs)
   end
 
   alias RoomSanctum.Storage.GTFS.Stop
@@ -1836,8 +1854,10 @@ defmodule RoomSanctum.Storage do
     foci = Configuration.get_foci!(query.foci_id)
     {lat, lon} = foci.place.coordinates
     tz = WhereTZ.lookup(lat, lon)
-    now = DateTime.new!(Date.utc_today, Time.new!(0,0,0), tz) # todo make this configurable from somewhere
+    # todo make this configurable from somewhere
+    now = DateTime.new!(Date.utc_today(), Time.new!(0, 0, 0), tz)
     max = now |> DateTime.add(query.days * 24 * 60 * 60, :second)
+
     q =
       from ic in ICalendar,
         where: ic.source_id == ^source_id and ic.date_start >= ^now and ic.date_start <= ^max,

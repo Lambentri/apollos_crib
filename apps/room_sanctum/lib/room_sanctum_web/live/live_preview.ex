@@ -38,6 +38,10 @@ defmodule RoomSanctumWeb.LivePreview do
     end
   end
 
+  defp to_l(direction) do
+    direction
+  end
+
   def p_gtfs(assigns) do
     ~H"""
       <%= for e <- @entries.data do %>
@@ -101,6 +105,7 @@ defmodule RoomSanctumWeb.LivePreview do
       <p><i class="fa-solid fa-fw fa-temperature-half"></i> <%= e.temp %>&deg;</p>
       <p><i class="fa-solid fa-fw fa-droplet "></i> <%= e.hum %> &percnt; </p>
       <p><i class="fa-solid fa-fw fa-gem "></i> <%= e.pressure %> mPa?</p>
+      <p><i class="fa-solid fa-fw fa-wind "></i> <%= e.wind.speed %> <%= e.wind.deg |> to_l %>&deg;</p>
       </div>
     </div>
     <% end %>

@@ -82,7 +82,10 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             temp: f.main.temp,
             feel: f.main.feels_like,
             hum: f.main.humidity,
-            pressure: f.main.pressure
+            pressure: f.main.pressure,
+            wind: f.wind,
+            visibility: f.visibility,
+            units: f.units
           }
         end)
 
