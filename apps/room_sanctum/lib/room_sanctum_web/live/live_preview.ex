@@ -39,7 +39,26 @@ defmodule RoomSanctumWeb.LivePreview do
   end
 
   defp to_l(direction) do
-    direction
+    idx = direction / 22.5 |> Kernel.round
+    case idx do
+      0 -> "N"
+      1 -> "NNE"
+      2 -> "NE"
+      3 -> "ENE"
+      4 -> "E"
+      5 -> "ESE"
+      6 -> "SE"
+      7 -> "SSE"
+      8 -> "S"
+      9 -> "SSW"
+      10 -> "SW"
+      11 -> "WSW"
+      12 -> "W"
+      13 -> "WNW"
+      14 -> "NW"
+      15 -> "NNW"
+      16 -> "N"
+    end
   end
 
   def p_gtfs(assigns) do
@@ -105,7 +124,7 @@ defmodule RoomSanctumWeb.LivePreview do
       <p><i class="fa-solid fa-fw fa-temperature-half"></i> <%= e.temp %>&deg;</p>
       <p><i class="fa-solid fa-fw fa-droplet "></i> <%= e.hum %> &percnt; </p>
       <p><i class="fa-solid fa-fw fa-gem "></i> <%= e.pressure %> mPa?</p>
-      <p><i class="fa-solid fa-fw fa-wind "></i> <%= e.wind.speed %> <%= e.wind.deg |> to_l %>&deg;</p>
+      <p><i class="fa-solid fa-fw fa-wind "></i> <%= e.wind.speed %> <%= e.wind.deg |> to_l %></p>
       </div>
     </div>
     <% end %>

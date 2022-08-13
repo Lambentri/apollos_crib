@@ -67,4 +67,19 @@ defmodule RoomSanctum.ConfigurationFixtures do
 
     foci
   end
+
+  @doc """
+  Generate a pythiae.
+  """
+  def pythiae_fixture(attrs \\ %{}) do
+    {:ok, pythiae} =
+      attrs
+      |> Enum.into(%{
+        ankyra: [],
+        visions: []
+      })
+      |> RoomSanctum.Configuration.create_pythiae()
+
+    pythiae
+  end
 end

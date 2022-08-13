@@ -1,0 +1,85 @@
+<.itb icon="fa-chevron-left" to={Routes.pythiae_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.pythiae_show_path(@socket, :edit, @pythiae)} what="Edit"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Show Pythi&aelig;</h1>
+
+<%= if @live_action in [:edit] do %>
+  <.modal return_to={Routes.pythiae_show_path(@socket, :show, @pythiae)}>
+    <.live_component
+      module={RoomSanctumWeb.PythiaeLive.FormComponent}
+      id={@pythiae.id}
+      title={@page_title}
+      action={@live_action}
+      pythiae={@pythiae}
+      return_to={Routes.pythiae_show_path(@socket, :show, @pythiae)}
+      current_user={@current_user}
+    />
+  </.modal>
+<% end %>
+
+<div class="mx-4 py-2">
+  <div class="flex">
+    <h2 class="text-2xl font-bold text-accent-300">
+      <%= @pythiae.name %>
+    </h2>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-1/5 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Visions</h3>
+        <p>
+            <%= for v <- @pythiae.visions do %>
+              <a href={Routes.vision_show_path(@socket, :show, v)} class="text-sm hover:underline btn btn-secondary">
+                <%= get_by_id(v, @visions).name %>
+              </a>
+            <% end%>
+        </p>
+      </div>
+    </div>
+    <div class="card card-compact w-2/5 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Ankyra</h3>
+        <p>
+            <%= for a <- @pythiae.ankyra do %>
+              <a href={Routes.ankyra_show_path(@socket, :show, a)} class="text-sm hover:underline btn btn-secondary">
+                <%= get_by_id(a, @ankyra).topic %>
+              </a>
+            <% end%>
+        </p>
+      </div>
+    </div>
+    <div class="card card-compact w-1/5 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Current Foci</h3>
+        <p>
+          <a href={Routes.foci_show_path(@socket, :show, @pythiae.curr_foci)} class="text-sm hover:underline btn btn-secondary">
+          <%= get_by_id(@pythiae.curr_foci, @foci).name %>
+          </a>
+        </p>
+      </div>
+    </div>
+    <div class="card card-compact w-1/5 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Current Vision</h3>
+        <p>
+          <a href={Routes.vision_show_path(@socket, :show, @pythiae.curr_vision)} class="text-sm hover:underline btn btn-secondary">
+            <%= get_by_id(@pythiae.curr_vision, @visions).name %>
+          </a>
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="flex">
+    <div class="card card-compact w-1/5 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Control</h3>
+        <p><button class="btn btn-primary">Publish</button></p>
+      </div>
+    </div>
+    <div class="card card-compact w-4/5 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Preview</h3>
+        <p></p>
+      </div>
+    </div>
+  </div>
+</div>
