@@ -555,7 +555,7 @@ defmodule RoomSanctum.Storage do
   """
   defp convert_gtfs_time(time) do
     [hour, min, second] = time |> String.split(":")
-    hour = hour |> String.to_integer()
+    hour = hour |> String.strip |> String.to_integer()
 
     hour = cond do
       hour >= 24 -> hour - 24
