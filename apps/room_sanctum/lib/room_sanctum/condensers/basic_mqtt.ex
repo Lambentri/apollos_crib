@@ -14,6 +14,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       "7" -> "Funicular"
       "11" -> "Trolleybus"
       "12" -> "Monorail"
+      _ -> "Unknown"
     end
   end
 
