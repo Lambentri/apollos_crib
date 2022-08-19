@@ -134,7 +134,13 @@ if config_env() == :prod do
            port: hport
          ],
          secret_key_base: secret_key_base
-
+  config :amqp,
+         connections: [
+           default: [url: System.get_env("RABBIT_URL")],
+         ],
+         channels: [
+           default: [connection: :default]
+         ]
   # ## Using releases
   #
   # If you are doing OTP releases, you need to instruct Phoenix

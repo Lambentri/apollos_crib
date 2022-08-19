@@ -24,7 +24,7 @@ defmodule RoomSanctum.MixProject do
   def application do
     [
       mod: {RoomSanctum.Application, []},
-      extra_applications: [:logger, :runtime_tools]
+      extra_applications: [:logger, :runtime_tools, :amqp],
     ]
   end
 
@@ -78,6 +78,7 @@ defmodule RoomSanctum.MixProject do
 
       # hermes
 #      {:room_hermes, in_umbrella: true}
+      {:amqp, "~> 3.1"}
     ]
   end
 

@@ -122,5 +122,7 @@
     <orderEntry type="library" name="friendlyid" level="project" />
     <orderEntry type="module" module-name="room_hermes" />
     <orderEntry type="module" module-name="room_hermes" />
+    <orderEntry type="library" name="amqp" level="project" />
+    <orderEntry type="library" name="amqp_client" level="project" />
   </component>
 </module>

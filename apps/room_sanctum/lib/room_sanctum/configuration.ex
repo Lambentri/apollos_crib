@@ -434,4 +434,104 @@ defmodule RoomSanctum.Configuration do
   def change_foci(%Foci{} = foci, attrs \\ %{}) do
     Foci.changeset(foci, attrs)
   end
+
+  alias RoomSanctum.Configuration.Pythiae
+
+  @doc """
+  Returns the list of cfg_pythiae.
+
+  ## Examples
+
+      iex> list_cfg_pythiae()
+      [%Pythiae{}, ...]
+
+  """
+  def list_cfg_pythiae do
+    Repo.all(Pythiae)
+  end
+
+  def list_cfg_pythiae({:user, uid}) do
+    Repo.all(from s in Pythiae, where: s.user_id == ^uid)
+  end
+
+  @doc """
+  Gets a single pythiae.
+
+  Raises `Ecto.NoResultsError` if the Pythiae does not exist.
+
+  ## Examples
+
+      iex> get_pythiae!(123)
+      %Pythiae{}
+
+      iex> get_pythiae!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_pythiae!(id), do: Repo.get!(Pythiae, id)
+
+  @doc """
+  Creates a pythiae.
+
+  ## Examples
+
+      iex> create_pythiae(%{field: value})
+      {:ok, %Pythiae{}}
+
+      iex> create_pythiae(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_pythiae(attrs \\ %{}) do
+    %Pythiae{}
+    |> Pythiae.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a pythiae.
+
+  ## Examples
+
+      iex> update_pythiae(pythiae, %{field: new_value})
+      {:ok, %Pythiae{}}
+
+      iex> update_pythiae(pythiae, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_pythiae(%Pythiae{} = pythiae, attrs) do
+    pythiae
+    |> Pythiae.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a pythiae.
+
+  ## Examples
+
+      iex> delete_pythiae(pythiae)
+      {:ok, %Pythiae{}}
+
+      iex> delete_pythiae(pythiae)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_pythiae(%Pythiae{} = pythiae) do
+    Repo.delete(pythiae)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking pythiae changes.
+
+  ## Examples
+
+      iex> change_pythiae(pythiae)
+      %Ecto.Changeset{data: %Pythiae{}}
+
+  """
+  def change_pythiae(%Pythiae{} = pythiae, attrs \\ %{}) do
+    Pythiae.changeset(pythiae, attrs)
+  end
 end

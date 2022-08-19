@@ -234,4 +234,60 @@ defmodule RoomSanctum.ConfigurationTest do
       assert %Ecto.Changeset{} = Configuration.change_foci(foci)
     end
   end
+
+  describe "cfg_pythiae" do
+    alias RoomSanctum.Configuration.Pythiae
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{ankyra: nil, visions: nil}
+
+    test "list_cfg_pythiae/0 returns all cfg_pythiae" do
+      pythiae = pythiae_fixture()
+      assert Configuration.list_cfg_pythiae() == [pythiae]
+    end
+
+    test "get_pythiae!/1 returns the pythiae with given id" do
+      pythiae = pythiae_fixture()
+      assert Configuration.get_pythiae!(pythiae.id) == pythiae
+    end
+
+    test "create_pythiae/1 with valid data creates a pythiae" do
+      valid_attrs = %{ankyra: [], visions: []}
+
+      assert {:ok, %Pythiae{} = pythiae} = Configuration.create_pythiae(valid_attrs)
+      assert pythiae.ankyra == []
+      assert pythiae.visions == []
+    end
+
+    test "create_pythiae/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_pythiae(@invalid_attrs)
+    end
+
+    test "update_pythiae/2 with valid data updates the pythiae" do
+      pythiae = pythiae_fixture()
+      update_attrs = %{ankyra: [], visions: []}
+
+      assert {:ok, %Pythiae{} = pythiae} = Configuration.update_pythiae(pythiae, update_attrs)
+      assert pythiae.ankyra == []
+      assert pythiae.visions == []
+    end
+
+    test "update_pythiae/2 with invalid data returns error changeset" do
+      pythiae = pythiae_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_pythiae(pythiae, @invalid_attrs)
+      assert pythiae == Configuration.get_pythiae!(pythiae.id)
+    end
+
+    test "delete_pythiae/1 deletes the pythiae" do
+      pythiae = pythiae_fixture()
+      assert {:ok, %Pythiae{}} = Configuration.delete_pythiae(pythiae)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_pythiae!(pythiae.id) end
+    end
+
+    test "change_pythiae/1 returns a pythiae changeset" do
+      pythiae = pythiae_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_pythiae(pythiae)
+    end
+  end
 end
