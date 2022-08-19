@@ -130,6 +130,14 @@ config :room_sanctum, RoomSanctumWeb.Endpoint,
     ]
   ]
 
+config :amqp,
+       connections: [
+         default: [url: "amqp://hermes:hermes@localhost:5672"],
+       ],
+       channels: [
+         default: [connection: :default]
+       ]
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n", level: :info
 

@@ -33,7 +33,7 @@ defmodule RoomSanctumWeb.LivePreview do
       :waxing_gibbous -> "🌘"
       :full_moon -> "🌑"
       :waning_gibbous -> "🌒"
-      :last_quarter -> "🌓"
+      :third_quarter -> "🌓"
       :waning_crescent -> "🌔"
     end
   end

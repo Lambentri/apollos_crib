@@ -84,6 +84,12 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/tailwind" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/healthchex" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/friendlyid" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/amqp_client" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/recon" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/rabbit_common" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/jsx" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/amqp" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/credentials_obfuscation" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
   </component>
