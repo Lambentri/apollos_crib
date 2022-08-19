@@ -101,7 +101,7 @@ if config_env() == :prod do
 
   host = System.get_env("PHX_HOST") || "example.com"
   sport = String.to_integer(System.get_env("SPORT") || "4000")
-  hport = String.to_integer(System.get_env("HPORT") || "4000")
+  hport = String.to_integer(System.get_env("HPORT") || "4001")
 
   config :room_sanctum,
          RoomSanctumWeb.Endpoint,
@@ -123,7 +123,7 @@ if config_env() == :prod do
          RoomHermesWeb.Endpoint,
          url: [
            host: host,
-           port: 443
+           port: 444
          ],
          http: [
            # Enable IPv6 and bind on all interfaces.
