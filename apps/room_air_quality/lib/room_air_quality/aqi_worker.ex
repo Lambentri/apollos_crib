@@ -9,7 +9,7 @@ defmodule RoomAirQuality.Worker do
   alias RoomSanctum.Repo
 
   @registry :zeus
-  @monitoring_site_url "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/Monitoring_Site_Locations_V2.dat"
+  # @monitoring_site_url "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/Monitoring_Site_Locations_V2.dat"
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("aqi" <> opts[:name]))
@@ -46,37 +46,8 @@ defmodule RoomAirQuality.Worker do
     {:reply, :ok, state}
   end
 
-  def handle_cast(:refresh_db_cfg, state) do
-    IO.puts("rerere")
-    {:noreply, state}
-  end
-
   defp bcast(id, file, complete, total) do
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "aqi", {:aqi, id, file, complete, total})
-  end
-
-  defp bcast(id, file, message) do
-    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "aqi", {:aqi, id, file, message})
-  end
-
-  defp intify(val) when is_binary(val) do
-    val
-    |> String.to_integer()
-  end
-
-  defp intify(val) do
-    val
-  end
-
-  defp inj_iddt(map, id, dt) do
-    map
-    |> Map.put(
-      :source_id,
-      id
-      |> intify
-    )
-    |> Map.put(:inserted_at, dt)
-    |> Map.put(:updated_at, dt)
   end
 
   defp write_data(result, type, id) do
@@ -85,7 +56,6 @@ defmodule RoomAirQuality.Worker do
 
     case type do
       :hourly ->
-        as_csv =
           result.body
           |> String.split("\r\n")
           |> Enum.filter(fn x -> x != "" end)
@@ -123,7 +93,6 @@ defmodule RoomAirQuality.Worker do
           |> Enum.to_list()
 
       :sites ->
-        as_csv =
           result.body
           |> String.split("\r\n")
           |> List.delete_at(0)
@@ -158,7 +127,7 @@ defmodule RoomAirQuality.Worker do
           |> Enum.to_list()
           |> Enum.map(fn {:ok, x} -> x end)
           |> Enum.group_by(fn x -> x.aqsid end)
-          |> Enum.map(fn {k, v} ->
+          |> Enum.map(fn {_k, v} ->
             p = v |> Enum.map(fn q -> q.parameter end)
             f = v |> List.first()
             f |> Map.put(:parameters, p)
@@ -189,7 +158,6 @@ defmodule RoomAirQuality.Worker do
           end)
 
       :hourly_obs ->
-        as_csv =
           result.body
           |> String.split("\r\n")
           |> List.delete_at(0)
@@ -274,15 +242,15 @@ defmodule RoomAirQuality.Worker do
     end
   end
 
-  defp build_todays_url(ts \\ DateTime.utc_now()) do
-    sh =
-      ts
-      |> DateTime.add(-1 * 60 * 60, :second)
-
-    file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
-
-    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/HourlyData_#{file_str}.dat"
-  end
+#  defp build_todays_url(ts \\ DateTime.utc_now()) do
+#    sh =
+#      ts
+#      |> DateTime.add(-1 * 60 * 60, :second)
+#
+#    file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
+#
+#    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/HourlyData_#{file_str}.dat"
+#  end
 
   defp build_obs_url(ts \\ DateTime.utc_now()) do
     sh = ts |> DateTime.add(-2 * 60 * 60, :second)
@@ -292,9 +260,13 @@ defmodule RoomAirQuality.Worker do
     "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
   end
 
+  def handle_cast(:refresh_db_cfg, state) do
+    IO.puts("rerere")
+    {:noreply, state}
+  end
+
   def handle_cast(:update_static, state) do
     Logger.info("AQI::#{state.id} updating data")
-    cfg = Configuration.get_source!(state.id)
 
     bcast(state.id, :downloading, 1, 10)
     #    case HTTPoison.get(build_todays_url()) do
