@@ -115,7 +115,7 @@ spec:
           name: apollos-crib
           ports:
             - containerPort: 4000
-            - containerPort: 4041
+            - containerPort: 4001
 
       imagePullSecrets:
         - name: gitlabgmp

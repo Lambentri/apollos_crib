@@ -22,6 +22,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     }
   end
 
+  @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 15000)
     %{data: data, queries: queries} = RoomSanctum.Worker.Vision.get_state(socket.assigns.vision_id)
@@ -35,6 +36,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     end
   end
 
+  @impl true
   def handle_event("toggle-preview-mode", _params, socket) do
     {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
   end
@@ -74,11 +76,11 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
     case Map.get(as_map, item) do
       nil -> item
-      _val ->
-        case (_val.name |> String.length > size) do
-        true -> s = _val.name |> String.slice(0, size)
+      val ->
+        case (val.name |> String.length > size) do
+        true -> s = val.name |> String.slice(0, size)
                 s <> "..."
-        false -> _val.name
+        false -> val.name
       end
     end
   end
@@ -88,7 +90,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
     case Map.get(as_map, item) do
       nil -> ""
-      _val -> icon(_val.source.type)
+      val -> icon(val.source.type)
     end
   end
 

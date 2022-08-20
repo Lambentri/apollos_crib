@@ -57,10 +57,10 @@
 
     <%= case @changeset.changes |> Map.get(:type) || @changeset.data |> Map.get(:type) do %>
     <%= :aqi -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :aqi, fn aqi_form -> %>
+    <%= polymorphic_embed_inputs_for f, :config, :aqi, fn _aqi_form -> %>
     <% end %>
 
-    <%= :calendar -> %>
+    <% :calendar -> %>
     <%= polymorphic_embed_inputs_for f, :config, :calendar, fn cal_form -> %>
     <div class="form-control">
         <label>iCal URL</label>
@@ -73,11 +73,11 @@
     </div>
     <% end %>
 
-    <%= :ephem -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :ephem, fn eph_form -> %>
+    <% :ephem -> %>
+    <%= polymorphic_embed_inputs_for f, :config, :ephem, fn _eph_form -> %>
     <% end %>
 
-    <%= :gtfs -> %>
+    <% :gtfs -> %>
     <%= polymorphic_embed_inputs_for f, :config, :gtfs, fn gtfs_form -> %>
     <div class="form-control">
         <label>URL</label>
@@ -98,7 +98,7 @@
         </label>
     </div>
     <% end %>
-    <%= :gbfs -> %>
+    <% :gbfs -> %>
     <%= polymorphic_embed_inputs_for f, :config, :gbfs, fn gbfs_form -> %>
     <div class="form-control">
         <label>URL</label>
@@ -121,7 +121,7 @@
     </div>
     <% end %>
 
-    <%= :hass -> %>
+    <% :hass -> %>
     <%= polymorphic_embed_inputs_for f, :config, :hass, fn hass_form -> %>
     <div class="form-control">
         <label>URL</label>
@@ -144,7 +144,7 @@
     </div>
     <% end %>
 
-    <%= :rideshare -> %>
+    <% :rideshare -> %>
     <%= polymorphic_embed_inputs_for f, :config, :rideshare, fn rs_form -> %>
     <div class="form-control">
         <label>Provider</label>
@@ -165,10 +165,10 @@
         </label>
     </div>
     <% end %>
-    <%= :tidal -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :tidal, fn tidal_form -> %>
+    <% :tidal -> %>
+    <%= polymorphic_embed_inputs_for f, :config, :tidal, fn _tidal_form -> %>
     <% end %>
-    <%= :weather -> %>
+    <% :weather -> %>
     <%= polymorphic_embed_inputs_for f, :config, :weather, fn weather_form -> %>
     <div class="form-control">
         <label>OpenWeatherMap API Key</label>

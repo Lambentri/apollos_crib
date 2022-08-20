@@ -24,7 +24,7 @@ defmodule RoomHermes.ChannelCase do
       import RoomHermes.ChannelCase
 
       # The default endpoint for testing
-      @endpoint RoomHermes.Endpoint
+      @endpoint RoomHermesWeb.Endpoint
     end
   end
 

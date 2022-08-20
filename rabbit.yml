@@ -18,6 +18,6 @@ spec:
       auth_backends.2 = rabbit_auth_backend_http
       auth_http.http_method   = post
       auth_http.user_path     = http://apollos-crib-hermes-svc:80/auth/user
-      auth_http.vhost_path    = http://apollos-crib-hermes-svc:4001/auth/vhost
-      auth_http.resource_path = http://apollos-crib-hermes-svc:4001/auth/resource
-      auth_http.topic_path    = http://apollos-crib-hermes-svc:4001/auth/topic
+      auth_http.vhost_path    = http://apollos-crib-hermes-svc:80/auth/vhost
+      auth_http.resource_path = http://apollos-crib-hermes-svc:80/auth/resource
+      auth_http.topic_path    = http://apollos-crib-hermes-svc:80/auth/topic

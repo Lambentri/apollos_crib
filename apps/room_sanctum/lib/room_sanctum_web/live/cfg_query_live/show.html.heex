@@ -50,21 +50,21 @@
           <%= case @type do %>
           <%= :gtfs -> %>
           <%= x.trip.route_id %> <i class="fas fa-arrow-right"></i> <%= x.trip.trip_headsign %>  @ <%= x.arrival_time %>
-          <%= :gbfs -> %>
+          <% :gbfs -> %>
           <%= x.num_bikes_available %> /
           <%= x.capacity %>
-          <%= :tidal -> %>
+          <% :tidal -> %>
           @<%= x.t %> <%= x.type %> <%= x.v %> Meters
-          <%= :weather -> %>
+          <% :weather -> %>
           <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
-          <%= :aqi -> %>
+          <% :aqi -> %>
           <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
           <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
           <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
           <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
-          <%= :ephem -> %>
+          <% :ephem -> %>
           <%= x.period %> @ <%= x.result %>
-          <%= :calendar -> %>
+          <% :calendar -> %>
           <%= x.date_start %> <%= x.blob["description"] %>
     <% end %>
           <br />

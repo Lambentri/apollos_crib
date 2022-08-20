@@ -2,7 +2,6 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
   use RoomSanctumWeb, :live_component
 
   alias RoomSanctum.Accounts
-  alias RoomSanctum.Accounts.RabbitUser
 
   def convert_to_map(%model{} = schema) do
     Map.take(schema, model.__schema__(:fields))
@@ -12,7 +11,7 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
     # stolen from phx.gen
     token = :crypto.strong_rand_bytes(32)
     hashed_token = :crypto.hash(:sha256, token)
-    Base.url_encode64(token, padding: false)
+    Base.url_encode64(hashed_token, padding: false)
   end
 
   def gen_topic() do
@@ -28,8 +27,8 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
   @impl true
   def update(%{rabbit_user: rabbit_user} = assigns, socket) do
     changeset = case rabbit_user.id do
-      nil ->  Accounts.change_rabbit_user(rabbit_user, %{"username" => Ecto.UUID.generate, "password" => gen_pw, "topic" => gen_topic})
-      val -> Accounts.change_rabbit_user(rabbit_user)
+      nil ->  Accounts.change_rabbit_user(rabbit_user, %{"username" => Ecto.UUID.generate, "password" => gen_pw(), "topic" => gen_topic()})
+      _val -> Accounts.change_rabbit_user(rabbit_user)
     end
 
 

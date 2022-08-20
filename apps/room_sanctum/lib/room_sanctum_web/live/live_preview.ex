@@ -1,8 +1,5 @@
 defmodule RoomSanctumWeb.LivePreview do
-  import Phoenix.LiveView
   import Phoenix.LiveView.Helpers
-
-  alias Phoenix.LiveView.JS
 
   defp gtfs_icon(route_str) do
     case route_str do
@@ -100,10 +97,10 @@ defmodule RoomSanctumWeb.LivePreview do
         <div class="card-body text-left">
         <p><i class="fa-solid fa-1"></i> <i class="fa-solid fa-arrows-down-to-line"></i>: @ <%= e.first_l %></p>
         <p><i class="fa-solid fa-1"></i> <i class="fa-solid fa-arrows-up-to-line"></i>: @ <%= e.first_h %></p>
-        <%= if e |> Map.get :second_l do %>
+        <%= if e |> Map.get(:second_l) do %>
           <p><i class="fa-solid fa-2"></i> <i class="fa-solid fa-arrows-down-to-line"></i>: @ <%= e.second_l %></p>
         <% end %>
-        <%= if e |> Map.get :second_h do %>
+        <%= if e |> Map.get(:second_h) do %>
           <p><i class="fa-solid fa-2"></i> <i class="fa-solid fa-arrows-up-to-line"></i>: @ <%= e.second_h %></p>
         <% end %>
         </div>
@@ -128,7 +125,7 @@ defmodule RoomSanctumWeb.LivePreview do
       </div>
     </div>
     <% end %>
-      """
+    """
   end
 
   def p_aqi(assigns) do

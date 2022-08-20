@@ -1,6 +1,6 @@
 defmodule RoomSanctum.Configuration.Queries.Rideshare do
   use Ecto.Schema
-  import Ecto.Changeset
+#  import Ecto.Changeset
 
   @primary_key false
 
@@ -8,7 +8,7 @@ defmodule RoomSanctum.Configuration.Queries.Rideshare do
     # tbd
   end
 
-  def changeset(source, params) do
+  def changeset(source, _params) do
     source
     #    |> cast(params, ~w(api_key, provider)a)
     #    |> validate_required([:api_key, :provider])

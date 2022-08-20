@@ -124,5 +124,7 @@
     <orderEntry type="module" module-name="room_hermes" />
     <orderEntry type="library" name="amqp" level="project" />
     <orderEntry type="library" name="amqp_client" level="project" />
+    <orderEntry type="library" name="parent" level="project" />
+    <orderEntry type="library" name="mox" level="project" />
   </component>
 </module>

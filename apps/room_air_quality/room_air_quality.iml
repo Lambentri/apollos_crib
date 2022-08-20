@@ -50,5 +50,11 @@
     <orderEntry type="library" name="httpoison" level="project" />
     <orderEntry type="library" name="poison" level="project" />
     <orderEntry type="library" name="parent" level="project" />
+    <orderEntry type="library" name="csv" level="project" />
+    <orderEntry type="library" name="parallel_stream" level="project" />
+    <orderEntry type="library" name="ex_csv" level="project" />
+    <orderEntry type="library" name="csvlixir" level="project" />
+    <orderEntry type="library" name="cesso" level="project" />
+    <orderEntry type="library" name="inch_ex" level="project" />
   </component>
 </module>

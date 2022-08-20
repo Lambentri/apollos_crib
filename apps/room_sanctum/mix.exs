@@ -57,7 +57,9 @@ defmodule RoomSanctum.MixProject do
       {:timex, "~> 3.7.8"},
       {:poison, "~> 5.0", override: true},
 
-      # tz provider, less shitty than tzworld
+      {:parent, "~> 0.12.1"},
+
+      # tz provider, less shitty than tzworld, still shitty for diff reasons
       {:wheretz, "~> 0.1.16"},
       {:tzdata, "~> 1.1"},
 

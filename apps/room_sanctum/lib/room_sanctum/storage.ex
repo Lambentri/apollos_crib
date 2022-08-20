@@ -544,15 +544,7 @@ defmodule RoomSanctum.Storage do
     |> Repo.delete_all()
   end
 
-  @doc """
-  Returns an `%Ecto.Changeset{}` for tracking stop_time changes.
 
-  ## Examples
-
-      iex> change_stop_time(stop_time)
-      %Ecto.Changeset{data: %StopTime{}}
-
-  """
   defp convert_gtfs_time(time) do
     [hour, min, second] = time |> String.split(":")
     hour = hour |> String.strip |> String.to_integer()
@@ -571,6 +563,15 @@ defmodule RoomSanctum.Storage do
     |> Map.put("departure_time", attrs["departure_time"] |> convert_gtfs_time)
   end
 
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking stop_time changes.
+
+  ## Examples
+
+      iex> change_stop_time(stop_time)
+      %Ecto.Changeset{data: %StopTime{}}
+
+  """
   def change_stop_time(%StopTime{} = stop_time, attrs \\ %{}) do
     StopTime.changeset(stop_time, attrs |> convert_gtfs)
   end

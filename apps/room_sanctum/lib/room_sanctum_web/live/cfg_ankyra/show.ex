@@ -2,7 +2,6 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
   use RoomSanctumWeb, :live_view_a
 
   alias RoomHermes.Accounts
-  alias RoomHermes.Accounts.RabbitUser
 
   @impl true
   def mount(_params, _session, socket) do

@@ -2,8 +2,6 @@ defmodule RoomSanctum.Configuration.Queries.Weather do
   use Ecto.Schema
   import Ecto.Changeset
 
-  alias RoomSanctum.Configuration.Foci
-
   @primary_key false
 
   embedded_schema do

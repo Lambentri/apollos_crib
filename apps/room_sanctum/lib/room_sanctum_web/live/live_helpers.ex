@@ -33,8 +33,7 @@ defmodule RoomSanctumWeb.LiveHelpers do
         class="fade-in-scale bg-primary modal-open max-w-5xl p-6 rounded-md"
         phx-click-away={JS.dispatch("click", to: "#close")}
         phx-window-keydown={JS.dispatch("click", to: "#close")}
-        phx-key="escape"
-      >
+        phx-key="escape">
         <%= if @return_to do %>
           <%= live_patch "✖",
             to: @return_to,
@@ -85,7 +84,7 @@ defmodule RoomSanctumWeb.LiveHelpers do
       <%= live_patch to: @to, class: "btn btn-square btn-xs" do %>
         <i class={"fa-solid #{@icon}"}></i>
       <% end %>
-      <%= :live_redirect -> %>
+      <% :live_redirect -> %>
       <%= live_redirect to: @to, class: "btn btn-square btn-xs" do %>
         <i class={"fa-solid #{@icon}"}></i>
       <% end %>

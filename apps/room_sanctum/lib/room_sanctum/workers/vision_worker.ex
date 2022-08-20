@@ -5,8 +5,6 @@ defmodule RoomSanctum.Worker.Vision do
   require Logger
 
   alias RoomSanctum.Configuration
-  alias RoomSanctum.Storage
-  alias RoomSanctum.Repo
 
   @registry :zeus
 

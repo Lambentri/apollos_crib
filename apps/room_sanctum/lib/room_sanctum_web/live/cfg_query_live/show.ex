@@ -20,6 +20,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:type, q.source.type)}
   end
 
+  @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 5000)
 

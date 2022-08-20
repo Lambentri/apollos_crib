@@ -48,7 +48,7 @@ current_user={@current_user}
             <%= true -> %>
             <i class="fa-solid fa-check" phx-click="toggle-source-enabled" phx-value-id={source.id}
                phx-value-current="true"></i>
-            <%= false -> %>
+            <% false -> %>
             <i class="fa-solid fa-times" phx-click="toggle-source-enabled" phx-value-id={source.id}
                phx-value-current="false"></i>
             <% end %>

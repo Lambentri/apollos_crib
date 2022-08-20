@@ -57,7 +57,8 @@
     </label>
   </div>
   <% end %>
-  <%= :calendar -> %>
+
+  <% :calendar -> %>
   <%= polymorphic_embed_inputs_for f, :query, :calendar, fn cal_form -> %>
   <div class="form-control">
     <label>Max of days to get</label>
@@ -88,7 +89,7 @@
   </div>
   <% end %>
 
-  <%= :ephem -> %>
+  <% :ephem -> %>
   <%= polymorphic_embed_inputs_for f, :query, :ephem, fn ephem_form -> %>
       <div class="form-control">
     <label>Foci</label>
@@ -101,7 +102,7 @@
   </div>
   <% end %>
 
-  <%= :gbfs -> %>
+  <% :gbfs -> %>
   <%= polymorphic_embed_inputs_for f, :query, :gbfs, fn gbfs_form -> %>
   <div class="form-control">
     <label>Stop ID</label>
@@ -114,7 +115,7 @@
   </div>
   <% end %>
 
-  <%= :gtfs -> %>
+  <% :gtfs -> %>
   <%= polymorphic_embed_inputs_for f, :query, :gtfs, fn gtfs_form -> %>
   <div class="form-control">
     <label>Stop</label>
@@ -136,7 +137,7 @@
   </div>
   <% end %>
 
-  <%= :hass -> %>
+  <% :hass -> %>
   <%= polymorphic_embed_inputs_for f, :query, :hass, fn hass_form -> %>
   <div class="form-control">
     <label>Entity</label>
@@ -159,7 +160,7 @@
   </div>
   <% end %>
 
-  <%= :rideshare -> %>
+  <% :rideshare -> %>
   <%= polymorphic_embed_inputs_for f, :query, :rideshare, fn rs_form -> %>
   <div class="provider-inputs">
     TODOTODOTODO
@@ -177,7 +178,8 @@
     </div>
   </div>
   <% end %>
-  <%= :tidal -> %>
+
+  <% :tidal -> %>
   <%= polymorphic_embed_inputs_for f, :query, :tidal, fn tidal_form -> %>
   <div class="form-control">
     <label>Station ID</label>
@@ -189,7 +191,8 @@
     </label>
   </div>
   <% end %>
-  <%= :weather -> %>
+
+  <% :weather -> %>
   <%= polymorphic_embed_inputs_for f, :query, :weather, fn weather_form -> %>
   <div class="form-control">
     <label>Foci</label>

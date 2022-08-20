@@ -2,7 +2,6 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
   use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Accounts
-  alias RoomSanctum.Accounts.RabbitUser
 
   @impl true
   def mount(_params, _session, socket) do
@@ -34,7 +33,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    ankyra = Accounts.get_rabbit_user!()
+    ankyra = Accounts.get_rabbit_user!(id)
     {:ok, _} = Accounts.delete_rabbit_user!(ankyra)
 
     {:noreply, assign(socket, :ankyras, list_ankyras(socket.assigns.current_user.id))}

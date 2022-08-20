@@ -2,7 +2,6 @@ defmodule RoomSanctumWeb.LandingLive.Index do
   use RoomSanctumWeb, :live_view_ca
 
   alias RoomSanctum.Configuration
-  alias RoomSanctum.Configuration.Query
 
   @impl true
   def mount(_params, _session, socket) do
@@ -27,6 +26,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
     |> assign(:page_title, "Apollo's Crib")
   end
 
+  @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 10000)
     %{data: data, queries: queries} = RoomSanctum.Worker.Vision.get_state(socket.assigns.vision.id)
@@ -56,16 +56,16 @@ defmodule RoomSanctumWeb.LandingLive.Index do
              |> Enum.into(%{})
     case Map.get(as_map, item) do
       nil -> item
-      _val ->
+      val ->
         case (
-               _val.name
+               val.name
                |> String.length > size) do
           true ->
-            s = _val.name
+            s = val.name
                 |> String.slice(0, size)
             s <> "..."
           false ->
-            _val.name
+            val.name
         end
     end
   end

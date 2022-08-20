@@ -29,7 +29,7 @@ defmodule RoomHermes.Application do
   # whenever the application is updated.
   @impl true
   def config_change(changed, _new, removed) do
-    RoomHermes.Endpoint.config_change(changed, removed)
+    RoomHermesWeb.Endpoint.config_change(changed, removed)
     :ok
   end
 end

@@ -27,7 +27,7 @@ defmodule RoomHermes.ConnCase do
       alias RoomHermesWeb.Router.Helpers, as: Routes
 
       # The default endpoint for testing
-      @endpoint RoomHermes.Endpoint
+      @endpoint RoomHermesWeb.Endpoint
     end
   end
 

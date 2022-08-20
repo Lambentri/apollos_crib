@@ -10,6 +10,7 @@ import Config
 # Start the phoenix server if environment is set and running in a release
 if System.get_env("PHX_SERVER") && System.get_env("RELEASE_NAME") do
   config :room_sanctum, RoomSanctumWeb.Endpoint, server: true
+  config :room_hermes, RoomHermesWeb.Endpoint, server: true
 end
 
 if config_env() == :prod do
@@ -25,22 +26,13 @@ if config_env() == :prod do
       You can generate one by calling: mix phx.gen.secret
       """
 
-  config :room_hermes,
-         RoomHermes.Endpoint,
-         http: [
-           # Enable IPv6 and bind on all interfaces.
-           # Set it to  {0, 0, 0, 0, 0, 0, 0, 1} for local network only access.
-           ip: {0, 0, 0, 0, 0, 0, 0, 0},
-           port: String.to_integer(System.get_env("HPORT") || "4001")
-         ],
-         secret_key_base: secret_key_base
 
   # ## Using releases
   #
   # If you are doing OTP releases, you need to instruct Phoenix
   # to start each relevant endpoint:
   #
-  #     config :room_hermes, RoomHermes.Endpoint, server: true
+  #     config :room_hermes, RoomHermesWeb.Endpoint, server: true
   #
   # Then you can assemble a release by calling `mix release`.
   # See `mix help release` for more information.
@@ -134,6 +126,7 @@ if config_env() == :prod do
            port: hport
          ],
          secret_key_base: secret_key_base
+
   config :amqp,
          connections: [
            default: [url: System.get_env("RABBIT_URL")],

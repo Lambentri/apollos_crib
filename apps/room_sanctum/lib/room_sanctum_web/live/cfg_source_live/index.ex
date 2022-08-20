@@ -85,10 +85,5 @@ defmodule RoomSanctumWeb.SourceLive.Index do
         "fa-lungs"
     end
   end
-  defp icon_str(assigns)  do
-    icon_str = ~H"""
-    <i class={"fas #{icon(assigns.type)}"}></i>
-    """
-  end
 
 end

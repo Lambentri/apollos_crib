@@ -11,7 +11,7 @@ defmodule RoomSanctum.Configuration.Queries.Hass do
 
   def changeset(source, params) do
     source
-    |> cast(params, ~w(entity, properties)a)
+    |> cast(params, ~w(entity properties)a)
     |> validate_required([:entity, :properties])
   end
 end

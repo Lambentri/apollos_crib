@@ -42,6 +42,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   defp page_title(:show), do: "Offering Detail"
   defp page_title(:edit), do: "Modify Offering"
 
+  @impl true
   def handle_event("do-update", %{"type" => type, "id" => id}, socket) do
     id = id
          |> String.to_integer()
@@ -63,6 +64,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     {:noreply, socket}
   end
 
+  @impl true
   def handle_event("do-status", _params, socket) do
     Phoenix.PubSub.broadcast(
       RoomSanctum.PubSub,
@@ -74,7 +76,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
-    IO.puts("calc")
+    IO.inspect({type, id})
 
     {
       :noreply,
@@ -88,6 +90,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     |> Float.floor()
   end
 
+  @impl true
   def handle_info({:gbfs, id, file, message} = info, socket) do
     {
       :noreply,
@@ -96,6 +99,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     }
   end
 
+  @impl true
   def handle_info({:gbfs, id, file, complete, total} = info, socket) do
     if socket.assigns.source_id == id
                                    |> String.to_integer() do
@@ -105,6 +109,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     end
   end
 
+  @impl true
   def handle_info({:gtfs, id, file, complete, total} = info, socket) do
     if socket.assigns.source_id == id
                                    |> String.to_integer() do
@@ -114,6 +119,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     end
   end
 
+  @impl true
   def handle_info({:aqi, id, file, complete, total} = info, socket) do
     if socket.assigns.source_id == id
                                    |> String.to_integer() do

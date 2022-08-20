@@ -9,7 +9,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
   end
 
   @impl true
-  def update(%{query: query, current_user: current_user} = assigns, socket) do
+  def update(%{query: query} = assigns, socket) do
     changeset = Configuration.change_query(query)
 
     {

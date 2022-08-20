@@ -22,7 +22,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     [item]
   end
 
-  def condense({id, type}, data) do
+  def condense({_id, type}, data) do
 #    if type == :tidal do
 #      IO.inspect({id, type, data})
 #    end
@@ -45,7 +45,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             refs -> %{refs | times: [time | refs.times]}
           end)
         end)
-        |> Enum.map(fn {k,v} -> v |> Map.put(:times, v.times |> Enum.reverse) end)
+        |> Enum.map(fn {_k,v} -> v |> Map.put(:times, v.times |> Enum.reverse) end)
 
       :gbfs ->
         data
@@ -59,7 +59,6 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         |> Enum.map(fn {extreme, data} ->
         case data do
           [first, second] ->
-            [first, second] = data
             k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
             k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
             kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
@@ -101,7 +100,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         data |> Enum.map(fn f ->
         case Map.get(f, :period) do
           nil -> {:name, f.name}
-          val -> {f.period, f.result}
+          _val -> {f.period, f.result}
         end
         end) |> Enum.into(%{}) |> wrap
 

@@ -27,7 +27,7 @@ current_user={@current_user}
                 <%= true -> %>
                 <i class="fa-solid fa-check fa-6x" phx-click="toggle-source-enabled" phx-value-current="true"></i>
                 <span class="text-xs">Enabled</span>
-                <%= false -> %>
+                <% false -> %>
                 <i class="fa-solid fa-times" phx-click="toggle-source-enabled" phx-value-current="false"></i>
                 <span class="text-xs">Disabled</span>
                 <% end %>

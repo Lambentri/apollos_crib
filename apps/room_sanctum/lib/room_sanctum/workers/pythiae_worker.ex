@@ -48,10 +48,6 @@ defmodule RoomSanctum.Worker.Pythiae do
     {:noreply, state |> Map.put(:pythiae, p)}
   end
 
-  defp json_friendly_keys(data) do
-    data |> Enum.map( fn {{id, type}, v} -> {"#{type}-#{id}", v} end) |> Enum.into(%{})
-  end
-
   def handle_cast(:query_current, state) do
     current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
     if current != state.vision do
@@ -62,4 +58,10 @@ defmodule RoomSanctum.Worker.Pythiae do
     end
     {:noreply, state |> Map.put(:vision, current)}
   end
+
+  defp json_friendly_keys(data) do
+    data |> Enum.map( fn {{id, type}, v} -> {"#{type}-#{id}", v} end) |> Enum.into(%{})
+  end
+
+
 end

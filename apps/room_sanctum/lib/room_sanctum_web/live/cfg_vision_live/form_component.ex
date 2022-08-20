@@ -57,7 +57,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     save_vision(socket, socket.assigns.action, vision_params)
   end
 
-  def handle_event("add-entry", data, socket) do
+  def handle_event("add-entry", _data, socket) do
     # TODO: Make this behave the ankyra key generators do
     existing_as_simple =
       socket.assigns.vision.queries

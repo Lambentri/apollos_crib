@@ -9,14 +9,14 @@ config :room_hermes,
        database: "room_sanctum_dev",
        show_sensitive_data_on_connection_error: true,
        pool_size: 10
+
 # For development, we disable any cache and enable
 # debugging and code reloading.
 #
 # The watchers configuration can be used to run external
 # watchers to your application. For example, we use it
 # with esbuild to bundle .js and .css sources.
-config :room_hermes,
-       RoomHermesWeb.Endpoint,
+config :room_hermes, RoomHermesWeb.Endpoint,
        # Binding to loopback ipv4 address prevents access from other machines.
        # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
        http: [
@@ -131,12 +131,12 @@ config :room_sanctum, RoomSanctumWeb.Endpoint,
   ]
 
 config :amqp,
-       connections: [
-         default: [url: "amqp://hermes:hermes@localhost:5672"],
-       ],
-       channels: [
-         default: [connection: :default]
-       ]
+  connections: [
+    default: [url: "amqp://hermes:hermes@localhost:5672"]
+  ],
+  channels: [
+    default: [connection: :default]
+  ]
 
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n", level: :info
