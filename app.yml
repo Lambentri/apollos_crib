@@ -119,6 +119,7 @@ spec:
 
       imagePullSecrets:
         - name: gitlabgmp
+      priorityClassName: high-priority
 ---
 apiVersion: v1
 kind: Service
@@ -141,7 +142,7 @@ metadata:
 spec:
   ports:
     - port: 80
-      targetPort: 4041
+      targetPort: 4001
       protocol: TCP
   selector:
     name: apollos-crib

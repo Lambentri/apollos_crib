@@ -42,6 +42,13 @@ defmodule RoomSanctum.Worker.Pythiae do
     |> GenServer.cast(:query_current)
   end
 
+  def query_current_now(name) do
+    "pythiae#{name}"
+    |> via_tuple()
+    |> GenServer.cast(:query_current_now)
+  end
+
+
   #
   def handle_cast(:refresh_db_cfg, state) do
     p = Configuration.get_pythiae!(state[:id])
@@ -53,14 +60,24 @@ defmodule RoomSanctum.Worker.Pythiae do
     if current != state.vision do
       IO.puts("change detected")
       for a <- state.pythiae.ankyra do
-        RoomSanctum.Worker.Ankyra.publish(a, current.data |> json_friendly_keys)
+        RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)
       end
     end
     {:noreply, state |> Map.put(:vision, current)}
   end
 
-  defp json_friendly_keys(data) do
-    data |> Enum.map( fn {{id, type}, v} -> {"#{type}-#{id}", v} end) |> Enum.into(%{})
+  def handle_cast(:query_current_now, state) do
+    current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
+    for a <- state.pythiae.ankyra do
+      RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)
+    end
+    {:noreply, state |> Map.put(:vision, current)}
+  end
+
+  defp condense(data) do
+    data |> Enum.map( fn {{id, type}, datum} ->
+      IO.inspect({id, type, datum})
+      {"#{type}-#{id}", RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum)} end) |> IO.inspect |> Enum.into(%{})
   end
 
 

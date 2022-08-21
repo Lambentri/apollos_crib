@@ -30,4 +30,9 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     end
 
   end
+
+  def handle_event("do-publish", %{"id" => id}, socket) do
+    RoomSanctum.Worker.Pythiae.query_current_now(id)
+    {:noreply, socket}
+  end
 end
