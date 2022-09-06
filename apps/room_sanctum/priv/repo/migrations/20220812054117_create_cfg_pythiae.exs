@@ -9,6 +9,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateCfgPythiae do
       add :user_id, references(:users, on_delete: :nilify_all), null: false
       add :curr_vision, references(:cfg_visions, on_delete: :nothing)
       add :curr_foci, references(:cfg_focis, on_delete: :nothing)
+      add :tweaks, :map
 
       timestamps()
     end

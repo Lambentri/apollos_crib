@@ -24,7 +24,7 @@ defmodule RoomSanctum.Worker.Pythiae do
       initial_delay: 100
     )
 
-    {:ok, %{id: opts[:id], pythiae: nil, vision: nil}}
+    {:ok, %{id: opts[:id], pythiae: nil, vision: nil, lastpub: DateTime.utc_now}}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -57,13 +57,22 @@ defmodule RoomSanctum.Worker.Pythiae do
 
   def handle_cast(:query_current, state) do
     current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
-    if current != state.vision do
+    cfg_ttl = case state.pythiae do
+      nil -> 0
+      _val ->  state.pythiae.tweaks |> Map.from_struct |> Map.get(:ttl, 0) || 0
+    end
+    comparison = DateTime.add(state.lastpub, cfg_ttl, :second)
+    if current != state.vision and DateTime.compare(DateTime.utc_now, comparison) == :gt do
       IO.puts("change detected")
+      IO.inspect({DateTime.utc_now, comparison})
       for a <- state.pythiae.ankyra do
         RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)
       end
+      {:noreply, state |> Map.put(:vision, current) |> Map.put(:lastpub, DateTime.utc_now)}
+    else
+      {:noreply, state}
     end
-    {:noreply, state |> Map.put(:vision, current)}
+
   end
 
   def handle_cast(:query_current_now, state) do
@@ -76,8 +85,8 @@ defmodule RoomSanctum.Worker.Pythiae do
 
   defp condense(data) do
     data |> Enum.map( fn {{id, type}, datum} ->
-      IO.inspect({id, type, datum})
-      {"#{type}-#{id}", RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum)} end) |> IO.inspect |> Enum.into(%{})
+#      IO.inspect({id, type, datum})
+      {"#{type}-#{id}", RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum)} end) |> Enum.into(%{})
   end
 
 

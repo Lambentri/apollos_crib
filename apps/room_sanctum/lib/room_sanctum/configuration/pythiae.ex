@@ -1,3 +1,23 @@
+defmodule RoomSanctum.Configuration.Pythiae.Tweaks do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  @primary_key false
+
+  embedded_schema do
+    field :ttl, :integer
+  end
+
+  def changeset(source, params) do
+    source
+    |> cast(params, ~w(ttl)a)
+    |> validate_required(:ttl)
+  end
+end
+
+alias RoomSanctum.Configuration.Pythiae.Tweaks
+
+
 defmodule RoomSanctum.Configuration.Pythiae do
   use Ecto.Schema
   import Ecto.Changeset
@@ -9,6 +29,8 @@ defmodule RoomSanctum.Configuration.Pythiae do
     belongs_to :user, RoomSanctum.Accounts.User
     field :curr_vision, :id
     field :curr_foci, :id
+
+    embeds_one :tweaks, Tweaks
 
     timestamps()
   end

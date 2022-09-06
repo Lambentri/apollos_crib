@@ -43,7 +43,7 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   def handle_cast({:publish, data}, state) do
-    IO.puts("gottem here")
+#    IO.puts("gottem here")
 
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} -> AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!)

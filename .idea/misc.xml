@@ -1,6 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="ProjectRootManager" version="2" project-jdk-name="Elixir at /usr/lib/elixir" project-jdk-type="Elixir SDK">
+  <component name="FrameworkDetectionExcludesConfiguration">
+    <file type="MicroPython" url="file://$PROJECT_DIR$/clients" />
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_18">
     <output url="file://$PROJECT_DIR$/classes" />
   </component>
 </project>

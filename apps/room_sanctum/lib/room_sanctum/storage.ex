@@ -821,11 +821,12 @@ defmodule RoomSanctum.Storage do
       timestamp
       |> DateTime.to_time()
 
+    timestamp_time_hour = timestamp |> DateTime.add(60*60) |> DateTime.to_time()
+
     q =
       from st in StopTime,
         where:
-          st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and
-            st.stop_id == ^stringify(stop_id),
+          st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id),
         order_by: [
           asc: st.arrival_time
         ],

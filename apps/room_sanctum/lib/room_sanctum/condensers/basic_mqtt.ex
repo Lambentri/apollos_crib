@@ -22,6 +22,10 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     [item]
   end
 
+  defp time(datestr) do
+   datestr |> Timex.parse!("{ISO:Extended}") |> Timex.format!( "%H:%M", :strftime)
+  end
+
   def condense({_id, type}, data) do
 #    if type == :tidal do
 #      IO.inspect({id, type, data})
@@ -63,11 +67,11 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
             kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
             kv2 = "second_#{extreme |> String.downcase()}v" |> String.to_atom()
-            %{k1 => first.t, k2 => second.t, kv1 => first.v, kv2 => second.v}
+            %{k1 => first.t |> time, k2 => second.t |> time, kv1 => first.v, kv2 => second.v}
           [solo] ->
             k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
             kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
-            %{k1 => solo.t, kv1 => solo.v}
+            %{k1 => solo.t |> time, kv1 => solo.v}
         end
         end)
         |> Enum.reduce(&Map.merge/2)
