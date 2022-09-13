@@ -122,7 +122,13 @@ current_user={@current_user}
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
             <div class="card-body">
                 <h3 class="card-title">Queries</h3>
-                TODO
+                <p>
+                <%= for q <- @queries do %>
+                  <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+                    <i class={"fas #{icon(q.source.type)}"}></i>&emsp;<%= q.name %>
+                  <% end %>
+                <% end %>
+                </p>
             </div>
         </div>
     </div>

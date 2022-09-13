@@ -6,10 +6,14 @@ defmodule RoomHermesWeb.UserController do
 
   action_fallback RoomHermesWeb.FallbackController
 
-  def create(conn, %{"username" => username, "password" => password}) do
-    case Accounts.find_rabbit_user(username, password) do
-      nil ->send_resp(conn, :ok, "deny")
-      val ->     send_resp(conn, :ok, "allow")
+  def create(conn, %{"username" => username, "password" => password, "client_id" => client_id}) do
+    case client_id == username do
+      true ->
+        case Accounts.find_rabbit_user(username, password) do
+          nil -> send_resp(conn, :ok, "deny")
+          val -> send_resp(conn, :ok, "allow")
+        end
+      false -> send_resp(conn, :ok, "deny")
     end
   end
 end

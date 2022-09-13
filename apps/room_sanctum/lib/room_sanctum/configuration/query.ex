@@ -19,7 +19,8 @@ defmodule RoomSanctum.Configuration.Query do
         rideshare: RoomSanctum.Configuration.Queries.Rideshare,
         tidal: RoomSanctum.Configuration.Queries.Tidal,
         weather: RoomSanctum.Configuration.Queries.Weather,
-        email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]]
+        email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
+        cronos: RoomSanctum.Configuration.Queries.Cronos
       ],
       on_type_not_found: :raise,
       on_replace: :update
@@ -40,6 +41,5 @@ defmodule RoomSanctum.Configuration.Query do
     |> foreign_key_constraint(:user_id)
     |> cast_polymorphic_embed(:query, required: true)
     |> validate_required([:name])
-    |> IO.inspect()
   end
 end

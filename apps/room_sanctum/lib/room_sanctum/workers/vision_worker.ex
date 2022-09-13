@@ -92,6 +92,9 @@ defmodule RoomSanctum.Worker.Vision do
             q.source.id,
             q.query
           )
+
+        :cronos ->
+          RoomCronos.Worker.query_cronos(q.id, q.query)
       end
     {{q.id,q.source.type}, r}
     end) |> Enum.into(%{})

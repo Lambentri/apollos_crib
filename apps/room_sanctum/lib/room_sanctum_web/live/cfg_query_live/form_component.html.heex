@@ -204,7 +204,49 @@
     </label>
   </div>
   <% end %>
-    <% _ -> %>
+
+  <% :cronos -> %>
+    <%= polymorphic_embed_inputs_for f, :query, :cronos, fn cronos_form -> %>
+    <div class="form-control">
+      <label>Modulo</label>
+      <%= number_input cronos_form, :modulo, class: "input w-full max-w-xs" %>
+      <label class="label">
+        <span class="label-text-alt text-error">
+          <%= error_tag cronos_form, :modulo %>
+        </span>
+      </label>
+    </div>
+      <div class="form-control">
+        <label>Offset</label>
+        <%= number_input cronos_form, :offset, class: "input w-full max-w-xs" %>
+        <label class="label">
+        <span class="label-text-alt text-error">
+          <%= error_tag cronos_form, :offset %>
+        </span>
+        </label>
+      </div>
+      <div class="form-control">
+        <label>Period</label>
+        <%= select cronos_form, :period, [:minute, :hour, :day, :week, :month], class: "select w-full max-w-xs" %>
+        <label class="label">
+        <span class="label-text-alt text-error">
+          <%= error_tag cronos_form, :period %>
+        </span>
+        </label>
+      </div>
+      <div class="form-control">
+        <label>Foci</label>
+        <%= select cronos_form, :foci_id, @cfg_foci_sel,  class: "select w-full max-w-xs" %>
+        <label class="label">
+      <span class="label-text-alt text-error">
+      <%= error_tag cronos_form, :foci_id %>
+      </span>
+        </label>
+      </div>
+    <% end %>
+
+
+  <% _ -> %>
     <span class="text-xs">Pick an offering above</span>
   <% end %>
     </div>

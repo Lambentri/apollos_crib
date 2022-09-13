@@ -11,7 +11,7 @@ defmodule RoomSanctum.Configuration.Source do
     field :notes, :string
 
     field :type, Ecto.Enum,
-      values: [:aqi, :calendar, :ephem, :gbfs, :gtfs, :hass, :rideshare, :tidal, :weather]
+      values: [:aqi, :calendar, :ephem, :gbfs, :gtfs, :hass, :rideshare, :tidal, :weather, :cronos]
 
     field :config, PolymorphicEmbed,
       types: [
@@ -24,7 +24,8 @@ defmodule RoomSanctum.Configuration.Source do
         rideshare: RoomSanctum.Configuration.Configs.Rideshare,
         tidal: RoomSanctum.Configuration.Configs.Tidal,
         weather: RoomSanctum.Configuration.Configs.Weather,
-        email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]]
+        email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
+        cronos: RoomSanctum.Configuration.Configs.Cronos
       ],
       on_type_not_found: :raise,
       on_replace: :update

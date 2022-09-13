@@ -83,6 +83,8 @@ defmodule RoomSanctumWeb.SourceLive.Index do
         "fa-cloud-sun"
       :aqi ->
         "fa-lungs"
+      :cronos ->
+        "fa-clock"
     end
   end
 

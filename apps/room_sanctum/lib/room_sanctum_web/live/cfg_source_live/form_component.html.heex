@@ -165,9 +165,11 @@
         </label>
     </div>
     <% end %>
+
     <% :tidal -> %>
     <%= polymorphic_embed_inputs_for f, :config, :tidal, fn _tidal_form -> %>
     <% end %>
+
     <% :weather -> %>
     <%= polymorphic_embed_inputs_for f, :config, :weather, fn weather_form -> %>
     <div class="form-control">
@@ -185,6 +187,11 @@
         </div>
     </div>
     <% end %>
+
+    <% :cronos -> %>
+    <%= polymorphic_embed_inputs_for f, :config, :cronos, fn _cronos_form -> %>
+    <% end %>
+
     <% _ -> %>
     <span class="text-xs">Pick an offering type above</span>
     <% end %>

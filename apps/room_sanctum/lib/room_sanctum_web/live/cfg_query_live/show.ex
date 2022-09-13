@@ -5,6 +5,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   @impl true
   def mount(_params, _session, socket) do
+    if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
     if connected?(socket), do: Process.send_after(self(), :update, 1000)
     {:ok, socket |> assign(:preview, [])}
   end
@@ -17,7 +18,11 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
      |> assign(:query, q)
-     |> assign(:type, q.source.type)}
+     |> assign(:query_id, id)
+     |> assign(:type, q.source.type)
+     |> assign(:visions, [])
+    }
+
   end
 
   @impl true
@@ -58,9 +63,20 @@ defmodule RoomSanctumWeb.QueryLive.Show do
             socket.assigns.query.source.id,
             socket.assigns.query.query
           )
+
+        :cronos ->
+          RoomCronos.Worker.query_cronos(
+            socket.assigns.query.id, # we want the query's name here
+            socket.assigns.query.query
+          )
       end
 
     {:noreply, assign(socket, :preview, result)}
+  end
+
+  def handle_info(:update_sec, socket) do
+    visions = Configuration.get_visions(:query, socket.assigns.query_id)
+    {:noreply, socket |> assign(:visions, visions)}
   end
 
   defp page_title(:show), do: "Query Detail"

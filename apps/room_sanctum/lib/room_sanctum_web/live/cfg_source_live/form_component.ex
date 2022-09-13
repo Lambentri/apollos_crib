@@ -31,7 +31,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
   def handle_event("save", %{"source" => source_params}, socket) do
     source_params = inj_uid(source_params, socket)
-    save_source(socket, socket.assigns.action, source_params)
+    save_source(socket, socket.assigns.action, source_params) |> IO.inspect
   end
 
   defp save_source(socket, :edit, source_params) do

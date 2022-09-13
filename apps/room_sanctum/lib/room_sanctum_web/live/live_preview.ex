@@ -188,4 +188,23 @@ defmodule RoomSanctumWeb.LivePreview do
     <% end %>
     """
   end
+
+  def p_cronos(assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+    <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
+    <div class="card-body textd-left">
+    <h2 class="card-title">
+      <p><i class="fa-solid fa-fw fa-clock"></i> <%= e.name %> </p>
+    </h2>
+    <p><%= case e.value do %>
+      <% true -> %> <i class="fa-solid fa-fw fa-check fa-4x"> </i>
+    <% false -> %> <i class="fa-solid fa-fw fa-remove fa-4x"> </i>
+    <% end %>
+    </p>
+    </div>
+    </div>
+    <% end %>
+    """
+  end
 end

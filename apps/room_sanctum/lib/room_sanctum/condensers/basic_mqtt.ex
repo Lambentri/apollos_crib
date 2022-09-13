@@ -116,6 +116,9 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             description: f.blob["description"]
           }
         end)
+
+      :cronos ->
+        data
     end
   end
 end

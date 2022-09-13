@@ -1,0 +1,7 @@
+WIFI_SSID="FreePublicWifi"
+WIFI_PASSWORD=""
+MQTT_HOST="mqtt.example.com"
+MQTT_USER="johndoe"
+MQTT_PASS="secrets"
+MQTT_PORT="1883"
+MQTT_TOPIC=b"Funny-Turnt-Locust"

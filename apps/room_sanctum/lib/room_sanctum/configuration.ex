@@ -154,6 +154,10 @@ defmodule RoomSanctum.Configuration do
     from( q in Query, where: q.id in ^ids) |> Repo.all |> Repo.preload(:source)
   end
 
+  def get_queries(:source, id) do
+    from(q in Query, where: q.source_id == ^id) |> Repo.all |> Repo.preload(:source)
+  end
+
   @doc """
   Creates a query.
 
@@ -253,6 +257,10 @@ defmodule RoomSanctum.Configuration do
 
   """
   def get_vision!(id), do: Repo.get!(Vision, id)
+
+  def get_visions(:query, id) do
+    from(v in Vision, where: ^id in v.query_ids) |> Repo.all
+  end
 
   @doc """
   Creates a vision.
@@ -469,6 +477,11 @@ defmodule RoomSanctum.Configuration do
 
   """
   def get_pythiae!(id), do: Repo.get!(Pythiae, id)
+
+  def get_pythiae(:vision, id) do
+    from(p in Pythiae, where: ^id in p.visions) |> Repo.all
+  end
+
 
   @doc """
   Creates a pythiae.

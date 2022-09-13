@@ -5,13 +5,21 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def mount(_params, _session, socket) do
+    if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
     {
       :ok,
       socket
       |> assign(:status, :idle)
       |> assign(:status_val, 0)
       |> assign(:stats, [])
+      |> assign(:queries, [])
     }
+  end
+
+  @impl true
+  def handle_info(:update_sec, socket) do
+    queries = Configuration.get_queries(:source, socket.assigns.source_id)
+    {:noreply, socket |> assign(:queries, queries)}
   end
 
   @impl true
@@ -189,48 +197,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   defp icon(source_type) do
-    case source_type do
-      :calendar ->
-        "fa-calendar-alt"
-      :rideshare ->
-        "fa-taxi"
-      :hass ->
-        "fa-home"
-      :gtfs ->
-        "fa-bus-alt"
-      :gbfs ->
-        "fa-bicycle"
-      :tidal ->
-        "fa-water"
-      :ephem ->
-        "fa-moon"
-      :weather ->
-        "fa-cloud-sun"
-      :aqi ->
-        "fa-lungs"
-    end
+    RoomSanctumWeb.IconHelpers.icon(source_type)
   end
 
   defp icon_code(source_type) do
-    case source_type do
-      :calendar ->
-        "f073"
-      :rideshare ->
-        "f1ba"
-      :hass ->
-        "f015"
-      :gtfs ->
-        "f55e"
-      :gbfs ->
-        "f206"
-      :tidal ->
-        "f773"
-      :ephem ->
-        "f186"
-      :weather ->
-        "f6c4"
-      :aqi ->
-        "f604"
-    end
+    RoomSanctumWeb.IconHelpers.icon_code(source_type)
   end
 end

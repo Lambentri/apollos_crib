@@ -5,8 +5,15 @@ defmodule RoomSanctumWeb.VisionLive.Show do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Process.send_after(self(), :update, 1000)
+    if connected?(socket), do: Process.send_after(self(), :update, 500)
+    if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
     {:ok, socket}
+  end
+
+  @impl true
+  def handle_info(:update_sec, socket) do
+    pythiae = Configuration.get_pythiae(:vision, socket.assigns.vision_id)
+    {:noreply, socket |> assign(:pythiae, pythiae)}
   end
 
   @impl true
@@ -19,6 +26,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
      |> assign(:preview, [])
      |> assign(:queries, [])
      |> assign(:preview_mode, :basic)
+     |> assign(:pythiae, [])
     }
   end
 

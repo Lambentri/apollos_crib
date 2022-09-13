@@ -24,6 +24,9 @@ LUNGS = "\uf604"
 CRIB = "\uf66f"
 WIFI = "\uf1eb"
 
+CHECK = "\uf00c"
+XMARK = "\uf00d"
+
 class FrameBuffer2(framebuf1.FrameBuffer):
 
     def rrect(self, x: int, y: int, w: int, h: int, color: int, radius: int = 20):
@@ -148,3 +151,15 @@ class FrameBuffer2(framebuf1.FrameBuffer):
         self.box_icon_text_xl(
             gfx, gfxicon, gfxicon, CALENDAR, "", text1, "", x, y
         )
+
+    def box_icon_cronos(self, gfx, gfxicon2, item, x, y):
+        name = item["name"]
+        if item["value"] == True:
+            self.box_icon_text(
+                gfx, gfxicon2, CLOCK, f"{name}? YES", x, y
+            )
+        else:
+            self.box_icon_text(
+                gfx, gfxicon2, CLOCK, f"{name}? NO", x, y
+            )
+

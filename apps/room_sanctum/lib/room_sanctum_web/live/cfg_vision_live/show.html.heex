@@ -23,13 +23,25 @@
     <h2 class="text-2xl font-bold text-accent-300"><%= @vision.name %></h2>
   </div>
   <div class="flex">
-    <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+    <div class="card card-compact w-5/6 bg-base-100 shadow-xl m-2">
       <div class="card-body text-left">
         <h3 class="card-title">Queries</h3>
         <p>
         <%= for q <- @queries do %>
           <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
           <i class={"fas #{icon(q.source.type)}"}></i>&emsp;<%= q.name %>
+          <% end %>
+        <% end %>
+        </p>
+      </div>
+    </div>
+    <div class="card card-compact w-1/6 bg-base-100 shadow-xl m-2">
+      <div class="card-body text-left">
+        <h3 class="card-title">Pythiae</h3>
+        <p>
+          <%= for q <- @pythiae do %>
+          <%= live_patch to: Routes.pythiae_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+          <%= q.name %>
           <% end %>
         <% end %>
         </p>
@@ -105,6 +117,7 @@
               <% {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
               <% {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
               <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
+              <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
             <% end %>
           <% end %>
         <% :raw -> %>

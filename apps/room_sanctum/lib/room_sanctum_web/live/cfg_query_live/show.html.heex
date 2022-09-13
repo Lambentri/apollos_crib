@@ -48,25 +48,31 @@
         <p>
           <%= for x <- @preview do %>
           <%= case @type do %>
-          <%= :gtfs -> %>
-          <%= x.trip.route_id %> <i class="fas fa-arrow-right"></i> <%= x.trip.trip_headsign %>  @ <%= x.arrival_time %>
-          <% :gbfs -> %>
-          <%= x.num_bikes_available %> /
-          <%= x.capacity %>
-          <% :tidal -> %>
-          @<%= x.t %> <%= x.type %> <%= x.v %> Meters
-          <% :weather -> %>
-          <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
-          <% :aqi -> %>
-          <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
-          <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
-          <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
-          <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
-          <% :ephem -> %>
-          <%= x.period %> @ <%= x.result %>
-          <% :calendar -> %>
-          <%= x.date_start %> <%= x.blob["description"] %>
-    <% end %>
+            <%= :gtfs -> %>
+            <%= x.trip.route_id %> <i class="fas fa-arrow-right"></i> <%= x.trip.trip_headsign %>  @ <%= x.arrival_time %>
+            <% :gbfs -> %>
+            <%= x.num_bikes_available %> /
+            <%= x.capacity %>
+            <% :tidal -> %>
+            @<%= x.t %> <%= x.type %> <%= x.v %> Meters
+            <% :weather -> %>
+            <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
+            <% :aqi -> %>
+            <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
+            <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
+            <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
+            <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
+            <% :ephem -> %>
+            <%= if x |> Map.has_key?(:period) do %>
+            <%= x.period %> @ <%= x.result %>
+            <%= else %>
+            <%= x.name %>
+            <% end %>
+            <% :calendar -> %>
+            <%= x.date_start %> <%= x.blob["description"] %>
+            <% :cronos -> %>
+            <%= x.name %> <strong><%= x.value %></strong>
+          <% end %>
           <br />
           <% end %>
         </p>
@@ -75,7 +81,11 @@
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
       <div class="card-body">
         <h3 class="card-title">Visions</h3>
-        TODO
+        <%= for v <- @visions do %>
+        <%= live_patch to: Routes.vision_show_path(@socket, :show, v.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+        <%= v.name %>
+                  <% end %>
+        <% end%>
       </div>
     </div>
   </div>

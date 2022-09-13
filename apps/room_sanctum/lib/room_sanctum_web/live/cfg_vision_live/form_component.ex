@@ -5,7 +5,9 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp inj_uid(params, socket) do
     params
+    |> IO.inspect
     |> Map.put("user_id", socket.assigns.current_user.id)
+    |> Map.put("query_ids", params["queries"] |> Enum.map(fn {k,v} -> v["data"]["query"] end ))
   end
 
   defp inj_types(params) do

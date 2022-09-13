@@ -10,12 +10,13 @@ defmodule RoomSanctum.Configuration.Vision do
     field :public, :boolean
 
     timestamps()
+    field :query_ids, {:array, :integer}
   end
 
   @doc false
   def changeset(vision, attrs) do
     vision
-    |> cast(attrs, [:name, :user_id])
+    |> cast(attrs, [:name, :user_id, :query_ids])
     |> cast_embed(:queries, with: &RoomSanctum.Configuration.Vision.Schema.changeset/2)
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
