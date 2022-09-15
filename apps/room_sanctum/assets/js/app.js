@@ -50,9 +50,7 @@ Hooks.mkMap = {
         var marker = L.centerMarker(map).on("newposition", function() {
             var latlng = marker.getLatLng()
             console.log("New position: " + latlng.lat + ", " + latlng.lng);
-            document.getElementById("foci-form").dispatchEvent(
-                new Event("update", {latlng: latlng})
-            )
+            view.pushEventTo("#foci-form", "map-update", { latlng: latlng });
 
         });;
         marker.addTo(map);

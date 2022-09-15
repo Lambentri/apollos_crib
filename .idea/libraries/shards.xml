@@ -1,45 +1,7 @@
 <component name="libraryTable">
   <library name="shards" type="mix">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/shards/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -48,16 +10,6 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
-      <root url="file://$PROJECT_DIR$/deps/shards/src" />
       <root url="file://$PROJECT_DIR$/deps/shards/src" />
       <root url="file://$PROJECT_DIR$/deps/shards/src" />
     </SOURCES>

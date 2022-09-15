@@ -33,7 +33,7 @@
             <div class="card-body">
                 <h2 class="card-title">
                     <i class={"fas fa-fw fa-xl #{icon(k |> elem(1))}"}></i>
-                    <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+                    <span class="text-secondary font-bold overflow-x-auto"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
                 </h2>
 
                     <%= case k do %>

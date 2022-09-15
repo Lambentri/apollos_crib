@@ -1,57 +1,7 @@
 <component name="libraryTable">
   <library name="cowboy_telemetry" type="mix">
     <CLASSES>
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
-      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
-      <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/cowboy_telemetry/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -60,21 +10,6 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
-      <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
       <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
       <root url="file://$PROJECT_DIR$/deps/cowboy_telemetry/src" />
     </SOURCES>
