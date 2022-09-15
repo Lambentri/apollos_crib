@@ -26,7 +26,7 @@ RUN mix release ${app_name} \
 FROM alpine:latest
 ARG project_id
 RUN apk update \
-    && apk --no-cache --update add bash ca-certificates openssl-dev libgcc libstdc++ librsvg rsvg-convert imagemagick
+    && apk --no-cache --update add bash ca-certificates openssl-dev libgcc libstdc++ librsvg imagemagick
 EXPOSE ${PORT}
 WORKDIR /opt/app
 COPY --from=0 /opt/release .
