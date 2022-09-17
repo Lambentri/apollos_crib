@@ -26,9 +26,19 @@ defmodule RoomWeather.Worker do
     {:ok, %{id: opts[:name], src: c}}
   end
 
+  defp normalize_ll(val) do
+    cond do
+      val < -180 -> val+360
+      true -> val
+    end
+  end
+
   def handle_call({:query_weather, query}, _from, state) do
     foci = Configuration.get_foci!(query.foci_id)
     {lat, lon} = foci.place.coordinates
+
+    lat = normalize_ll(lat)
+    lon = normalize_ll(lon)
 
     case HTTPoison.get(@root_url, [],
            follow_redirect: true,
