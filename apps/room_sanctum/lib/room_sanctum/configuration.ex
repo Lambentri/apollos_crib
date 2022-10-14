@@ -258,6 +258,8 @@ defmodule RoomSanctum.Configuration do
   """
   def get_vision!(id), do: Repo.get!(Vision, id)
 
+  def get_vision(id), do: Repo.get(Vision, id)
+
   def get_visions(:query, id) do
     from(v in Vision, where: ^id in v.query_ids) |> Repo.all
   end
