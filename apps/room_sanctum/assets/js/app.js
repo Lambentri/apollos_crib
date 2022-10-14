@@ -44,15 +44,19 @@ Hooks.MapPush = {
 Hooks.mkMap = {
     mounted() {
         const markers = {}
-        var map = L.map('map', {keyboard: true}).setView([42.3736, -71.1097], 13);
+        latlng = document.getElementById('map').getAttribute('data-latlng')
+        if (latlng != null) {
+            coords = JSON.parse(latlng)
+        } else {
+            coords = [42.3736, -71.1097]
+        }
+        var map = L.map('map', {keyboard: true}).setView(coords, 13);
 
         const view = this;
         var marker = L.centerMarker(map).on("newposition", function() {
             var latlng = marker.getLatLng()
             console.log("New position: " + latlng.lat + ", " + latlng.lng);
-            document.getElementById("foci-form").dispatchEvent(
-                new Event("update", {latlng: latlng})
-            )
+            view.pushEventTo("#foci-form", "map-update", { latlng: latlng });
 
         });;
         marker.addTo(map);

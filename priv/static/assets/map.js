@@ -9,7 +9,7 @@ let Map = {
             console.log("New position: " + latlng.lat + ", " + latlng.lng);
             view.pushEvent("foofofo")
             document.getElementById("foci-form").dispatchEvent(
-                new Event("update", {latlng: latlng})
+                new Event("map-update", {latlng: latlng})
             )
 
         });;

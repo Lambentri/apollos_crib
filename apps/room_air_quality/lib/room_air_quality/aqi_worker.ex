@@ -50,6 +50,11 @@ defmodule RoomAirQuality.Worker do
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "aqi", {:aqi, id, file, complete, total})
   end
 
+  defp intify(val) when val == "", do: nil
+  defp intify(val) when is_binary(val), do: val |> String.to_integer
+  defp intify(val) when is_float(val), do: val |> Kernel.trunc
+  defp intify(val), do: val
+
   defp write_data(result, type, id) do
     datetime = NaiveDateTime.local_now()
     Logger.info("AQI::#{id} writing bundle")
@@ -231,6 +236,12 @@ defmodule RoomAirQuality.Worker do
             )
             |> Map.put(:inserted_at, datetime)
             |> Map.put(:updated_at, datetime)
+
+            |> Map.put(:ozone_aqi, data.ozone_aqi |>  intify)
+            |> Map.put(:pm10_aqi, data.pm10_aqi |>  intify)
+            |> Map.put(:pm25_aqi, data.pm25_aqi |>  intify)
+            |> Map.put(:no2_aqi, data.no2_aqi |>  intify)
+
           end)
           |> Enum.map(fn x ->
             Repo.insert(
@@ -240,6 +251,7 @@ defmodule RoomAirQuality.Worker do
             )
           end)
     end
+    Logger.info("AQI::#{id} completed writing bundle")
   end
 
 #  defp build_todays_url(ts \\ DateTime.utc_now()) do
@@ -257,7 +269,7 @@ defmodule RoomAirQuality.Worker do
     file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
     date_str = sh |> Timex.format!("%Y%m%d", :strftime)
 
-    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
+    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat" |> IO.inspect
   end
 
   def handle_cast(:refresh_db_cfg, state) do
@@ -272,7 +284,7 @@ defmodule RoomAirQuality.Worker do
     #    case HTTPoison.get(build_todays_url()) do
     #      {:ok, result} ->
     #        write_data(result, :hourly, state.id)
-    #        {:noreply, state}
+    #        {:noreply, state}rec
     #
     #      {:error, info} ->
     #        Logger.info(info.reason)

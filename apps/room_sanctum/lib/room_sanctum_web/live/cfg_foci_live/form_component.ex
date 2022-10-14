@@ -8,6 +8,13 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
     |> Map.put("user_id", socket.assigns.current_user.id)
   end
 
+  defp normalize_ll(val) do
+    cond do
+      val < -180 -> val+360
+      true -> val
+    end
+  end
+
   @impl true
   def update(%{foci: foci} = assigns, socket) do
     changeset = Configuration.change_foci(foci)
@@ -51,8 +58,8 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
   end
 
   def handle_event("map-update", %{"latlng" => latlng}, socket) do
-    lat_lng_pt = %Geo.Point{coordinates: {latlng["lat"], latlng["lng"]}, srid: 4326}
-    cs = Ecto.Changeset.put_change(socket.assigns.changeset, :place, lat_lng_pt)
+    lat_lng_pt = %Geo.Point{coordinates: {latlng["lat"] |> normalize_ll, latlng["lng"] |> normalize_ll}, srid: 4326}
+    cs = socket.assigns.changeset |> Ecto.Changeset.change(place: lat_lng_pt)
     #         |> Map.put(:action, :validate)
     # cs = socket.assigns.foci |> Configuration.change_foci(%{place: lat_lng_pt}) |> Map.put(:action, :validate)
     {

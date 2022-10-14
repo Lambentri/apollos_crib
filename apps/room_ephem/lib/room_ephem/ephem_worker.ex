@@ -9,10 +9,21 @@ defmodule RoomEphem.Worker do
 
   @ttl :timer.hours(8)
 
+  defp normalize_ll(val) do
+    cond do
+      val < -180 -> val+360
+      true -> val
+    end
+  end
+
   @decorate cacheable(cache: RoomZeus.Cache, opts: [ttl: @ttl])
   def query_ephem(_name, query) do
     foci = Configuration.get_foci!(query.foci_id)
     {lat, lon} = foci.place.coordinates
+    lat = normalize_ll(lat)
+    lon = normalize_ll(lon)
+
+
     tz = WhereTZ.lookup(lat, lon)
     {:ok, sunrise} = Solarex.Sun.rise(Date.utc_today(), lat, lon)
     {:ok, sunset} = Solarex.Sun.set(Date.utc_today(), lat, lon)
