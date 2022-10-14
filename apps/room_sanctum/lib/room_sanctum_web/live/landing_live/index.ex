@@ -4,8 +4,15 @@ defmodule RoomSanctumWeb.LandingLive.Index do
   alias RoomSanctum.Configuration
 
   @impl true
-  def mount(_params, _session, socket) do
-    vision = Configuration.get_landing_vision()
+  def mount(params, _session, socket) do
+    vision = case params |> Map.get("viz") do
+      nil -> Configuration.get_landing_vision()
+      val -> case Configuration.get_vision(val) do
+         nil -> Configuration.get_landing_vision()
+         val -> val
+      end
+    end
+
     if connected?(socket), do: Process.send_after(self(), :update, 100)
     {
       :ok,
