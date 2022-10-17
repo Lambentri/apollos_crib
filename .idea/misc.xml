@@ -3,7 +3,7 @@
   <component name="FrameworkDetectionExcludesConfiguration">
     <file type="MicroPython" url="file://$PROJECT_DIR$/clients" />
   </component>
-  <component name="ProjectRootManager" version="2" languageLevel="JDK_18">
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_18" project-jdk-name="Elixir at /usr/lib/elixir" project-jdk-type="Elixir SDK">
     <output url="file://$PROJECT_DIR$/classes" />
   </component>
 </project>

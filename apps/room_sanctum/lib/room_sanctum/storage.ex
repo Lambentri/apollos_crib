@@ -807,6 +807,13 @@ defmodule RoomSanctum.Storage do
     val
   end
 
+  defp conditional_where(queryable, source_id, stop_id, timestamp_time_hour, timestamp_time) do
+    case timestamp_time < timestamp_time_hour do
+      true -> where(queryable, [st], st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id))
+      false -> where(queryable, [st], st.source_id == ^source_id and (st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50) or ^Time.new!(0,0,0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour) and st.stop_id == ^stringify(stop_id))
+    end
+  end
+
   def get_upcoming_arrivals_for_stop(source_id, stop_id, limit \\ 16, timestamp \\ :now) do
     source = Cfg.get_source!(source_id)
     tz = source.config.tz
@@ -823,82 +830,161 @@ defmodule RoomSanctum.Storage do
 
     timestamp_time_hour = timestamp |> DateTime.add(60*60) |> DateTime.to_time()
 
-    q =
-      from st in StopTime,
-        where:
-          st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id),
-        order_by: [
-          asc: st.arrival_time
-        ],
-        limit: ^limit,
-        left_join: s in Stop,
-        on: s.stop_id == st.stop_id,
-        left_join: t in Trip,
-        on: t.trip_id == st.trip_id,
-        left_join: r in Route,
-        on: t.route_id == r.route_id,
-        left_join: d in Direction,
-        on: t.direction_id == d.direction_id and t.route_id == d.route_id,
-        left_join: c in Calendar,
-        on: t.service_id == c.service_id,
-        select: %{
-          arrival_time: st.arrival_time,
-          departure_time: st.departure_time,
-          stop_id: st.stop_id,
-          stop_sequence: st.stop_sequence,
-          stop: %{
-            stop_address: s.stop_address,
-            stop_code: s.stop_code,
-            stop_desc: s.stop_desc,
-            stop_id: s.stop_id,
-            stop_lat: s.stop_lat,
-            stop_lon: s.stop_lon,
-            stop_name: s.stop_name,
-            stop_url: s.stop_url
-          },
-          trip_id: st.trip_id,
-          trip: %{
-            bikes_allowed: t.bikes_allowed,
-            direction_id: t.direction_id,
-            direction: %{
-              direction: d.direction,
-              direction_id: d.direction_id
-            },
-            route_id: t.route_id,
-            route: %{
-              line_id: r.line_id,
-              route_color: r.route_color,
-              route_desc: r.route_desc,
-              route_fare_class: r.route_fare_class,
-              route_id: r.route_id,
-              route_long_name: r.route_long_name,
-              route_short_name: r.route_short_name,
-              route_sort_order: r.route_sort_order,
-              route_text_color: r.route_text_color,
-              route_type: r.route_type,
-              route_url: r.route_url
-            },
-            service_id: t.service_id,
-            service: %{
-              service_id: c.service_id,
-              service_name: c.service_name,
-              start_date: c.start_date,
-              end_date: c.end_date,
-              monday: c.monday,
-              tuesday: c.tuesday,
-              wednesday: c.wednesday,
-              thursday: c.thursday,
-              friday: c.friday,
-              saturday: c.saturday,
-              sunday: c.sunday
-            },
-            trip_headsign: t.trip_headsign,
-            trip_id: t.trip_id,
-            trip_short_name: t.trip_short_name
-          }
-        }
+    StopTime
+    |> conditional_where(source_id, stop_id, timestamp_time_hour, timestamp_time)
+    |> order_by([st], asc: st.arrival_time)
+    |> limit(^limit)
+    |> join(:left, [st], s in Stop, as: :stop, on: s.stop_id == st.stop_id)
+    |> join(:left, [st], t in Trip, as: :trip, on: t.trip_id == st.trip_id)
+    |> join(:left, [_st, trip: t], r in Route, as: :route, on: t.route_id == r.route_id)
+    |> join(:left, [_st, trip: t], d in Direction, as: :direction, on: t.direction_id == d.direction_id and t.route_id == d.route_id )
+    |> join(:left, [_st, trip: t], c in Calendar, as: :calendar, on: t.service_id == c.service_id)
+    |> select(
+        [st,s,t,r,d,c],
+#          [c,d,r,t,s,st],
+#        [st,:stop,:trip,:route,:direction,:calendar],
+         %{
+           arrival_time: st.arrival_time,
+           arrival_time_live_ts: nil,
+           arrival_time_live_delay: nil,
+           arrival_time_live_uncertianty: nil,
+           departure_time: st.departure_time,
+           stop_id: st.stop_id,
+           stop_sequence: st.stop_sequence,
+           stop: %{
+             stop_address: s.stop_address,
+             stop_code: s.stop_code,
+             stop_desc: s.stop_desc,
+             stop_id: s.stop_id,
+             stop_lat: s.stop_lat,
+             stop_lon: s.stop_lon,
+             stop_name: s.stop_name,
+             stop_url: s.stop_url
+           },
+           trip_id: st.trip_id,
+           trip: %{
+             bikes_allowed: t.bikes_allowed,
+             direction_id: t.direction_id,
+             direction: %{
+               direction: d.direction,
+               direction_id: d.direction_id
+             },
+             route_id: t.route_id,
+             route: %{
+               line_id: r.line_id,
+               route_color: r.route_color,
+               route_desc: r.route_desc,
+               route_fare_class: r.route_fare_class,
+               route_id: r.route_id,
+               route_long_name: r.route_long_name,
+               route_short_name: r.route_short_name,
+               route_sort_order: r.route_sort_order,
+               route_text_color: r.route_text_color,
+               route_type: r.route_type,
+               route_url: r.route_url
+             },
+             service_id: t.service_id,
+             service: %{
+               service_id: c.service_id,
+               service_name: c.service_name,
+               start_date: c.start_date,
+               end_date: c.end_date,
+               monday: c.monday,
+               tuesday: c.tuesday,
+               wednesday: c.wednesday,
+               thursday: c.thursday,
+               friday: c.friday,
+               saturday: c.saturday,
+               sunday: c.sunday
+             },
+             trip_headsign: t.trip_headsign,
+             trip_id: t.trip_id,
+             trip_short_name: t.trip_short_name
+           },
+           tz: ^tz
+         }
+       )
+    |> Repo.all
 
-    Repo.all(q)
+#    q =
+#      from st in StopTime,
+#        where: st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id),
+#        order_by: [
+#          asc: st.arrival_time
+#        ],
+#        limit: ^limit,
+#        left_join: s in Stop,
+#        on: s.stop_id == st.stop_id,
+#        left_join: t in Trip,
+#        on: t.trip_id == st.trip_id,
+#        left_join: r in Route,
+#        on: t.route_id == r.route_id,
+#        left_join: d in Direction,
+#        on: t.direction_id == d.direction_id and t.route_id == d.route_id,
+#        left_join: c in Calendar,
+#        on: t.service_id == c.service_id,
+#        select: %{
+#          arrival_time: st.arrival_time,
+#          arrival_time_live_ts: nil,
+#          arrival_time_live_delay: nil,
+#          arrival_time_live_uncertianty: nil,
+#          departure_time: st.departure_time,
+#          stop_id: st.stop_id,
+#          stop_sequence: st.stop_sequence,
+#          stop: %{
+#            stop_address: s.stop_address,
+#            stop_code: s.stop_code,
+#            stop_desc: s.stop_desc,
+#            stop_id: s.stop_id,
+#            stop_lat: s.stop_lat,
+#            stop_lon: s.stop_lon,
+#            stop_name: s.stop_name,
+#            stop_url: s.stop_url
+#          },
+#          trip_id: st.trip_id,
+#          trip: %{
+#            bikes_allowed: t.bikes_allowed,
+#            direction_id: t.direction_id,
+#            direction: %{
+#              direction: d.direction,
+#              direction_id: d.direction_id
+#            },
+#            route_id: t.route_id,
+#            route: %{
+#              line_id: r.line_id,
+#              route_color: r.route_color,
+#              route_desc: r.route_desc,
+#              route_fare_class: r.route_fare_class,
+#              route_id: r.route_id,
+#              route_long_name: r.route_long_name,
+#              route_short_name: r.route_short_name,
+#              route_sort_order: r.route_sort_order,
+#              route_text_color: r.route_text_color,
+#              route_type: r.route_type,
+#              route_url: r.route_url
+#            },
+#            service_id: t.service_id,
+#            service: %{
+#              service_id: c.service_id,
+#              service_name: c.service_name,
+#              start_date: c.start_date,
+#              end_date: c.end_date,
+#              monday: c.monday,
+#              tuesday: c.tuesday,
+#              wednesday: c.wednesday,
+#              thursday: c.thursday,
+#              friday: c.friday,
+#              saturday: c.saturday,
+#              sunday: c.sunday
+#            },
+#            trip_headsign: t.trip_headsign,
+#            trip_id: t.trip_id,
+#            trip_short_name: t.trip_short_name
+#          },
+#          tz: ^tz
+#        }
+#
+#    Repo.all(q)
   end
 
   alias RoomSanctum.Storage.GBFS.V1.SysInfo

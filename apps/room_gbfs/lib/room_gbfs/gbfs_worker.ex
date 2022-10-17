@@ -15,7 +15,7 @@ defmodule RoomGbfs.Worker do
   end
 
   def init(opts) do
-    {:ok, %{id: opts[:name]}}
+    {:ok, %{id: opts[:name], inst: nil}}
   end
 
   # public
@@ -47,7 +47,7 @@ defmodule RoomGbfs.Worker do
 
   def handle_cast(:refresh_db_cfg, state) do
     IO.puts("rerere")
-    {:noreply, state}
+    {:noreply, state |> Map.put(:inst, nil)}
   end
 
   defp bcast(id, file, complete, total) do

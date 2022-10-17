@@ -26,9 +26,17 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
    datestr |> Timex.parse!("{ISO:Extended}") |> Timex.format!( "%H:%M", :strftime)
   end
 
+  defp livetime(unix, _tz) when is_nil(unix) do
+    unix
+  end
+
+  defp livetime(unix, tz) do
+    unix |> DateTime.from_unix! |> Timex.Timezone.convert(tz) |> DateTime.to_time
+  end
+
   def condense({_id, type}, data) do
-#    if type == :tidal do
-#      IO.inspect({id, type, data})
+#    if type == :gtfs do
+#      IO.inspect({type, data})
 #    end
 
     case type do
@@ -37,19 +45,26 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         |> Enum.map(fn f ->
           %{
             time: f.arrival_time,
+            time_live: f.arrival_time_live_ts,
             destination: f.trip.trip_headsign,
             direction: f.trip.direction.direction,
             route: f.trip.route_id,
-            mode: f.trip.route.route_type |> gtfs_mode
+            mode: f.trip.route.route_type |> gtfs_mode,
+            tz: f.tz
           }
         end)
-        |> Enum.reduce(%{}, fn %{time: time, destination: dest, direction: dir, route: route, mode: mode}, acc ->
+        |> Enum.reduce(%{}, fn %{time: time, time_live: time_live, destination: dest, direction: dir, route: route, mode: mode, tz: tz}, acc ->
           update_in(acc, [{route, dest, dir}], fn
-            nil -> %{route: route, dest: dest, dir: dir, mode: mode, times: [time]}
-            refs -> %{refs | times: [time | refs.times]}
+            nil -> %{route: route, dest: dest, dir: dir, mode: mode, times: [time], times_live: [livetime(time_live, tz)]}
+            refs -> %{refs | times: [time | refs.times], times_live: [livetime(time_live, tz) | refs.times_live]}
           end)
         end)
-        |> Enum.map(fn {_k,v} -> v |> Map.put(:times, v.times |> Enum.reverse) end)
+        |> Enum.map(fn {_k,v} ->
+          case Enum.any?(v.times_live, fn x -> x != nil end) do
+            true -> v |> Map.put(:times, v.times |> Enum.reverse) |> Map.put(:times_live, v.times_live |> Enum.reverse)
+            false -> v |> Map.put(:times, v.times |> Enum.reverse) |> Map.delete(:times_live)
+          end
+        end)
 
       :gbfs ->
         data

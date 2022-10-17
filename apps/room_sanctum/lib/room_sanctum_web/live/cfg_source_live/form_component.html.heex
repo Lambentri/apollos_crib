@@ -97,7 +97,36 @@
           </span>
         </label>
     </div>
+    <div class="form-control">
+        <label>Realtime URL Service Alerts</label>
+        <%= text_input gtfs_form, :url_rt_sa, class: "input w-full max-w-xs" %>
+        <label class="label">
+          <span class="label-text-alt text-error">
+                <%= error_tag gtfs_form, :url_rt_sa %>
+          </span>
+        </label>
+    </div>
+    <div class="form-control">
+        <label>Realtime URL Trip Updates</label>
+        <%= text_input gtfs_form, :url_rt_tu, class: "input w-full max-w-xs" %>
+        <label class="label">
+          <span class="label-text-alt text-error">
+                <%= error_tag gtfs_form, :url_rt_tu %>
+          </span>
+        </label>
+    </div>
+    <div class="form-control">
+        <label>Realtime URL Vehicle Positions</label>
+        <%= text_input gtfs_form, :url_rt_vp, class: "input w-full max-w-xs" %>
+        <label class="label">
+          <span class="label-text-alt text-error">
+                <%= error_tag gtfs_form, :url_rt_vp %>
+          </span>
+        </label>
+    </div>
+
     <% end %>
+
     <% :gbfs -> %>
     <%= polymorphic_embed_inputs_for f, :config, :gbfs, fn gbfs_form -> %>
     <div class="form-control">
