@@ -202,7 +202,8 @@ defmodule RoomGtfs.Worker.RT do
         val ->
           case fetch_rt_url(val) do
             {:ok, data_sa} -> state |> Map.put(:rt_sa, data_sa)
-            {:error, _error} -> state
+            {:error, error} -> Logger.info("failed to fetch gtfs-rt url[sa] for '#{state.inst.name}', reason: #{error.reason}")
+                               state
           end
       end
 
@@ -214,7 +215,9 @@ defmodule RoomGtfs.Worker.RT do
         val ->
           case fetch_rt_url(val) do
             {:ok, data_tu} -> state |> Map.put(:rt_tu, data_tu)
-            {:error, _error} -> state
+            {:error, _error} ->
+              Logger.info("failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{error.reason}")
+              state
           end
       end
 
@@ -226,7 +229,9 @@ defmodule RoomGtfs.Worker.RT do
         val ->
           case fetch_rt_url(val) do
             {:ok, data_vp} -> state |> Map.put(:rt_vp, data_vp)
-            {:error, _error} -> state
+            {:error, _error} ->
+              Logger.info("failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{error.reason}")
+              state
           end
       end
 
