@@ -59,7 +59,11 @@ defmodule RoomSanctum.Worker.Pythiae do
     current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
     cfg_ttl = case state.pythiae do
       nil -> 0
-      _val ->  state.pythiae.tweaks |> Map.from_struct |> Map.get(:ttl, 0) || 0
+      _val -> case state.pythiae.tweaks do
+        nil -> 0
+        val -> state.pythiae.tweaks |> Map.from_struct |> Map.get(:ttl, 0) || 0
+      end
+
     end
     comparison = DateTime.add(state.lastpub, cfg_ttl, :second)
     if current != state.vision and DateTime.compare(DateTime.utc_now, comparison) == :gt do
