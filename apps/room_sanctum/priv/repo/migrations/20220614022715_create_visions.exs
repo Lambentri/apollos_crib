@@ -8,6 +8,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateVisions do
       add :queries, :map
       add :user_id, references(:users, on_delete: :nothing)
       add :public, :boolean
+      add :query_ids, {:array, :integer}
 
       timestamps()
     end
