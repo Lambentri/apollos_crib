@@ -36,7 +36,7 @@ defmodule RoomGtfs.Worker do
   def get_current_realtime(name, trips, stop) do
     "gtfs#{name}"
     |> via_tuple
-    |> GenServer.call({:query_realtime, trips, stop})
+    |> GenServer.call({:query_realtime, trips, stop}, 30_000)
   end
 
   def query_stop(id, query) do
@@ -121,7 +121,15 @@ defmodule RoomGtfs.Worker do
   end
 
   def handle_call({:query_realtime, trips, stop}, _from, state) do
-    r = GenServer.call(state.child_rt, {:query_realtime, trips, stop})
+    r =
+      try do
+        GenServer.call(state.child_rt, {:query_realtime, trips, stop})
+      catch
+        :exit, _ -> IO.puts "timeout? exit"
+        []
+      after
+        []
+      end
     {:reply, r, state}
   end
 
@@ -135,6 +143,8 @@ end
 defmodule RoomGtfs.Worker.RT do
   use GenServer
   @registry :zeus
+
+  require Logger
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
@@ -215,7 +225,7 @@ defmodule RoomGtfs.Worker.RT do
         val ->
           case fetch_rt_url(val) do
             {:ok, data_tu} -> state |> Map.put(:rt_tu, data_tu)
-            {:error, _error} ->
+            {:error, error} ->
               Logger.info("failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{error.reason}")
               state
           end
@@ -229,7 +239,7 @@ defmodule RoomGtfs.Worker.RT do
         val ->
           case fetch_rt_url(val) do
             {:ok, data_vp} -> state |> Map.put(:rt_vp, data_vp)
-            {:error, _error} ->
+            {:error, error} ->
               Logger.info("failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{error.reason}")
               state
           end

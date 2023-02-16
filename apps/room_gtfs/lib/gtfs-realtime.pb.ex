@@ -79,6 +79,8 @@ defmodule TransitRealtime.Alert.Effect do
   field :OTHER_EFFECT, 7
   field :UNKNOWN_EFFECT, 8
   field :STOP_MOVED, 9
+  field :NO_EFFECT, 10
+  field :ACCESSIBILITY_ISSUE, 11
 end
 
 defmodule TransitRealtime.TripDescriptor.ScheduleRelationship do
