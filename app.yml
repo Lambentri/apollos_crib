@@ -68,11 +68,8 @@ spec:
                   key: secret_key_base
 
             - name: POSTGRES_HOST
-              valueFrom:
-                secretKeyRef:
-                  name: postgres-auth
-                  key: host
-
+              value: postgres-apollos-crib.demo
+                
             - name: POSTGRES_PORT
               valueFrom:
                 secretKeyRef:
@@ -82,13 +79,13 @@ spec:
             - name: POSTGRES_USER
               valueFrom:
                 secretKeyRef:
-                  name: postgres-auth
-                  key: user
+                  name: postgres-apollos-crib-auth
+                  key: username
 
             - name: POSTGRES_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: postgres-auth
+                  name: postgres-apollos-crib-auth
                   key: password
 
             - name: AMQP_USER
@@ -154,7 +151,7 @@ metadata:
   namespace: apollos-crib
   annotations:
     cert-manager.io/cluster-issuer: letsencrypt-prod
-    kubernetes.io/ingress.class: "nginx"
+    kubernetes.io/ingress.class: "traefik"
 spec:
   tls:
     - hosts:
