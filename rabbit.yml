@@ -21,3 +21,16 @@ spec:
       auth_http.vhost_path    = http://apollos-crib-hermes-svc:80/auth/vhost
       auth_http.resource_path = http://apollos-crib-hermes-svc:80/auth/resource
       auth_http.topic_path    = http://apollos-crib-hermes-svc:80/auth/topic
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apollos-crib-mqtt-svc
+  namespace: apollos-crib
+spec:
+  ports:
+    - port: 1883
+      targetPort: 1883
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: rabbitmq
