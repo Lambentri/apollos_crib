@@ -16,7 +16,7 @@ defmodule RoomSanctum.Configuration.Vision do
   @doc false
   def changeset(vision, attrs) do
     vision
-    |> cast(attrs, [:name, :user_id, :query_ids])
+    |> cast(attrs, [:name, :user_id, :query_ids, :public])
     |> cast_embed(:queries, with: &RoomSanctum.Configuration.Vision.Schema.changeset/2)
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
