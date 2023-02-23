@@ -42,43 +42,55 @@ defmodule RoomGtfs.Worker do
   def query_stop(id, query) do
     inst = Configuration.get_source!(id)
     res = Storage.get_upcoming_arrivals_for_stop(id, query.stop)
+
     case inst.config.url_rt_tu do
-      nil -> res
-      _val -> trips = res |> Enum.map(fn x -> x.trip_id end)
+      nil ->
+        res
 
-              case get_current_realtime(id, trips, query.stop) do
-                [] ->
-                  res
+      _val ->
+        trips = res |> Enum.map(fn x -> x.trip_id end)
 
-                rtvals ->
-                  res
-                  |> Enum.map(fn x ->
-                    case Enum.find(rtvals, fn v -> x.trip_id == v.trip_update.trip.trip_id end) do
-                      nil ->
-                        x
+        case get_current_realtime(id, trips, query.stop) do
+          [] ->
+            res
 
-                      val ->
-                        case val.trip_update.stop_time_update.arrival do
-                          nil ->
-                            x
+          rtvals ->
+            res
+            |> Enum.map(fn x ->
+              case Enum.find(rtvals, fn v -> x.trip_id == v.trip_update.trip.trip_id end) do
+                nil ->
+                  x
 
-                          _arrival ->
-                            x
-                            |> Map.put(:arrival_time_live_ts, val.trip_update.stop_time_update.arrival.time)
-                            |> Map.put(
-                                 :arrival_time_live_delay,
-                                 val.trip_update.stop_time_update.arrival.delay
-                               )
-                            |> Map.put(
-                                 :arrival_time_live_uncertianty,
-                                 val.trip_update.stop_time_update.arrival.uncertainty
-                               )
-                        end
-                    end
-                  end)
+                val ->
+                  case val.trip_update.stop_time_update do
+                    nil ->
+                      x
+
+                    _stop_time_update ->
+                      case val.trip_update.stop_time_update.arrival do
+                        nil ->
+                          x
+
+                        _arrival ->
+                          x
+                          |> Map.put(
+                            :arrival_time_live_ts,
+                            val.trip_update.stop_time_update.arrival.time
+                          )
+                          |> Map.put(
+                            :arrival_time_live_delay,
+                            val.trip_update.stop_time_update.arrival.delay
+                          )
+                          |> Map.put(
+                            :arrival_time_live_uncertianty,
+                            val.trip_update.stop_time_update.arrival.uncertainty
+                          )
+                      end
+                  end
               end
+            end)
+        end
     end
-
   end
 
   # etc
@@ -90,7 +102,7 @@ defmodule RoomGtfs.Worker do
     )
 
     {:ok, child_rt} = Parent.start_child({RoomGtfs.Worker.RT, opts})
-    {:ok, child_static} = Parent.start_child({RoomGtfs.Worker.Static, opts})
+    {:ok, child_s(tatic)} = Parent.start_child({RoomGtfs.Worker.Static, opts})
 
     {:ok,
      %{
@@ -125,11 +137,13 @@ defmodule RoomGtfs.Worker do
       try do
         GenServer.call(state.child_rt, {:query_realtime, trips, stop})
       catch
-        :exit, _ -> IO.puts "timeout? exit"
-        []
+        :exit, _ ->
+          IO.puts("timeout? exit")
+          []
       after
         []
       end
+
     {:reply, r, state}
   end
 
@@ -211,9 +225,15 @@ defmodule RoomGtfs.Worker.RT do
 
         val ->
           case fetch_rt_url(val) do
-            {:ok, data_sa} -> state |> Map.put(:rt_sa, data_sa)
-            {:error, error} -> Logger.info("failed to fetch gtfs-rt url[sa] for '#{state.inst.name}', reason: #{error.reason}")
-                               state
+            {:ok, data_sa} ->
+              state |> Map.put(:rt_sa, data_sa)
+
+            {:error, error} ->
+              Logger.info(
+                "failed to fetch gtfs-rt url[sa] for '#{state.inst.name}', reason: #{error.reason}"
+              )
+
+              state
           end
       end
 
@@ -224,9 +244,14 @@ defmodule RoomGtfs.Worker.RT do
 
         val ->
           case fetch_rt_url(val) do
-            {:ok, data_tu} -> state |> Map.put(:rt_tu, data_tu)
+            {:ok, data_tu} ->
+              state |> Map.put(:rt_tu, data_tu)
+
             {:error, error} ->
-              Logger.info("failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{error.reason}")
+              Logger.info(
+                "failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{error.reason}"
+              )
+
               state
           end
       end
@@ -238,9 +263,14 @@ defmodule RoomGtfs.Worker.RT do
 
         val ->
           case fetch_rt_url(val) do
-            {:ok, data_vp} -> state |> Map.put(:rt_vp, data_vp)
+            {:ok, data_vp} ->
+              state |> Map.put(:rt_vp, data_vp)
+
             {:error, error} ->
-              Logger.info("failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{error.reason}")
+              Logger.info(
+                "failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{error.reason}"
+              )
+
               state
           end
       end
@@ -249,7 +279,7 @@ defmodule RoomGtfs.Worker.RT do
   end
 
   def handle_call({:query_realtime, trips, stop}, _from, state) do
-#    IO.inspect(trips)
+    #    IO.inspect(trips)
 
     # filter out the protobuf for all relevant trips and then the relevant stop on that trip, nice and small
     relevant_trips =
@@ -264,6 +294,7 @@ defmodule RoomGtfs.Worker.RT do
           |> List.first()
         )
       end)
+
     {:reply, relevant_trips, state}
   end
 end
