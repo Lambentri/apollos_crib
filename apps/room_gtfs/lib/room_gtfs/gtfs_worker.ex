@@ -102,7 +102,7 @@ defmodule RoomGtfs.Worker do
     )
 
     {:ok, child_rt} = Parent.start_child({RoomGtfs.Worker.RT, opts})
-    {:ok, child_s(tatic)} = Parent.start_child({RoomGtfs.Worker.Static, opts})
+    {:ok, child_static} = Parent.start_child({RoomGtfs.Worker.Static, opts})
 
     {:ok,
      %{
