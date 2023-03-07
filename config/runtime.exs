@@ -161,4 +161,27 @@ if config_env() == :prod do
   #     config :swoosh, :api_client, Swoosh.ApiClient.Hackney
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
+  config :sentry,
+    dsn:  System.get_env("SENTRY_DSN"),
+    environment_name: :prod,
+    enable_source_code_context: true,
+    root_source_code_paths: [
+                    "#{File.cwd!()}/apps/room_air_quality",
+                    "#{File.cwd!()}/apps/room_calendar",
+                    "#{File.cwd!()}/apps/room_cronos",
+                    "#{File.cwd!()}/apps/room_ephem",
+                    "#{File.cwd!()}/apps/room_gbfs",
+                    "#{File.cwd!()}/apps/room_gtfs",
+                    "#{File.cwd!()}/apps/room_hass",
+                    "#{File.cwd!()}/apps/room_hermes",
+                    "#{File.cwd!()}/apps/room_rideshare",
+                    "#{File.cwd!()}/apps/room_sanctum",
+                    "#{File.cwd!()}/apps/room_tidal",
+                    "#{File.cwd!()}/apps/room_weather",
+                    "#{File.cwd!()}/apps/room_zeus",
+                    ],
+    tags: %{
+      env: "production"
+    },
+    included_environments: [:prod]
 end

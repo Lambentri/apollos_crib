@@ -1,3 +1,34 @@
+# Client Setup Commands
+
+## micropython post-flash library prep
+
+drop them onto the fs, the roboto ones may take a bit @ 115200 ;)
+
+```shell
+sudo ampy  --port /dev/ttyACM1 put RobotoCondensedRegular12.py
+sudo ampy  --port /dev/ttyACM1 put RobotoCondensedRegular16.py
+sudo ampy  --port /dev/ttyACM1 put RobotoCondensedRegular20.py
+sudo ampy  --port /dev/ttyACM1 put RobotoCondensedLight12.py
+sudo ampy  --port /dev/ttyACM1 put RobotoCondensedLight16.py
+sudo ampy  --port /dev/ttyACM1 put RobotoCondensedLight20.py
+sudo ampy  --port /dev/ttyACM1 put FontAwesomeFreeSolid16.py
+sudo ampy  --port /dev/ttyACM1 put FontAwesomeFreeSolid20.py
+sudo ampy  --port /dev/ttyACM1 put FontAwesomeFreeSolid28.py
+sudo ampy  --port /dev/ttyACM1 put FontAwesomeFreeRegular16.py
+sudo ampy  --port /dev/ttyACM1 put FontAwesomeFreeRegular20.py
+sudo ampy  --port /dev/ttyACM1 put FontAwesomeFreeRegular28.py
+sudo ampy  --port /dev/ttyACM1 put fb2.py
+sudo ampy  --port /dev/ttyACM1 put main.py
+sudo ampy  --port /dev/ttyACM1 put yourconfig.py config.py
+
+```
+
+```shell
+import upip
+upip.install("umqtt.simple")
+```
+
+## Conversion Reference
 ```shell
 python3 fontconvert.py --compress RobotoCondensedRegular12 12 Roboto_Condensed/RobotoCondensed-Regular.ttf > RobotoCondensedRegular12.py
 python3 fontconvert.py --compress RobotoCondensedRegular16 16 Roboto_Condensed/RobotoCondensed-Regular.ttf > RobotoCondensedRegular16.py
@@ -18,21 +49,3 @@ python3 fontconvert.py --interval fa-intervals-regular.json --compress fa20 20 f
 python3 fontconvert.py --interval fa-intervals-regular.json --compress fa28 28 fontawesome-free-6.2.0-desktop/otfs/Font\ Awesome\ 6\ Free-Regular-400.otf> FontAwesomeFreeRegular28.py
 ```
 
-drop them onto the fs, the roboto ones may take a bit @ 115200 ;)
-
-```shell
-sudo ampy  --port /dev/ttyACM0 put RobotoCondensedRegular12.py
-sudo ampy  --port /dev/ttyACM0 put RobotoCondensedRegular16.py
-sudo ampy  --port /dev/ttyACM0 put RobotoCondensedRegular20.py
-sudo ampy  --port /dev/ttyACM0 put RobotoCondensedLight12.py
-sudo ampy  --port /dev/ttyACM0 put RobotoCondensedLight16.py
-sudo ampy  --port /dev/ttyACM0 put RobotoCondensedLight20.py
-sudo ampy  --port /dev/ttyACM0 put FontAwesomeFreeSolid16.py
-sudo ampy  --port /dev/ttyACM0 put FontAwesomeFreeSolid20.py
-sudo ampy  --port /dev/ttyACM0 put FontAwesomeFreeSolid28.py
-sudo ampy  --port /dev/ttyACM0 put FontAwesomeFreeRegular16.py
-sudo ampy  --port /dev/ttyACM0 put FontAwesomeFreeRegular20.py
-sudo ampy  --port /dev/ttyACM0 put FontAwesomeFreeRegular28.py
-sudo ampy  --port /dev/ttyACM0 put fb2.py
-
-```
