@@ -12,6 +12,8 @@ if System.get_env("PHX_SERVER") && System.get_env("RELEASE_NAME") do
   config :room_hermes, RoomHermesWeb.Endpoint, server: true
 end
 
+config :room_hermes, :rabbit, username: System.get_env("RABBIT_USER"), password: System.get_env("RABBIT_PASS")
+
 if config_env() == :prod do
   database_url =
     System.get_env("DATABASE_URL") ||
