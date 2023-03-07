@@ -56,11 +56,11 @@ spec:
 #            initialDelaySeconds: 90
 #            periodSeconds: 3
           env:
-            #            - name: RAVEN_DSN
-            #              valueFrom:
-            #                secretKeyRef:
-            #                  name: wed4u-secrets
-            #                  key: sentrydsn
+            - name: SENTRY_DSN
+              valueFrom:
+                secretKeyRef:
+                  name: ac-secrets
+                  key: sentry_dsn
             - name: SECRET_KEY_BASE
               valueFrom:
                 secretKeyRef:
