@@ -59,7 +59,7 @@ spec:
             - name: SENTRY_DSN
               valueFrom:
                 secretKeyRef:
-                  name: ac-secrets
+                  name: elixir-args
                   key: sentry_dsn
             - name: SECRET_KEY_BASE
               valueFrom:
