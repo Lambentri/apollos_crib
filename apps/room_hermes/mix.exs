@@ -51,7 +51,8 @@ defmodule RoomHermes.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
 
-#      {:room_sanctum, in_umbrella: true}
+#     {:room_sanctum, in_umbrella: true},
+      {:sentry, "~> 8.0"},
     ]
   end
 
