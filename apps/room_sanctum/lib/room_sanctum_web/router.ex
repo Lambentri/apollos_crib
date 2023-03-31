@@ -46,6 +46,7 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/visions/:id/edit", VisionLive.Index, :edit
     live "/cfg/visions/:id", VisionLive.Show, :show
     live "/cfg/visions/:id/show/edit", VisionLive.Show, :edit
+    #live "/p/v/:id/:name", VisionLive.Public, :show
 
     live "/cfg/focis", FociLive.Index, :index
     live "/cfg/focis/new", FociLive.Index, :new
@@ -64,9 +65,13 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/pythiæ/:id/edit", PythiaeLive.Index, :edit
     live "/cfg/pythiæ/:id", PythiaeLive.Show, :show
     live "/cfg/pythiæ/:id/show/edit", PythiaeLive.Show, :edit
+    live_session :public, root_layout: {RoomSanctumWeb.LayoutView, "root_public.html"} do
+      live "/p/p/:name", PythiaeLive.Public, :show
+    end
 
 
-    #    live "/storage/gtfs/agencies", AgencyLive.Index, :index
+
+#    live "/storage/gtfs/agencies", AgencyLive.Index, :index
 #    live "/storage/gtfs/agencies/new", AgencyLive.Index, :new
 #    live "/storage/gtfs/agencies/:id/edit", AgencyLive.Index, :edit
 #    live "/storage/gtfs/agencies/:id", AgencyLive.Show, :show

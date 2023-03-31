@@ -480,6 +480,8 @@ defmodule RoomSanctum.Configuration do
   """
   def get_pythiae!(id), do: Repo.get!(Pythiae, id)
 
+  def get_pythiae!(:name, name), do: Repo.get_by(Pythiae, name: name)
+
   def get_pythiae(:vision, id) do
     from(p in Pythiae, where: ^id in p.visions) |> Repo.all
   end

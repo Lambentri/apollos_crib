@@ -1,0 +1,24 @@
+<div class="2xl:columns-5 xl:columns-3 lg:columns-3 md:columns-3 sm:columns-3 gap-1">
+  <%= for {k, p} <- @preview do %>
+    <%= if p != [] do %>
+    <div class="card bg-base-300 shadow-xl w-full mb-1">
+        <div class="card-body">
+            <div class="flex gap-1">
+              <i class={"fas fa-fw fa-md #{icon(k |> elem(1))}"}></i>
+              <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+            </div>
+            <%= case k do %>
+              <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
+              <% {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
+              <% {_, :tidal} -> %>  <.p_tidal entries={condense(k, p) |> preview(k)}> </.p_tidal>
+              <% {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}> </.p_weather>
+              <% {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
+              <% {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
+              <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
+              <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
+            <% end %>
+            </div>
+          </div>
+          <% end %>
+      <% end %>
+  </div>

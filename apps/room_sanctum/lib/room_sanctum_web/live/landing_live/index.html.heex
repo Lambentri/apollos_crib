@@ -29,6 +29,7 @@
 </div>
 <div class="2xl:columns-5 xl:columns-4 lg:columns-3 md:columns-3 sm:columns-2 gap-4">
     <%= for {k, p} <- @preview do %>
+        <%= if p != [] do %>
         <div class="card bg-base-100 shadow-xl basis-1/3 mb-2">
             <div class="card-body">
                 <h2 class="card-title">
@@ -48,5 +49,6 @@
 
             </div>
         </div>
+        <% end %>
     <% end %>
 </div>
