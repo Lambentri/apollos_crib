@@ -3,7 +3,7 @@
 
 A generalized automated data collection platform, for the purpose of collecting and displaying timely data for wherever you may be.
 
-It supports the collection of data from 8 generalized sources at this time:
+It supports the creation of offerings data from 8 generalized sources at this time:
 
 - GTFS (+RT)
 - GBFS
@@ -14,7 +14,8 @@ It supports the collection of data from 8 generalized sources at this time:
 - OpenWeather
 - Cronos
 
-These can be formed into reusable queries against these sources into visions, and the ability to publish the result of these visions to relevant consumers via MQTT topics for downstream consumption.
+These can be formed into reusable Queries that can be grouped into Visions.
+Visions are interpreted by the Pythiae who forward them to clients via Ankyra.
 
 ## Public Demo
 
