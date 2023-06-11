@@ -1,0 +1,28 @@
+<.header>
+  Scribus <%= @scribus.id %>
+  <:subtitle>This is a scribus record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/cfg_scribus/#{@scribus}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit scribus</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Name"><%= @scribus.name %></:item>
+  <:item title="Resolution"><%= @scribus.resolution %></:item>
+  <:item title="Configuration"><%= @scribus.configuration %></:item>
+</.list>
+
+<.back navigate={~p"/cfg_scribus"}>Back to cfg_scribus</.back>
+
+<.modal :if={@live_action == :edit} id="scribus-modal" show on_cancel={JS.patch(~p"/cfg_scribus/#{@scribus}")}>
+  <.live_component
+    module={RoomSanctumWeb.ScribusLive.FormComponent}
+    id={@scribus.id}
+    title={@page_title}
+    action={@live_action}
+    scribus={@scribus}
+    patch={~p"/cfg_scribus/#{@scribus}"}
+  />
+</.modal>
