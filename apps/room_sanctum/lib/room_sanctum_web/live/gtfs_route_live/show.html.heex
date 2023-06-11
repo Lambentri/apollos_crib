@@ -1,17 +1,15 @@
 <h1>Show Route</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.route_show_path(@socket, :show, @route)}>
+<.modal :if={@live_action == :edit} id="gtfs-route-modal" show on_cancel={JS.patch({Routes.route_show_path(@socket, :show, @route)})}>
     <.live_component
       module={RoomSanctumWeb.RouteLive.FormComponent}
       id={@route.id}
       title={@page_title}
       action={@live_action}
       route={@route}
-      return_to={Routes.route_show_path(@socket, :show, @route)}
+      patch={Routes.route_show_path(@socket, :show, @route)}
     />
   </.modal>
-<% end %>
 
 <ul>
 

@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.RouteLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :routes, list_routes())}
+    {:ok, stream(socket, :routes, list_routes())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.RouteLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.RouteLive.FormComponent, {:saved, route}}, socket) do
+    {:noreply, stream_insert(socket, :routes, route)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     route = Storage.get_route!(id)
     {:ok, _} = Storage.delete_route(route)
 
-    {:noreply, assign(socket, :routes, list_routes())}
+    {:noreply, stream_delete(socket, :routes, route)}
   end
 
   defp list_routes do

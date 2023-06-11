@@ -37,7 +37,7 @@
         </div>
         <div class="w-1/2">
             <div>
-              <%= link "Log in", to: Routes.user_session_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
+              <%= link "Log in", to: Routes.user_login_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
               <div class="divider divider-horizontal">OR</div>
               <%= link "Forgot your password?", to: Routes.user_reset_password_path(@conn, :new), class: "btn btn-wide btn-lg btn-secondary" %>
             </div>

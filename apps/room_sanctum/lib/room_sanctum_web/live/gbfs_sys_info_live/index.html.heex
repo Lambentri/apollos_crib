@@ -1,17 +1,15 @@
 <h1>Listing Gbfs system informations</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.sys_info_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gbfs-sys-info-modal" show on_cancel={JS.patch(Routes.sys_info_index_path(@socket, :index))})}>
     <.live_component
       module={RoomSanctumWeb.SysInfoLive.FormComponent}
       id={@sys_info.id || :new}
       title={@page_title}
       action={@live_action}
       sys_info={@sys_info}
-      return_to={Routes.sys_info_index_path(@socket, :index)}
+      patch={Routes.sys_info_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -33,7 +31,7 @@
     </tr>
   </thead>
   <tbody id="gbfs_system_informations">
-    <%= for sys_info <- @gbfs_system_informations do %>
+    <%= for sys_info <- @streams.gbfs_system_informations do %>
       <tr id={"sys_info-#{sys_info.id}"}>
         <td><%= sys_info.name %></td>
         <td><%= sys_info.email %></td>

@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.HourlyDataLive.FormComponent do
 
   defp save_hourly_data(socket, :edit, hourly_data_params) do
     case Storage.update_hourly_data(socket.assigns.hourly_data, hourly_data_params) do
-      {:ok, _hourly_data} ->
+      {:ok, hourly_data} ->
+        notify_parent({:saved, hourly_data})
         {:noreply,
          socket
          |> put_flash(:info, "Hourly data updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_hourly_data(socket, :new, hourly_data_params) do
     case Storage.create_hourly_data(hourly_data_params) do
-      {:ok, _hourly_data} ->
+      {:ok, hourly_data} ->
+        notify_parent({:saved, hourly_data})
         {:noreply,
          socket
          |> put_flash(:info, "Hourly data created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

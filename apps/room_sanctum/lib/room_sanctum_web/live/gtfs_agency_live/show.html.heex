@@ -1,17 +1,15 @@
 <h1>Show Agency</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.agency_show_path(@socket, :show, @agency)}>
+<.modal :if={@live_action == :edit} id="gtfs-agency-modal" show on_cancel={JS.patch({Routes.agency_show_path(@socket, :show, @agency)})}>
     <.live_component
       module={RoomSanctumWeb.AgencyLive.FormComponent}
       id={@agency.id}
       title={@page_title}
       action={@live_action}
       agency={@agency}
-      return_to={Routes.agency_show_path(@socket, :show, @agency)}
+      patch={Routes.agency_show_path(@socket, :show, @agency)}
     />
   </.modal>
-<% end %>
 
 <ul>
 

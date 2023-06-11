@@ -90,9 +90,9 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   defp save_vision(socket, :edit, vision_params) do
-    case Configuration.update_vision(socket.assigns.vision, vision_params)
-         |> IO.inspect() do
-      {:ok, _vision} ->
+    case Configuration.update_vision(socket.assigns.vision, vision_params) do
+      {:ok, vision} ->
+        notify_parent({:saved, vision})
         {
           :noreply,
           socket
@@ -101,15 +101,14 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_vision(socket, :new, vision_params) do
-    IO.inspect(vision_params)
-
-    case Configuration.create_vision(vision_params) |> IO.inspect() do
-      {:ok, _vision} ->
+    case Configuration.create_vision(vision_params)do
+      {:ok, vision} ->
+        notify_parent({:saved, vision})
         {
           :noreply,
           socket
@@ -118,9 +117,15 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
   defp list_cfg_queries(uid) do
     Configuration.list_cfg_queries({:user, uid})

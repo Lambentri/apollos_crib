@@ -1,7 +1,6 @@
 <h1>Show Reporting area</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.reporting_area_show_path(@socket, :show, @reporting_area)}>
+<.modal :if={@live_action == :edit} id="aqi-reporting-area-modal" show on_cancel={JS.patch({Routes.reporting_area_show_path(@socket, :show, @reporting_area)})}>
     <.live_component
       module={RoomSanctumWeb.ReportingAreaLive.FormComponent}
       id={@reporting_area.id}
@@ -10,8 +9,7 @@
       reporting_area={@reporting_area}
       return_to={Routes.reporting_area_show_path(@socket, :show, @reporting_area)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <ul>
 

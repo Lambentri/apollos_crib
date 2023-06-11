@@ -29,11 +29,13 @@ defmodule RoomSanctumWeb.ReportingAreaLive.FormComponent do
 
   defp save_reporting_area(socket, :edit, reporting_area_params) do
     case Storage.update_reporting_area(socket.assigns.reporting_area, reporting_area_params) do
-      {:ok, _reporting_area} ->
+      {:ok, reporting_area} ->
+        notify_parent({:saved, reporting_area})
+
         {:noreply,
          socket
          |> put_flash(:info, "Reporting area updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :changeset, changeset)}
@@ -42,14 +44,22 @@ defmodule RoomSanctumWeb.ReportingAreaLive.FormComponent do
 
   defp save_reporting_area(socket, :new, reporting_area_params) do
     case Storage.create_reporting_area(reporting_area_params) do
-      {:ok, _reporting_area} ->
+      {:ok, reporting_area} ->
+        notify_parent({:saved, reporting_area})
+
         {:noreply,
          socket
          |> put_flash(:info, "Reporting area created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, changeset: changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

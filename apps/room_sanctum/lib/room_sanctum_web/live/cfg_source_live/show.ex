@@ -196,7 +196,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     end
   end
 
-  defp icon(source_type) do
+  defp get_icon(source_type) do
     RoomSanctumWeb.IconHelpers.icon(source_type)
   end
 

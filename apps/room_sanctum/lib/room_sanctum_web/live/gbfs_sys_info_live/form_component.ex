@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.SysInfoLive.FormComponent do
 
   defp save_sys_info(socket, :edit, sys_info_params) do
     case Storage.update_sys_info(socket.assigns.sys_info, sys_info_params) do
-      {:ok, _sys_info} ->
+      {:ok, sys_info} ->
+        notify_parent({:saved, sys_info})
         {:noreply,
          socket
          |> put_flash(:info, "Sys info updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_sys_info(socket, :new, sys_info_params) do
     case Storage.create_sys_info(sys_info_params) do
-      {:ok, _sys_info} ->
+      {:ok, sys_info} ->
+        notify_parent({:saved, sys_info})
         {:noreply,
          socket
          |> put_flash(:info, "Sys info created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

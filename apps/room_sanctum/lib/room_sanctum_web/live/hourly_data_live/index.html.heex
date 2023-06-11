@@ -1,17 +1,15 @@
 <h1>Listing Airnow hourly data</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.hourly_data_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="aqo-hourly-=data-modal" show on_cancel={JS.patch(Routes.hourly_data_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.HourlyDataLive.FormComponent}
       id={@hourly_data.id || :new}
       title={@page_title}
       action={@live_action}
       hourly_data={@hourly_data}
-      return_to={Routes.hourly_data_index_path(@socket, :index)}
+      patch={Routes.hourly_data_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -30,7 +28,7 @@
     </tr>
   </thead>
   <tbody id="airnow_hourly_data">
-    <%= for hourly_data <- @airnow_hourly_data do %>
+    <%= for hourly_data <- @streams.airnow_hourly_data do %>
       <tr id={"hourly_data-#{hourly_data.id}"}>
         <td><%= hourly_data.valid_date %></td>
         <td><%= hourly_data.valid_time %></td>

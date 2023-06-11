@@ -1,17 +1,15 @@
 <h1>Listing Hourly observations</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.hourly_obs_data_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="ankyra-modal" show on_cancel={JS.patch(Routes.hourly_obs_data_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.HourlyObsDataLive.FormComponent}
       id={@hourly_obs_data.id || :new}
       title={@page_title}
       action={@live_action}
       hourly_obs_data={@hourly_obs_data}
-      return_to={Routes.hourly_obs_data_index_path(@socket, :index)}
+      patch={Routes.hourly_obs_data_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -54,7 +52,7 @@
     </tr>
   </thead>
   <tbody id="hourly_observations">
-    <%= for hourly_obs_data <- @hourly_observations do %>
+    <%= for hourly_obs_data <- @streams.hourly_observations do %>
       <tr id={"hourly_obs_data-#{hourly_obs_data.id}"}>
         <td><%= hourly_obs_data.aqsid %></td>
         <td><%= hourly_obs_data.site_name %></td>

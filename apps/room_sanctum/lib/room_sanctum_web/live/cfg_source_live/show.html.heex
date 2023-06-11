@@ -3,19 +3,17 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Offering Detail</h1>
 
-<%= if @live_action in [:edit] do %>
-<.modal return_to={Routes.source_show_path(@socket, :show, @source)}>
-<.live_component
-module={RoomSanctumWeb.SourceLive.FormComponent}
-id={@source.id}
-title={@page_title}
-action={@live_action}
-source={@source}
-return_to={Routes.source_show_path(@socket, :show, @source)}
-current_user={@current_user}
-/>
+<.modal :if={@live_action == :edit} id="source-modal" show on_cancel={JS.patch({Routes.source_show_path(@socket, :show, @source)})}>
+    <.live_component
+    module={RoomSanctumWeb.SourceLive.FormComponent}
+    id={@source.id}
+    title={@page_title}
+    action={@live_action}
+    source={@source}
+    patch={Routes.source_show_path(@socket, :show, @source)}
+    current_user={@current_user}
+    />
 </.modal>
-<% end %>
 <div class="mx-4 py-2">
     <div class="flex">
         <h2 class="text-2xl font-bold text-accent-300"><%= @source.name %> (<%= @source.type %>)</h2>
@@ -125,7 +123,7 @@ current_user={@current_user}
                 <p>
                 <%= for q <- @queries do %>
                   <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
-                    <i class={"fas #{icon(q.source.type)}"}></i>&emsp;<%= q.name %>
+                    <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
                   <% end %>
                 <% end %>
                 </p>

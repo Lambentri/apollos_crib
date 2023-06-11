@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.TripLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :trips, list_trips())}
+    {:ok, stream(socket, :trips, list_trips())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.TripLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.TripLive.FormComponent, {:saved, trip}}, socket) do
+    {:noreply, stream_insert(socket, :trips, trip)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     trip = Storage.get_trip!(id)
     {:ok, _} = Storage.delete_trip(trip)
 
-    {:noreply, assign(socket, :trips, list_trips())}
+    {:noreply, stream_delete(socket, :trips, trip)}
   end
 
   defp list_trips do

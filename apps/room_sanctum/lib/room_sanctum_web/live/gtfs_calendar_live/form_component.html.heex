@@ -1,56 +1,28 @@
 <div>
   <h2><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+  <.simple_form
+    for={@form}
     id="calendar-form"
     phx-target={@myself}
     phx-change="validate"
     phx-submit="save">
-  
-    <%= label f, :service_id %>
-    <%= text_input f, :service_id %>
-    <%= error_tag f, :service_id %>
-  
-    <%= label f, :service_name %>
-    <%= text_input f, :service_name %>
-    <%= error_tag f, :service_name %>
-  
-    <%= label f, :monday %>
-    <%= number_input f, :monday %>
-    <%= error_tag f, :monday %>
-  
-    <%= label f, :tuesday %>
-    <%= number_input f, :tuesday %>
-    <%= error_tag f, :tuesday %>
-  
-    <%= label f, :wednesday %>
-    <%= number_input f, :wednesday %>
-    <%= error_tag f, :wednesday %>
-  
-    <%= label f, :thursday %>
-    <%= number_input f, :thursday %>
-    <%= error_tag f, :thursday %>
-  
-    <%= label f, :friday %>
-    <%= number_input f, :friday %>
-    <%= error_tag f, :friday %>
-  
-    <%= label f, :saturday %>
-    <%= number_input f, :saturday %>
-    <%= error_tag f, :saturday %>
-  
-    <%= label f, :start_date %>
-    <%= date_select f, :start_date %>
-    <%= error_tag f, :start_date %>
-  
-    <%= label f, :end_date %>
-    <%= date_select f, :end_date %>
-    <%= error_tag f, :end_date %>
+
+    <.input field={@form[:service_id]} type="text" label="Service Id" />
+    <.input field={@form[:service_name]} type="text" label="Service Name" />
+    <.input field={@form[:monday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:tuesday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:wednesday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:thursday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:friday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:saturday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:sunday]} type="checkbox" label="Action Day" />
+    <.input field={@form[:start_date]} type="datetime-local" label="Start Date" />
+    <.input field={@form[:end_date]} type="datetime-local" label="End Date" />
+
   
     <div>
       <%= submit "Save", phx_disable_with: "Saving..." %>
     </div>
-  </.form>
+  </.simple_form>
 </div>

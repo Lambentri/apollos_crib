@@ -53,7 +53,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
     %{data: condensed, id: id, type: type}
   end
 
-  defp icon(type) do
+  defp get_icon(type) do
     RoomSanctumWeb.IconHelpers.icon(type)
   end
 

@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.DirectionLive.FormComponent do
 
   defp save_direction(socket, :edit, direction_params) do
     case Storage.update_direction(socket.assigns.direction, direction_params) do
-      {:ok, _direction} ->
+      {:ok, direction} ->
+        notify_parent({:saved, direction})
         {:noreply,
          socket
          |> put_flash(:info, "Direction updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_direction(socket, :new, direction_params) do
     case Storage.create_direction(direction_params) do
-      {:ok, _direction} ->
+      {:ok, direction} ->
+        notify_parent({:saved, direction})
         {:noreply,
          socket
          |> put_flash(:info, "Direction created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

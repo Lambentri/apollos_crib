@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.StationStatusLive.FormComponent do
 
   defp save_station_status(socket, :edit, station_status_params) do
     case Storage.update_station_status(socket.assigns.station_status, station_status_params) do
-      {:ok, _station_status} ->
+      {:ok, station_status} ->
+        notify_parent({:saved, station_status})
         {:noreply,
          socket
          |> put_flash(:info, "Station status updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_station_status(socket, :new, station_status_params) do
     case Storage.create_station_status(station_status_params) do
-      {:ok, _station_status} ->
+      {:ok, station_status} ->
+        notify_parent({:saved, station_status})
         {:noreply,
          socket
          |> put_flash(:info, "Station status created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

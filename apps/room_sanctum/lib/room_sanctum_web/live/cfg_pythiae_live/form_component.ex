@@ -70,30 +70,37 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
   defp save_pythiae(socket, :edit, pythiae_params) do
     IO.inspect(pythiae_params)
     case Configuration.update_pythiae(socket.assigns.pythiae, pythiae_params) do
-      {:ok, _pythiae} ->
-        _pythiae |> IO.inspect
+      {:ok, pythiae} ->
+        notify_parent({:saved, pythiae})
         {:noreply,
          socket
          |> put_flash(:info, "Pythiae updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_pythiae(socket, :new, pythiae_params) do
     case Configuration.create_pythiae(pythiae_params) do
-      {:ok, _pythiae} ->
+      {:ok, pythiae} ->
+        notify_parent({:saved, pythiae})
         {:noreply,
          socket
          |> put_flash(:info, "Pythiae created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
   defp list_cfg_ankyra(uid) do
     Accounts.list_users_rabbit({:user, uid})

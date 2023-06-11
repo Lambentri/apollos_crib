@@ -31,7 +31,6 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
       _val -> Accounts.change_rabbit_user(rabbit_user)
     end
 
-
     {
       :ok,
       socket
@@ -43,7 +42,6 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
   @impl true
   def handle_event("validate", %{"ankyra" => ankyra_params}, socket) do
     ankyra_params = inj_uid(ankyra_params, socket)
-
 
     changeset =
       socket.assigns.rabbit_user
@@ -83,7 +81,9 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
 
   defp save_ankyra(socket, :edit, ankyra_params) do
     case Accounts.update_rabbit_user(socket.assigns.rabbit_user, ankyra_params) do
-      {:ok, _ankyra} ->
+      {:ok, ankyra} ->
+        notify_parent({:saved, ankyra})
+
         {
           :noreply,
           socket
@@ -92,13 +92,15 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_ankyra(socket, :new, ankyra_params) do
     case Accounts.create_rabbit_user(ankyra_params) do
-      {:ok, _ankyra} ->
+      {:ok, ankyra} ->
+        notify_parent({:saved, ankyra})
+
         {
           :noreply,
           socket
@@ -107,7 +109,13 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

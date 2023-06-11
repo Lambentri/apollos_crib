@@ -1,17 +1,15 @@
 <h1>Listing Airnow monitoring sites</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.monitoring_site_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="aqi-monitoring-site-modal" show on_cancel={JS.patch(Routes.monitoring_site_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.MonitoringSiteLive.FormComponent}
       id={@monitoring_site.id || :new}
       title={@page_title}
       action={@live_action}
       monitoring_site={@monitoring_site}
-      return_to={Routes.monitoring_site_index_path(@socket, :index)}
+      patch={Routes.monitoring_site_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -42,7 +40,7 @@
     </tr>
   </thead>
   <tbody id="airnow_monitoring_sites">
-    <%= for monitoring_site <- @airnow_monitoring_sites do %>
+    <%= for monitoring_site <- @streams.airnow_monitoring_sites do %>
       <tr id={"monitoring_site-#{monitoring_site.id}"}>
         <td><%= monitoring_site.station_id %></td>
         <td><%= monitoring_site.aqsid %></td>

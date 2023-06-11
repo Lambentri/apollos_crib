@@ -1,17 +1,15 @@
 <h1>Show Direction</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.direction_show_path(@socket, :show, @direction)}>
+<.modal :if={@live_action == :edit} id="gtfs-direction-modal" show on_cancel={JS.patch({Routes.direction_show_path(@socket, :show, @direction)})}>
     <.live_component
       module={RoomSanctumWeb.DirectionLive.FormComponent}
       id={@direction.id}
       title={@page_title}
       action={@live_action}
       direction={@direction}
-      return_to={Routes.direction_show_path(@socket, :show, @direction)}
+      patch={Routes.direction_show_path(@socket, :show, @direction)}
     />
   </.modal>
-<% end %>
 
 <ul>
 

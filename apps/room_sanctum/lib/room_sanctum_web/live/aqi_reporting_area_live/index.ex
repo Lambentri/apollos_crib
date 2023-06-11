@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.ReportingAreaLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :airnow_reporting_area, list_airnow_reporting_area())}
+    {:ok, stream(socket, :airnow_reporting_area, list_airnow_reporting_area())}
   end
 
   @impl true
@@ -33,11 +33,17 @@ defmodule RoomSanctumWeb.ReportingAreaLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.ReportingAreaLive.FormComponent, {:saved, reporting_area}}, socket) do
+    {:noreply, stream_insert(socket, :airnow_reporting_area, reporting_area)}
+  end
+
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     reporting_area = Storage.get_reporting_area!(id)
     {:ok, _} = Storage.delete_reporting_area(reporting_area)
 
-    {:noreply, assign(socket, :airnow_reporting_area, list_airnow_reporting_area())}
+    {:noreply, stream_delete(socket, :airnow_reporting_area, reporting_area)}
   end
 
   defp list_airnow_reporting_area do

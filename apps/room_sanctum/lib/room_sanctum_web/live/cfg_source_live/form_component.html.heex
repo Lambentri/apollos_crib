@@ -1,9 +1,8 @@
 <div>
-    <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
+    <h2 class="text-3xl font-bold text-accent"><%= @title %></h2>
 
-    <.form
-    let={f}
-    for={@changeset}
+    <.simple_form
+    for={@form}
     id="source-form"
     phx-target={@myself}
     phx-change="validate"
@@ -12,213 +11,109 @@
     <div class="flex">
         <div class="w-full">
             <div class="form-control">
-                <%= label f, :name %>
-                <%= text_input f, :name, class: "input w-full max-w-xs"%>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :name %>
-                     </span>
-                </label>
+                <.input field={@form[:name]} type="text" label="Name"/>
             </div>
 
             <div class="form-control">
-                <%= label f, :notes %>
-                <%= text_input f, :notes, class: "input w-full max-w-xs" %>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :notes %>
-                     </span>
-                </label>
+                <.input field={@form[:notes]} type="text" label="Notes"/>
             </div>
 
             <div class="form-control">
-                <%= label f, :type %>
-                <%= select f, :type, Ecto.Enum.values(RoomSanctum.Configuration.Source, :type), prompt: "Choose a value", class: "select w-full max-w-xs" %>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :type %>
-                     </span>
-                </label>
+                <.input field={@form[:type]} type="select" label="Type" options={Ecto.Enum.values(RoomSanctum.Configuration.Source, :type)} />
             </div>
         </div>
         <div class="w-1/4">
             <div class="form-control m-10">
-                <%= label f, :enabled %>
-                <%= checkbox f, :enabled, class: "toggle" %>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :enabled %>
-                     </span>
-                </label>
+                <.input field={@form[:enabled]} type="checkbox" label="Enabled" />
             </div>
         </div>
     </div>
 
-
-    <%= case @changeset.changes |> Map.get(:type) || @changeset.data |> Map.get(:type) do %>
+    <%= case @form.source |> Map.get(:changes) |> Map.get(:type) || @form.data |> Map.get(:type) do %>
     <%= :aqi -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :aqi, fn _aqi_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :aqi, fn _aqi_form -> %>
     <% end %>
 
     <% :calendar -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :calendar, fn cal_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :calendar, fn cal_form -> %>
     <div class="form-control">
-        <label>iCal URL</label>
-        <%= text_input cal_form, :url, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag cal_form, :url %>
-          </span>
-        </label>
+        <.input field={cal_form[:url]} type="text" label="iCal URL"/>
     </div>
     <% end %>
 
     <% :ephem -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :ephem, fn _eph_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :ephem, fn _eph_form -> %>
     <% end %>
 
     <% :gtfs -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :gtfs, fn gtfs_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :gtfs, fn gtfs_form -> %>
     <div class="form-control">
-        <label>URL</label>
-        <%= text_input gtfs_form, :url, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-                <%= error_tag gtfs_form, :url %>
-          </span>
-        </label>
+        <.input field={gtfs_form[:url]} type="text" label="URL"/>
     </div>
     <div class="form-control">
-        <label>TZ</label>
-        <%= select gtfs_form, :tz, Tzdata.zone_lists_grouped |> Enum.into([]), class: "select w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-                <%= error_tag gtfs_form, :tz %>
-          </span>
-        </label>
+        <.input field={gtfs_form[:tz]} type="text" label="TZ"/>
     </div>
     <div class="form-control">
-        <label>Realtime URL Service Alerts</label>
-        <%= text_input gtfs_form, :url_rt_sa, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-                <%= error_tag gtfs_form, :url_rt_sa %>
-          </span>
-        </label>
+        <.input field={gtfs_form[:url_rt_sa]} type="text" label="Realtime URL Service Alerts"/>
     </div>
     <div class="form-control">
-        <label>Realtime URL Trip Updates</label>
-        <%= text_input gtfs_form, :url_rt_tu, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-                <%= error_tag gtfs_form, :url_rt_tu %>
-          </span>
-        </label>
+        <.input field={gtfs_form[:url_rt_tu]} type="text" label="Realtime URL Trip Updates"/>
     </div>
     <div class="form-control">
-        <label>Realtime URL Vehicle Positions</label>
-        <%= text_input gtfs_form, :url_rt_vp, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-                <%= error_tag gtfs_form, :url_rt_vp %>
-          </span>
-        </label>
+        <.input field={gtfs_form[:url_rt_vp]} type="text" label="Realtime URL Vehicle Positions"/>
     </div>
 
     <% end %>
 
     <% :gbfs -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :gbfs, fn gbfs_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :gbfs, fn gbfs_form -> %>
     <div class="form-control">
-        <label>URL</label>
-        <%= text_input gbfs_form, :url, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag gbfs_form, :url %>
-          </span>
-        </label>
+        <.input field={gbfs_form[:url]} type="text" label="URL"/>
     </div>
     <div class="form-control">
-        <label>Language</label>
-        <small style="color: blue">TODO Add URL query support...</small> <br/>
-        <%= select gbfs_form, :lang, [:en, :es, :fr, :pt, :it], class: "select w-full max-w-xs"%>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag gbfs_form, :lang %>
-          </span>
-        </label>
+        <.input field={gbfs_form[:lang]} type="select" label="Period" options={[:en, :es, :fr, :pt, :it]} />
     </div>
     <% end %>
 
     <% :hass -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :hass, fn hass_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :hass, fn hass_form -> %>
     <div class="form-control">
-        <label>URL</label>
-        <%= text_input hass_form, :url, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag hass_form, :url %>
-          </span>
-        </label>
+        <.input field={hass_form[:url]} type="text" label="URL"/>
     </div>
 
     <div class="form-control">
-        <label>API Key</label>
-        <%= text_input hass_form, :api_key, class: "input w-full max-w-xs" %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag hass_form, :api_key %>
-          </span>
-        </label>
+        <.input field={hass_form[:api_key]} type="text" label="API Key"/>
     </div>
     <% end %>
 
     <% :rideshare -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :rideshare, fn rs_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :rideshare, fn rs_form -> %>
     <div class="form-control">
-        <label>Provider</label>
-        <%= text_input rs_form, :provider, class: "input w-full max-w-xs"  %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag rs_form, :provider %>
-          </span>
-        </label>
+        <.input field={rs_form[:provider]} type="text" label="Provider"/>
+        TODODODDODO
     </div>
     <div class="form-control">
-        <label>API Key</label>
-        <%= text_input rs_form, :api_key, class: "input w-full max-w-xs"  %>
-        <label class="label">
-          <span class="label-text-alt text-error">
-            <%= error_tag rs_form, :api_key %>
-          </span>
-        </label>
+        <.input field={rs_form[:api_key]} type="text" label="API Key"/>
     </div>
     <% end %>
 
     <% :tidal -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :tidal, fn _tidal_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :tidal, fn _tidal_form -> %>
     <% end %>
 
     <% :weather -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :weather, fn weather_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :weather, fn weather_form -> %>
+
     <div class="form-control">
-        <label>OpenWeatherMap API Key</label>
-        <%= text_input weather_form, :api_key, class: "input w-full max-w-xs"  %>
-        <div class="error">
-            <%= error_tag weather_form, :api_key %>
-        </div>
+        <.input field={weather_form[:api_key]} type="text" label="API Key"/>
     </div>
     <div class="form-control">
-        <label>Units</label>
-        <%= select weather_form, :units, [:standard, :metric, :imperial], class: "select w-full max-w-xs" %>
-        <div class="error">
-            <%= error_tag weather_form, :units %>
-        </div>
+        <.input field={weather_form[:units]} type="text" label="Units"/>
     </div>
     <% end %>
 
     <% :cronos -> %>
-    <%= polymorphic_embed_inputs_for f, :config, :cronos, fn _cronos_form -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :cronos, fn _cronos_form -> %>
     <% end %>
 
     <% _ -> %>
@@ -228,5 +123,5 @@
     <div>
         <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary" %>
     </div>
-</.form>
+</.simple_form>
 </div>

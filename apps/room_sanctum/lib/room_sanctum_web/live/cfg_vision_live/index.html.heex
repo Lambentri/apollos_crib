@@ -10,19 +10,17 @@
 </div>
 <% end %>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.vision_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="vision-modal" show on_cancel={JS.patch(Routes.vision_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.VisionLive.FormComponent}
       id={@vision.id || :new}
       title={@page_title}
       action={@live_action}
       vision={@vision}
-      return_to={Routes.vision_index_path(@socket, :index)}
+      patch={Routes.vision_index_path(@socket, :index)}
       current_user={@current_user}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table class="table table-compact w-full mx-6">
   <thead>
@@ -34,7 +32,7 @@
     </tr>
   </thead>
   <tbody id="visions">
-    <%= for vision <- @visions do %>
+    <%= for {id, vision} <- @streams.visions do %>
       <tr id={"vision-#{vision.id}"}>
         <td><%= vision.name %></td>
         <td>$query</td>

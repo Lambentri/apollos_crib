@@ -1,17 +1,15 @@
 <h1>Show Calendar</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.calendar_show_path(@socket, :show, @calendar)}>
+<.modal :if={@live_action == :edit} id="gtfs-calendar-modal" show on_cancel={JS.patch({Routes.calendar_show_path(@socket, :show, @calendar)})}>
     <.live_component
       module={RoomSanctumWeb.CalendarLive.FormComponent}
       id={@calendar.id}
       title={@page_title}
       action={@live_action}
       calendar={@calendar}
-      return_to={Routes.calendar_show_path(@socket, :show, @calendar)}
+      patch={Routes.calendar_show_path(@socket, :show, @calendar)}
     />
   </.modal>
-<% end %>
 
 <ul>
 

@@ -1,100 +1,38 @@
 <div>
   <h2><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+  <.simple_form
+    for={@form}
     id="monitoring_site-form"
     phx-target={@myself}
     phx-change="validate"
     phx-submit="save">
-  
-    <%= label f, :station_id %>
-    <%= text_input f, :station_id %>
-    <%= error_tag f, :station_id %>
-  
-    <%= label f, :aqsid %>
-    <%= text_input f, :aqsid %>
-    <%= error_tag f, :aqsid %>
-  
-    <%= label f, :full_aqsid %>
-    <%= text_input f, :full_aqsid %>
-    <%= error_tag f, :full_aqsid %>
-  
-    <%= label f, :monitor_type %>
-    <%= text_input f, :monitor_type %>
-    <%= error_tag f, :monitor_type %>
-  
-    <%= label f, :parameter %>
-    <%= text_input f, :parameter %>
-    <%= error_tag f, :parameter %>
-  
-    <%= label f, :site_code %>
-    <%= text_input f, :site_code %>
-    <%= error_tag f, :site_code %>
-  
-    <%= label f, :site_name %>
-    <%= text_input f, :site_name %>
-    <%= error_tag f, :site_name %>
-  
-    <%= label f, :status %>
-    <%= select f, :status, Ecto.Enum.values(RoomSanctum.Storage.AirNow.MonitoringSite, :status), prompt: "Choose a value" %>
-    <%= error_tag f, :status %>
-  
-    <%= label f, :agency_id %>
-    <%= text_input f, :agency_id %>
-    <%= error_tag f, :agency_id %>
-  
-    <%= label f, :agency_name %>
-    <%= text_input f, :agency_name %>
-    <%= error_tag f, :agency_name %>
-  
-    <%= label f, :epa_region %>
-    <%= text_input f, :epa_region %>
-    <%= error_tag f, :epa_region %>
-  
-    <%= label f, :point %>
-    <%= text_input f, :point %>
-    <%= error_tag f, :point %>
-  
-    <%= label f, :elevation %>
-    <%= number_input f, :elevation, step: "any" %>
-    <%= error_tag f, :elevation %>
-  
-    <%= label f, :gmp_offset %>
-    <%= number_input f, :gmp_offset %>
-    <%= error_tag f, :gmp_offset %>
-  
-    <%= label f, :country_fips %>
-    <%= text_input f, :country_fips %>
-    <%= error_tag f, :country_fips %>
-  
-    <%= label f, :cbsa_id %>
-    <%= text_input f, :cbsa_id %>
-    <%= error_tag f, :cbsa_id %>
-  
-    <%= label f, :cbsa_name %>
-    <%= text_input f, :cbsa_name %>
-    <%= error_tag f, :cbsa_name %>
-  
-    <%= label f, :state_aqs_code %>
-    <%= text_input f, :state_aqs_code %>
-    <%= error_tag f, :state_aqs_code %>
-  
-    <%= label f, :state_abbreviation %>
-    <%= text_input f, :state_abbreviation %>
-    <%= error_tag f, :state_abbreviation %>
-  
-    <%= label f, :county_aqs_code %>
-    <%= text_input f, :county_aqs_code %>
-    <%= error_tag f, :county_aqs_code %>
-  
-    <%= label f, :county_name %>
-    <%= text_input f, :county_name %>
-    <%= error_tag f, :county_name %>
+
+    <.input field={@form[:station_id]} type="text" label="Station Id" />
+    <.input field={@form[:aqsid]} type="text" label="AQS Id" />
+    <.input field={@form[:full_aqsid]} type="text" label="Full AQS Id" />
+    <.input field={@form[:monitor_type]} type="text" label="Monitor Type" />
+    <.input field={@form[:parameter]} type="text" label="Parameter" />
+    <.input field={@form[:site_code]} type="text" label="Site Code" />
+    <.input field={@form[:site_name]} type="text" label="Site Name" />
+    <.input field={@form[:status]} type="select" label="Status" options={Ecto.Enum.values(RoomSanctum.Storage.AirNow.MonitoringSite, :status)}/>
+    <.input field={@form[:agency_id]} type="text" label="Agency Id" />
+    <.input field={@form[:agency_name]} type="text" label="Agency Name" />
+    <.input field={@form[:epa_region]} type="text" label="EPA Region" />
+    <.input field={@form[:point]} type="text" label="Pt" />
+    <.input field={@form[:elevation]} type="number" label="Elevation" />
+    <.input field={@form[:gmp_offset]} type="number" label="GMP?t Offset" />
+    <.input field={@form[:country_fips]} type="text" label="Country Fips" />
+    <.input field={@form[:cbsa_id]} type="text" label="CBSA Id" />
+    <.input field={@form[:cbsa_name]} type="text" label="CBSA Name" />
+    <.input field={@form[:state_aqs_code]} type="text" label="State AQS Code" />
+    <.input field={@form[:state_abbreviation]} type="text" label="State Abbrv" />
+    <.input field={@form[:county_aqs_code]} type="text" label="County AQS Code" />
+    <.input field={@form[:county_name]} type="text" label="County Name" />
+
   
     <div>
       <%= submit "Save", phx_disable_with: "Saving..." %>
     </div>
-  </.form>
+  </.simple_form>
 </div>

@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.StopLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :stops, list_stops())}
+    {:ok, stream(socket, :stops, list_stops())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.StopLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.StopLive.FormComponent, {:saved, stop}}, socket) do
+    {:noreply, stream_insert(socket, :stops, stop)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     stop = Storage.get_stop!(id)
     {:ok, _} = Storage.delete_stop(stop)
 
-    {:noreply, assign(socket, :stops, list_stops())}
+    {:noreply, assign(socket, :stops, stop)}
   end
 
   defp list_stops do

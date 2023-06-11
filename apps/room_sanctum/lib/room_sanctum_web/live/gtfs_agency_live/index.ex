@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.AgencyLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :agencies, list_agencies())}
+    {:ok, stream(socket, :agencies, list_agencies())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.AgencyLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.AgencyLive.FormComponent, {:saved, agency}}, socket) do
+    {:noreply, stream_insert(socket, :agencies, agency)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     agency = Storage.get_agency!(id)
     {:ok, _} = Storage.delete_agency(agency)
 
-    {:noreply, assign(socket, :agencies, list_agencies())}
+    {:noreply, stream_delete(socket, :agencies, agency)}
   end
 
   defp list_agencies do

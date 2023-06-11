@@ -1,4 +1,5 @@
 defmodule RoomSanctumWeb.LivePreview do
+  use Phoenix.Component
   import Phoenix.LiveView.Helpers
 
   defp gtfs_icon(route_str) do

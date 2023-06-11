@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="afterdark">
+<head>
+  <meta charset="utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <%= csrf_meta_tag() %>
+  <%= live_title_tag assigns[:page_title] || "RoomSanctum", suffix: " · Phoenix Framework" %>
+  <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn,
+  "/assets/app.css")}/>
+  <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn,
+  "/assets/app.js")}></script>
+</head>
+<body>
+  <ul class="relative z-10 flex items-center gap-4 px-4 sm:px-6 lg:px-8 justify-end">
+    <%= if @current_user do %>
+      <li class="text-[0.8125rem] leading-6 text-zinc-900">
+        <%= @current_user.email %>
+      </li>
+      <li>
+        <.link
+          href={~p"/users/settings"}
+          class="text-[0.8125rem] leading-6 text-zinc-900 font-semibold hover:text-zinc-700"
+        >
+          Settings
+        </.link>
+      </li>
+      <li>
+        <.link
+          href={~p"/users/log_out"}
+          method="delete"
+          class="text-[0.8125rem] leading-6 text-zinc-900 font-semibold hover:text-zinc-700"
+        >
+          Log out
+        </.link>
+      </li>
+    <% else %>
+      <li>
+        <.link
+          href={~p"/users/register"}
+          class="text-[0.8125rem] leading-6 text-zinc-900 font-semibold hover:text-zinc-700"
+        >
+          Register
+        </.link>
+      </li>
+      <li>
+        <.link
+          href={~p"/users/log_in"}
+          class="text-[0.8125rem] leading-6 text-zinc-900 font-semibold hover:text-zinc-700"
+        >
+          Log in
+        </.link>
+      </li>
+    <% end %>
+  </ul>
+<div class="p-2">
+  <div class="navbar bg-neutral text-accent sm:rounded-lg shadow-xl">
+    <div class="navbar-start">
+      <div class="dropdown">
+        <label tabindex="0" class="btn btn-ghost lg:hidden">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h8m-8 6h16"/>
+          </svg>
+        </label>
+        <ul tabindex="0" class="menu menu-compact dropdown-content mt-3 p-2 shadow bg-base-200 rounded-box w-52 z-10">
+          <%= if @current_user do %>
+          <li tabindex="0">
+            <a class="justify-between">
+              Services
+              <svg class="fill-current" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+              </svg>
+            </a>
+            <._action_menu {assigns} />
+          </li>
+          <% end %>
+          <hr>
+          <li>
+            <a class="justify-between">
+              Account/Login
+              <svg class="fill-current" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                <path d="M8.59,16.58L13.17,12L8.59,7.41L10,6L16,12L10,18L8.59,16.58Z"/>
+              </svg>
+            </a>
+            <._user_menu {assigns} />
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="navbar-center">
+      <a class="btn btn-ghost normal-case text-2xl neon" href="/">apollo's</a>
+    </div>
+    <div class="navbar-end hidden lg:flex">
+      <ul class="menu menu-horizontal p-0 z-10">
+        <%= if @current_user do %>
+        <li tabindex="0">
+          <a>
+            Services
+            <svg class="fill-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+              <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+            </svg>
+          </a>
+          <._action_menu {assigns} />
+        </li>
+        <% end %>
+        <li>
+          <a class="justify-between">
+            Account/Login
+            <svg class="fill-current" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24">
+              <path d="M7.41,8.58L12,13.17L16.59,8.58L18,10L12,16L6,10L7.41,8.58Z"/>
+            </svg>
+          </a>
+          <._user_menu {assigns} />
+        </li>
+      </ul>
+    </div>
+  </div>
+</div>
+<!-- <div class="relative bg-primary px-6 pt-10 pb-8 shadow-xl ring-1 ring-gray-900/5 sm:mx-auto sm:max-w-lg sm:rounded-lg sm:px-10">
+  h
+</div>
+-->
+<div class="p-2">
+  <div class="bg-neutral sm:rounded-lg shadow-xl pb-8">
+    <%= @inner_content %>
+  </div>
+</div>
+</body>
+</html>

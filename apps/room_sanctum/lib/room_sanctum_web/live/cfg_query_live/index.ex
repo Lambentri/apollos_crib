@@ -6,7 +6,10 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id)) |> assign(:show_info, false)}
+    {:ok,
+     socket
+     |> assign(:show_info, false)
+     |> stream(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id))}
   end
 
   @impl true
@@ -33,11 +36,16 @@ defmodule RoomSanctumWeb.QueryLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.QueryLive.FormComponent, {:saved, query}}, socket) do
+    {:noreply, stream_insert(socket, :cfg_queries, query)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     query = Configuration.get_query!(id)
     {:ok, _} = Configuration.delete_query(query)
 
-    {:noreply, assign(socket, :cfg_queries, list_cfg_queries(socket.assigns.current_user.id))}
+    {:noreply, stream_delete(socket, :cfg_queries, query)}
   end
 
   def handle_event("info", _params, socket) do
@@ -48,7 +56,7 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     Configuration.list_cfg_queries({:user, uid})
   end
 
-  defp icon(type) do
+  def get_icon(type) do
     RoomSanctumWeb.IconHelpers.icon(type)
   end
 end

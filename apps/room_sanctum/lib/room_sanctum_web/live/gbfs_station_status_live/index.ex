@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.StationStatusLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :gbfs_station_status, list_gbfs_station_status())}
+    {:ok, stream(socket, :gbfs_station_status, list_gbfs_station_status())}
   end
 
   @impl true
@@ -33,11 +33,19 @@ defmodule RoomSanctumWeb.StationStatusLive.Index do
   end
 
   @impl true
+  def handle_info(
+        {RoomSanctumWeb.StationStatusLive.FormComponent, {:saved, station_status}},
+        socket
+      ) do
+    {:noreply, stream_insert(socket, :ankyras, station_status)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     station_status = Storage.get_station_status!(id)
     {:ok, _} = Storage.delete_station_status(station_status)
 
-    {:noreply, assign(socket, :gbfs_station_status, list_gbfs_station_status())}
+    {:noreply, stream_delete(socket, :gbfs_station_status, station_status)}
   end
 
   defp list_gbfs_station_status do

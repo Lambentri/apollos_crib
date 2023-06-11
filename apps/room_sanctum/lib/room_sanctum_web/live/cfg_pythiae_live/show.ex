@@ -50,7 +50,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
   end
 
-  defp icon(type) do
+  defp get_icon(type) do
     RoomSanctumWeb.IconHelpers.icon(type)
   end
 
@@ -84,7 +84,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
           as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
           case Map.get(as_map, item) do
             nil -> ""
-            val -> icon(val.source.type)
+            val -> get_icon(val.source.type)
           end
         end
 

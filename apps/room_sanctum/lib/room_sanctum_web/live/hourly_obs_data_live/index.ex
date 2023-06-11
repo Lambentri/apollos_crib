@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.HourlyObsDataLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :hourly_observations, list_hourly_observations())}
+    {:ok, stream(socket, :hourly_observations, list_hourly_observations())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.HourlyObsDataLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.HourlyObsDataLive.FormComponent, {:saved, hourly_obs_data}}, socket) do
+    {:noreply, stream_insert(socket, :hourly_observations, hourly_obs_data)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     hourly_obs_data = AirNow.get_hourly_obs_data!(id)
     {:ok, _} = AirNow.delete_hourly_obs_data(hourly_obs_data)
 
-    {:noreply, assign(socket, :hourly_observations, list_hourly_observations())}
+    {:noreply, stream_delete(socket, :hourly_observations, hourly_obs_data)}
   end
 
   defp list_hourly_observations do

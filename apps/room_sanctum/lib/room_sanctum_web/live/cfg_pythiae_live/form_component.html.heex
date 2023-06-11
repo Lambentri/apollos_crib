@@ -1,9 +1,8 @@
 <div>
   <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+  <.simple_form
+    for={@form}
     id="pythiae-form"
     phx-target={@myself}
     phx-change="validate"
@@ -12,38 +11,19 @@
   <div class="flex">
     <div class="w-full">
       <div class="form-control">
-        <%= label f, :name, class: "label" %>
-        <div class="input-group">
-          <btn class="btn btn-accent" phx-click="generate-new-name" phx-target={@myself}>
-            <i class="fa-solid fa-arrows-rotate"></i>
-          </btn>
-          <%= text_input f, :name, class: "input w-full max-w-md" %>
-        </div>
-        <label class="label">
-         <span class="label-text-alt text-error">
-            <%= error_tag f, :name %>
-         </span>
-        </label>
+        <.input field={@form[:name]} type="text" label="Topic" lb_a="generate-new-name" lb_i="fa-arrows-rotate" />
       </div>
       <div class="form-control">
-    <%= label f, :visions %>
-    <%= multiple_select f, :visions, @cfg_visions_sel, class: "select w-full max-w-xs" %>
-    <%= error_tag f, :visions %>
+        <.input field={@form[:visions]} type="select" multiple="true" label="Visions" options={@cfg_visions_sel}/>
       </div>
       <div class="form-control">
-    <%= label f, :ankyra %>
-    <%= multiple_select f, :ankyra, @cfg_ankyra_sel, class: "select w-full max-w-xs" %>
-    <%= error_tag f, :ankyra %>
+        <.input field={@form[:ankyra]} type="select" multiple="true" label="Ankyra"  options={@cfg_ankyra_sel}/>
       </div>
       <div class="form-control">
-    <%= label f, :curr_vision %>
-    <%= select f, :curr_vision, @cfg_visions_sel, class: "select w-full max-w-xs" %>
-    <%= error_tag f, :curr_vision %>
+        <.input field={@form[:curr_vision]} type="select" label="Current Vision"  options={@cfg_visions_sel}/>
       </div>
       <div class="form-control">
-    <%= label f, :curr_foci %>
-    <%= select f, :curr_foci, @cfg_foci_sel, class: "select w-full max-w-xs" %>
-    <%= error_tag f, :curr_foci %>
+        <.input field={@form[:curr_foci]} type="select" label="Current Foci"  options={@cfg_foci_sel}/>
       </div>
 
     </div>
@@ -52,5 +32,5 @@
     <div>
       <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary" %>
     </div>
-  </.form>
+  </.simple_form>
 </div>

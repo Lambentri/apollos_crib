@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.RouteLive.FormComponent do
 
   defp save_route(socket, :edit, route_params) do
     case Storage.update_route(socket.assigns.route, route_params) do
-      {:ok, _route} ->
+      {:ok, route} ->
+        notify_parent({:saved, route})
         {:noreply,
          socket
          |> put_flash(:info, "Route updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_route(socket, :new, route_params) do
     case Storage.create_route(route_params) do
-      {:ok, _route} ->
+      {:ok, route} ->
+        notify_parent({:saved, route})
         {:noreply,
          socket
          |> put_flash(:info, "Route created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

@@ -3,19 +3,17 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Query Detail</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.query_show_path(@socket, :show, @query)}>
+<.modal :if={@live_action == :edit} id="query-modal" show on_cancel={JS.patch({Routes.query_show_path(@socket, :show, @query)})}>
     <.live_component
       module={RoomSanctumWeb.QueryLive.FormComponent}
       id={@query.id}
       title={@page_title}
       action={@live_action}
       query={@query}
-      return_to={Routes.query_show_path(@socket, :show, @query)}
+      patch={Routes.query_show_path(@socket, :show, @query)}
       current_user={@current_user}
     />
   </.modal>
-<% end %>
 
 <div class="mx-4 py-2">
   <div class="flex">

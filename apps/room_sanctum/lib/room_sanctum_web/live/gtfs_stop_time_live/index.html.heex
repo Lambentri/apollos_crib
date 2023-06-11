@@ -1,17 +1,15 @@
 <h1>Listing Stop times</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.stop_time_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gtfs-stop-time-modal" show on_cancel={JS.patch(Routes.stop_time_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.StopTimeLive.FormComponent}
       id={@stop_time.id || :new}
       title={@page_title}
       action={@live_action}
       stop_time={@stop_time}
-      return_to={Routes.stop_time_index_path(@socket, :index)}
+      patch={Routes.stop_time_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -33,7 +31,7 @@
     </tr>
   </thead>
   <tbody id="stop_times">
-    <%= for stop_time <- @stop_times do %>
+    <%= for stop_time <- @streams.stop_times do %>
       <tr id={"stop_time-#{stop_time.id}"}>
         <td><%= stop_time.trip_id %></td>
         <td><%= stop_time.arrival_time %></td>

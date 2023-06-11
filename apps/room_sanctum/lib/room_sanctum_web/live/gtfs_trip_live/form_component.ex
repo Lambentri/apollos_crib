@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.TripLive.FormComponent do
 
   defp save_trip(socket, :edit, trip_params) do
     case Storage.update_trip(socket.assigns.trip, trip_params) do
-      {:ok, _trip} ->
+      {:ok, trip} ->
+        notify_parent({:saved, trip})
         {:noreply,
          socket
          |> put_flash(:info, "Trip updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_trip(socket, :new, trip_params) do
     case Storage.create_trip(trip_params) do
-      {:ok, _trip} ->
+      {:ok, trip} ->
+        notify_parent({:saved, trip})
         {:noreply,
          socket
          |> put_flash(:info, "Trip created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

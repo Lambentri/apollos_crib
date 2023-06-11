@@ -9,9 +9,8 @@
 
     <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
 
-    <.form
-    let={f}
-    for={@changeset}
+    <.simple_form
+    for={@form}
     id="ankyra-form"
     phx-target={@myself}
     phx-change="validate"
@@ -21,33 +20,11 @@
         <div class="w-full">
             <%= if @rabbit_user.id == nil do %>
             <div class="form-control">
-                <%= label f, :topic, class: "label" %>
-                <div class="input-group">
-                    <btn class="btn btn-accent" phx-click="generate-new-topic" phx-target={@myself}>
-                        <i class="fa-solid fa-arrows-rotate"></i>
-                    </btn>
-                    <%= text_input f, :topic, class: "input w-full max-w-md", disabled: :disabled %>
-                </div>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :topic %>
-                     </span>
-                </label>
+                <.input field={@form[:topic]} type="text" label="Topic" rb_a="generate-new-topic" rb_i="fa-arrows-rotate" />
             </div>
             <% end %>
             <div class="form-control">
-                <%= label f, :password, class: "label" %>
-                <div class="input-group">
-                <btn class="btn btn-accent" phx-click="generate-new-password" phx-target={@myself}>
-                    <i class="fa-solid fa-arrows-rotate"></i>
-                </btn>
-                <%= text_input f, :password, class: "input w-full max-w-md", disabled: :disabled %>
-                </div>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :password %>
-                     </span>
-                </label>
+                <.input field={@form[:password]} type="text" label="Password" rb_a="generate-new-password" rb_i="fa-arrows-rotate" />
             </div>
         </div>
     </div>
@@ -56,6 +33,6 @@
     <div>
         <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary" %>
     </div>
-</.form>
+</.simple_form>
 
 </div>

@@ -6,7 +6,10 @@ defmodule RoomSanctumWeb.FociLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:focis, list_focis(socket.assigns.current_user.id)) |> assign(:show_info, false)}
+    {:ok,
+     socket
+     |> assign(:show_info, false)
+     |> stream(:focis, list_focis(socket.assigns.current_user.id))}
   end
 
   @impl true
@@ -33,11 +36,16 @@ defmodule RoomSanctumWeb.FociLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.FociLive.FormComponent, {:saved, foci}}, socket) do
+    {:noreply, stream_insert(socket, :focis, foci)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     foci = Configuration.get_foci!(id)
     {:ok, _} = Configuration.delete_foci(foci)
 
-    {:noreply, assign(socket, :focis, list_focis(socket.assigns.current_user.id))}
+    {:noreply, stream_delete(socket, :focis, foci)}
   end
 
   def handle_event("info", _params, socket) do

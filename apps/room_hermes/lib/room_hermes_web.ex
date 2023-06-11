@@ -17,6 +17,10 @@ defmodule RoomHermesWeb do
   and import those modules here.
   """
 
+  def static_paths do
+    ~w(assets fonts images favicon.ico robots.txt)
+  end
+
   def controller do
     quote do
       use Phoenix.Controller, namespace: RoomHermesWeb
@@ -24,14 +28,17 @@ defmodule RoomHermesWeb do
       import Plug.Conn
       import RoomHermesWeb.Gettext
       alias RoomHermesWeb.Router.Helpers, as: Routes
+
+      unquote(verified_routes())
     end
   end
 
   def view do
     quote do
       use Phoenix.View,
-          root: "lib/room_sanctum_web/templates",
+          root: "lib/room_hermes_web/templates",
           namespace: RoomHermesWeb
+      use Phoenix.Component
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
@@ -75,6 +82,7 @@ defmodule RoomHermesWeb do
 
       # Import LiveView and .heex helpers (live_render, live_patch, <.form>, etc)
       import Phoenix.LiveView.Helpers
+      use Phoenix.Component
 
       # Import basic rendering functionality (render, render_layout, etc)
       import Phoenix.View
@@ -85,6 +93,15 @@ defmodule RoomHermesWeb do
       import RoomHermesWeb.ErrorHelpers
       import RoomHermesWeb.Gettext
       alias RoomHermesWeb.Router.Helpers, as: Routes
+    end
+  end
+
+  def verified_routes do
+    quote do
+      use Phoenix.VerifiedRoutes,
+          endpoint: RoomHermesWeb.Endpoint,
+          router: RoomHermesWeb.Router,
+          statics: RoomHermesWeb.static_paths()
     end
   end
 

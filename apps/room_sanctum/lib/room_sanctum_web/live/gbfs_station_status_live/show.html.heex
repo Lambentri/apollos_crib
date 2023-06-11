@@ -1,7 +1,6 @@
 <h1>Show Station status</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.station_status_show_path(@socket, :show, @station_status)}>
+<.modal :if={@live_action == :edit} id="gbfs-station-status-modal" show on_cancel={JS.patch({Routes.station_status_show_path(@socket, :show, @station_status)})}>
     <.live_component
       module={RoomSanctumWeb.StationStatusLive.FormComponent}
       id={@station_status.id}
@@ -11,7 +10,6 @@
       return_to={Routes.station_status_show_path(@socket, :show, @station_status)}
     />
   </.modal>
-<% end %>
 
 <ul>
 

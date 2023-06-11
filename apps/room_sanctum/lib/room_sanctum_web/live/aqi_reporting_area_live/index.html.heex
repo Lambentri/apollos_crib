@@ -1,17 +1,15 @@
 <h1>Listing Airnow reporting area</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.reporting_area_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="aqi-reporting-area-modal" show on_cancel={JS.patch(Routes.reporting_area_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.ReportingAreaLive.FormComponent}
       id={@reporting_area.id || :new}
       title={@page_title}
       action={@live_action}
       reporting_area={@reporting_area}
-      return_to={Routes.reporting_area_index_path(@socket, :index)}
+      patch={Routes.reporting_area_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -38,7 +36,7 @@
     </tr>
   </thead>
   <tbody id="airnow_reporting_area">
-    <%= for reporting_area <- @airnow_reporting_area do %>
+    <%= for reporting_area <- @streams.airnow_reporting_area do %>
       <tr id={"reporting_area-#{reporting_area.id}"}>
         <td><%= reporting_area.issue_date %></td>
         <td><%= reporting_area.valid_date %></td>

@@ -1,9 +1,8 @@
 <div>
     <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
 
-    <.form
-    let={f}
-    for={@changeset}
+    <.simple_form
+    for={@form}
     id="vision-form"
     phx-target={@myself}
     phx-change="validate"
@@ -12,19 +11,13 @@
     <div class="flex">
         <div class="w-full">
             <div class="form-control">
-                <%= label f, :name %>
-                <%= text_input f, :name, class: "input w-full max-w-xs"%>
-                <label class="label">
-                     <span class="label-text-alt text-error">
-                        <%= error_tag f, :name %>
-                     </span>
-                </label>
+                <.input field={@form[:name]} type="text" label="Name"/>
             </div>
         </div>
     </div>
 
 
-    <%= for {fq, ctr} <- Enum.with_index(inputs_for(f, :queries)) do %>
+    <%= for {fq, ctr} <- Enum.with_index(inputs_for(@form, :queries)) do %>
         <div class="flex">
             <div class="flex-none w-16 font-bold text-7xl">
                 <%= hidden_inputs_for(fq) %>
@@ -32,9 +25,7 @@
             </div>
             <div class="flex-none w-32 p-1">
                 <div class="form-control">
-                <%= label fq, :type %>
-                <%= select fq, :type, Ecto.Enum.values(RoomSanctum.Configuration.Vision, :type), prompt: "Choose a value", class: "select w-full max-w-xs" %>
-                <%= error_tag fq, :type %>
+                <.input field={fq[:type]} type="select" label="Type" options={ Ecto.Enum.values(RoomSanctum.Configuration.Vision, :type)}/>
                 </div>
             </div>
 
@@ -42,55 +33,31 @@
             <%= hidden_inputs_for(fd) %>
             <div class="flex-none w-24 p-1">
                 <div class="form-control">
-                    <label>Order</label>
-                    <%= number_input fd, :order,  class: "input w-full max-w-xs" %>
-                    <div class="error">
-                        <%= error_tag fd, :order %>
-                    </div>
+                    <.input field={fd[:order]} type="number" label="Order" />
                 </div>
             </div>
             <div class="flex-1 w-64 p-1">
                 <div class="form-control">
-                    <label>Query</label>
-                    <%= select fd, :query, @cfg_queries_sel, class: "select w-full max-w-xs" %>
-                    <div class="error">
-                        <%= error_tag fd, :query %>
-                    </div>
+                    <.input field={fd[:query]} type="select" label="Type" options={@cfg_queries_sel}/>
                 </div>
             </div>
             <div class="flex-1 w-64 p-1">
-            <%= case gfv(@changeset, fq, ctr) do %>
+            <%= case gfv(@form, fq, ctr) do %>
                 <% :time -> %>
                     <div class="form-control">
                         <label>Weekdays</label>
-                        <%= multiple_select(
-                                fd,
-                                :weekdays,
-                                Enum.map(Ecto.Enum.values(RoomSanctum.Configuration.Vision.Schema1Time, :weekdays), fn c -> etuple(c) end),
-                                class: "select w-full max-w-xs"
-                              ) %>
-                        <div class="error">
-                            <%= error_tag fd, :weekdays %>
-                        </div>
+                        <.input field={fd[:weekdays]} type="select" multiple="true" label="Visions" options={Enum.map(Ecto.Enum.values(RoomSanctum.Configuration.Vision.Schema1Time, :weekdays), fn c -> etuple(c) end)}/>
                     </div>
                     <div class="card card-compact rounded-md bg-base-100 shadow-xl p-2 my-1">
                     <div class="time-inputs">
-                        <label><i class="fa-solid fa-forward-step"></i></label>
-                        <%= time_select fd, :time_start,  class: "select w-full max-w-xs" %>
-                        <div class="error">
-                            <%= error_tag fd, :time_start %>
-                        </div>
+                        <.input field={fd[:time_start]} type="time" label={raw("<i class=\"fa-solid fa-forward-step\"></i>")} />
                     </div>
                     <div class="time-inputs">
-                        <label><i class="fa-solid fa-backward-step"></i></label>
-                        <%= time_select fd, :time_end,  class: "select w-full max-w-xs" %>
-                        <div class="error">
-                            <%= error_tag fd, :time_end %>
-                        </div>
+                        <.input field={fd[:time_end]} type="time" label={raw("<i class=\"fa-solid fa-backward-step\"></i>")} />
                     </div>
                     </div>
                 <% _ -> %>
-            <% end %>
+                <% end %>
             </div>
         <% end %>
         </div>
@@ -101,5 +68,5 @@
         <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary mx-2" %>
         <button href="#" phx-click="add-entry" phx-target={@myself} class="btn btn-secondary mx-2">Add Entry</button>
     </div>
-</.form>
+</.simple_form>
 </div>

@@ -1,17 +1,15 @@
 <h1>Show Station info</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.station_info_show_path(@socket, :show, @station_info)}>
+<.modal :if={@live_action == :edit} id="gbfs-station-info-modal" show on_cancel={JS.patch({Routes.station_info_show_path(@socket, :show, @station_info)})}>
     <.live_component
       module={RoomSanctumWeb.StationInfoLive.FormComponent}
       id={@station_info.id}
       title={@page_title}
       action={@live_action}
       station_info={@station_info}
-      return_to={Routes.station_info_show_path(@socket, :show, @station_info)}
+      patch={Routes.station_info_show_path(@socket, :show, @station_info)}
     />
   </.modal>
-<% end %>
 
 <ul>
 

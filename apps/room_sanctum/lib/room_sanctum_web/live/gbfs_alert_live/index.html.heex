@@ -1,7 +1,6 @@
 <h1>Listing Gbfs alerts</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.alert_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gbfs-alert-modal" show on_cancel={JS.patch(Routes.alert_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.AlertLive.FormComponent}
       id={@alert.id || :new}
@@ -10,8 +9,7 @@
       alert={@alert}
       return_to={Routes.alert_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -30,7 +28,7 @@
     </tr>
   </thead>
   <tbody id="gbfs_alerts">
-    <%= for alert <- @gbfs_alerts do %>
+    <%= for alert <- @streams.gbfs_alerts do %>
       <tr id={"alert-#{alert.id}"}>
         <td><%= alert.alert_id %></td>
         <td><%= alert.type %></td>

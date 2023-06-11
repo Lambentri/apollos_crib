@@ -1,12 +1,12 @@
 defmodule RoomSanctumWeb.MonitoringSiteLive.Index do
-  use RoomSanctumWeb, :live_view
+  use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Storage
   alias RoomSanctum.Storage.AirNow.MonitoringSite
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :airnow_monitoring_sites, list_airnow_monitoring_sites())}
+    {:ok, stream(socket, :airnow_monitoring_sites, list_airnow_monitoring_sites())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.MonitoringSiteLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.MonitoringSiteLive.FormComponent, {:saved, monitoring_site}}, socket) do
+    {:noreply, stream_insert(socket, :airnow_monitoring_sites, monitoring_site)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     monitoring_site = Storage.get_monitoring_site!(id)
     {:ok, _} = Storage.delete_monitoring_site(monitoring_site)
 
-    {:noreply, assign(socket, :airnow_monitoring_sites, list_airnow_monitoring_sites())}
+    {:noreply, stream_delete(socket, :airnow_monitoring_sites, monitoring_site)}
   end
 
   defp list_airnow_monitoring_sites do

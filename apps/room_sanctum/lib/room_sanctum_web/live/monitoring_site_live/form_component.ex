@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.MonitoringSiteLive.FormComponent do
 
   defp save_monitoring_site(socket, :edit, monitoring_site_params) do
     case Storage.update_monitoring_site(socket.assigns.monitoring_site, monitoring_site_params) do
-      {:ok, _monitoring_site} ->
+      {:ok, monitoring_site} ->
+        notify_parent({:saved, monitoring_site})
         {:noreply,
          socket
          |> put_flash(:info, "Monitoring site updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_monitoring_site(socket, :new, monitoring_site_params) do
     case Storage.create_monitoring_site(monitoring_site_params) do
-      {:ok, _monitoring_site} ->
+      {:ok, monitoring_site} ->
+        notify_parent({:saved, monitoring_site})
         {:noreply,
          socket
          |> put_flash(:info, "Monitoring site created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

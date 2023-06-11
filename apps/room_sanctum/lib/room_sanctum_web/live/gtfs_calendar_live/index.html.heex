@@ -1,17 +1,15 @@
 <h1>Listing Calendars</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.calendar_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gtfs-calendar-modal" show on_cancel={JS.patch(Routes.calendar_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.CalendarLive.FormComponent}
       id={@calendar.id || :new}
       title={@page_title}
       action={@live_action}
       calendar={@calendar}
-      return_to={Routes.calendar_index_path(@socket, :index)}
+      patch={Routes.calendar_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -31,7 +29,7 @@
     </tr>
   </thead>
   <tbody id="calendars">
-    <%= for calendar <- @calendars do %>
+    <%= for calendar <- @streams.calendars do %>
       <tr id={"calendar-#{calendar.id}"}>
         <td><%= calendar.service_id %></td>
         <td><%= calendar.service_name %></td>

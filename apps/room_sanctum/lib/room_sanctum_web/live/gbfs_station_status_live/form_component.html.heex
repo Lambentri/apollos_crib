@@ -1,64 +1,30 @@
 <div>
   <h2><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+  <.simple_form
+    for={@form}
     id="station_status-form"
     phx-target={@myself}
     phx-change="validate"
     phx-submit="save">
-  
-    <%= label f, :legacy_id %>
-    <%= text_input f, :legacy_id %>
-    <%= error_tag f, :legacy_id %>
-  
-    <%= label f, :num_bikes_available %>
-    <%= number_input f, :num_bikes_available %>
-    <%= error_tag f, :num_bikes_available %>
-  
-    <%= label f, :num_docks_disabled %>
-    <%= number_input f, :num_docks_disabled %>
-    <%= error_tag f, :num_docks_disabled %>
-  
-    <%= label f, :station_id %>
-    <%= text_input f, :station_id %>
-    <%= error_tag f, :station_id %>
-  
-    <%= label f, :station_status %>
-    <%= text_input f, :station_status %>
-    <%= error_tag f, :station_status %>
-  
-    <%= label f, :num_bikes_disabled %>
-    <%= number_input f, :num_bikes_disabled %>
-    <%= error_tag f, :num_bikes_disabled %>
-  
-    <%= label f, :last_reported %>
-    <%= datetime_select f, :last_reported %>
-    <%= error_tag f, :last_reported %>
-  
-    <%= label f, :is_installed %>
-    <%= checkbox f, :is_installed %>
-    <%= error_tag f, :is_installed %>
-  
-    <%= label f, :is_renting %>
-    <%= checkbox f, :is_renting %>
-    <%= error_tag f, :is_renting %>
-  
-    <%= label f, :num_ebikes_available %>
-    <%= number_input f, :num_ebikes_available %>
-    <%= error_tag f, :num_ebikes_available %>
-  
-    <%= label f, :num_docks_available %>
-    <%= number_input f, :num_docks_available %>
-    <%= error_tag f, :num_docks_available %>
-  
-    <%= label f, :is_returning %>
-    <%= checkbox f, :is_returning %>
-    <%= error_tag f, :is_returning %>
+
+    <.input field={@form[:legacy_id]} type="text" label="Legacy Id" />
+    <.input field={@form[:num_bikes_available]} type="number" label="Num Bikes Avail" />
+    <.input field={@form[:num_ebikes_available]} type="number" label="Num eBikes Avail" />
+    <.input field={@form[:num_bikes_disabled]} type="number" label="Num Bikes Disabled" />
+    <.input field={@form[:num_docks_disabled]} type="number" label="Num Docks Disabled" />
+    <.input field={@form[:num_docks_available]} type="number" label="Num Docks Available" />
+    <.input field={@form[:station_id]} type="text" label="Station Id" />
+    <.input field={@form[:station_status]} type="text" label="Station Status" />
+    <.input field={@form[:last_reported]} type="datetime-local" label="Last Reported" />
+
+    <.input field={@form[:is_installed]} type="checkbox" label="Is Installed" />
+    <.input field={@form[:is_renting]} type="checkbox" label="Is Renting" />
+    <.input field={@form[:is_returning]} type="checkbox" label="Is Returning" />
+
   
     <div>
       <%= submit "Save", phx_disable_with: "Saving..." %>
     </div>
-  </.form>
+  </.simple_form>
 </div>

@@ -82,4 +82,20 @@ defmodule RoomSanctum.ConfigurationFixtures do
 
     pythiae
   end
+
+  @doc """
+  Generate a scribus.
+  """
+  def scribus_fixture(attrs \\ %{}) do
+    {:ok, scribus} =
+      attrs
+      |> Enum.into(%{
+        configuration: [],
+        name: "some name",
+        resolution: "some resolution"
+      })
+      |> RoomSanctum.Configuration.create_scribus()
+
+    scribus
+  end
 end

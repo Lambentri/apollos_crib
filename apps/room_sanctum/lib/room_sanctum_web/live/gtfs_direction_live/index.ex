@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.DirectionLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :directions, list_directions())}
+    {:ok, stream(socket, :directions, list_directions())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.DirectionLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.DirectionLive.FormComponent, {:saved, direction}}, socket) do
+    {:noreply, stream_insert(socket, :directions, direction)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     direction = Storage.get_direction!(id)
     {:ok, _} = Storage.delete_direction(direction)
 
-    {:noreply, assign(socket, :directions, list_directions())}
+    {:noreply, assign(socket, :directions, direction)}
   end
 
   defp list_directions do

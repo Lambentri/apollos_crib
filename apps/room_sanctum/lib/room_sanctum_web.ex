@@ -17,25 +17,29 @@ defmodule RoomSanctumWeb do
   and import those modules here.
   """
 
+  def static_paths do
+    ~w(assets fonts images favicon.ico robots.txt)
+  end
+
   def controller do
     quote do
-      use Phoenix.Controller, namespace: RoomSanctumWeb
+      use Phoenix.Controller, namespace: RoomSanctumWeb, formats: [:html, :json], layouts: [html: RoomSanctumWeb.Layouts]
 
       import Plug.Conn
       import RoomSanctumWeb.Gettext
       alias RoomSanctumWeb.Router.Helpers, as: Routes
+
+      unquote(verified_routes())
     end
   end
 
   def view do
     quote do
-      use Phoenix.View,
-        root: "lib/room_sanctum_web/templates",
-        namespace: RoomSanctumWeb
+      use Phoenix.Component
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
-        only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
+        only: [get_csrf_token: 0, get_flash: 1, get_flash: 2, view_module: 1, view_template: 1, render: 3]
 
       # Include shared imports and aliases for views
       unquote(view_helpers())
@@ -45,7 +49,7 @@ defmodule RoomSanctumWeb do
   def live_view do
     quote do
       use Phoenix.LiveView,
-        layout: {RoomSanctumWeb.LayoutView, "live.html"}
+        layout: {RoomSanctumWeb.Layouts,  :live}
 
       unquote(view_helpers())
     end
@@ -54,7 +58,7 @@ defmodule RoomSanctumWeb do
   def live_view_a do
     quote do
       use Phoenix.LiveView,
-          layout: {RoomSanctumWeb.LayoutView, "live.html"}
+          layout: {RoomSanctumWeb.Layouts,  :live}
       on_mount RoomSanctum.UserLiveAuth
       unquote(view_helpers())
     end
@@ -63,7 +67,7 @@ defmodule RoomSanctumWeb do
   def live_view_ca do
     quote do
       use Phoenix.LiveView,
-          layout: {RoomSanctumWeb.LayoutView, "live.html"}
+          layout: {RoomSanctumWeb.Layouts,  :live}
       on_mount RoomSanctum.UserLiveCanAuth
       unquote(view_helpers())
     end
@@ -106,16 +110,18 @@ defmodule RoomSanctumWeb do
     quote do
       # Use all HTML functionality (forms, tags, etc)
       use Phoenix.HTML
+      alias Phoenix.LiveView.JS
 
       # Import LiveView and .heex helpers (live_render, live_patch, <.form>, etc)
       import Phoenix.LiveView.Helpers
       import RoomSanctumWeb.LiveHelpers
+      import RoomSanctumWeb.CoreComponents
 
       # import custom widgets to preview data
       import RoomSanctumWeb.LivePreview
 
       # Import basic rendering functionality (render, render_layout, etc)
-      import Phoenix.View
+#      import Phoenix.View
 
       # form helpers
       import PolymorphicEmbed.HTML.Form
@@ -123,8 +129,20 @@ defmodule RoomSanctumWeb do
       import RoomSanctumWeb.ErrorHelpers
       import RoomSanctumWeb.Gettext
       alias RoomSanctumWeb.Router.Helpers, as: Routes
+
+      unquote(verified_routes())
     end
   end
+
+  def verified_routes do
+    quote do
+      use Phoenix.VerifiedRoutes,
+          endpoint: RoomSanctumWeb.Endpoint,
+          router: RoomSanctumWeb.Router,
+          statics: RoomSanctumWeb.static_paths()
+    end
+  end
+
 
   @doc """
   When used, dispatch to the appropriate controller/view/etc.

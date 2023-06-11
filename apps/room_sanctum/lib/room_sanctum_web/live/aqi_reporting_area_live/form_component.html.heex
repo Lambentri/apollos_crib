@@ -1,84 +1,41 @@
 <div>
-  <h2><%= @title %></h2>
+    <h2><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+    <.simple_form
+    for={@form}
     id="reporting_area-form"
     phx-target={@myself}
     phx-change="validate"
     phx-submit="save">
-  
-    <%= label f, :issue_date %>
-    <%= date_select f, :issue_date %>
-    <%= error_tag f, :issue_date %>
-  
-    <%= label f, :valid_date %>
-    <%= date_select f, :valid_date %>
-    <%= error_tag f, :valid_date %>
-  
-    <%= label f, :valid_time %>
-    <%= time_select f, :valid_time %>
-    <%= error_tag f, :valid_time %>
-  
-    <%= label f, :time_zone %>
-    <%= text_input f, :time_zone %>
-    <%= error_tag f, :time_zone %>
-  
-    <%= label f, :record_sequence %>
-    <%= number_input f, :record_sequence %>
-    <%= error_tag f, :record_sequence %>
-  
-    <%= label f, :data_type %>
-    <%= select f, :data_type, Ecto.Enum.values(RoomSanctum.Storage.AirNow.ReportingArea, :data_type), prompt: "Choose a value" %>
-    <%= error_tag f, :data_type %>
-  
-    <%= label f, :primary %>
-    <%= select f, :primary, Ecto.Enum.values(RoomSanctum.Storage.AirNow.ReportingArea, :primary), prompt: "Choose a value" %>
-    <%= error_tag f, :primary %>
-  
-    <%= label f, :reporting_area %>
-    <%= text_input f, :reporting_area %>
-    <%= error_tag f, :reporting_area %>
-  
-    <%= label f, :state_code %>
-    <%= text_input f, :state_code %>
-    <%= error_tag f, :state_code %>
-  
-    <%= label f, :lat %>
-    <%= number_input f, :lat, step: "any" %>
-    <%= error_tag f, :lat %>
-  
-    <%= label f, :lon %>
-    <%= number_input f, :lon, step: "any" %>
-    <%= error_tag f, :lon %>
-  
-    <%= label f, :parameter_name %>
-    <%= text_input f, :parameter_name %>
-    <%= error_tag f, :parameter_name %>
-  
-    <%= label f, :aqi_value %>
-    <%= number_input f, :aqi_value %>
-    <%= error_tag f, :aqi_value %>
-  
-    <%= label f, :aqi_category %>
-    <%= text_input f, :aqi_category %>
-    <%= error_tag f, :aqi_category %>
-  
-    <%= label f, :action_day %>
-    <%= checkbox f, :action_day %>
-    <%= error_tag f, :action_day %>
-  
-    <%= label f, :discussion %>
-    <%= text_input f, :discussion %>
-    <%= error_tag f, :discussion %>
-  
-    <%= label f, :forecast_source %>
-    <%= text_input f, :forecast_source %>
-    <%= error_tag f, :forecast_source %>
-  
+
+    <.input field={@form[:issue_date]} type="date" label="Issue Date" />
+    <.input field={@form[:valid_date]} type="date" label="Valid Date" />
+    <.input field={@form[:valid_time]} type="time" label="Valid Time" />
+    <.input field={@form[:time_zone]} type="text" label="Time Zone" />
+    <.input field={@form[:record_sequence]} type="number" label="Record Sequence" />
+
+    <.input field={@form[:data_type]} type="select" label="Data Type"
+    options={Ecto.Enum.values(RoomSanctum.Storage.AirNow.ReportingArea, :data_type)}
+    />
+    <.input field={@form[:primary]} type="select" label="Data Type"
+    options={Ecto.Enum.values(RoomSanctum.Storage.AirNow.ReportingArea, :primary)}
+    />
+
+    <.input field={@form[:reporting_area]} type="text" label="Reporting Area" />
+    <.input field={@form[:state_code]} type="text" label="State Code" />
+
+    <.input field={@form[:lat]} type="number" label="Latitude" />
+    <.input field={@form[:lon]} type="number" label="Longitude" />
+
+    <.input field={@form[:parameter_name]} type="text" label="Parameter Name" />
+    <.input field={@form[:aqi_value]} type="number" label="AQI Value" />
+    <.input field={@form[:aqi_category]} type="text" label="AQI Category" />
+    <.input field={@form[:action_day]} type="checkbox" label="Action Day" />
+    <.input field={@form[:discussion]} type="text" label="Discussion" />
+    <.input field={@form[:forecast_source]} type="text" label="Forecast Source" />
+
     <div>
-      <%= submit "Save", phx_disable_with: "Saving..." %>
+        <%= submit "Save", phx_disable_with: "Saving..." %>
     </div>
-  </.form>
+</.simple_form>
 </div>

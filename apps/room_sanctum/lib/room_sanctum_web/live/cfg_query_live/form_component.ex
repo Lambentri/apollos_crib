@@ -53,7 +53,8 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
 
   defp save_query(socket, :edit, query_params) do
     case Configuration.update_query(socket.assigns.query, query_params) do
-      {:ok, _query} ->
+      {:ok, query} ->
+        notify_parent({:saved, query})
         {
           :noreply,
           socket
@@ -62,13 +63,14 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_query(socket, :new, query_params) do
     case Configuration.create_query(query_params) do
-      {:ok, _query} ->
+      {:ok, query} ->
+        notify_parent({:saved, query})
         {
           :noreply,
           socket
@@ -77,9 +79,15 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
   defp list_cfg_sources(uid) do
     Configuration.list_cfg_sources({:user, uid})

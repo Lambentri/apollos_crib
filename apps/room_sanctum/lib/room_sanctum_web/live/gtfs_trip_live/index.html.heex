@@ -1,17 +1,15 @@
 <h1>Listing Trips</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.trip_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gtfs-trip-modal" show on_cancel={JS.patch(Routes.trip_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.TripLive.FormComponent}
       id={@trip.id || :new}
       title={@page_title}
       action={@live_action}
       trip={@trip}
-      return_to={Routes.trip_index_path(@socket, :index)}
+      patch={Routes.trip_index_path(@socket, :index)}
     />
   </.modal>
-<% end %>
 
 <table>
   <thead>
@@ -31,7 +29,7 @@
     </tr>
   </thead>
   <tbody id="trips">
-    <%= for trip <- @trips do %>
+    <%= for trip <- @streams.trips do %>
       <tr id={"trip-#{trip.id}"}>
         <td><%= trip.route_id %></td>
         <td><%= trip.service_id %></td>

@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.CalendarLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :calendars, list_calendars())}
+    {:ok, stream(socket, :calendars, list_calendars())}
   end
 
   @impl true
@@ -33,11 +33,17 @@ defmodule RoomSanctumWeb.CalendarLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.CalendarLive.FormComponent, {:saved, calendar}}, socket) do
+    {:noreply, stream_insert(socket, :calendars, calendar)}
+  end
+
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     calendar = Storage.get_calendar!(id)
     {:ok, _} = Storage.delete_calendar(calendar)
 
-    {:noreply, assign(socket, :calendars, list_calendars())}
+    {:noreply, stream_delete(socket, :calendars, calendar)}
   end
 
   defp list_calendars do

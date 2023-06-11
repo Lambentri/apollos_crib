@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.StopLive.FormComponent do
 
   defp save_stop(socket, :edit, stop_params) do
     case Storage.update_stop(socket.assigns.stop, stop_params) do
-      {:ok, _stop} ->
+      {:ok, stop} ->
+        notify_parent({:saved, stop})
         {:noreply,
          socket
          |> put_flash(:info, "Stop updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_stop(socket, :new, stop_params) do
     case Storage.create_stop(stop_params) do
-      {:ok, _stop} ->
+      {:ok, stop} ->
+        notify_parent({:saved, stop})
         {:noreply,
          socket
          |> put_flash(:info, "Stop created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

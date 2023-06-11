@@ -1,7 +1,6 @@
 <h1>Listing Gbfs station information</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.station_info_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gbfs-station-info-modal" show on_cancel={JS.patch(Routes.station_info_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.StationInfoLive.FormComponent}
       id={@station_info.id || :new}
@@ -11,7 +10,6 @@
       return_to={Routes.station_info_index_path(@socket, :index)}
     />
   </.modal>
-<% end %>
 
 <table>
   <thead>
@@ -31,7 +29,7 @@
     </tr>
   </thead>
   <tbody id="gbfs_station_information">
-    <%= for station_info <- @gbfs_station_information do %>
+    <%= for station_info <- @streams.gbfs_station_information do %>
       <tr id={"station_info-#{station_info.id}"}>
         <td><%= station_info.station_id %></td>
         <td><%= station_info.name %></td>

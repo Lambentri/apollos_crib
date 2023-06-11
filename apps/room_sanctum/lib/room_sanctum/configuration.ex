@@ -551,4 +551,100 @@ defmodule RoomSanctum.Configuration do
   def change_pythiae(%Pythiae{} = pythiae, attrs \\ %{}) do
     Pythiae.changeset(pythiae, attrs)
   end
+
+  alias RoomSanctum.Configuration.Scribus
+
+  @doc """
+  Returns the list of cfg_scribus.
+
+  ## Examples
+
+      iex> list_cfg_scribus()
+      [%Scribus{}, ...]
+
+  """
+  def list_cfg_scribus do
+    Repo.all(Scribus)
+  end
+
+  @doc """
+  Gets a single scribus.
+
+  Raises `Ecto.NoResultsError` if the Scribus does not exist.
+
+  ## Examples
+
+      iex> get_scribus!(123)
+      %Scribus{}
+
+      iex> get_scribus!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_scribus!(id), do: Repo.get!(Scribus, id)
+
+  @doc """
+  Creates a scribus.
+
+  ## Examples
+
+      iex> create_scribus(%{field: value})
+      {:ok, %Scribus{}}
+
+      iex> create_scribus(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_scribus(attrs \\ %{}) do
+    %Scribus{}
+    |> Scribus.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a scribus.
+
+  ## Examples
+
+      iex> update_scribus(scribus, %{field: new_value})
+      {:ok, %Scribus{}}
+
+      iex> update_scribus(scribus, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_scribus(%Scribus{} = scribus, attrs) do
+    scribus
+    |> Scribus.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a scribus.
+
+  ## Examples
+
+      iex> delete_scribus(scribus)
+      {:ok, %Scribus{}}
+
+      iex> delete_scribus(scribus)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_scribus(%Scribus{} = scribus) do
+    Repo.delete(scribus)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking scribus changes.
+
+  ## Examples
+
+      iex> change_scribus(scribus)
+      %Ecto.Changeset{data: %Scribus{}}
+
+  """
+  def change_scribus(%Scribus{} = scribus, attrs \\ %{}) do
+    Scribus.changeset(scribus, attrs)
+  end
 end

@@ -6,7 +6,10 @@ defmodule RoomSanctumWeb.PythiaeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :cfg_pythiae, list_cfg_pythiae(socket.assigns.current_user.id)) |> assign(:show_info, false)}
+    {:ok,
+     socket
+     |> assign(:show_info, false)
+     |> stream(:cfg_pythiae, list_cfg_pythiae(socket.assigns.current_user.id))}
   end
 
   @impl true
@@ -33,18 +36,22 @@ defmodule RoomSanctumWeb.PythiaeLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.PythiaeLive.FormComponent, {:saved, pythiae}}, socket) do
+    {:noreply, stream_insert(socket, :cfg_pythiae, pythiae)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     pythiae = Configuration.get_pythiae!(id)
     {:ok, _} = Configuration.delete_pythiae(pythiae)
 
-    {:noreply, assign(socket, :cfg_pythiae, list_cfg_pythiae(socket.assigns.current_user.id))}
+    {:noreply, stream_delete(socket, :cfg_pythiae, pythiae)}
   end
 
   @impl true
   def handle_event("info", _params, socket) do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
-
 
   defp list_cfg_pythiae(uid) do
     Configuration.list_cfg_pythiae({:user, uid})

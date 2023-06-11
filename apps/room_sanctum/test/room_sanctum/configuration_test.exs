@@ -290,4 +290,62 @@ defmodule RoomSanctum.ConfigurationTest do
       assert %Ecto.Changeset{} = Configuration.change_pythiae(pythiae)
     end
   end
+
+  describe "cfg_scribus" do
+    alias RoomSanctum.Configuration.Scribus
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{configuration: nil, name: nil, resolution: nil}
+
+    test "list_cfg_scribus/0 returns all cfg_scribus" do
+      scribus = scribus_fixture()
+      assert Configuration.list_cfg_scribus() == [scribus]
+    end
+
+    test "get_scribus!/1 returns the scribus with given id" do
+      scribus = scribus_fixture()
+      assert Configuration.get_scribus!(scribus.id) == scribus
+    end
+
+    test "create_scribus/1 with valid data creates a scribus" do
+      valid_attrs = %{configuration: [], name: "some name", resolution: "some resolution"}
+
+      assert {:ok, %Scribus{} = scribus} = Configuration.create_scribus(valid_attrs)
+      assert scribus.configuration == []
+      assert scribus.name == "some name"
+      assert scribus.resolution == "some resolution"
+    end
+
+    test "create_scribus/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_scribus(@invalid_attrs)
+    end
+
+    test "update_scribus/2 with valid data updates the scribus" do
+      scribus = scribus_fixture()
+      update_attrs = %{configuration: [], name: "some updated name", resolution: "some updated resolution"}
+
+      assert {:ok, %Scribus{} = scribus} = Configuration.update_scribus(scribus, update_attrs)
+      assert scribus.configuration == []
+      assert scribus.name == "some updated name"
+      assert scribus.resolution == "some updated resolution"
+    end
+
+    test "update_scribus/2 with invalid data returns error changeset" do
+      scribus = scribus_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_scribus(scribus, @invalid_attrs)
+      assert scribus == Configuration.get_scribus!(scribus.id)
+    end
+
+    test "delete_scribus/1 deletes the scribus" do
+      scribus = scribus_fixture()
+      assert {:ok, %Scribus{}} = Configuration.delete_scribus(scribus)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_scribus!(scribus.id) end
+    end
+
+    test "change_scribus/1 returns a scribus changeset" do
+      scribus = scribus_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_scribus(scribus)
+    end
+  end
 end

@@ -1,148 +1,49 @@
 <div>
   <h2><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+  <.simple_form
+    for={@form}
     id="hourly_obs_data-form"
     phx-target={@myself}
     phx-change="validate"
     phx-submit="save">
-  
-    <%= label f, :aqsid %>
-    <%= text_input f, :aqsid %>
-    <%= error_tag f, :aqsid %>
-  
-    <%= label f, :site_name %>
-    <%= text_input f, :site_name %>
-    <%= error_tag f, :site_name %>
-  
-    <%= label f, :status %>
-    <%= text_input f, :status %>
-    <%= error_tag f, :status %>
-  
-    <%= label f, :epa_region %>
-    <%= text_input f, :epa_region %>
-    <%= error_tag f, :epa_region %>
-  
-    <%= label f, :lat %>
-    <%= number_input f, :lat, step: "any" %>
-    <%= error_tag f, :lat %>
-  
-    <%= label f, :lon %>
-    <%= number_input f, :lon, step: "any" %>
-    <%= error_tag f, :lon %>
-  
-    <%= label f, :point %>
-    <%= text_input f, :point %>
-    <%= error_tag f, :point %>
-  
-    <%= label f, :elevation %>
-    <%= number_input f, :elevation, step: "any" %>
-    <%= error_tag f, :elevation %>
-  
-    <%= label f, :gmt_offset %>
-    <%= number_input f, :gmt_offset %>
-    <%= error_tag f, :gmt_offset %>
-  
-    <%= label f, :country_code %>
-    <%= text_input f, :country_code %>
-    <%= error_tag f, :country_code %>
-  
-    <%= label f, :state_name %>
-    <%= text_input f, :state_name %>
-    <%= error_tag f, :state_name %>
-  
-    <%= label f, :valid_date %>
-    <%= date_select f, :valid_date %>
-    <%= error_tag f, :valid_date %>
-  
-    <%= label f, :valid_time %>
-    <%= time_select f, :valid_time %>
-    <%= error_tag f, :valid_time %>
-  
-    <%= label f, :data_source %>
-    <%= text_input f, :data_source %>
-    <%= error_tag f, :data_source %>
-  
-    <%= label f, :reporting_areas %>
-    <%= multiple_select f, :reporting_areas, ["Option 1": "option1", "Option 2": "option2"] %>
-    <%= error_tag f, :reporting_areas %>
-  
-    <%= label f, :ozone_aqi %>
-    <%= number_input f, :ozone_aqi %>
-    <%= error_tag f, :ozone_aqi %>
-  
-    <%= label f, :pm10_aqi %>
-    <%= number_input f, :pm10_aqi %>
-    <%= error_tag f, :pm10_aqi %>
-  
-    <%= label f, :pm25_aqi %>
-    <%= number_input f, :pm25_aqi %>
-    <%= error_tag f, :pm25_aqi %>
-  
-    <%= label f, :no2_aqi %>
-    <%= number_input f, :no2_aqi %>
-    <%= error_tag f, :no2_aqi %>
-  
-    <%= label f, :ozone_measured %>
-    <%= checkbox f, :ozone_measured %>
-    <%= error_tag f, :ozone_measured %>
-  
-    <%= label f, :pm10_measured %>
-    <%= checkbox f, :pm10_measured %>
-    <%= error_tag f, :pm10_measured %>
-  
-    <%= label f, :pm25_measured %>
-    <%= checkbox f, :pm25_measured %>
-    <%= error_tag f, :pm25_measured %>
-  
-    <%= label f, :no2_measured %>
-    <%= checkbox f, :no2_measured %>
-    <%= error_tag f, :no2_measured %>
-  
-    <%= label f, :pm25 %>
-    <%= number_input f, :pm25 %>
-    <%= error_tag f, :pm25 %>
-  
-    <%= label f, :pm25_unit %>
-    <%= text_input f, :pm25_unit %>
-    <%= error_tag f, :pm25_unit %>
-  
-    <%= label f, :ozone %>
-    <%= number_input f, :ozone %>
-    <%= error_tag f, :ozone %>
-  
-    <%= label f, :ozone_unit %>
-    <%= text_input f, :ozone_unit %>
-    <%= error_tag f, :ozone_unit %>
-  
-    <%= label f, :co %>
-    <%= number_input f, :co %>
-    <%= error_tag f, :co %>
-  
-    <%= label f, :co_unit %>
-    <%= text_input f, :co_unit %>
-    <%= error_tag f, :co_unit %>
-  
-    <%= label f, :so2 %>
-    <%= number_input f, :so2 %>
-    <%= error_tag f, :so2 %>
-  
-    <%= label f, :so2_unit %>
-    <%= text_input f, :so2_unit %>
-    <%= error_tag f, :so2_unit %>
-  
-    <%= label f, :pm10 %>
-    <%= number_input f, :pm10 %>
-    <%= error_tag f, :pm10 %>
-  
-    <%= label f, :pm10_unit %>
-    <%= text_input f, :pm10_unit %>
-    <%= error_tag f, :pm10_unit %>
-  
+
+    <.input field={@form[:aqsid]} type="text" label="AQS id" />
+    <.input field={@form[:site_name]} type="text" label="Site Name" />
+    <.input field={@form[:status]} type="text" label="Status" />
+    <.input field={@form[:epa_region]} type="text" label="EPA Regionn" />
+    <.input field={@form[:lat]} type="number" label="Lat" />
+    <.input field={@form[:lon]} type="number" label="Lon" />
+    <.input field={@form[:point]} type="point" label="Point" />
+    <.input field={@form[:elevation]} type="number" label="Elevation" />
+    <.input field={@form[:gmt_offset]} type="number" label="GMT Offset" />
+    <.input field={@form[:country_code]} type="text" label="Country Code" />
+    <.input field={@form[:state_name]} type="text" label="State Name" />
+    <.input field={@form[:valid_date]} type="date" label="Valid Date" />
+    <.input field={@form[:valid_time]} type="time" label="Valid Time" />
+    <.input field={@form[:data_source]} type="text" label="Data Source" />
+    <.input field={@form[:reporting_area]} type="text" label="Reporting Area" />
+    <.input field={@form[:ozone_aqi]} type="number" label="Ozone AQI" />
+    <.input field={@form[:pm10_aqi]} type="number" label="PM10 AQI" />
+    <.input field={@form[:pm25_aqi]} type="number" label="PM2.5 AQI" />
+    <.input field={@form[:no2_aqi]} type="number" label="NO2 AQI" />
+    <.input field={@form[:ozone_measured]} type="checkbox" label="Ozone Measured" />
+    <.input field={@form[:pm10_measured]} type="checkbox" label="PM10 Measured" />
+    <.input field={@form[:pm25_measured]} type="checkbox" label="PM2.5 Measured" />
+    <.input field={@form[:no2_measured]} type="checkbox" label="NO2 Measured" />
+    <.input field={@form[:ozone]} type="number" label="Ozone " />
+    <.input field={@form[:pm10]} type="number" label="PM10 " />
+    <.input field={@form[:pm25]} type="number" label="PM2.5 " />
+    <.input field={@form[:co]} type="number" label="CO " />
+    <.input field={@form[:so2]} type="number" label="SO2 " />
+    <.input field={@form[:ozone_unit]} type="number" label="Ozone Unit" />
+    <.input field={@form[:pm10_unit]} type="number" label="PM10 Unit" />
+    <.input field={@form[:pm25_unit]} type="number" label="PM2.5 Unit" />
+    <.input field={@form[:co_unit]} type="number" label="CO Unit" />
+    <.input field={@form[:so2_unit]} type="number" label="SO2 Unit" />
+
     <div>
       <%= submit "Save", phx_disable_with: "Saving..." %>
     </div>
-  </.form>
+  </.simple_form>
 </div>

@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.HourlyDataLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :airnow_hourly_data, list_airnow_hourly_data())}
+    {:ok, stream(socket, :airnow_hourly_data, list_airnow_hourly_data())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.HourlyDataLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.HourlyDataLive.FormComponent, {:saved, hourly_data}}, socket) do
+    {:noreply, stream_insert(socket, :airnow_hourly_data, hourly_data)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     hourly_data = Storage.get_hourly_data!(id)
     {:ok, _} = Storage.delete_hourly_data(hourly_data)
 
-    {:noreply, assign(socket, :airnow_hourly_data, list_airnow_hourly_data())}
+    {:noreply, stream_delete(socket, :airnow_hourly_data, hourly_data)}
   end
 
   defp list_airnow_hourly_data do

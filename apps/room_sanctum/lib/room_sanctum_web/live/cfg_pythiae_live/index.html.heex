@@ -9,20 +9,17 @@
 </div>
 <% end %>
 
-<%= if @live_action in [:new, :edit] do %>
-<.modal return_to={Routes.pythiae_index_path(@socket, :index)}>
-<.live_component
-module={RoomSanctumWeb.PythiaeLive.FormComponent}
-id={@pythiae.id || :new}
-title={@page_title}
-action={@live_action}
-pythiae={@pythiae}
-return_to={Routes.pythiae_index_path(@socket, :index)}
-current_user={@current_user}
-
-/>
+<.modal :if={@live_action in [:new, :edit]} id="pythiae-modal" show on_cancel={JS.patch(Routes.pythiae_index_path(@socket, :index))}>
+    <.live_component
+      module={RoomSanctumWeb.PythiaeLive.FormComponent}
+      id={@pythiae.id || :new}
+      title={@page_title}
+      action={@live_action}
+      pythiae={@pythiae}
+      patch={Routes.pythiae_index_path(@socket, :index)}
+      current_user={@current_user}
+    />
 </.modal>
-<% end %>
 
 <table class="table table-compact w-full mx-6">
   <thead>
@@ -35,7 +32,7 @@ current_user={@current_user}
     </tr>
   </thead>
   <tbody id="cfg_pythiae">
-    <%= for pythiae <- @cfg_pythiae do %>
+    <%= for {id, pythiae} <- @streams.cfg_pythiae do %>
     <tr id={"pythiae-#{pythiae.id}"}>
       <td><%= pythiae.name %></td>
       <td><%= pythiae.visions |> Kernel.length%></td>

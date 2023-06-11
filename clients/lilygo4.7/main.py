@@ -121,4 +121,8 @@ def main(server=config.MQTT_HOST):
     c.disconnect()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except:
+        import machine
+        machine.reset()

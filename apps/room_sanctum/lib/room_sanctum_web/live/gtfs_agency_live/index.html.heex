@@ -1,7 +1,6 @@
 <h1>Listing Agencies</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.agency_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gtfs-agency-modal" show on_cancel={JS.patch(Routes.agency_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.AgencyLive.FormComponent}
       id={@agency.id || :new}
@@ -10,8 +9,7 @@
       agency={@agency}
       return_to={Routes.agency_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -29,7 +27,7 @@
     </tr>
   </thead>
   <tbody id="agencies">
-    <%= for agency <- @agencies do %>
+    <%= for agency <- @streams.agencies do %>
       <tr id={"agency-#{agency.id}"}>
         <td><%= agency.agency_id %></td>
         <td><%= agency.agency_url %></td>

@@ -3,19 +3,17 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Ankyra Detail</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.ankyra_show_path(@socket, :show, @ankyra)}>
+<.modal :if={@live_action == :edit} id="amkyra-modal" show on_cancel={JS.patch({Routes.ankyra_show_path(@socket, :show, @ankyra)})}>
     <.live_component
       module={RoomSanctumWeb.AnkyraLive.FormComponent}
       id={@ankyra.id}
       title={@page_title}
       action={@live_action}
       rabbit_user={@ankyra}
-      return_to={Routes.ankyra_show_path(@socket, :show, @ankyra)}
+      patch={Routes.ankyra_show_path(@socket, :show, @ankyra)}
       current_user={@current_user}
     />
-  </.modal>
-<% end %>
+</.modal>
 <div class="mx-4 py-2">
   <div class="flex">
     <h2 class="text-2xl font-bold text-accent-300"><%= @ankyra.topic %>

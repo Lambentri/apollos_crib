@@ -1,5 +1,6 @@
 defmodule RoomSanctum.UserLiveAuth do
   import Phoenix.LiveView
+  import Phoenix.Component
   alias RoomSanctum.Accounts
 
   def on_mount(:default, _params, session, socket) do
@@ -20,6 +21,7 @@ end
 
 defmodule RoomSanctum.UserLiveCanAuth do
   import Phoenix.LiveView
+  import Phoenix.Component
   alias RoomSanctum.Accounts
 
   def on_mount(:default, _params, session, socket) do

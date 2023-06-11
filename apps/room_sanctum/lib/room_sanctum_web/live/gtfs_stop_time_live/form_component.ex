@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.StopTimeLive.FormComponent do
 
   defp save_stop_time(socket, :edit, stop_time_params) do
     case Storage.update_stop_time(socket.assigns.stop_time, stop_time_params) do
-      {:ok, _stop_time} ->
+      {:ok, stop_time} ->
+        notify_parent({:saved, stop_time})
         {:noreply,
          socket
          |> put_flash(:info, "Stop time updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_stop_time(socket, :new, stop_time_params) do
     case Storage.create_stop_time(stop_time_params) do
-      {:ok, _stop_time} ->
+      {:ok, stop_time} ->
+        notify_parent({:saved, stop_time})
         {:noreply,
          socket
          |> put_flash(:info, "Stop time created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

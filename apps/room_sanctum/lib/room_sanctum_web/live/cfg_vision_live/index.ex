@@ -6,7 +6,10 @@ defmodule RoomSanctumWeb.VisionLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, socket |> assign(:visions, list_visions(socket.assigns.current_user.id)) |> assign(:show_info, false)}
+    {:ok,
+     socket
+     |> assign(:show_info, false)
+     |> stream(:visions, list_visions(socket.assigns.current_user.id))}
   end
 
   @impl true
@@ -33,11 +36,16 @@ defmodule RoomSanctumWeb.VisionLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.VisionLive.FormComponent, {:saved, vision}}, socket) do
+    {:noreply, stream_insert(socket, :visions, vision)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     vision = Configuration.get_vision!(id)
     {:ok, _} = Configuration.delete_vision(vision)
 
-    {:noreply, assign(socket, :visions, list_visions(socket.assigns.current_user.id))}
+    {:noreply, stream_delete(socket, :visions, vision)}
   end
 
   def handle_event("info", _params, socket) do

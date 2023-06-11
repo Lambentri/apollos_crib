@@ -3,18 +3,16 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Foci Detail</h1>
 
-<%= if @live_action in [:edit] do %>
-  <.modal return_to={Routes.foci_show_path(@socket, :show, @foci)}>
+<.modal :if={@live_action == :edit} id="foci-modal" show on_cancel={JS.patch({Routes.foci_show_path(@socket, :show, @foci)})}>
     <.live_component
       module={RoomSanctumWeb.FociLive.FormComponent}
       id={@foci.id}
       title={@page_title}
       action={@live_action}
       foci={@foci}
-      return_to={Routes.foci_show_path(@socket, :show, @foci)}
+      patch={Routes.foci_show_path(@socket, :show, @foci)}
     />
-  </.modal>
-<% end %>
+</.modal>
 <div class="mx-4 py-2">
   <div class="flex">
     <h2 class="text-2xl font-bold text-accent-300"><%= @foci.name %>

@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.AlertLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :gbfs_alerts, list_gbfs_alerts())}
+    {:ok, stream(socket, :gbfs_alerts, list_gbfs_alerts())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.AlertLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.AlertLive.FormComponent, {:saved, alert}}, socket) do
+    {:noreply, stream_insert(socket, :ankyras, alert)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     alert = Storage.get_alert!(id)
     {:ok, _} = Storage.delete_alert(alert)
 
-    {:noreply, assign(socket, :gbfs_alerts, list_gbfs_alerts())}
+    {:noreply, stream_delete(socket, :gbfs_alerts, alert)}
   end
 
   defp list_gbfs_alerts do

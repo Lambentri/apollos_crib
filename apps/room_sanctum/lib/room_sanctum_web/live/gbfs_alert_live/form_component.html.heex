@@ -1,52 +1,26 @@
 <div>
   <h2><%= @title %></h2>
 
-  <.form
-    let={f}
-    for={@changeset}
+  <.simple_form
+    for={@form}
     id="alert-form"
     phx-target={@myself}
     phx-change="validate"
     phx-submit="save">
-  
-    <%= label f, :alert_id %>
-    <%= text_input f, :alert_id %>
-    <%= error_tag f, :alert_id %>
-  
-    <%= label f, :type %>
-    <%= text_input f, :type %>
-    <%= error_tag f, :type %>
-  
-    <%= label f, :times %>
-    <%= multiple_select f, :times, ["1": 1, "2": 2] %>
-    <%= error_tag f, :times %>
-  
-    <%= label f, :station_ids %>
-    <%= multiple_select f, :station_ids, ["Option 1": "option1", "Option 2": "option2"] %>
-    <%= error_tag f, :station_ids %>
-  
-    <%= label f, :region_ids %>
-    <%= multiple_select f, :region_ids, ["Option 1": "option1", "Option 2": "option2"] %>
-    <%= error_tag f, :region_ids %>
-  
-    <%= label f, :url %>
-    <%= text_input f, :url %>
-    <%= error_tag f, :url %>
-  
-    <%= label f, :summary %>
-    <%= text_input f, :summary %>
-    <%= error_tag f, :summary %>
-  
-    <%= label f, :description %>
-    <%= text_input f, :description %>
-    <%= error_tag f, :description %>
-  
-    <%= label f, :last_updated %>
-    <%= datetime_select f, :last_updated %>
-    <%= error_tag f, :last_updated %>
+
+    TODO: FIX OPTIONS
+    <.input field={@form[:alert_id]} type="text" label="Alert Id" />
+    <.input field={@form[:type]} type="text" label="Type" />
+    <.input field={@form[:times]} type="select" label="Times" options={["1": 1, "2": 2]} />
+    <.input field={@form[:station_ids]} type="select" label="Times" options={ ["Option 1": "option1", "Option 2": "option2"]} />
+    <.input field={@form[:region_ids]} type="select" label="Times" options={["Option 1": "option1", "Option 2": "option2"]} />
+    <.input field={@form[:url]} type="text" label="URL" />
+    <.input field={@form[:summary]} type="text" label="Summary" />
+    <.input field={@form[:description]} type="text" label="Description" />
+    <.input field={@form[:last_updated]} type="datetime-local" label="Last Updated" />
   
     <div>
       <%= submit "Save", phx_disable_with: "Saving..." %>
     </div>
-  </.form>
+  </.simple_form>
 </div>

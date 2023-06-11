@@ -72,7 +72,9 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
 
   defp save_foci(socket, :edit, foci_params) do
     case Configuration.update_foci(socket.assigns.foci, foci_params) do
-      {:ok, _foci} ->
+      {:ok, foci} ->
+        notify_parent({:saved, foci})
+
         {
           :noreply,
           socket
@@ -81,13 +83,14 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_foci(socket, :new, foci_params) do
     case Configuration.create_foci(foci_params) do
-      {:ok, _foci} ->
+      {:ok, foci} ->
+        notify_parent({:saved, foci})
         {
           :noreply,
           socket
@@ -96,9 +99,15 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
   defp getlatlng(%{:place => nil}) do
     nil

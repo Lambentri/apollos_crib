@@ -1,17 +1,15 @@
 <h1>Listing Directions</h1>
 
-<%= if @live_action in [:new, :edit] do %>
-  <.modal return_to={Routes.direction_index_path(@socket, :index)}>
+<.modal :if={@live_action in [:new, :edit]} id="gtfs-direction-modal" show on_cancel={JS.patch(Routes.direction_index_path(@socket, :index))}>
     <.live_component
       module={RoomSanctumWeb.DirectionLive.FormComponent}
       id={@direction.id || :new}
       title={@page_title}
       action={@live_action}
       direction={@direction}
-      return_to={Routes.direction_index_path(@socket, :index)}
+      patch={Routes.direction_index_path(@socket, :index)}
     />
-  </.modal>
-<% end %>
+</.modal>
 
 <table>
   <thead>
@@ -24,7 +22,7 @@
     </tr>
   </thead>
   <tbody id="directions">
-    <%= for direction <- @directions do %>
+    <%= for direction <- @streams.directions do %>
       <tr id={"direction-#{direction.id}"}>
         <td><%= direction.route_id %></td>
         <td><%= direction.direction_id %></td>

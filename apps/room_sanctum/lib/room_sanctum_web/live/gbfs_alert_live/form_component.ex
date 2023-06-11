@@ -29,27 +29,35 @@ defmodule RoomSanctumWeb.AlertLive.FormComponent do
 
   defp save_alert(socket, :edit, alert_params) do
     case Storage.update_gbfs_alert(socket.assigns.alert, alert_params) do
-      {:ok, _alert} ->
+      {:ok, alert} ->
+        notify_parent({:saved, alert})
         {:noreply,
          socket
          |> put_flash(:info, "Alert updated successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, :changeset, changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
 
   defp save_alert(socket, :new, alert_params) do
     case Storage.create_gbfs_alert(alert_params) do
-      {:ok, _alert} ->
+      {:ok, alert} ->
+        notify_parent({:saved, alert})
         {:noreply,
          socket
          |> put_flash(:info, "Alert created successfully")
-         |> push_redirect(to: socket.assigns.return_to)}
+         |> push_redirect(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, changeset: changeset)}
+        {:noreply, assign_form(socket, changeset)}
     end
   end
+
+  defp assign_form(socket, %Ecto.Changeset{} = changeset) do
+    assign(socket, :form, to_form(changeset))
+  end
+
+  defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

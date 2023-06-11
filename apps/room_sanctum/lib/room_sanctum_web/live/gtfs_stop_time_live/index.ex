@@ -6,7 +6,7 @@ defmodule RoomSanctumWeb.StopTimeLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, :stop_times, list_stop_times())}
+    {:ok, stream(socket, :stop_times, list_stop_times())}
   end
 
   @impl true
@@ -33,11 +33,16 @@ defmodule RoomSanctumWeb.StopTimeLive.Index do
   end
 
   @impl true
+  def handle_info({RoomSanctumWeb.StopTimeLive.FormComponent, {:saved, stop_time}}, socket) do
+    {:noreply, stream_insert(socket, :stop_times, stop_time)}
+  end
+
+  @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     stop_time = Storage.get_stop_time!(id)
     {:ok, _} = Storage.delete_stop_time(stop_time)
 
-    {:noreply, assign(socket, :stop_times, list_stop_times())}
+    {:noreply, stream_delete(socket, :stop_times, stop_time)}
   end
 
   defp list_stop_times do

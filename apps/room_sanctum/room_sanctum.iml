@@ -126,5 +126,13 @@
     <orderEntry type="library" name="amqp_client" level="project" />
     <orderEntry type="library" name="parent" level="project" />
     <orderEntry type="library" name="mox" level="project" />
+    <orderEntry type="library" name="sentry" level="project" />
+    <orderEntry type="library" name="phoenix_template" level="project" />
+    <orderEntry type="library" name="websock_adapter" level="project" />
+    <orderEntry type="library" name="ecto_sqlite3_extras" level="project" />
+    <orderEntry type="library" name="ecto_sqlite3" level="project" />
+    <orderEntry type="library" name="dart_sass" level="project" />
+    <orderEntry type="library" name="websock" level="project" />
+    <orderEntry type="library" name="bandit" level="project" />
   </component>
 </module>
