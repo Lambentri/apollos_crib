@@ -65,7 +65,7 @@ defmodule RoomSanctumWeb.LiveHelpers do
               |> assign_new(:what, fn -> "Poop" end)
 
     ~H"""
-    <.link patch={@to} class= "btn gap-2 float-right">
+    <.link patch={@to} class="btn gap-2 float-right">
       <i class={"fa-solid #{@icon}"}></i>
 
       <%= adj(@what) %> <%= @what %>
@@ -81,13 +81,13 @@ defmodule RoomSanctumWeb.LiveHelpers do
     ~H"""
     <%= case @function do %>
       <% :live_patch -> %>
-      <%= live_patch to: @to, class: "btn btn-square btn-xs" do %>
+        <.link patch={@to} class="btn btn-square btn-xs">
         <i class={"fa-solid #{@icon}"}></i>
-      <% end %>
+      </.link>
       <% :live_redirect -> %>
-      <%= live_redirect to: @to, class: "btn btn-square btn-xs" do %>
+        <.link navigate={@to} class="btn btn-square btn-xs">
         <i class={"fa-solid #{@icon}"}></i>
-      <% end %>
+      </.link>
     <% end %>
     """
   end
