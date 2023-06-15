@@ -3,7 +3,7 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Ankyra Detail</h1>
 
-<.modal :if={@live_action == :edit} id="amkyra-modal" show on_cancel={JS.patch({Routes.ankyra_show_path(@socket, :show, @ankyra)})}>
+<.modal :if={@live_action == :edit} id="amkyra-modal" show on_cancel={JS.patch(Routes.ankyra_show_path(@socket, :show, @ankyra))}>
     <.live_component
       module={RoomSanctumWeb.AnkyraLive.FormComponent}
       id={@ankyra.id}

@@ -21,6 +21,7 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
      socket
      |> assign(assigns)
      |> assign(:changeset, changeset)
+     |> assign_form(changeset)
       |> assign(:cfg_ankyra, list_cfg_ankyra(assigns.current_user.id))
       |> assign(:cfg_visions, list_cfg_visions(assigns.current_user.id))
       |> assign(
@@ -52,7 +53,7 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
       |> Configuration.change_pythiae(pythiae_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"pythiae" => pythiae_params}, socket) do
@@ -63,7 +64,7 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
 
   def handle_event("generate-new-name", _params, socket) do
     changeset = socket.assigns.changeset |> Ecto.Changeset.change(name: gen_name())
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
 

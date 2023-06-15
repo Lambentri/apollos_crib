@@ -1,6 +1,6 @@
 <h1>Show Trip</h1>
 
-<.modal :if={@live_action == :edit} id="gtfs-trip-modal" show on_cancel={JS.patch({Routes.trip_show_path(@socket, :show, @trip)})}>
+<.modal :if={@live_action == :edit} id="gtfs-trip-modal" show on_cancel={JS.patch(Routes.trip_show_path(@socket, :show, @trip))}>
     <.live_component
       module={RoomSanctumWeb.TripLive.FormComponent}
       id={@trip.id}

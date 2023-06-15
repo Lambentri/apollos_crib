@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.StationStatusLive.FormComponent do
       |> Storage.change_station_status(station_status_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"station_status" => station_status_params}, socket) do

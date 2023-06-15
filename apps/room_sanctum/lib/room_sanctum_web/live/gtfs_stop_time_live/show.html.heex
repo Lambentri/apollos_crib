@@ -1,6 +1,6 @@
 <h1>Show Stop time</h1>
 
-<.modal :if={@live_action == :edit} id="gtfs-stop-time-modal" show on_cancel={JS.patch({Routes.stop_time_show_path(@socket, :show, @stop_time)})}>
+<.modal :if={@live_action == :edit} id="gtfs-stop-time-modal" show on_cancel={JS.patch(Routes.stop_time_show_path(@socket, :show, @stop_time))}>
     <.live_component
       module={RoomSanctumWeb.StopTimeLive.FormComponent}
       id={@stop_time.id}

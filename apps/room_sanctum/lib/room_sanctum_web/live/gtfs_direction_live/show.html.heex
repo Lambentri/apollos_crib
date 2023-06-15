@@ -1,6 +1,6 @@
 <h1>Show Direction</h1>
 
-<.modal :if={@live_action == :edit} id="gtfs-direction-modal" show on_cancel={JS.patch({Routes.direction_show_path(@socket, :show, @direction)})}>
+<.modal :if={@live_action == :edit} id="gtfs-direction-modal" show on_cancel={JS.patch(Routes.direction_show_path(@socket, :show, @direction))}>
     <.live_component
       module={RoomSanctumWeb.DirectionLive.FormComponent}
       id={@direction.id}

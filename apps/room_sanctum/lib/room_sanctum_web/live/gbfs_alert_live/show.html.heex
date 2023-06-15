@@ -1,6 +1,6 @@
 <h1>Show Alert</h1>
 
-<.modal :if={@live_action == :edit} id="gbfs-alert-modal" show on_cancel={JS.patch({Routes.alert_show_path(@socket, :show, @alert)})}>
+<.modal :if={@live_action == :edit} id="gbfs-alert-modal" show on_cancel={JS.patch(Routes.alert_show_path(@socket, :show, @alert))}>
     <.live_component
       module={RoomSanctumWeb.AlertLive.FormComponent}
       id={@alert.id}

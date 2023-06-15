@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.MonitoringSiteLive.FormComponent do
       |> Storage.change_monitoring_site(monitoring_site_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"monitoring_site" => monitoring_site_params}, socket) do

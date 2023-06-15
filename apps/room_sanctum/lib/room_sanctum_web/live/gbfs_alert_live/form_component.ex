@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.AlertLive.FormComponent do
       |> Storage.change_gbfs_alert(alert_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"alert" => alert_params}, socket) do

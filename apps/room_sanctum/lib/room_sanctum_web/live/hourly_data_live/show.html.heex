@@ -1,6 +1,6 @@
 <h1>Show Hourly data</h1>
 
-<.modal :if={@live_action == :edit} id="aqi-hourly-data-modal" show on_cancel={JS.patch({Routes.hourly_data_show_path(@socket, :show, @hourly_data)})}>
+<.modal :if={@live_action == :edit} id="aqi-hourly-data-modal" show on_cancel={JS.patch(Routes.hourly_data_show_path(@socket, :show, @hourly_data))}>
     <.live_component
       module={RoomSanctumWeb.HourlyDataLive.FormComponent}
       id={@hourly_data.id}

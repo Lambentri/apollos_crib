@@ -72,10 +72,10 @@ defmodule RoomSanctumWeb.CoreComponents do
                 <button
                   phx-click={JS.exec("data-cancel", to: "##{@id}")}
                   type="button"
-                  class="-m-3 flex-none p-3 opacity-20 hover:opacity-40"
+                  class="-m-3 flex-none p-3 px-12 pt-8 opacity-20 hover:opacity-40"
                   aria-label={gettext("close")}
                 >
-                  <.icon name="hero-x-mark-solid" class="h-5 w-5" />
+                  <i class="fa-solid fa-close fa-3x" />
                 </button>
               </div>
               <div id={"#{@id}-content"}>
@@ -253,10 +253,13 @@ defmodule RoomSanctumWeb.CoreComponents do
   attr :name, :any
   attr :label, :string, default: nil
   attr :value, :any
+
   attr :lb_a, :string
   attr :lb_i, :string
   attr :rb_a, :string
   attr :rb_i, :string
+  attr :lb_tgt, :string
+  attr :rb_tgt, :string
 
   attr :type, :string,
     default: "text",
@@ -318,7 +321,7 @@ defmodule RoomSanctumWeb.CoreComponents do
       <select
         id={@id}
         name={@name}
-        class="mt-2 block w-full rounded-md border border-gray-300 bg-primary text-primary-content shadow-sm focus:border-accent focus:ring-0 sm:text-sm"
+        class="mt-2 block w-full rounded-md border border-gray-300 bg-base-100 text-base-100-content shadow-sm focus:border-accent focus:ring-0 sm:text-sm"
         multiple={@multiple}
         {@rest}
       >
@@ -338,7 +341,7 @@ defmodule RoomSanctumWeb.CoreComponents do
         id={@id}
         name={@name}
         class={[
-          "mt-2 block w-full rounded-lg bg-primary text-primary-content focus:ring-0 sm:text-sm sm:leading-6",
+          "mt-2 block w-full rounded-lg bg-base-100 text-base-100-content focus:ring-0 sm:text-sm sm:leading-6",
           "min-h-[6rem] phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
           @errors == [] && "border-zinc-300 focus:border-zinc-400",
           @errors != [] && "border-rose-400 focus:border-rose-400"
@@ -350,21 +353,21 @@ defmodule RoomSanctumWeb.CoreComponents do
     """
   end
 
-  def input(%{lb_a: action, lb_i: icon} = assigns) do
+  def input(%{lb_a: action, lb_i: icon, lb_tgt: tgt} = assigns) do
     ~H"""
     <div phx-feedback-for={@name}>
       <.label for={@id}><%= @label %></.label>
-      <div class="input-group">
-      <btn class="btn btn-accent" phx-click="{@action}" phx-target={@myself}>
-        <i class="fa-solid {@icon}"></i>
-      </btn>
+      <div class="input-group input-group-md">
+        <btn class="btn btn-accent btn-square" phx-click={action} phx-target={tgt}>
+          <i class={"fa-solid #{icon}"}></i>
+        </btn>
       <input
         type={@type}
         name={@name}
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
+          "block w-full rounded-lg bg-base-100 text-base-100-content focus:ring-0 sm:text-sm sm:leading-6",
           "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
           @errors == [] && "border-zinc-300 focus:border-zinc-400",
           @errors != [] && "border-rose-400 focus:border-rose-400"
@@ -377,7 +380,7 @@ defmodule RoomSanctumWeb.CoreComponents do
     """
   end
 
-  def input(%{rb_a: action, rb_i: icon} = assigns) do
+  def input(%{rb_a: action, rb_i: icon, rb_tgt: tgt} = assigns) do
     ~H"""
     <div phx-feedback-for={@name}>
       <.label for={@id}><%= @label %></.label>
@@ -395,8 +398,8 @@ defmodule RoomSanctumWeb.CoreComponents do
         ]}
         {@rest}
       />
-      <btn class="btn btn-accent" phx-click="{@action}" phx-target={@myself}>
-        <i class="fa-solid {@icon}"></i>
+      <btn class="btn btn-accent" phx-click={action} phx-target={tgt}>
+        <i class="fa-solid #{icon}"></i>
       </btn>
       </div>
       <.error :for={msg <- @errors}><%= msg %></.error>
@@ -404,13 +407,13 @@ defmodule RoomSanctumWeb.CoreComponents do
     """
   end
 
-  def input(%{lb_a: actionl, lb_i: iconl, rb_a: actionr, rb_i: iconr} = assigns) do
+  def input(%{lb_a: actionl, lb_i: iconl, rb_a: actionr, rb_i: iconr, lb_tgt: tgt, rb_tgt: tgt2} = assigns) do
     ~H"""
     <div phx-feedback-for={@name}>
       <.label for={@id}><%= @label %></.label>
       <div class="input-group">
-      <btn class="btn btn-accent" phx-click="{@actionl}" phx-target={@myself}>
-        <i class="fa-solid {@iconl}"></i>
+      <btn class="btn btn-accent" phx-click={actionl}  phx-target={tgt}>
+        <i class="fa-solid #{iconl}"></i>
       </btn>
       <input
         type={@type}
@@ -425,8 +428,8 @@ defmodule RoomSanctumWeb.CoreComponents do
         ]}
         {@rest}
       />
-      <btn class="btn btn-accent" phx-click="{@actionr}" phx-target={@myself}>
-        <i class="fa-solid {@iconr}"></i>
+      <btn class="btn btn-accent" phx-click={actionr} phx-target={tgt2}>
+        <i class="fa-solid #{iconr}"></i>
       </btn>
       </div>
       <.error :for={msg <- @errors}><%= msg %></.error>
@@ -465,7 +468,7 @@ defmodule RoomSanctumWeb.CoreComponents do
 
   def label(assigns) do
     ~H"""
-    <label for={@for} class="block text-sm font-semibold leading-6 text-zinc-800">
+    <label for={@for} class="block text-md font-bold leading-6 pt-4 text-primary-content">
       <%= render_slot(@inner_block) %>
     </label>
     """

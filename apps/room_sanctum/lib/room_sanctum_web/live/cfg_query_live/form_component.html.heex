@@ -25,7 +25,7 @@
   </div>
   <div class="flex">
     <div class="w-full">
-  <%= case get_current_type(@changeset) do %>
+  <%= case get_current_type(@form) do %>
   <%= :aqi -> %>
   <%= polymorphic_embed_inputs_for @form, :query, :aqi, fn aqi_form -> %>
   <div class="form-control">

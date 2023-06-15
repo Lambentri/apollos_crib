@@ -4,7 +4,7 @@
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Vision Detail</h1>
 
 
-<.modal :if={@live_action == :edit} id="vision-modal" show on_cancel={JS.patch({Routes.vision_show_path(@socket, :show, @vision)})}>
+<.modal :if={@live_action == :edit} id="vision-modal" show on_cancel={JS.patch(Routes.vision_show_path(@socket, :show, @vision))}>
     <.live_component
       module={RoomSanctumWeb.VisionLive.FormComponent}
       id={@vision.id}
@@ -20,118 +20,120 @@
   <div class="flex">
     <h2 class="text-2xl font-bold text-accent-300"><%= @vision.name %></h2>
   </div>
-  <div class="flex">
-    <div class="card card-compact w-5/6 bg-base-100 shadow-xl m-2">
-      <div class="card-body text-left">
-        <h3 class="card-title">Queries</h3>
-        <p>
-        <%= for q <- @queries do %>
-          <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
-          <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
-          <% end %>
-        <% end %>
-        </p>
-      </div>
-    </div>
-    <div class="card card-compact w-1/6 bg-base-100 shadow-xl m-2">
-      <div class="card-body text-left">
-        <h3 class="card-title">Pythiae</h3>
-        <p>
-          <%= for q <- @pythiae do %>
-          <%= live_patch to: Routes.pythiae_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
-          <%= q.name %>
-          <% end %>
-        <% end %>
-        </p>
-      </div>
-    </div>
-  </div>
-  <div class="flex">
-    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
-      <div class="card-body">
-        <h3 class="card-title">Vision</h3>
-        <table class="table table-compact">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Query</th>
-                    <th>Schedule</th>
-                </tr>
-            </thead>
-          <tbody>
-            <%= for q <- @vision.queries |> Enum.sort_by(&{sortert(&1.type), &1.data.order}) do %>
-              <tr>
-                <td><%= q.type %></td>
-                <td>
-                  <i class={"fas #{get_query_data_icon(q.data.query, @queries)}"}></i>
-                  <%= get_query_data(q.data.query, @queries) %>
-                </td>
-                <td>
-                  <%= if q.data |> Map.get(:weekdays) do %>
-                  <%= for w <- weekdays() do %>
-                  <div class={badge_weekday(w, q.data.weekdays)}><%= w %></div>
+  <div class="flex flex-col flex-col-reverse sm:flex-col-reverse md:flex-col">
+          <div class="flex flex-wrap md:flex-nowrap flex-col-reverse md:flex-row">
+            <div class="card card-compact w-full md:w-5/6 bg-base-100 shadow-xl m-2">
+              <div class="card-body text-left">
+                <h3 class="card-title">Queries</h3>
+                <p>
+                <%= for q <- @queries do %>
+                  <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+                  <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
                   <% end %>
-                  &emsp;
-                  <i class="fas fa-clock"></i>
-                  <%= q.data.time_start %>
-                  <i class="fas fa-arrow-right"></i>
-                  <%= q.data.time_end %>
-                  <% else %>
-                  <div class="badge">N/A</div>
+                <% end %>
+                </p>
+              </div>
+            </div>
+            <div class="card card-compact w-full md:w-1/6 bg-base-100 shadow-xl m-2">
+              <div class="card-body text-left">
+                <h3 class="card-title">Pythiae</h3>
+                <p>
+                  <%= for q <- @pythiae do %>
+                  <%= live_patch to: Routes.pythiae_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+                  <%= q.name %>
                   <% end %>
-                </td>
-              </tr>
-            <% end %>
-          </tbody>
-        </table>
-      </div>
-    </div>
-    <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
-      <div class="card-body">
+                <% end %>
+                </p>
+              </div>
+            </div>
+          </div>
+          <div class="flex flex-wrap md:flex-nowrap flex-col-reverse md:flex-row">
+            <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+              <div class="card-body">
+                <h3 class="card-title">Vision</h3>
+                <table class="table table-compact">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Query</th>
+                            <th>Schedule</th>
+                        </tr>
+                    </thead>
+                  <tbody>
+                    <%= for q <- @vision.queries |> Enum.sort_by(&{sortert(&1.type), &1.data.order}) do %>
+                      <tr>
+                        <td><%= q.type %></td>
+                        <td>
+                          <i class={"fas #{get_query_data_icon(q.data.query, @queries)}"}></i>
+                          <%= get_query_data(q.data.query, @queries) %>
+                        </td>
+                        <td>
+                          <%= if q.data |> Map.get(:weekdays) do %>
+                          <%= for w <- weekdays() do %>
+                          <div class={badge_weekday(w, q.data.weekdays)}><%= w %></div>
+                          <% end %>
+                          &emsp;
+                          <i class="fas fa-clock"></i>
+                          <%= q.data.time_start %>
+                          <i class="fas fa-arrow-right"></i>
+                          <%= q.data.time_end %>
+                          <% else %>
+                          <div class="badge">N/A</div>
+                          <% end %>
+                        </td>
+                      </tr>
+                    <% end %>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+              <div class="card-body">
 
-          <div class="flex">
-            <div class="flex-auto basis-4/5">
-              <h3 class="card-title w-full">Preview</h3>
-            </div>
-            <div class="flex-1 w-3/4">
-              &nbsp;
-            </div>
-            <div class="flex-none w-20">
-              <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
+                  <div class="flex">
+                    <div class="flex-auto basis-4/5">
+                      <h3 class="card-title w-full">Preview</h3>
+                    </div>
+                    <div class="flex-1 w-3/4">
+                      &nbsp;
+                    </div>
+                    <div class="flex-none w-20">
+                      <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
+                    </div>
+                  </div>
+                <%= case @preview_mode do %>
+                <%= :basic -> %>
+                  <%= for {k, p} <- @preview do %>
+                    <div class="flex gap-2">
+                      <i class={"fas fa-fw fa-xl #{get_icon(k |> elem(1))}"}></i>
+                      <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+                    </div>
+                    <%= case k do %>
+                      <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
+                      <% {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
+                      <% {_, :tidal} -> %>  <.p_tidal entries={condense(k, p) |> preview(k)}> </.p_tidal>
+                      <% {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}> </.p_weather>
+                      <% {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
+                      <% {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
+                      <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
+                      <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
+                    <% end %>
+                  <% end %>
+                <% :raw -> %>
+                  <%= for {k, p} <- @preview do %>
+                  <div class="flex">
+                    <div class="w-16">
+                      <i class={"fas fa-fw fa-2xl #{get_icon(k |> elem(1))}"}></i>
+                    </div>
+                    <div class="w-7/8">
+                      <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+                      <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
+                    </div>
+                  </div>
+                  <% end %>
+                <% end %>
+              </div>
             </div>
           </div>
-        <%= case @preview_mode do %>
-        <%= :basic -> %>
-          <%= for {k, p} <- @preview do %>
-            <div class="flex gap-2">
-              <i class={"fas fa-fw fa-xl #{get_icon(k |> elem(1))}"}></i>
-              <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-            </div>
-            <%= case k do %>
-              <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
-              <% {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
-              <% {_, :tidal} -> %>  <.p_tidal entries={condense(k, p) |> preview(k)}> </.p_tidal>
-              <% {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}> </.p_weather>
-              <% {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
-              <% {_, :ephem} -> %> <.p_ephem entries={condense(k, p) |> preview(k)}> </.p_ephem>
-              <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
-              <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
-            <% end %>
-          <% end %>
-        <% :raw -> %>
-          <%= for {k, p} <- @preview do %>
-          <div class="flex">
-            <div class="w-16">
-              <i class={"fas fa-fw fa-2xl #{get_icon(k |> elem(1))}"}></i>
-            </div>
-            <div class="w-7/8">
-              <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-              <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
-            </div>
-          </div>
-          <% end %>
-        <% end %>
-      </div>
-    </div>
-  </div>
+        </div>
 </div>

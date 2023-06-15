@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.AgencyLive.FormComponent do
       |> Storage.change_agency(agency_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"agency" => agency_params}, socket) do

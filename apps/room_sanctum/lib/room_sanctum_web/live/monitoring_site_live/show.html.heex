@@ -1,6 +1,6 @@
 <h1>Show Monitoring site</h1>
 
-<.modal :if={@live_action == :edit} id="aqi-monitoring-data-modal" show on_cancel={JS.patch({Routes.monitoring_site_show_path(@socket, :show, @monitoring_site)})}>
+<.modal :if={@live_action == :edit} id="aqi-monitoring-data-modal" show on_cancel={JS.patch(Routes.monitoring_site_show_path(@socket, :show, @monitoring_site))}>
     <.live_component
       module={RoomSanctumWeb.MonitoringSiteLive.FormComponent}
       id={@monitoring_site.id}

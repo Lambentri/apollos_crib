@@ -28,7 +28,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
       :ok,
       socket
       |> assign(assigns)
-      |> assign(:changeset, changeset)
+      |> assign_form(changeset)
       |> assign(:cfg_queries, list_cfg_queries(assigns.current_user.id))
       |> assign(
         :cfg_queries_sel,
@@ -48,9 +48,9 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
       socket.assigns.vision
       |> Configuration.change_vision(vision_params)
       |> Map.put(:action, :validate)
-      |> IO.inspect()
+#      |> IO.inspect()
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"vision" => vision_params}, socket) do
@@ -80,7 +80,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
       socket.assigns.vision
       |> Configuration.change_vision(%{queries: combined})
       |> Map.put(:action, :validate)
-      |> IO.inspect()
+#      |> IO.inspect()
 
     {
       :noreply,
@@ -97,7 +97,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Vision updated successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -113,7 +113,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Vision created successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -159,7 +159,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     {"Saturday", "S"}
   end
 
-  defp gfv(changeset, fq, ctr) do
+  defp gfv(form, fq, ctr) do
     #    IO.puts("GFV")
     #    IO.inspect(changeset)
     #    IO.inspect(fq)
@@ -173,8 +173,9 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     #      |> Map.get(:type)
     #    )
 
+#    IO.inspect(form)
     q =
-      changeset.changes
+      form.data
       |> Map.get(:queries, [])
       |> Enum.at(ctr, %{})
       |> Map.get(:changes, %{})
@@ -187,8 +188,8 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
         |> Map.get(:data, %{})
         |> Map.get(:type)
 
-    #    IO.puts("xxxxx")
-    #    IO.inspect(q)
+#        IO.puts("xxxxx")
+#        IO.inspect(q)
     q
   end
 end

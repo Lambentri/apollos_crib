@@ -35,7 +35,7 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
       :ok,
       socket
       |> assign(assigns)
-      |> assign(:changeset, changeset)
+      |> assign_form(changeset)
     }
   end
 
@@ -48,7 +48,7 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
       |> Accounts.change_rabbit_user(ankyra_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"rabbit_user" => ankyra_params}, socket) do
@@ -70,12 +70,12 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
 
   def handle_event("generate-new-password", _params, socket) do
     changeset = socket.assigns.changeset |> Ecto.Changeset.change(password: gen_pw())
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("generate-new-topic", _params, socket) do
     changeset = socket.assigns.changeset |> Ecto.Changeset.change(topic: gen_topic())
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
 
@@ -88,7 +88,7 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Ankyra updated successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -105,7 +105,7 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Ankyra created successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->

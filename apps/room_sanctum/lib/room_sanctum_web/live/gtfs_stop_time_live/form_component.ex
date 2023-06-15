@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.StopTimeLive.FormComponent do
       |> Storage.change_stop_time(stop_time_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"stop_time" => stop_time_params}, socket) do

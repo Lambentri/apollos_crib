@@ -3,7 +3,7 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Foci Detail</h1>
 
-<.modal :if={@live_action == :edit} id="foci-modal" show on_cancel={JS.patch({Routes.foci_show_path(@socket, :show, @foci)})}>
+<.modal :if={@live_action == :edit} id="foci-modal" show on_cancel={JS.patch(Routes.foci_show_path(@socket, :show, @foci))}>
     <.live_component
       module={RoomSanctumWeb.FociLive.FormComponent}
       id={@foci.id}

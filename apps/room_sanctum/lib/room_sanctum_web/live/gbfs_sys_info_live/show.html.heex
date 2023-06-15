@@ -1,6 +1,6 @@
 <h1>Show Sys info</h1>
 
-<.modal :if={@live_action == :edit} id="gbfs-sys-info-modal" show on_cancel={JS.patch({Routes.sys_info_show_path(@socket, :show, @sys_info)})}>
+<.modal :if={@live_action == :edit} id="gbfs-sys-info-modal" show on_cancel={JS.patch(Routes.sys_info_show_path(@socket, :show, @sys_info))}>
     <.live_component
       module={RoomSanctumWeb.SysInfoLive.FormComponent}
       id={@sys_info.id}

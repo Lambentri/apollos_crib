@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.CalendarLive.FormComponent do
       |> Storage.change_calendar(calendar_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"calendar" => calendar_params}, socket) do

@@ -23,7 +23,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
       :ok,
       socket
       |> assign(assigns)
-      |> assign(:changeset, changeset)
+      |> assign_form(changeset)
     }
   end
 
@@ -42,7 +42,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
       |> Configuration.change_foci(foci_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"foci" => foci_params}, socket) do
@@ -79,7 +79,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Foci updated successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -95,7 +95,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Foci created successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->

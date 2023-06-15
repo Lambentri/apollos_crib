@@ -16,6 +16,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       :ok,
       socket
       |> assign(assigns)
+      |> assign_form(changeset)
       |> assign(:changeset, changeset)
       |> assign(:cfg_sources, list_cfg_sources(assigns.current_user.id))
       |> assign(:cfg_foci, list_cfg_foci(assigns.current_user.id))
@@ -43,7 +44,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> Configuration.change_query(query_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"query" => query_params}, socket) do
@@ -59,7 +60,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Query updated successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -75,7 +76,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Query created successfully")
-          |> push_redirect(to: socket.assigns.return_to)
+          |> push_redirect(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -97,11 +98,12 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     Configuration.list_focis({:user, uid})
   end
 
-  defp get_current_type(changeset) do
+  defp get_current_type(form) do
     id =
-      changeset.changes
+      form.source
+      |> Map.get(:changes)
       |> Map.get(:source_id) ||
-        changeset.data
+        form.data
         |> Map.get(:source_id)
 
     case id do

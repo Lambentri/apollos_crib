@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.HourlyObsDataLive.FormComponent do
       |> AirNow.change_hourly_obs_data(hourly_obs_data_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"hourly_obs_data" => hourly_obs_data_params}, socket) do

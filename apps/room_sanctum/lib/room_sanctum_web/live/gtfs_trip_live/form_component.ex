@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.TripLive.FormComponent do
       |> Storage.change_trip(trip_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"trip" => trip_params}, socket) do

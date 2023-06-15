@@ -1,6 +1,6 @@
 <h1>Show Agency</h1>
 
-<.modal :if={@live_action == :edit} id="gtfs-agency-modal" show on_cancel={JS.patch({Routes.agency_show_path(@socket, :show, @agency)})}>
+<.modal :if={@live_action == :edit} id="gtfs-agency-modal" show on_cancel={JS.patch(Routes.agency_show_path(@socket, :show, @agency))}>
     <.live_component
       module={RoomSanctumWeb.AgencyLive.FormComponent}
       id={@agency.id}

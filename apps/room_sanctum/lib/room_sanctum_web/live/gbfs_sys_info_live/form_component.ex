@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.SysInfoLive.FormComponent do
       |> Storage.change_sys_info(sys_info_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"sys_info" => sys_info_params}, socket) do

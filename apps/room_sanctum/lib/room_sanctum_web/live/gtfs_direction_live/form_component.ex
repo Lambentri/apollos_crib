@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.DirectionLive.FormComponent do
       |> Storage.change_direction(direction_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"direction" => direction_params}, socket) do

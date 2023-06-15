@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.RouteLive.FormComponent do
       |> Storage.change_route(route_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign(socket, :changeset, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"route" => route_params}, socket) do

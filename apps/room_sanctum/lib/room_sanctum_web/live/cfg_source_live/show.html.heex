@@ -3,7 +3,7 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Offering Detail</h1>
 
-<.modal :if={@live_action == :edit} id="source-modal" show on_cancel={JS.patch({Routes.source_show_path(@socket, :show, @source)})}>
+<.modal :if={@live_action == :edit} id="source-modal" show on_cancel={JS.patch(Routes.source_show_path(@socket, :show, @source))}>
     <.live_component
     module={RoomSanctumWeb.SourceLive.FormComponent}
     id={@source.id}
