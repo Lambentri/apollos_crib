@@ -5,7 +5,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp inj_uid(params, socket) do
     params
-    |> IO.inspect
+#    |> IO.inspect
     |> Map.put("user_id", socket.assigns.current_user.id)
     |> Map.put("query_ids", params["queries"] |> Enum.map(fn {k,v} -> v["data"]["query"] end ))
   end
@@ -60,18 +60,22 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   def handle_event("add-entry", _data, socket) do
-    # TODO: Make this behave the ankyra key generators do
-    existing_as_simple =
-      socket.assigns.vision.queries
-      |> Enum.map(fn x -> x |> Poison.encode!() |> Poison.decode!() end)
+#    IO.inspect(socket.assigns.form)
+    f = socket.assigns.form
 
+    existing_as_simple = case f.params do
+        map when map == %{} -> f.data.queries |> Enum.map(fn x -> x |> Poison.encode!() |> Poison.decode!() end)
+        otherwise -> f.params |> Map.get("queries") |> Enum.map(fn {k,v} -> v end)
+    end
+
+    IO.inspect(existing_as_simple)
     combined =
       existing_as_simple ++
         [
           %{
-            "data" => %{"__type__" => "alerts", "query" => 0},
+            "data" => %{"__type__" => "pinned", "query" => 0},
             "id" => nil,
-            "type" => "alerts",
+            "type" => "pinned",
             "order" => 0
           }
         ]
@@ -85,7 +89,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     {
       :noreply,
       socket
-      |> assign(:changeset, changeset)
+      |> assign_form(changeset)
     }
   end
 
@@ -173,8 +177,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     #      |> Map.get(:type)
     #    )
 
-#    IO.inspect(form)
-    q =
+    q = form.params |> Map.get("queries", %{}) |> Map.get("#{ctr}", %{}) |> Map.get("type") ||
       form.data
       |> Map.get(:queries, [])
       |> Enum.at(ctr, %{})
@@ -188,8 +191,6 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
         |> Map.get(:data, %{})
         |> Map.get(:type)
 
-#        IO.puts("xxxxx")
-#        IO.inspect(q)
-    q
+    q # |> IO.inspect
   end
 end

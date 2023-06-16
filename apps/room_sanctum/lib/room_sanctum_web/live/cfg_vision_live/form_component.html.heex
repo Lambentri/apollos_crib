@@ -15,12 +15,10 @@
             </div>
         </div>
     </div>
-
-
     <%= for {fq, ctr} <- Enum.with_index(inputs_for(@form, :queries)) do %>
+        <%= hidden_inputs_for(fq) %>
         <div class="flex">
-            <div class="flex-none w-16 font-bold text-7xl">
-                <%= hidden_inputs_for(fq) %>
+            <div class="flex-none w-16 font-bold text-7xl py-6">
                 <%= ctr %>
             </div>
             <div class="flex-none w-32 p-1">
@@ -31,33 +29,40 @@
 
         <%= for fd <- polymorphic_embed_inputs_for fq, :data do %>
             <%= hidden_inputs_for(fd) %>
-            <div class="flex-none w-24 p-1">
-                <div class="form-control">
-                    <.input field={fd[:order]} type="number" label="Order" />
-                </div>
-            </div>
-            <div class="flex-1 w-64 p-1">
-                <div class="form-control">
-                    <.input field={fd[:query]} type="select" label="Type" options={@cfg_queries_sel}/>
-                </div>
-            </div>
-            <div class="flex-1 w-64 p-1">
-            <%= case gfv(@form, fq, ctr) do %>
-                <% :time -> %>
+            <div class="flex flex-col">
+                <div class="flex">
+                <div class="flex-none w-24 p-1">
                     <div class="form-control">
-                        <label>Weekdays</label>
-                        <.input field={fd[:weekdays]} type="select" multiple="true" label="Visions" options={Enum.map(Ecto.Enum.values(RoomSanctum.Configuration.Vision.Schema1Time, :weekdays), fn c -> etuple(c) end)}/>
+                        <.input field={fd[:order]} type="number" label="Order" />
                     </div>
-                    <div class="card card-compact rounded-md bg-base-100 shadow-xl p-2 my-1">
-                    <div class="time-inputs">
-                        <.input field={fd[:time_start]} type="time" label={raw("<i class=\"fa-solid fa-forward-step\"></i>")} />
+                </div>
+                <div class="flex-1 w-full p-1">
+                    <div class="form-control">
+                        <.input field={fd[:query]} type="select" label="Type" options={@cfg_queries_sel}/>
                     </div>
-                    <div class="time-inputs">
-                        <.input field={fd[:time_end]} type="time" label={raw("<i class=\"fa-solid fa-backward-step\"></i>")} />
+                </div>
+                </div>
+                <div class="flex-1 w-full p-1">
+                    <%= case gfv(@form, fq, ctr) do %>
+                <% val when val in [:time, "time"] -> %>
+                    <div class="flex">
+                        <div class="form-control">
+                            <.input field={fd[:weekdays]} type="select" multiple="true" label="Weekday" options={Enum.map(Ecto.Enum.values(RoomSanctum.Configuration.Vision.Schema1Time, :weekdays), fn c -> etuple(c) end)}/>
+                        </div>
+                        <div class="px-4
+">
+                            <label class="block text-md font-bold leading-6 pt-4 text-primary-content">Times</label>
+                            <div class="time-inputs">
+                                <.input field={fd[:time_start]} type="time" label="Start")} />
+                            </div>
+                            <div class="time-inputs">
+                                <.input field={fd[:time_end]} type="time" label="End")} />
+                            </div>
+                        </div>
                     </div>
-                    </div>
-                <% _ -> %>
+                    <% _ -> %>
                 <% end %>
+                </div>
             </div>
         <% end %>
         </div>

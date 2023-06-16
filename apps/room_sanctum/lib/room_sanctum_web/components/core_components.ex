@@ -184,7 +184,7 @@ defmodule RoomSanctumWeb.CoreComponents do
   def simple_form(assigns) do
     ~H"""
     <.form :let={f} for={@for} as={@as} {@rest}>
-      <div class="mt-10 space-y-8 bg-primary">
+      <div class="mt-10 space-y-6 bg-primary">
         <%= render_slot(@inner_block, f) %>
         <div :for={action <- @actions} class="mt-2 flex items-center justify-between gap-6">
           <%= render_slot(action, f) %>
@@ -384,22 +384,22 @@ defmodule RoomSanctumWeb.CoreComponents do
     ~H"""
     <div phx-feedback-for={@name}>
       <.label for={@id}><%= @label %></.label>
-      <div class="input-group">
+      <div class="input-group input-group-md">
       <input
         type={@type}
         name={@name}
         id={@id}
         value={Phoenix.HTML.Form.normalize_value(@type, @value)}
         class={[
-          "mt-2 block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
+          "block w-full rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6",
           "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
           @errors == [] && "border-zinc-300 focus:border-zinc-400",
           @errors != [] && "border-rose-400 focus:border-rose-400"
         ]}
         {@rest}
       />
-      <btn class="btn btn-accent" phx-click={action} phx-target={tgt}>
-        <i class="fa-solid #{icon}"></i>
+      <btn class="btn btn-accent btn-square" phx-click={action} phx-target={tgt}>
+        <i class={"fa-solid #{icon}"}></i>
       </btn>
       </div>
       <.error :for={msg <- @errors}><%= msg %></.error>

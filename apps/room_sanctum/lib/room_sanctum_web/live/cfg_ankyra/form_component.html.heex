@@ -20,11 +20,11 @@
         <div class="w-full">
             <%= if @rabbit_user.id == nil do %>
             <div class="form-control">
-                <.input field={@form[:topic]} type="text" label="Topic" rb_a="generate-new-topic" rb_i="fa-arrows-rotate" />
+                <.input field={@form[:topic]} type="text" label="Topic" rb_a="generate-new-topic" rb_i="fa-arrows-rotate" rb_tgt="#ankyra-form" />
             </div>
             <% end %>
             <div class="form-control">
-                <.input field={@form[:password]} type="text" label="Password" rb_a="generate-new-password" rb_i="fa-arrows-rotate" />
+                <.input field={@form[:password]} type="text" label="Password" rb_a="generate-new-password" rb_i="fa-arrows-rotate"  rb_tgt="#ankyra-form" />
             </div>
         </div>
     </div>
