@@ -132,6 +132,15 @@ defmodule RoomSanctum.Storage do
     Repo.all(Calendar)
   end
 
+  def list_calendars(source_id) do
+    from(p in Calendar, where: p.source_id == ^source_id)
+    |> Repo.all
+  end
+
+  def count_calendars(source_id) do
+    Repo.one(from p in Calendar, where: p.source_id == ^source_id, select: count(p.id))
+  end
+
   @doc """
   Gets a single calendar.
 
@@ -240,6 +249,15 @@ defmodule RoomSanctum.Storage do
   """
   def list_directions do
     Repo.all(Direction)
+  end
+
+  def list_directions(source_id) do
+    from(p in Direction, where: p.source_id == ^source_id)
+    |> Repo.all
+  end
+
+  def count_directions(source_id) do
+    Repo.one(from p in Direction, where: p.source_id == ^source_id, select: count(p.id))
   end
 
   @doc """
@@ -352,6 +370,15 @@ defmodule RoomSanctum.Storage do
     Repo.all(Route)
   end
 
+  def list_routes(source_id) do
+    from(p in Route, where: p.source_id == ^source_id)
+    |> Repo.all
+  end
+
+  def count_routes(source_id) do
+    Repo.one(from p in Route, where: p.source_id == ^source_id, select: count(p.id))
+  end
+
   @doc """
   Gets a single route.
 
@@ -460,6 +487,15 @@ defmodule RoomSanctum.Storage do
   """
   def list_stop_times do
     Repo.all(StopTime)
+  end
+
+  def list_stop_times(source_id) do
+    from(p in StopTime, where: p.source_id == ^source_id)
+    |> Repo.all
+  end
+
+  def count_stop_times(source_id) do
+    Repo.one(from p in StopTime, where: p.source_id == ^source_id, select: count(p.id))
   end
 
   @doc """
@@ -591,6 +627,15 @@ defmodule RoomSanctum.Storage do
     Repo.all(Stop)
   end
 
+  def list_stops(source_id) do
+    from(p in Stop, where: p.source_id == ^source_id)
+    |> Repo.all
+  end
+
+  def count_stops(source_id) do
+    Repo.one(from p in Stop, where: p.source_id == ^source_id, select: count(p.id))
+  end
+
   @doc """
   Gets a single stop.
 
@@ -699,6 +744,15 @@ defmodule RoomSanctum.Storage do
   """
   def list_trips do
     Repo.all(Trip)
+  end
+
+  def list_trips(source_id) do
+    from(p in Trip, where: p.source_id == ^source_id)
+    |> Repo.all
+  end
+
+  def count_trips(source_id) do
+    Repo.one(from p in Trip, where: p.source_id == ^source_id, select: count(p.id))
   end
 
   @doc """
