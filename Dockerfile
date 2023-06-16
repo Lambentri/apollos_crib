@@ -1,4 +1,4 @@
-FROM elixir:alpine
+FROM elixir:otp-25-alpine
 MAINTAINER Gabe <gmp@gmp.io>
 ARG app_name=apollos_crib
 ARG phoenix_subdir=.
