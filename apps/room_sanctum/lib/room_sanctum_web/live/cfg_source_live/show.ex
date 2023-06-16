@@ -11,7 +11,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       socket
       |> assign(:status, :idle)
       |> assign(:status_val, 0)
-      |> assign(:stats, [])
+      |> assign(:stats, %{})
       |> assign(:queries, [])
     }
   end
@@ -85,11 +85,14 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
     IO.inspect({type, id})
-
+    stats = case type do
+      "gtfs" -> %{"gtfs": RoomGtfs.Worker.source_stats(id), "rt": %{}}
+      _otherwise -> %{}
+    end
     {
       :noreply,
       socket
-      |> assign(:stats, socket.assigns.stats ++ ["1", "2", "3", "4", "5"])
+      |> assign(:stats, stats)
     }
   end
 
