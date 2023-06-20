@@ -23,7 +23,11 @@ defmodule RoomSanctumWeb.Router do
   scope "/", RoomSanctumWeb do
     pipe_through [:browser]
     live "/", LandingLive.Index, :index
+    live_session :public, root_layout: {RoomSanctumWeb.LayoutView, :root_public} do
+      live "/p/p/:name", PythiaeLive.Public, :show
+    end
   end
+
 
   scope "/", RoomSanctumWeb do
     pipe_through [:browser, :require_authenticated_user]
@@ -72,11 +76,6 @@ defmodule RoomSanctumWeb.Router do
 
     live "/cfg/scribus/:id", ScribusLive.Show, :show
     live "/cfg/scribus/:id/show/edit", ScribusLive.Show, :edit
-
-
-    live_session :public, root_layout: {RoomSanctumWeb.LayoutView, :root_public} do
-      live "/p/p/:name", PythiaeLive.Public, :show
-    end
 
     if Mix.env() == :dev do
 
