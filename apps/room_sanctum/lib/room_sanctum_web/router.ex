@@ -23,7 +23,7 @@ defmodule RoomSanctumWeb.Router do
   scope "/", RoomSanctumWeb do
     pipe_through [:browser]
     live "/", LandingLive.Index, :index
-    live_session :public, root_layout: {RoomSanctumWeb.LayoutView, :root_public} do
+    live_session :public, root_layout: {RoomSanctumWeb.Layouts, :root_public} do
       live "/p/p/:name", PythiaeLive.Public, :show
     end
   end

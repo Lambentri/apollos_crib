@@ -1,7 +1,7 @@
 <.header>
   Listing Cfg scribus
   <:actions>
-    <.link patch={~p"/cfg_scribus/new"}>
+    <.link patch={~p"/cfg/scribus/new"}>
       <.button>New Scribus</.button>
     </.link>
   </:actions>
@@ -10,16 +10,16 @@
 <.table
   id="cfg_scribus"
   rows={@streams.cfg_scribus}
-  row_click={fn {_id, scribus} -> JS.navigate(~p"/cfg_scribus/#{scribus}") end}
+  row_click={fn {_id, scribus} -> JS.navigate(~p"/cfg/scribus/#{scribus}") end}
 >
   <:col :let={{_id, scribus}} label="Name"><%= scribus.name %></:col>
   <:col :let={{_id, scribus}} label="Resolution"><%= scribus.resolution %></:col>
   <:col :let={{_id, scribus}} label="Configuration"><%= scribus.configuration %></:col>
   <:action :let={{_id, scribus}}>
     <div class="sr-only">
-      <.link navigate={~p"/cfg_scribus/#{scribus}"}>Show</.link>
+      <.link navigate={~p"/cfg/scribus/#{scribus}"}>Show</.link>
     </div>
-    <.link patch={~p"/cfg_scribus/#{scribus}/edit"}>Edit</.link>
+    <.link patch={~p"/cfg/scribus/#{scribus}/edit"}>Edit</.link>
   </:action>
   <:action :let={{id, scribus}}>
     <.link
@@ -31,13 +31,13 @@
   </:action>
 </.table>
 
-<.modal :if={@live_action in [:new, :edit]} id="scribus-modal" show on_cancel={JS.patch(~p"/cfg_scribus")}>
+<.modal :if={@live_action in [:new, :edit]} id="scribus-modal" show on_cancel={JS.patch(~p"/cfg/scribus")}>
   <.live_component
     module={RoomSanctumWeb.ScribusLive.FormComponent}
     id={@scribus.id || :new}
     title={@page_title}
     action={@live_action}
     scribus={@scribus}
-    patch={~p"/cfg_scribus"}
+    patch={~p"/cfg/scribus"}
   />
 </.modal>

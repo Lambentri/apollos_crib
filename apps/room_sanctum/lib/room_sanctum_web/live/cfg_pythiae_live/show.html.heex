@@ -117,7 +117,7 @@
             <%= for {k, p} <- @preview do %>
             <div class="flex">
               <div class="w-16">
-                <i class={"fas fa-fw fa-2xl #{icon(k |> elem(1))}"}></i>
+                <i class={"fas fa-fw fa-2xl #{get_icon(k |> elem(1))}"}></i>
               </div>
               <div class="w-7/8">
                 <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>

@@ -59,13 +59,14 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
 
   def handle_event("map-update", %{"latlng" => latlng}, socket) do
     lat_lng_pt = %Geo.Point{coordinates: {latlng["lat"] |> normalize_ll, latlng["lng"] |> normalize_ll}, srid: 4326}
-    cs = socket.assigns.changeset |> Ecto.Changeset.change(place: lat_lng_pt)
+    cs = socket.assigns.foci |> Ecto.Changeset.change(place: lat_lng_pt)
     #         |> Map.put(:action, :validate)
     # cs = socket.assigns.foci |> Configuration.change_foci(%{place: lat_lng_pt}) |> Map.put(:action, :validate)
     {
       :noreply,
       socket
       |> assign(:changeset, cs)
+      |> assign_form(cs)
       |> assign(:place, lat_lng_pt)
     }
   end

@@ -7,14 +7,15 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     params
 #    |> IO.inspect
     |> Map.put("user_id", socket.assigns.current_user.id)
-    |> Map.put("query_ids", params["queries"] |> Enum.map(fn {k,v} -> v["data"]["query"] end ))
+    |> Map.put("query_ids", params |> Map.get("queries", %{}) |> Enum.map(fn {k,v} -> v["data"]["query"] end ))
   end
 
   defp inj_types(params) do
     params
     |> Map.put(
       "queries",
-      params["queries"]
+      params
+      |> Map.get("queries", %{})
       |> Enum.map(fn {k, v} -> {k, v |> Kernel.put_in(["data", "__type__"], v["type"])} end)
       |> Enum.into(%{})
     )
@@ -64,21 +65,31 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     f = socket.assigns.form
 
     existing_as_simple = case f.params do
-        map when map == %{} -> f.data.queries |> Enum.map(fn x -> x |> Poison.encode!() |> Poison.decode!() end)
-        otherwise -> f.params |> Map.get("queries") |> Enum.map(fn {k,v} -> v end)
+        map when map == %{} -> f.data.queries |> Poison.encode!() |> Poison.decode!() |> Enum.with_index |> Enum.map(fn {k,v} -> {"#{v}",k} end) |> Map.new
+        otherwise -> f.params |> Map.get("queries") #|> Enum.map(fn {k,v} -> v end)
     end
 
-    IO.inspect(existing_as_simple)
-    combined =
-      existing_as_simple ++
-        [
+#     IO.inspect(existing_as_simple)
+    combined = case existing_as_simple do
+      list when list == [] ->  %{"0" => %{
+            "data" => %{"__type__" => "pinned", "query" => 0},
+            "id" => nil,
+            "type" => "pinned",
+            "order" => 0
+          }
+        }
+      _otherwise -> existing_as_simple |> Map.merge(
+        %{ "#{existing_as_simple |> Map.keys |> length }" =>
           %{
             "data" => %{"__type__" => "pinned", "query" => 0},
             "id" => nil,
             "type" => "pinned",
             "order" => 0
           }
-        ]
+        }
+        )
+    end
+
 
     changeset =
       socket.assigns.vision
