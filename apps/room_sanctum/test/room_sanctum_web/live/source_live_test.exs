@@ -5,7 +5,13 @@ defmodule RoomSanctumWeb.SourceLiveTest do
   import RoomSanctum.ConfigurationFixtures
 
   @create_attrs %{config: %{}, enabled: true, name: "some name", notes: "some notes", type: :aqi}
-  @update_attrs %{config: %{}, enabled: false, name: "some updated name", notes: "some updated notes", type: :calendar}
+  @update_attrs %{
+    config: %{},
+    enabled: false,
+    name: "some updated name",
+    notes: "some updated notes",
+    type: :calendar
+  }
   @invalid_attrs %{config: nil, enabled: false, name: nil, notes: nil, type: nil}
 
   defp create_source(_) do

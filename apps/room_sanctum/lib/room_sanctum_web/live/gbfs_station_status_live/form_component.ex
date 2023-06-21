@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.StationStatusLive.FormComponent do
     case Storage.update_station_status(socket.assigns.station_status, station_status_params) do
       {:ok, station_status} ->
         notify_parent({:saved, station_status})
+
         {:noreply,
          socket
          |> put_flash(:info, "Station status updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.StationStatusLive.FormComponent do
     case Storage.create_station_status(station_status_params) do
       {:ok, station_status} ->
         notify_parent({:saved, station_status})
+
         {:noreply,
          socket
          |> put_flash(:info, "Station status created successfully")

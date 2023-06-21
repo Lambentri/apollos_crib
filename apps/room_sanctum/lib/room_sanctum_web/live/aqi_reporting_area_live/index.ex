@@ -33,10 +33,12 @@ defmodule RoomSanctumWeb.ReportingAreaLive.Index do
   end
 
   @impl true
-  def handle_info({RoomSanctumWeb.ReportingAreaLive.FormComponent, {:saved, reporting_area}}, socket) do
+  def handle_info(
+        {RoomSanctumWeb.ReportingAreaLive.FormComponent, {:saved, reporting_area}},
+        socket
+      ) do
     {:noreply, stream_insert(socket, :airnow_reporting_area, reporting_area)}
   end
-
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do

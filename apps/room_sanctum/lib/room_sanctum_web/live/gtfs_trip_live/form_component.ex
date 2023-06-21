@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.TripLive.FormComponent do
     case Storage.update_trip(socket.assigns.trip, trip_params) do
       {:ok, trip} ->
         notify_parent({:saved, trip})
+
         {:noreply,
          socket
          |> put_flash(:info, "Trip updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.TripLive.FormComponent do
     case Storage.create_trip(trip_params) do
       {:ok, trip} ->
         notify_parent({:saved, trip})
+
         {:noreply,
          socket
          |> put_flash(:info, "Trip created successfully")

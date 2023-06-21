@@ -61,7 +61,14 @@ defmodule RoomCalendar.Worker do
 
         data =
           entries
-          |> Enum.map(fn x -> %{blob: x |> Map.from_struct(), source_id: state.id |> intify, date_start: x.dtstart, date_end: x.dtend} end)
+          |> Enum.map(fn x ->
+            %{
+              blob: x |> Map.from_struct(),
+              source_id: state.id |> intify,
+              date_start: x.dtstart,
+              date_end: x.dtend
+            }
+          end)
           |> Enum.map(fn x ->
             RoomSanctum.Storage.change_icalendar(%RoomSanctum.Storage.ICalendar{}, x).changes
             |> Map.put(:inserted_at, dt)

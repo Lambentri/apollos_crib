@@ -28,7 +28,7 @@ defmodule RoomWeather.Worker do
 
   defp normalize_ll(val) do
     cond do
-      val < -180 -> val+360
+      val < -180 -> val + 360
       true -> val
     end
   end
@@ -50,7 +50,9 @@ defmodule RoomWeather.Worker do
            }
          ) do
       {:ok, result} ->
-        decoded = result.body |> Poison.decode!(keys: :atoms) |> Map.put(:units, state.src.config.units)
+        decoded =
+          result.body |> Poison.decode!(keys: :atoms) |> Map.put(:units, state.src.config.units)
+
         {:reply, [decoded], state}
 
       {:error, reason} ->

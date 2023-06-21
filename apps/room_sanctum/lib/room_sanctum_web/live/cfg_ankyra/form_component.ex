@@ -18,7 +18,6 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
     FriendlyID.generate(3, separator: "-")
   end
 
-
   defp inj_uid(params, socket) do
     params
     |> Map.put("user_id", socket.assigns.current_user.id)
@@ -26,10 +25,18 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
 
   @impl true
   def update(%{rabbit_user: rabbit_user} = assigns, socket) do
-    changeset = case rabbit_user.id do
-      nil ->  Accounts.change_rabbit_user(rabbit_user, %{"username" => Ecto.UUID.generate, "password" => gen_pw(), "topic" => gen_topic()})
-      _val -> Accounts.change_rabbit_user(rabbit_user)
-    end
+    changeset =
+      case rabbit_user.id do
+        nil ->
+          Accounts.change_rabbit_user(rabbit_user, %{
+            "username" => Ecto.UUID.generate(),
+            "password" => gen_pw(),
+            "topic" => gen_topic()
+          })
+
+        _val ->
+          Accounts.change_rabbit_user(rabbit_user)
+      end
 
     {
       :ok,
@@ -60,30 +67,39 @@ defmodule RoomSanctumWeb.AnkyraLive.FormComponent do
         |> Map.get(:place)
       )
 
-    ankyra_params = case ankyra_params |> Map.get("username") do
-        nil -> ankyra_params |> Map.put("username", Ecto.UUID.generate)
+    ankyra_params =
+      case ankyra_params |> Map.get("username") do
+        nil -> ankyra_params |> Map.put("username", Ecto.UUID.generate())
         _otherwise -> ankyra_params
-    end
+      end
 
     save_ankyra(socket, socket.assigns.action, ankyra_params)
   end
 
   def handle_event("save", %{}, socket) do
-    params = socket.assigns.changeset |> Ecto.Changeset.change(user_id: socket.assigns.current_user.id)
+    params =
+      socket.assigns.changeset |> Ecto.Changeset.change(user_id: socket.assigns.current_user.id)
 
     save_ankyra(socket, socket.assigns.action, params.changes)
   end
 
   def handle_event("generate-new-password", _params, socket) do
-    changeset = socket.assigns.rabbit_user |> Ecto.Changeset.change(password: gen_pw()) |> Map.put(:action, :validate)
+    changeset =
+      socket.assigns.rabbit_user
+      |> Ecto.Changeset.change(password: gen_pw())
+      |> Map.put(:action, :validate)
+
     {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("generate-new-topic", _params, socket) do
-    changeset = socket.assigns.rabbit_user |> Ecto.Changeset.change(topic: gen_topic()) |> Map.put(:action, :validate)
+    changeset =
+      socket.assigns.rabbit_user
+      |> Ecto.Changeset.change(topic: gen_topic())
+      |> Map.put(:action, :validate)
+
     {:noreply, assign_form(socket, changeset)}
   end
-
 
   defp save_ankyra(socket, :edit, ankyra_params) do
     case Accounts.update_rabbit_user(socket.assigns.rabbit_user, ankyra_params) do

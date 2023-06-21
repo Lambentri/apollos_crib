@@ -8,7 +8,7 @@
 import Config
 
 config :room_hermes,
-       ecto_repos: [RoomHermes.Repo]
+  ecto_repos: [RoomHermes.Repo]
 
 # Configures the endpoint
 config :room_hermes,
@@ -21,7 +21,6 @@ config :room_hermes,
          accepts: ~w(html json),
          layout: false
        ]
-
 
 # Configures Elixir's Logger
 config :logger,

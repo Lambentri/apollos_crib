@@ -107,30 +107,43 @@ defmodule RoomSanctum.Storage.AirNow.HourlyObsData do
 
   def compile_pairs(entry) do
     r = %{combined: ""}
-    r = if Map.get(entry, :ozone_measured) do
-      r |> Map.put(:ozone, entry.ozone_aqi)
+
+    r =
+      if Map.get(entry, :ozone_measured) do
+        r
+        |> Map.put(:ozone, entry.ozone_aqi)
         |> Map.put(:combined, r.combined <> "O2: #{entry.ozone_aqi}, ")
       else
-      r
-    end
-    r = if Map.get(entry, :pm25_measured) do
-      r |> Map.put(:pm25, entry.pm25_aqi)
+        r
+      end
+
+    r =
+      if Map.get(entry, :pm25_measured) do
+        r
+        |> Map.put(:pm25, entry.pm25_aqi)
         |> Map.put(:combined, r.combined <> "PM2.5: #{entry.pm25_aqi}, ")
-    else
-      r
-    end
-    r = if Map.get(entry, :pm10_measured) do
-      r |> Map.put(:pm10, entry.pm10_aqi)
-      |> Map.put(:combined, r.combined <> "PM10: #{entry.pm10_aqi}, ")
-    else
-      r
-    end
-    r = if Map.get(entry, :no2_measured) do
-      r |> Map.put(:no2, entry.no2_aqi)
-      |> Map.put(:combined, r.combined <> "NO2: #{entry.no2_aqi}, ")
-    else
-      r
-    end
+      else
+        r
+      end
+
+    r =
+      if Map.get(entry, :pm10_measured) do
+        r
+        |> Map.put(:pm10, entry.pm10_aqi)
+        |> Map.put(:combined, r.combined <> "PM10: #{entry.pm10_aqi}, ")
+      else
+        r
+      end
+
+    r =
+      if Map.get(entry, :no2_measured) do
+        r
+        |> Map.put(:no2, entry.no2_aqi)
+        |> Map.put(:combined, r.combined <> "NO2: #{entry.no2_aqi}, ")
+      else
+        r
+      end
+
     r
   end
 end

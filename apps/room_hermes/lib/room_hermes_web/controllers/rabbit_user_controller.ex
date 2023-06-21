@@ -28,7 +28,8 @@ defmodule RoomHermesWeb.RabbitUserController do
   def update(conn, %{"id" => id, "rabbit_user" => rabbit_user_params}) do
     rabbit_user = Accounts.get_rabbit_user!(id)
 
-    with {:ok, %RabbitUser{} = rabbit_user} <- Accounts.update_rabbit_user(rabbit_user, rabbit_user_params) do
+    with {:ok, %RabbitUser{} = rabbit_user} <-
+           Accounts.update_rabbit_user(rabbit_user, rabbit_user_params) do
       render(conn, "show.json", rabbit_user: rabbit_user)
     end
   end

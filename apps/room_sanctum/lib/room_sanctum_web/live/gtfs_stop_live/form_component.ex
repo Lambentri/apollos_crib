@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.StopLive.FormComponent do
     case Storage.update_stop(socket.assigns.stop, stop_params) do
       {:ok, stop} ->
         notify_parent({:saved, stop})
+
         {:noreply,
          socket
          |> put_flash(:info, "Stop updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.StopLive.FormComponent do
     case Storage.create_stop(stop_params) do
       {:ok, stop} ->
         notify_parent({:saved, stop})
+
         {:noreply,
          socket
          |> put_flash(:info, "Stop created successfully")

@@ -51,8 +51,8 @@ defmodule RoomAirQuality.Worker do
   end
 
   defp intify(val) when val == "", do: nil
-  defp intify(val) when is_binary(val), do: val |> String.to_integer
-  defp intify(val) when is_float(val), do: val |> Kernel.trunc
+  defp intify(val) when is_binary(val), do: val |> String.to_integer()
+  defp intify(val) when is_float(val), do: val |> Kernel.trunc()
   defp intify(val), do: val
 
   defp write_data(result, type, id) do
@@ -61,215 +61,215 @@ defmodule RoomAirQuality.Worker do
 
     case type do
       :hourly ->
-          result.body
-          |> String.split("\r\n")
-          |> Enum.filter(fn x -> x != "" end)
-          |> CSV.decode(
-            headers: [
-              :valid_date,
-              :valid_time,
-              :aqsid,
-              :site_name,
-              :gmt_offset,
-              :parameter_name,
-              :reporting_units,
-              :value,
-              :data_source
-            ],
-            separator: ?|
+        result.body
+        |> String.split("\r\n")
+        |> Enum.filter(fn x -> x != "" end)
+        |> CSV.decode(
+          headers: [
+            :valid_date,
+            :valid_time,
+            :aqsid,
+            :site_name,
+            :gmt_offset,
+            :parameter_name,
+            :reporting_units,
+            :value,
+            :data_source
+          ],
+          separator: ?|
+        )
+        |> Stream.map(fn {:ok, data} ->
+          RoomSanctum.Storage.change_hourly_data(
+            %RoomSanctum.Storage.AirNow.HourlyData{},
+            data
+            |> Map.put(:source_id, id)
+            |> Map.put(:valid_date, data.valid_date |> Timex.parse!("%m/%d/%y", :strftime))
           )
-          |> Stream.map(fn {:ok, data} ->
-            RoomSanctum.Storage.change_hourly_data(
-              %RoomSanctum.Storage.AirNow.HourlyData{},
-              data
-              |> Map.put(:source_id, id)
-              |> Map.put(:valid_date, data.valid_date |> Timex.parse!("%m/%d/%y", :strftime))
-            )
-            |> Map.put(:inserted_at, datetime)
-            |> Map.put(:updated_at, datetime)
-          end)
-          |> Stream.map(fn x ->
-            Repo.insert(
-              x,
-              on_conflict: {:replace_all_except, [:id]},
-              conflict_target: [:source_id, :site_name, :parameter_name]
-            )
-          end)
-          |> Enum.to_list()
+          |> Map.put(:inserted_at, datetime)
+          |> Map.put(:updated_at, datetime)
+        end)
+        |> Stream.map(fn x ->
+          Repo.insert(
+            x,
+            on_conflict: {:replace_all_except, [:id]},
+            conflict_target: [:source_id, :site_name, :parameter_name]
+          )
+        end)
+        |> Enum.to_list()
 
       :sites ->
-          result.body
-          |> String.split("\r\n")
-          |> List.delete_at(0)
-          |> Enum.filter(fn x -> x != "" end)
-          |> CSV.decode(
-            headers: [
-              :station_id,
-              :aqsid,
-              :full_aqsid,
-              :parameter,
-              :monitor_type,
-              :site_code,
-              :site_name,
-              :status,
-              :agency_id,
-              :agency_name,
-              :epa_region,
-              :latitude,
-              :longitude,
-              :elevation,
-              :gmt_offset,
-              :country_fips,
-              :cbsa_id,
-              :cbsa_name,
-              :state_aqs_code,
-              :state_abbreviation,
-              :county_aqs_code,
-              :county_name
-            ],
-            separator: ?|
-          )
-          |> Enum.to_list()
-          |> Enum.map(fn {:ok, x} -> x end)
-          |> Enum.group_by(fn x -> x.aqsid end)
-          |> Enum.map(fn {_k, v} ->
-            p = v |> Enum.map(fn q -> q.parameter end)
-            f = v |> List.first()
-            f |> Map.put(:parameters, p)
-          end)
-          |> Enum.map(fn data ->
-            point = %Geo.Point{
-              coordinates:
-                {data.latitude |> String.to_float(), data.longitude |> String.to_float()},
-              srid: 4326
-            }
+        result.body
+        |> String.split("\r\n")
+        |> List.delete_at(0)
+        |> Enum.filter(fn x -> x != "" end)
+        |> CSV.decode(
+          headers: [
+            :station_id,
+            :aqsid,
+            :full_aqsid,
+            :parameter,
+            :monitor_type,
+            :site_code,
+            :site_name,
+            :status,
+            :agency_id,
+            :agency_name,
+            :epa_region,
+            :latitude,
+            :longitude,
+            :elevation,
+            :gmt_offset,
+            :country_fips,
+            :cbsa_id,
+            :cbsa_name,
+            :state_aqs_code,
+            :state_abbreviation,
+            :county_aqs_code,
+            :county_name
+          ],
+          separator: ?|
+        )
+        |> Enum.to_list()
+        |> Enum.map(fn {:ok, x} -> x end)
+        |> Enum.group_by(fn x -> x.aqsid end)
+        |> Enum.map(fn {_k, v} ->
+          p = v |> Enum.map(fn q -> q.parameter end)
+          f = v |> List.first()
+          f |> Map.put(:parameters, p)
+        end)
+        |> Enum.map(fn data ->
+          point = %Geo.Point{
+            coordinates:
+              {data.latitude |> String.to_float(), data.longitude |> String.to_float()},
+            srid: 4326
+          }
 
-            RoomSanctum.Storage.change_monitoring_site(
-              %RoomSanctum.Storage.AirNow.MonitoringSite{},
-              data
-              |> Map.put(:source_id, id)
-              |> Map.put(:point, point)
-              |> Map.put(:gmt_offset, data.gmt_offset |> String.to_float() |> Kernel.trunc())
-            )
-            |> Map.put(:inserted_at, datetime)
-            |> Map.put(:updated_at, datetime)
-          end)
-          |> Enum.map(fn x ->
-            Repo.insert(
-              x,
-              on_conflict: {:replace_all_except, [:id]},
-              conflict_target: [:source_id, :station_id]
-            )
-          end)
+          RoomSanctum.Storage.change_monitoring_site(
+            %RoomSanctum.Storage.AirNow.MonitoringSite{},
+            data
+            |> Map.put(:source_id, id)
+            |> Map.put(:point, point)
+            |> Map.put(:gmt_offset, data.gmt_offset |> String.to_float() |> Kernel.trunc())
+          )
+          |> Map.put(:inserted_at, datetime)
+          |> Map.put(:updated_at, datetime)
+        end)
+        |> Enum.map(fn x ->
+          Repo.insert(
+            x,
+            on_conflict: {:replace_all_except, [:id]},
+            conflict_target: [:source_id, :station_id]
+          )
+        end)
 
       :hourly_obs ->
-          result.body
-          |> String.split("\r\n")
-          |> List.delete_at(0)
-          |> Enum.filter(fn x -> x != "" end)
-          |> CSV.decode(
-            headers: [
-              :aqsid,
-              :site_name,
-              :status,
-              :epa_region,
-              :lat,
-              :lon,
-              :elevation,
-              :gmt_offset,
-              :country_code,
-              :state_name,
-              :valid_date,
-              :valid_time,
-              :data_source,
+        result.body
+        |> String.split("\r\n")
+        |> List.delete_at(0)
+        |> Enum.filter(fn x -> x != "" end)
+        |> CSV.decode(
+          headers: [
+            :aqsid,
+            :site_name,
+            :status,
+            :epa_region,
+            :lat,
+            :lon,
+            :elevation,
+            :gmt_offset,
+            :country_code,
+            :state_name,
+            :valid_date,
+            :valid_time,
+            :data_source,
+            :reporting_areas,
+            :ozone_aqi,
+            :pm10_aqi,
+            :pm25_aqi,
+            :no2_aqi,
+            :ozone_measured,
+            :pm10_measured,
+            :pm25_measured,
+            :no2_measured,
+            :no2,
+            :no2_unit,
+            :co,
+            :co_unit,
+            :pm25,
+            :pm25_unit,
+            :so2,
+            :so2_unit,
+            :ozone,
+            :ozone_unit,
+            :pm10,
+            :pm10_unit
+          ]
+        )
+        |> Enum.to_list()
+        |> Enum.map(fn {:ok, x} -> x end)
+        |> Enum.map(fn data ->
+          point = %Geo.Point{
+            coordinates: {data.lat |> String.to_float(), data.lon |> String.to_float()},
+            srid: 4326
+          }
+
+          {offset, _} = data.gmt_offset |> Float.parse()
+
+          RoomSanctum.Storage.change_hourly_obs_data(
+            %RoomSanctum.Storage.AirNow.HourlyObsData{},
+            data
+            |> Map.put(:source_id, id)
+            |> Map.put(:point, point)
+            |> Map.put(:gmt_offset, offset)
+            |> Map.put(
               :reporting_areas,
-              :ozone_aqi,
-              :pm10_aqi,
-              :pm25_aqi,
-              :no2_aqi,
-              :ozone_measured,
-              :pm10_measured,
-              :pm25_measured,
-              :no2_measured,
-              :no2,
-              :no2_unit,
-              :co,
-              :co_unit,
-              :pm25,
-              :pm25_unit,
-              :so2,
-              :so2_unit,
-              :ozone,
-              :ozone_unit,
-              :pm10,
-              :pm10_unit
-            ]
+              data |> Map.get(:reporting_areas, "") |> String.split("|")
+            )
+            |> Map.put(
+              :valid_date,
+              data.valid_date |> Timex.parse!("%m/%d/%Y", :strftime) |> NaiveDateTime.to_date()
+            )
+            |> Map.put(
+              :valid_time,
+              data.valid_time |> Timex.parse!("%H:%M", :strftime) |> NaiveDateTime.to_time()
+            )
           )
-          |> Enum.to_list()
-          |> Enum.map(fn {:ok, x} -> x end)
-          |> Enum.map(fn data ->
-            point = %Geo.Point{
-              coordinates: {data.lat |> String.to_float(), data.lon |> String.to_float()},
-              srid: 4326
-            }
-
-            {offset, _} = data.gmt_offset |> Float.parse()
-
-            RoomSanctum.Storage.change_hourly_obs_data(
-              %RoomSanctum.Storage.AirNow.HourlyObsData{},
-              data
-              |> Map.put(:source_id, id)
-              |> Map.put(:point, point)
-              |> Map.put(:gmt_offset, offset)
-              |> Map.put(
-                :reporting_areas,
-                data |> Map.get(:reporting_areas, "") |> String.split("|")
-              )
-              |> Map.put(
-                :valid_date,
-                data.valid_date |> Timex.parse!("%m/%d/%Y", :strftime) |> NaiveDateTime.to_date()
-              )
-              |> Map.put(
-                :valid_time,
-                data.valid_time |> Timex.parse!("%H:%M", :strftime) |> NaiveDateTime.to_time()
-              )
-            )
-            |> Map.put(:inserted_at, datetime)
-            |> Map.put(:updated_at, datetime)
-
-            |> Map.put(:ozone_aqi, data.ozone_aqi |>  intify)
-            |> Map.put(:pm10_aqi, data.pm10_aqi |>  intify)
-            |> Map.put(:pm25_aqi, data.pm25_aqi |>  intify)
-            |> Map.put(:no2_aqi, data.no2_aqi |>  intify)
-
-          end)
-          |> Enum.map(fn x ->
-            Repo.insert(
-              x,
-              on_conflict: {:replace_all_except, [:id]},
-              conflict_target: [:source_id, :aqsid]
-            )
-          end)
+          |> Map.put(:inserted_at, datetime)
+          |> Map.put(:updated_at, datetime)
+          |> Map.put(:ozone_aqi, data.ozone_aqi |> intify)
+          |> Map.put(:pm10_aqi, data.pm10_aqi |> intify)
+          |> Map.put(:pm25_aqi, data.pm25_aqi |> intify)
+          |> Map.put(:no2_aqi, data.no2_aqi |> intify)
+        end)
+        |> Enum.map(fn x ->
+          Repo.insert(
+            x,
+            on_conflict: {:replace_all_except, [:id]},
+            conflict_target: [:source_id, :aqsid]
+          )
+        end)
     end
+
     Logger.info("AQI::#{id} completed writing bundle")
   end
 
-#  defp build_todays_url(ts \\ DateTime.utc_now()) do
-#    sh =
-#      ts
-#      |> DateTime.add(-1 * 60 * 60, :second)
-#
-#    file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
-#
-#    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/HourlyData_#{file_str}.dat"
-#  end
+  #  defp build_todays_url(ts \\ DateTime.utc_now()) do
+  #    sh =
+  #      ts
+  #      |> DateTime.add(-1 * 60 * 60, :second)
+  #
+  #    file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
+  #
+  #    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/HourlyData_#{file_str}.dat"
+  #  end
 
   defp build_obs_url(ts \\ DateTime.utc_now()) do
     sh = ts |> DateTime.add(-2 * 60 * 60, :second)
     file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
     date_str = sh |> Timex.format!("%Y%m%d", :strftime)
 
-    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat" |> IO.inspect
+    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
+    |> IO.inspect()
   end
 
   def handle_cast(:refresh_db_cfg, state) do

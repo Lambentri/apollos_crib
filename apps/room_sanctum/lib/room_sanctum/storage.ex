@@ -134,7 +134,7 @@ defmodule RoomSanctum.Storage do
 
   def list_calendars(source_id) do
     from(p in Calendar, where: p.source_id == ^source_id)
-    |> Repo.all
+    |> Repo.all()
   end
 
   def count_calendars(source_id) do
@@ -253,7 +253,7 @@ defmodule RoomSanctum.Storage do
 
   def list_directions(source_id) do
     from(p in Direction, where: p.source_id == ^source_id)
-    |> Repo.all
+    |> Repo.all()
   end
 
   def count_directions(source_id) do
@@ -372,7 +372,7 @@ defmodule RoomSanctum.Storage do
 
   def list_routes(source_id) do
     from(p in Route, where: p.source_id == ^source_id)
-    |> Repo.all
+    |> Repo.all()
   end
 
   def count_routes(source_id) do
@@ -491,7 +491,7 @@ defmodule RoomSanctum.Storage do
 
   def list_stop_times(source_id) do
     from(p in StopTime, where: p.source_id == ^source_id)
-    |> Repo.all
+    |> Repo.all()
   end
 
   def count_stop_times(source_id) do
@@ -580,16 +580,17 @@ defmodule RoomSanctum.Storage do
     |> Repo.delete_all()
   end
 
-
   defp convert_gtfs_time(time) do
     [hour, min, second] = time |> String.split(":")
-    hour = hour |> String.strip |> String.to_integer()
+    hour = hour |> String.strip() |> String.to_integer()
 
-    hour = cond do
-      hour >= 24 -> hour - 24
-      true -> hour
-    end
-    hourzf = hour |> Integer.to_string |> String.pad_leading(2, "0")
+    hour =
+      cond do
+        hour >= 24 -> hour - 24
+        true -> hour
+      end
+
+    hourzf = hour |> Integer.to_string() |> String.pad_leading(2, "0")
     "#{hourzf}:#{min}:#{second}"
   end
 
@@ -629,7 +630,24 @@ defmodule RoomSanctum.Storage do
 
   def list_stops(source_id) do
     from(p in Stop, where: p.source_id == ^source_id)
-    |> Repo.all
+    |> Repo.all()
+  end
+
+  def list_stops(source_id, search_term) do
+    from(p in Stop,
+    where: p.source_id == ^source_id and fragment(
+          "searchable @@ websearch_to_tsquery(?)",
+          ^search_term
+        ),
+    order_by: {
+        :desc,
+        fragment(
+          "ts_rank_cd(searchable, websearch_to_tsquery(?), 4)",
+          ^search_term
+        )
+      }
+      )
+    |> Repo.all()
   end
 
   def count_stops(source_id) do
@@ -748,7 +766,7 @@ defmodule RoomSanctum.Storage do
 
   def list_trips(source_id) do
     from(p in Trip, where: p.source_id == ^source_id)
-    |> Repo.all
+    |> Repo.all()
   end
 
   def count_trips(source_id) do
@@ -863,8 +881,23 @@ defmodule RoomSanctum.Storage do
 
   defp conditional_where(queryable, source_id, stop_id, timestamp_time_hour, timestamp_time) do
     case timestamp_time < timestamp_time_hour do
-      true -> where(queryable, [st], st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id))
-      false -> where(queryable, [st], st.source_id == ^source_id and (st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50) or ^Time.new!(0,0,0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour) and st.stop_id == ^stringify(stop_id))
+      true ->
+        where(
+          queryable,
+          [st],
+          st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and
+            st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id)
+        )
+
+      false ->
+        where(
+          queryable,
+          [st],
+          st.source_id == ^source_id and
+            ((st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50)) or
+               (^Time.new!(0, 0, 0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour)) and
+            st.stop_id == ^stringify(stop_id)
+        )
     end
   end
 
@@ -882,7 +915,7 @@ defmodule RoomSanctum.Storage do
       timestamp
       |> DateTime.to_time()
 
-    timestamp_time_hour = timestamp |> DateTime.add(60*60) |> DateTime.to_time()
+    timestamp_time_hour = timestamp |> DateTime.add(60 * 60) |> DateTime.to_time()
 
     StopTime
     |> conditional_where(source_id, stop_id, timestamp_time_hour, timestamp_time)
@@ -891,154 +924,157 @@ defmodule RoomSanctum.Storage do
     |> join(:left, [st], s in Stop, as: :stop, on: s.stop_id == st.stop_id)
     |> join(:left, [st], t in Trip, as: :trip, on: t.trip_id == st.trip_id)
     |> join(:left, [_st, trip: t], r in Route, as: :route, on: t.route_id == r.route_id)
-    |> join(:left, [_st, trip: t], d in Direction, as: :direction, on: t.direction_id == d.direction_id and t.route_id == d.route_id )
+    |> join(:left, [_st, trip: t], d in Direction,
+      as: :direction,
+      on: t.direction_id == d.direction_id and t.route_id == d.route_id
+    )
     |> join(:left, [_st, trip: t], c in Calendar, as: :calendar, on: t.service_id == c.service_id)
     |> select(
-        [st,s,t,r,d,c],
-#          [c,d,r,t,s,st],
-#        [st,:stop,:trip,:route,:direction,:calendar],
-         %{
-           arrival_time: st.arrival_time,
-           arrival_time_live_ts: nil,
-           arrival_time_live_delay: nil,
-           arrival_time_live_uncertianty: nil,
-           departure_time: st.departure_time,
-           stop_id: st.stop_id,
-           stop_sequence: st.stop_sequence,
-           stop: %{
-             stop_address: s.stop_address,
-             stop_code: s.stop_code,
-             stop_desc: s.stop_desc,
-             stop_id: s.stop_id,
-             stop_lat: s.stop_lat,
-             stop_lon: s.stop_lon,
-             stop_name: s.stop_name,
-             stop_url: s.stop_url
-           },
-           trip_id: st.trip_id,
-           trip: %{
-             bikes_allowed: t.bikes_allowed,
-             direction_id: t.direction_id,
-             direction: %{
-               direction: d.direction,
-               direction_id: d.direction_id
-             },
-             route_id: t.route_id,
-             route: %{
-               line_id: r.line_id,
-               route_color: r.route_color,
-               route_desc: r.route_desc,
-               route_fare_class: r.route_fare_class,
-               route_id: r.route_id,
-               route_long_name: r.route_long_name,
-               route_short_name: r.route_short_name,
-               route_sort_order: r.route_sort_order,
-               route_text_color: r.route_text_color,
-               route_type: r.route_type,
-               route_url: r.route_url
-             },
-             service_id: t.service_id,
-             service: %{
-               service_id: c.service_id,
-               service_name: c.service_name,
-               start_date: c.start_date,
-               end_date: c.end_date,
-               monday: c.monday,
-               tuesday: c.tuesday,
-               wednesday: c.wednesday,
-               thursday: c.thursday,
-               friday: c.friday,
-               saturday: c.saturday,
-               sunday: c.sunday
-             },
-             trip_headsign: t.trip_headsign,
-             trip_id: t.trip_id,
-             trip_short_name: t.trip_short_name
-           },
-           tz: ^tz
-         }
-       )
-    |> Repo.all
+      [st, s, t, r, d, c],
+      #          [c,d,r,t,s,st],
+      #        [st,:stop,:trip,:route,:direction,:calendar],
+      %{
+        arrival_time: st.arrival_time,
+        arrival_time_live_ts: nil,
+        arrival_time_live_delay: nil,
+        arrival_time_live_uncertianty: nil,
+        departure_time: st.departure_time,
+        stop_id: st.stop_id,
+        stop_sequence: st.stop_sequence,
+        stop: %{
+          stop_address: s.stop_address,
+          stop_code: s.stop_code,
+          stop_desc: s.stop_desc,
+          stop_id: s.stop_id,
+          stop_lat: s.stop_lat,
+          stop_lon: s.stop_lon,
+          stop_name: s.stop_name,
+          stop_url: s.stop_url
+        },
+        trip_id: st.trip_id,
+        trip: %{
+          bikes_allowed: t.bikes_allowed,
+          direction_id: t.direction_id,
+          direction: %{
+            direction: d.direction,
+            direction_id: d.direction_id
+          },
+          route_id: t.route_id,
+          route: %{
+            line_id: r.line_id,
+            route_color: r.route_color,
+            route_desc: r.route_desc,
+            route_fare_class: r.route_fare_class,
+            route_id: r.route_id,
+            route_long_name: r.route_long_name,
+            route_short_name: r.route_short_name,
+            route_sort_order: r.route_sort_order,
+            route_text_color: r.route_text_color,
+            route_type: r.route_type,
+            route_url: r.route_url
+          },
+          service_id: t.service_id,
+          service: %{
+            service_id: c.service_id,
+            service_name: c.service_name,
+            start_date: c.start_date,
+            end_date: c.end_date,
+            monday: c.monday,
+            tuesday: c.tuesday,
+            wednesday: c.wednesday,
+            thursday: c.thursday,
+            friday: c.friday,
+            saturday: c.saturday,
+            sunday: c.sunday
+          },
+          trip_headsign: t.trip_headsign,
+          trip_id: t.trip_id,
+          trip_short_name: t.trip_short_name
+        },
+        tz: ^tz
+      }
+    )
+    |> Repo.all()
 
-#    q =
-#      from st in StopTime,
-#        where: st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id),
-#        order_by: [
-#          asc: st.arrival_time
-#        ],
-#        limit: ^limit,
-#        left_join: s in Stop,
-#        on: s.stop_id == st.stop_id,
-#        left_join: t in Trip,
-#        on: t.trip_id == st.trip_id,
-#        left_join: r in Route,
-#        on: t.route_id == r.route_id,
-#        left_join: d in Direction,
-#        on: t.direction_id == d.direction_id and t.route_id == d.route_id,
-#        left_join: c in Calendar,
-#        on: t.service_id == c.service_id,
-#        select: %{
-#          arrival_time: st.arrival_time,
-#          arrival_time_live_ts: nil,
-#          arrival_time_live_delay: nil,
-#          arrival_time_live_uncertianty: nil,
-#          departure_time: st.departure_time,
-#          stop_id: st.stop_id,
-#          stop_sequence: st.stop_sequence,
-#          stop: %{
-#            stop_address: s.stop_address,
-#            stop_code: s.stop_code,
-#            stop_desc: s.stop_desc,
-#            stop_id: s.stop_id,
-#            stop_lat: s.stop_lat,
-#            stop_lon: s.stop_lon,
-#            stop_name: s.stop_name,
-#            stop_url: s.stop_url
-#          },
-#          trip_id: st.trip_id,
-#          trip: %{
-#            bikes_allowed: t.bikes_allowed,
-#            direction_id: t.direction_id,
-#            direction: %{
-#              direction: d.direction,
-#              direction_id: d.direction_id
-#            },
-#            route_id: t.route_id,
-#            route: %{
-#              line_id: r.line_id,
-#              route_color: r.route_color,
-#              route_desc: r.route_desc,
-#              route_fare_class: r.route_fare_class,
-#              route_id: r.route_id,
-#              route_long_name: r.route_long_name,
-#              route_short_name: r.route_short_name,
-#              route_sort_order: r.route_sort_order,
-#              route_text_color: r.route_text_color,
-#              route_type: r.route_type,
-#              route_url: r.route_url
-#            },
-#            service_id: t.service_id,
-#            service: %{
-#              service_id: c.service_id,
-#              service_name: c.service_name,
-#              start_date: c.start_date,
-#              end_date: c.end_date,
-#              monday: c.monday,
-#              tuesday: c.tuesday,
-#              wednesday: c.wednesday,
-#              thursday: c.thursday,
-#              friday: c.friday,
-#              saturday: c.saturday,
-#              sunday: c.sunday
-#            },
-#            trip_headsign: t.trip_headsign,
-#            trip_id: t.trip_id,
-#            trip_short_name: t.trip_short_name
-#          },
-#          tz: ^tz
-#        }
-#
-#    Repo.all(q)
+    #    q =
+    #      from st in StopTime,
+    #        where: st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id),
+    #        order_by: [
+    #          asc: st.arrival_time
+    #        ],
+    #        limit: ^limit,
+    #        left_join: s in Stop,
+    #        on: s.stop_id == st.stop_id,
+    #        left_join: t in Trip,
+    #        on: t.trip_id == st.trip_id,
+    #        left_join: r in Route,
+    #        on: t.route_id == r.route_id,
+    #        left_join: d in Direction,
+    #        on: t.direction_id == d.direction_id and t.route_id == d.route_id,
+    #        left_join: c in Calendar,
+    #        on: t.service_id == c.service_id,
+    #        select: %{
+    #          arrival_time: st.arrival_time,
+    #          arrival_time_live_ts: nil,
+    #          arrival_time_live_delay: nil,
+    #          arrival_time_live_uncertianty: nil,
+    #          departure_time: st.departure_time,
+    #          stop_id: st.stop_id,
+    #          stop_sequence: st.stop_sequence,
+    #          stop: %{
+    #            stop_address: s.stop_address,
+    #            stop_code: s.stop_code,
+    #            stop_desc: s.stop_desc,
+    #            stop_id: s.stop_id,
+    #            stop_lat: s.stop_lat,
+    #            stop_lon: s.stop_lon,
+    #            stop_name: s.stop_name,
+    #            stop_url: s.stop_url
+    #          },
+    #          trip_id: st.trip_id,
+    #          trip: %{
+    #            bikes_allowed: t.bikes_allowed,
+    #            direction_id: t.direction_id,
+    #            direction: %{
+    #              direction: d.direction,
+    #              direction_id: d.direction_id
+    #            },
+    #            route_id: t.route_id,
+    #            route: %{
+    #              line_id: r.line_id,
+    #              route_color: r.route_color,
+    #              route_desc: r.route_desc,
+    #              route_fare_class: r.route_fare_class,
+    #              route_id: r.route_id,
+    #              route_long_name: r.route_long_name,
+    #              route_short_name: r.route_short_name,
+    #              route_sort_order: r.route_sort_order,
+    #              route_text_color: r.route_text_color,
+    #              route_type: r.route_type,
+    #              route_url: r.route_url
+    #            },
+    #            service_id: t.service_id,
+    #            service: %{
+    #              service_id: c.service_id,
+    #              service_name: c.service_name,
+    #              start_date: c.start_date,
+    #              end_date: c.end_date,
+    #              monday: c.monday,
+    #              tuesday: c.tuesday,
+    #              wednesday: c.wednesday,
+    #              thursday: c.thursday,
+    #              friday: c.friday,
+    #              saturday: c.saturday,
+    #              sunday: c.sunday
+    #            },
+    #            trip_headsign: t.trip_headsign,
+    #            trip_id: t.trip_id,
+    #            trip_short_name: t.trip_short_name
+    #          },
+    #          tz: ^tz
+    #        }
+    #
+    #    Repo.all(q)
   end
 
   alias RoomSanctum.Storage.GBFS.V1.SysInfo
@@ -1159,6 +1195,23 @@ defmodule RoomSanctum.Storage do
   """
   def list_gbfs_station_information do
     Repo.all(StationInfo)
+  end
+
+  def list_gbfs_station_information(source_id, search_term) do
+    from(p in StationInfo,
+    where: p.source_id == ^source_id and fragment(
+          "searchable @@ websearch_to_tsquery(?)",
+          ^search_term
+        ),
+    order_by: {
+        :desc,
+        fragment(
+          "ts_rank_cd(searchable, websearch_to_tsquery(?), 4)",
+          ^search_term
+        )
+      }
+      )
+    |> Repo.all()
   end
 
   @doc """

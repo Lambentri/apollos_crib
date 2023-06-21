@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.CalendarLive.FormComponent do
     case Storage.update_calendar(socket.assigns.calendar, calendar_params) do
       {:ok, calendar} ->
         notify_parent({:saved, calendar})
+
         {:noreply,
          socket
          |> put_flash(:info, "Calendar updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.CalendarLive.FormComponent do
     case Storage.create_calendar(calendar_params) do
       {:ok, calendar} ->
         notify_parent({:saved, calendar})
+
         {:noreply,
          socket
          |> put_flash(:info, "Calendar created successfully")

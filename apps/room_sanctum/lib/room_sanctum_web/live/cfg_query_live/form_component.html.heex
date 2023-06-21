@@ -58,6 +58,7 @@
   <div class="form-control">
     <.input field={gbfs_form[:stop_id]} type="text" label="Stop Id" />
   </div>
+  <.search_input field={gbfs_form[:stop_id]} id="search-2" type="gbfs" label="Station Search" results={@results} label_field={:name} value_field={:station_id} />
   <% end %>
 
   <% :gtfs -> %>
@@ -68,6 +69,7 @@
   <div class="form-control">
     <.input field={gtfs_form[:routes]} type="text" label="Route Filter" />
   </div>
+  <.search_input field={gtfs_form[:stop]} id="search-1" type="gtfs" label="Stop Search" results={@results} label_field={:stop_name} value_field={:stop_id} />
   <% end %>
 
   <% :hass -> %>

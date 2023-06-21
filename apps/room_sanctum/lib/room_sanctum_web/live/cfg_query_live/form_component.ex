@@ -2,6 +2,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
   use RoomSanctumWeb, :live_component
 
   alias RoomSanctum.Configuration
+  alias RoomSanctum.Storage
 
   defp inj_uid(params, socket) do
     params
@@ -20,6 +21,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> assign(:changeset, changeset)
       |> assign(:cfg_sources, list_cfg_sources(assigns.current_user.id))
       |> assign(:cfg_foci, list_cfg_foci(assigns.current_user.id))
+      |> assign(:results, [])
       |> assign(
         :cfg_sources_sel,
         list_cfg_sources(assigns.current_user.id)
@@ -52,10 +54,37 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     save_query(socket, socket.assigns.action, query_params)
   end
 
+  def handle_event("do-gtfs-search", %{"value" => value}, socket) do
+    case value do
+      nil -> {:noreply, socket}
+      _otherwise -> {:noreply, socket |> assign(:results, Storage.list_stops(get_source_id(socket.assigns.form), value))}
+    end
+  end
+
+    def handle_event("do-gbfs-search", %{"value" => value}, socket) do
+    case value do
+      nil -> {:noreply, socket}
+      _otherwise -> {:noreply, socket |> assign(:results, Storage.list_gbfs_station_information(get_source_id(socket.assigns.form), value))}
+    end
+  end
+
+  def handle_event("set-gtfs", %{"val" => stop, "type" => type}, socket) do
+      IO.inspect(socket.assigns.query)
+      changeset =
+      socket.assigns.query
+      |> Configuration.change_query(%{"query" => %{"stop" => stop, "__type__" => type}, "__type__" => type})
+#       |> Ecto.Changeset.change(%{query: %{stop: stop, __type__: type}})
+      |> Map.put(:action, :validate)
+      |> IO.inspect
+    IO.inspect(changeset.data)
+    {:noreply, socket |> assign(:results, []) |>  assign_form(changeset)}
+  end
+
   defp save_query(socket, :edit, query_params) do
     case Configuration.update_query(socket.assigns.query, query_params) do
       {:ok, query} ->
         notify_parent({:saved, query})
+
         {
           :noreply,
           socket
@@ -72,6 +101,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     case Configuration.create_query(query_params) do
       {:ok, query} ->
         notify_parent({:saved, query})
+
         {
           :noreply,
           socket
@@ -98,13 +128,15 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     Configuration.list_focis({:user, uid})
   end
 
-  defp get_current_type(form) do
-    id =
+  defp get_source_id(form) do
       form.source
       |> Map.get(:changes)
       |> Map.get(:source_id) ||
         form.data
         |> Map.get(:source_id)
+  end
+  defp get_current_type(form) do
+    id = get_source_id(form)
 
     case id do
       nil ->

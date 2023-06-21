@@ -2,7 +2,8 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   alias RoomSanctum.Storage.AirNow.HourlyObsData
   import MapMerge
 
-  defp gtfs_mode(route_type) do # todo move me
+  # todo move me
+  defp gtfs_mode(route_type) do
     case route_type do
       "0" -> "LightRail"
       "1" -> "Subway"
@@ -23,7 +24,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   end
 
   defp time(datestr) do
-   datestr |> Timex.parse!("{ISO:Extended}") |> Timex.format!( "%H:%M", :strftime)
+    datestr |> Timex.parse!("{ISO:Extended}") |> Timex.format!("%H:%M", :strftime)
   end
 
   defp livetime(unix, _tz) when is_nil(unix) do
@@ -31,13 +32,13 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   end
 
   defp livetime(unix, tz) do
-    unix |> DateTime.from_unix! |> Timex.Timezone.convert(tz) |> DateTime.to_time
+    unix |> DateTime.from_unix!() |> Timex.Timezone.convert(tz) |> DateTime.to_time()
   end
 
   def condense({_id, type}, data) do
-#    if type == :gtfs do
-#      IO.inspect({type, data})
-#    end
+    #    if type == :gtfs do
+    #      IO.inspect({type, data})
+    #    end
 
     case type do
       :gtfs ->
@@ -53,16 +54,44 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             tz: f.tz
           }
         end)
-        |> Enum.reduce(%{}, fn %{time: time, time_live: time_live, destination: dest, direction: dir, route: route, mode: mode, tz: tz}, acc ->
+        |> Enum.reduce(%{}, fn %{
+                                 time: time,
+                                 time_live: time_live,
+                                 destination: dest,
+                                 direction: dir,
+                                 route: route,
+                                 mode: mode,
+                                 tz: tz
+                               },
+                               acc ->
           update_in(acc, [{route, dest, dir}], fn
-            nil -> %{route: route, dest: dest, dir: dir, mode: mode, times: [time], times_live: [livetime(time_live, tz)]}
-            refs -> %{refs | times: [time | refs.times], times_live: [livetime(time_live, tz) | refs.times_live]}
+            nil ->
+              %{
+                route: route,
+                dest: dest,
+                dir: dir,
+                mode: mode,
+                times: [time],
+                times_live: [livetime(time_live, tz)]
+              }
+
+            refs ->
+              %{
+                refs
+                | times: [time | refs.times],
+                  times_live: [livetime(time_live, tz) | refs.times_live]
+              }
           end)
         end)
-        |> Enum.map(fn {_k,v} ->
+        |> Enum.map(fn {_k, v} ->
           case Enum.any?(v.times_live, fn x -> x != nil end) do
-            true -> v |> Map.put(:times, v.times |> Enum.reverse) |> Map.put(:times_live, v.times_live |> Enum.reverse)
-            false -> v |> Map.put(:times, v.times |> Enum.reverse) |> Map.delete(:times_live)
+            true ->
+              v
+              |> Map.put(:times, v.times |> Enum.reverse())
+              |> Map.put(:times_live, v.times_live |> Enum.reverse())
+
+            false ->
+              v |> Map.put(:times, v.times |> Enum.reverse()) |> Map.delete(:times_live)
           end
         end)
 
@@ -76,18 +105,19 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         data
         |> Enum.group_by(fn x -> x.type end)
         |> Enum.map(fn {extreme, data} ->
-        case data do
-          [first, second] ->
-            k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
-            k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
-            kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
-            kv2 = "second_#{extreme |> String.downcase()}v" |> String.to_atom()
-            %{k1 => first.t |> time, k2 => second.t |> time, kv1 => first.v, kv2 => second.v}
-          [solo] ->
-            k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
-            kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
-            %{k1 => solo.t |> time, kv1 => solo.v}
-        end
+          case data do
+            [first, second] ->
+              k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+              k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
+              kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
+              kv2 = "second_#{extreme |> String.downcase()}v" |> String.to_atom()
+              %{k1 => first.t |> time, k2 => second.t |> time, kv1 => first.v, kv2 => second.v}
+
+            [solo] ->
+              k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+              kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
+              %{k1 => solo.t |> time, kv1 => solo.v}
+          end
         end)
         |> Enum.reduce(&Map.merge/2)
         |> wrap
@@ -116,12 +146,15 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         end)
 
       :ephem ->
-        data |> Enum.map(fn f ->
-        case Map.get(f, :period) do
-          nil -> {:name, f.name}
-          _val -> {f.period, f.result}
-        end
-        end) |> Enum.into(%{}) |> wrap
+        data
+        |> Enum.map(fn f ->
+          case Map.get(f, :period) do
+            nil -> {:name, f.name}
+            _val -> {f.period, f.result}
+          end
+        end)
+        |> Enum.into(%{})
+        |> wrap
 
       :calendar ->
         data

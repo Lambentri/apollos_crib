@@ -20,9 +20,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:query, q)
      |> assign(:query_id, id)
      |> assign(:type, q.source.type)
-     |> assign(:visions, [])
-    }
-
+     |> assign(:visions, [])}
   end
 
   @impl true
@@ -66,7 +64,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
         :cronos ->
           RoomCronos.Worker.query_cronos(
-            socket.assigns.query.id, # we want the query's name here
+            # we want the query's name here
+            socket.assigns.query.id,
             socket.assigns.query.query
           )
       end

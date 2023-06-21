@@ -17,16 +17,16 @@ config :room_hermes,
 # watchers to your application. For example, we use it
 # with esbuild to bundle .js and .css sources.
 config :room_hermes, RoomHermesWeb.Endpoint,
-       # Binding to loopback ipv4 address prevents access from other machines.
-       # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
-       http: [
-         ip: {0, 0, 0, 0},
-         port: 4001
-       ],
-       check_origin: false,
-       code_reloader: true,
-       debug_errors: true,
-       secret_key_base: "SMW6jKy5qs4zSX6CsYm3MMgwLAlpulsSJu7DOhLQp/3APvYWRUEfX8kJXXdmMi2a"
+  # Binding to loopback ipv4 address prevents access from other machines.
+  # Change to `ip: {0, 0, 0, 0}` to allow access from other machines.
+  http: [
+    ip: {0, 0, 0, 0},
+    port: 4001
+  ],
+  check_origin: false,
+  code_reloader: true,
+  debug_errors: true,
+  secret_key_base: "SMW6jKy5qs4zSX6CsYm3MMgwLAlpulsSJu7DOhLQp/3APvYWRUEfX8kJXXdmMi2a"
 
 # ## SSL Support
 #

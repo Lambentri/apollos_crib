@@ -2,7 +2,7 @@ version: "2"
 services:
   postgres:
     restart: always
-    image: mdillon/postgis:latest
+    image: postgis/postgis:15-master
     ports:
       - "5432:5432"
     volumes:

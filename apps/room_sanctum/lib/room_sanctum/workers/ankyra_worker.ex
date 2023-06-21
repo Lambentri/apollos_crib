@@ -54,26 +54,26 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   #
   def handle_cast(:meta_check, state) do
-#    IO.inspect("meta")
+    #    IO.inspect("meta")
     # TODO, use the http api
-#    case state.ankyra do
-#      nil -> {:noreply, state}
-#      _ ->
-#        case AMQP.Application.get_channel(:default) do
-#          {:ok, chan} ->
-#            try do
-#              status = AMQP.Queue.status(chan, queue_from_user(state.ankyra.username))
-##              IO.inspect(status)
-#            catch
-#              {_, _} -> Logger.debug("Can't query size of queue, caught")
-#            rescue
-#              e ->
-#                Logger.debug("Can't query size of queue, ")
-#            end
-#          {:error, error} -> IO.inspect(error)
-#        end
-#        {:noreply, state}
-#    end
+    #    case state.ankyra do
+    #      nil -> {:noreply, state}
+    #      _ ->
+    #        case AMQP.Application.get_channel(:default) do
+    #          {:ok, chan} ->
+    #            try do
+    #              status = AMQP.Queue.status(chan, queue_from_user(state.ankyra.username))
+    ##              IO.inspect(status)
+    #            catch
+    #              {_, _} -> Logger.debug("Can't query size of queue, caught")
+    #            rescue
+    #              e ->
+    #                Logger.debug("Can't query size of queue, ")
+    #            end
+    #          {:error, error} -> IO.inspect(error)
+    #        end
+    #        {:noreply, state}
+    #    end
     {:noreply, state}
   end
 
@@ -83,12 +83,16 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   def handle_cast({:publish, data}, state) do
-#    IO.puts("gottem here")
+    #    IO.puts("gottem here")
 
     case AMQP.Application.get_channel(:default) do
-      {:ok, chan} -> AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!)
-      {:error, error} -> IO.inspect(error)
+      {:ok, chan} ->
+        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!())
+
+      {:error, error} ->
+        IO.inspect(error)
     end
+
     {:noreply, state}
   end
 end

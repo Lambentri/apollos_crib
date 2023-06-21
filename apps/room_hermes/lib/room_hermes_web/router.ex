@@ -12,6 +12,7 @@ defmodule RoomHermesWeb.Router do
   pipeline :csrf do
     plug :protect_from_forgery
   end
+
   pipeline :api do
     plug :accepts, ["json"]
   end

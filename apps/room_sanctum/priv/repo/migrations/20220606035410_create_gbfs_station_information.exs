@@ -3,6 +3,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateGbfsStationInformation do
 
   def change do
     execute "CREATE EXTENSION IF NOT EXISTS postgis"
+
     create table(:gbfs_station_information) do
       add :source_id, references(:cfg_sources, on_delete: :delete_all), null: false
       add :station_id, :string

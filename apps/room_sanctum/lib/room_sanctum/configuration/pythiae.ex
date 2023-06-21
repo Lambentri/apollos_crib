@@ -17,7 +17,6 @@ end
 
 alias RoomSanctum.Configuration.Pythiae.Tweaks
 
-
 defmodule RoomSanctum.Configuration.Pythiae do
   use Ecto.Schema
   import Ecto.Changeset

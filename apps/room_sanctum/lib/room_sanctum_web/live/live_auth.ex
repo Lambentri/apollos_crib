@@ -29,6 +29,7 @@ defmodule RoomSanctum.UserLiveCanAuth do
       nil ->
         socket = assign_new(socket, :current_user, fn -> nil end)
         {:cont, socket}
+
       _val ->
         socket =
           assign_new(
@@ -36,6 +37,7 @@ defmodule RoomSanctum.UserLiveCanAuth do
             :current_user,
             fn -> Accounts.get_user_by_session_token(session["user_token"]) end
           )
+
         {:cont, socket}
     end
   end

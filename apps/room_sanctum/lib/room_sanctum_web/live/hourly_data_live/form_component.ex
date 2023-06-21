@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.HourlyDataLive.FormComponent do
     case Storage.update_hourly_data(socket.assigns.hourly_data, hourly_data_params) do
       {:ok, hourly_data} ->
         notify_parent({:saved, hourly_data})
+
         {:noreply,
          socket
          |> put_flash(:info, "Hourly data updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.HourlyDataLive.FormComponent do
     case Storage.create_hourly_data(hourly_data_params) do
       {:ok, hourly_data} ->
         notify_parent({:saved, hourly_data})
+
         {:noreply,
          socket
          |> put_flash(:info, "Hourly data created successfully")

@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.RouteLive.FormComponent do
     case Storage.update_route(socket.assigns.route, route_params) do
       {:ok, route} ->
         notify_parent({:saved, route})
+
         {:noreply,
          socket
          |> put_flash(:info, "Route updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.RouteLive.FormComponent do
     case Storage.create_route(route_params) do
       {:ok, route} ->
         notify_parent({:saved, route})
+
         {:noreply,
          socket
          |> put_flash(:info, "Route created successfully")

@@ -15,7 +15,6 @@ defmodule ApollosCrib.MixProject do
             room_sanctum: :permanent,
             room_hermes: :permanent,
             room_zeus: :permanent,
-
             room_air_quality: :permanent,
             room_calendar: :permanent,
             room_ephem: :permanent,
@@ -26,7 +25,6 @@ defmodule ApollosCrib.MixProject do
             room_tidal: :permanent,
             room_weather: :permanent,
             room_cronos: :permanent,
-
             runtime_tools: :permanent
           ]
         ]
@@ -41,11 +39,11 @@ defmodule ApollosCrib.MixProject do
   # Run "mix help deps" for examples and options.
   defp deps do
     [
-        {:sentry, "~> 8.0"},
-        {:jason, "~> 1.1"},
-        {:hackney, "~> 1.8"},
-        # if you are using plug_cowboy
-        {:plug_cowboy, "~> 2.3"}
-     ]
+      {:sentry, "~> 8.0"},
+      {:jason, "~> 1.1"},
+      {:hackney, "~> 1.8"},
+      # if you are using plug_cowboy
+      {:plug_cowboy, "~> 2.3"}
+    ]
   end
 end

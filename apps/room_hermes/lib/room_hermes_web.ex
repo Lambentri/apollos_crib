@@ -36,19 +36,19 @@ defmodule RoomHermesWeb do
   def view do
     quote do
       use Phoenix.View,
-          root: "lib/room_hermes_web/templates",
-          namespace: RoomHermesWeb
+        root: "lib/room_hermes_web/templates",
+        namespace: RoomHermesWeb
+
       use Phoenix.Component
 
       # Import convenience functions from controllers
       import Phoenix.Controller,
-             only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
+        only: [get_flash: 1, get_flash: 2, view_module: 1, view_template: 1]
 
       # Include shared imports and aliases for views
       unquote(view_helpers())
     end
   end
-
 
   def component do
     quote do
@@ -99,9 +99,9 @@ defmodule RoomHermesWeb do
   def verified_routes do
     quote do
       use Phoenix.VerifiedRoutes,
-          endpoint: RoomHermesWeb.Endpoint,
-          router: RoomHermesWeb.Router,
-          statics: RoomHermesWeb.static_paths()
+        endpoint: RoomHermesWeb.Endpoint,
+        router: RoomHermesWeb.Router,
+        statics: RoomHermesWeb.static_paths()
     end
   end
 

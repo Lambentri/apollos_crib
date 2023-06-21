@@ -21,7 +21,13 @@ defmodule RoomSanctum.ConfigurationTest do
     end
 
     test "create_source/1 with valid data creates a source" do
-      valid_attrs = %{config: %{}, enabled: true, name: "some name", notes: "some notes", type: :aqi}
+      valid_attrs = %{
+        config: %{},
+        enabled: true,
+        name: "some name",
+        notes: "some notes",
+        type: :aqi
+      }
 
       assert {:ok, %Source{} = source} = Configuration.create_source(valid_attrs)
       assert source.config == %{}
@@ -37,7 +43,14 @@ defmodule RoomSanctum.ConfigurationTest do
 
     test "update_source/2 with valid data updates the source" do
       source = source_fixture()
-      update_attrs = %{config: %{}, enabled: false, name: "some updated name", notes: "some updated notes", type: :calendar}
+
+      update_attrs = %{
+        config: %{},
+        enabled: false,
+        name: "some updated name",
+        notes: "some updated notes",
+        type: :calendar
+      }
 
       assert {:ok, %Source{} = source} = Configuration.update_source(source, update_attrs)
       assert source.config == %{}
@@ -323,7 +336,12 @@ defmodule RoomSanctum.ConfigurationTest do
 
     test "update_scribus/2 with valid data updates the scribus" do
       scribus = scribus_fixture()
-      update_attrs = %{configuration: [], name: "some updated name", resolution: "some updated resolution"}
+
+      update_attrs = %{
+        configuration: [],
+        name: "some updated name",
+        resolution: "some updated resolution"
+      }
 
       assert {:ok, %Scribus{} = scribus} = Configuration.update_scribus(scribus, update_attrs)
       assert scribus.configuration == []

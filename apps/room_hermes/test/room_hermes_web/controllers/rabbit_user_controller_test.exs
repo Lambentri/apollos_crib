@@ -49,8 +49,13 @@ defmodule RoomHermesWeb.RabbitUserControllerTest do
   describe "update rabbit_user" do
     setup [:create_rabbit_user]
 
-    test "renders rabbit_user when data is valid", %{conn: conn, rabbit_user: %RabbitUser{id: id} = rabbit_user} do
-      conn = put(conn, Routes.rabbit_user_path(conn, :update, rabbit_user), rabbit_user: @update_attrs)
+    test "renders rabbit_user when data is valid", %{
+      conn: conn,
+      rabbit_user: %RabbitUser{id: id} = rabbit_user
+    } do
+      conn =
+        put(conn, Routes.rabbit_user_path(conn, :update, rabbit_user), rabbit_user: @update_attrs)
+
       assert %{"id" => ^id} = json_response(conn, 200)["data"]
 
       conn = get(conn, Routes.rabbit_user_path(conn, :show, id))
@@ -63,7 +68,9 @@ defmodule RoomHermesWeb.RabbitUserControllerTest do
     end
 
     test "renders errors when data is invalid", %{conn: conn, rabbit_user: rabbit_user} do
-      conn = put(conn, Routes.rabbit_user_path(conn, :update, rabbit_user), rabbit_user: @invalid_attrs)
+      conn =
+        put(conn, Routes.rabbit_user_path(conn, :update, rabbit_user), rabbit_user: @invalid_attrs)
+
       assert json_response(conn, 422)["errors"] != %{}
     end
   end

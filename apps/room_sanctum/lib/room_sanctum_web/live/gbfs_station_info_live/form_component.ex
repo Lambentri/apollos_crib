@@ -46,6 +46,7 @@ defmodule RoomSanctumWeb.StationInfoLive.FormComponent do
     case Storage.create_station_info(station_info_params) do
       {:ok, station_info} ->
         notify_parent({:saved, station_info})
+
         {:noreply,
          socket
          |> put_flash(:info, "Station info created successfully")

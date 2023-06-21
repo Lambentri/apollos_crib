@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.AgencyLive.FormComponent do
     case Storage.update_agency(socket.assigns.agency, agency_params) do
       {:ok, agency} ->
         notify_parent({:saved, agency})
+
         {:noreply,
          socket
          |> put_flash(:info, "Agency updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.AgencyLive.FormComponent do
     case Storage.create_agency(agency_params) do
       {:ok, agency} ->
         notify_parent({:saved, agency})
+
         {:noreply,
          socket
          |> put_flash(:info, "Agency created successfully")

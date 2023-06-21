@@ -10,12 +10,10 @@ defmodule RoomHermes.AccountsFixtures do
   def rabbit_user_fixture(attrs \\ %{}) do
     {:ok, rabbit_user} =
       attrs
-      |> Enum.into(
-           %{
-             password: "some password",
-             username: "some username"
-           }
-         )
+      |> Enum.into(%{
+        password: "some password",
+        username: "some username"
+      })
       |> RoomHermes.Accounts.create_rabbit_user()
 
     rabbit_user

@@ -407,7 +407,10 @@ defmodule RoomSanctumWeb.CoreComponents do
     """
   end
 
-  def input(%{lb_a: actionl, lb_i: iconl, rb_a: actionr, rb_i: iconr, lb_tgt: tgt, rb_tgt: tgt2} = assigns) do
+  def input(
+        %{lb_a: actionl, lb_i: iconl, rb_a: actionr, rb_i: iconr, lb_tgt: tgt, rb_tgt: tgt2} =
+          assigns
+      ) do
     ~H"""
     <div phx-feedback-for={@name}>
       <.label for={@id}><%= @label %></.label>

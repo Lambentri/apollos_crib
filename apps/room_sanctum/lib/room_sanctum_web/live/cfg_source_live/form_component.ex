@@ -5,10 +5,12 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
   defp inj_uid(params, socket) do
     params = params |> Map.put("user_id", socket.assigns.current_user.id)
-    params = case Map.has_key?(params, "config") do
-      true -> params
-      false -> params |> Map.put("config", %{})
-    end
+
+    params =
+      case Map.has_key?(params, "config") do
+        true -> params
+        false -> params |> Map.put("config", %{})
+      end
   end
 
   @impl true
@@ -30,7 +32,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> Configuration.change_source(source_params)
       |> Map.put(:action, :validate)
 
-    {:noreply,  assign_form(socket, changeset)}
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"source" => source_params}, socket) do
@@ -42,6 +44,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     case Configuration.update_source(socket.assigns.source, source_params) do
       {:ok, source} ->
         notify_parent({:saved, source})
+
         {:noreply,
          socket
          |> put_flash(:info, "Source updated successfully")
@@ -56,6 +59,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     case Configuration.create_source(source_params) do
       {:ok, source} ->
         notify_parent({:saved, source})
+
         {:noreply,
          socket
          |> put_flash(:info, "Source created successfully")

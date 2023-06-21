@@ -11,7 +11,18 @@ defmodule RoomSanctum.Configuration.Source do
     field :notes, :string
 
     field :type, Ecto.Enum,
-      values: [:aqi, :calendar, :ephem, :gbfs, :gtfs, :hass, :rideshare, :tidal, :weather, :cronos]
+      values: [
+        :aqi,
+        :calendar,
+        :ephem,
+        :gbfs,
+        :gtfs,
+        :hass,
+        :rideshare,
+        :tidal,
+        :weather,
+        :cronos
+      ]
 
     field :config, PolymorphicEmbed,
       types: [

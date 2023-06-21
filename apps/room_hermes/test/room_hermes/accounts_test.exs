@@ -36,14 +36,19 @@ defmodule RoomHermes.AccountsTest do
       rabbit_user = rabbit_user_fixture()
       update_attrs = %{password: "some updated password", username: "some updated username"}
 
-      assert {:ok, %RabbitUser{} = rabbit_user} = Accounts.update_rabbit_user(rabbit_user, update_attrs)
+      assert {:ok, %RabbitUser{} = rabbit_user} =
+               Accounts.update_rabbit_user(rabbit_user, update_attrs)
+
       assert rabbit_user.password == "some updated password"
       assert rabbit_user.username == "some updated username"
     end
 
     test "update_rabbit_user/2 with invalid data returns error changeset" do
       rabbit_user = rabbit_user_fixture()
-      assert {:error, %Ecto.Changeset{}} = Accounts.update_rabbit_user(rabbit_user, @invalid_attrs)
+
+      assert {:error, %Ecto.Changeset{}} =
+               Accounts.update_rabbit_user(rabbit_user, @invalid_attrs)
+
       assert rabbit_user == Accounts.get_rabbit_user!(rabbit_user.id)
     end
 

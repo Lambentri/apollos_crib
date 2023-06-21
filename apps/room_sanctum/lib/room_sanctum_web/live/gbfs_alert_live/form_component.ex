@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.AlertLive.FormComponent do
     case Storage.update_gbfs_alert(socket.assigns.alert, alert_params) do
       {:ok, alert} ->
         notify_parent({:saved, alert})
+
         {:noreply,
          socket
          |> put_flash(:info, "Alert updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.AlertLive.FormComponent do
     case Storage.create_gbfs_alert(alert_params) do
       {:ok, alert} ->
         notify_parent({:saved, alert})
+
         {:noreply,
          socket
          |> put_flash(:info, "Alert created successfully")

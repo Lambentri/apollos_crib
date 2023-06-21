@@ -33,7 +33,10 @@ defmodule RoomSanctumWeb.MonitoringSiteLive.Index do
   end
 
   @impl true
-  def handle_info({RoomSanctumWeb.MonitoringSiteLive.FormComponent, {:saved, monitoring_site}}, socket) do
+  def handle_info(
+        {RoomSanctumWeb.MonitoringSiteLive.FormComponent, {:saved, monitoring_site}},
+        socket
+      ) do
     {:noreply, stream_insert(socket, :airnow_monitoring_sites, monitoring_site)}
   end
 

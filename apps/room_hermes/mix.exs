@@ -38,7 +38,7 @@ defmodule RoomHermes.MixProject do
   defp deps do
     [
       {:phoenix, "~> 1.7"},
-       {:phoenix_view, "~> 2.0"},
+      {:phoenix_view, "~> 2.0"},
       {:phoenix_ecto, "~> 4.4"},
       {:phoenix_html, "~> 3.3"},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
@@ -52,8 +52,8 @@ defmodule RoomHermes.MixProject do
       {:jason, "~> 1.2"},
       {:plug_cowboy, "~> 2.5"},
 
-#     {:room_sanctum, in_umbrella: true},
-      {:sentry, "~> 8.0"},
+      #     {:room_sanctum, in_umbrella: true},
+      {:sentry, "~> 8.0"}
     ]
   end
 

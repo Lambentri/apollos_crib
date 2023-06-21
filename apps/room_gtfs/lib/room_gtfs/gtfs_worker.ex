@@ -154,14 +154,13 @@ defmodule RoomGtfs.Worker do
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
   def source_stats(id) do
-
     %{
       calendars: Storage.count_calendars(id),
       directions: Storage.count_directions(id),
       routes: Storage.count_routes(id),
       stops: Storage.count_stops(id),
       stop_times: Storage.count_stop_times(id),
-      trips: Storage.count_calendars(id),
+      trips: Storage.count_calendars(id)
     }
   end
 end

@@ -22,7 +22,7 @@ defmodule RoomHermes.Accounts do
   end
 
   def list_users_rabbit({:user, uid}) do
-    Repo.all(from r in RabbitUser, where: r.user_id == ^uid)
+    Repo.all(from(r in RabbitUser, where: r.user_id == ^uid))
   end
 
   @doc """
@@ -107,10 +107,11 @@ defmodule RoomHermes.Accounts do
   end
 
   def find_rabbit_user(username) do
-    from(r in RabbitUser, where: r.username == ^username) |> Repo.one
+    from(r in RabbitUser, where: r.username == ^username) |> Repo.one()
   end
 
   def find_rabbit_user(username, password) do
-    from(r in RabbitUser, where: r.username == ^username and r.password == ^password) |> Repo.one
+    from(r in RabbitUser, where: r.username == ^username and r.password == ^password)
+    |> Repo.one()
   end
 end

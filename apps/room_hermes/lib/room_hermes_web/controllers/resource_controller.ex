@@ -13,7 +13,6 @@ defmodule RoomHermesWeb.ResourceController do
         "name" => name,
         "permission" => permission
       }) do
-
     case {vhost, resource} do
       {"/", "queue"} ->
         case name |> String.starts_with?("mqtt-subscription") do

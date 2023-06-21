@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.MonitoringSiteLive.FormComponent do
     case Storage.update_monitoring_site(socket.assigns.monitoring_site, monitoring_site_params) do
       {:ok, monitoring_site} ->
         notify_parent({:saved, monitoring_site})
+
         {:noreply,
          socket
          |> put_flash(:info, "Monitoring site updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.MonitoringSiteLive.FormComponent do
     case Storage.create_monitoring_site(monitoring_site_params) do
       {:ok, monitoring_site} ->
         notify_parent({:saved, monitoring_site})
+
         {:noreply,
          socket
          |> put_flash(:info, "Monitoring site created successfully")

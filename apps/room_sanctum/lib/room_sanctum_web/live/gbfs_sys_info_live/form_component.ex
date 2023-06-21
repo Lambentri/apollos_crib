@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.SysInfoLive.FormComponent do
     case Storage.update_sys_info(socket.assigns.sys_info, sys_info_params) do
       {:ok, sys_info} ->
         notify_parent({:saved, sys_info})
+
         {:noreply,
          socket
          |> put_flash(:info, "Sys info updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.SysInfoLive.FormComponent do
     case Storage.create_sys_info(sys_info_params) do
       {:ok, sys_info} ->
         notify_parent({:saved, sys_info})
+
         {:noreply,
          socket
          |> put_flash(:info, "Sys info created successfully")

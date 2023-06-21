@@ -20,20 +20,22 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
      |> assign(:foci, Configuration.list_focis({:user, socket.assigns.current_user.id}))
      |> assign(:ankyra, Accounts.list_users_rabbit({:user, socket.assigns.current_user.id}))
      |> assign(:preview, [])
-     |> assign(:preview_mode, :basic)
-     }
+     |> assign(:preview_mode, :basic)}
   end
 
   @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 15000)
-    %{data: data, queries: queries} = RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
+
+    %{data: data, queries: queries} =
+      RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
+
     {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
   end
 
   @impl true
   def handle_event("toggle-preview-mode", _params, socket) do
-      {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
+    {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
   end
 
   defp do_toggle(state) do
@@ -67,33 +69,39 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     end
   end
 
-    defp get_query_data(item, queries, size \\ 8) do
-        as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
-        case Map.get(as_map, item) do
-          nil -> item
-          val ->
-            case (val.name |> String.length > size) do
-            true -> s = val.name |> String.slice(0, size)
-                    s <> "..."
-            false -> val.name
-          end
-        end
-      end
+  defp get_query_data(item, queries, size \\ 8) do
+    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
 
-        defp get_query_data_icon(item, queries) do
-          as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
-          case Map.get(as_map, item) do
-            nil -> ""
-            val -> get_icon(val.source.type)
-          end
+    case Map.get(as_map, item) do
+      nil ->
+        item
+
+      val ->
+        case val.name |> String.length() > size do
+          true ->
+            s = val.name |> String.slice(0, size)
+            s <> "..."
+
+          false ->
+            val.name
         end
+    end
+  end
+
+  defp get_query_data_icon(item, queries) do
+    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+
+    case Map.get(as_map, item) do
+      nil -> ""
+      val -> get_icon(val.source.type)
+    end
+  end
 
   def get_by_id(id, array) do
     case array do
       [] -> id
-      _anything -> array |> Enum.filter(fn i -> i.id == id end) |> List.first
+      _anything -> array |> Enum.filter(fn i -> i.id == id end) |> List.first()
     end
-
   end
 
   @impl true

@@ -58,46 +58,53 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   def handle_cast(:query_workers, state) do
-    queried = state.vision_q |> Enum.map(fn q -> # todo filter out things deemed irrelevant by various timers
-      r = case q.source.type do
-        :gtfs ->
-          RoomGtfs.Worker.query_stop(q.source.id, q.query)
+    # todo filter out things deemed irrelevant by various timers
+    queried =
+      state.vision_q
+      |> Enum.map(fn q ->
+        r =
+          case q.source.type do
+            :gtfs ->
+              RoomGtfs.Worker.query_stop(q.source.id, q.query)
 
-        :gbfs ->
-          RoomGbfs.Worker.query_stop(q.source.id, q.query)
+            :gbfs ->
+              RoomGbfs.Worker.query_stop(q.source.id, q.query)
 
-        :tidal ->
-          RoomTidal.Worker.query_tides(q.source.id, q.query)
+            :tidal ->
+              RoomTidal.Worker.query_tides(q.source.id, q.query)
 
-        :weather ->
-          RoomWeather.Worker.query_weather(
-            q.source.id,
-            q.query
-          )
+            :weather ->
+              RoomWeather.Worker.query_weather(
+                q.source.id,
+                q.query
+              )
 
-        :aqi ->
-          RoomAirQuality.Worker.query_place(
-            q.source.id,
-            q.query
-          )
+            :aqi ->
+              RoomAirQuality.Worker.query_place(
+                q.source.id,
+                q.query
+              )
 
-        :ephem ->
-          RoomEphem.Worker.query_ephem(
-            q.source.id,
-            q.query
-          )
+            :ephem ->
+              RoomEphem.Worker.query_ephem(
+                q.source.id,
+                q.query
+              )
 
-        :calendar ->
-          RoomCalendar.Worker.query_calendar(
-            q.source.id,
-            q.query
-          )
+            :calendar ->
+              RoomCalendar.Worker.query_calendar(
+                q.source.id,
+                q.query
+              )
 
-        :cronos ->
-          RoomCronos.Worker.query_cronos(q.id, q.query)
-      end
-    {{q.id,q.source.type}, r}
-    end) |> Enum.into(%{})
+            :cronos ->
+              RoomCronos.Worker.query_cronos(q.id, q.query)
+          end
+
+        {{q.id, q.source.type}, r}
+      end)
+      |> Enum.into(%{})
+
     {:noreply, state |> Map.put(:data, queried)}
   end
 

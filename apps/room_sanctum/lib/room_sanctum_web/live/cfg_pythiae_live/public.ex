@@ -24,14 +24,16 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
      |> assign(:page_title, page_title(socket.assigns.live_action))
      |> assign(:pythiae, Configuration.get_pythiae!(:name, name))
      |> assign(:preview, [])
-     |> assign(:preview_mode, :basic)
-     }
+     |> assign(:preview_mode, :basic)}
   end
 
   @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 15000)
-    %{data: data, queries: queries} = RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
+
+    %{data: data, queries: queries} =
+      RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
+
     {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
   end
 
@@ -49,19 +51,26 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
 
   defp get_query_data(item, queries, size \\ 8) do
     as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+
     case Map.get(as_map, item) do
-      nil -> item
+      nil ->
+        item
+
       val ->
-        case (val.name |> String.length > size) do
-        true -> s = val.name |> String.slice(0, size)
-                s <> "..."
-        false -> val.name
-      end
+        case val.name |> String.length() > size do
+          true ->
+            s = val.name |> String.slice(0, size)
+            s <> "..."
+
+          false ->
+            val.name
+        end
     end
   end
 
   defp get_query_data_icon(item, queries) do
     as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+
     case Map.get(as_map, item) do
       nil -> ""
       val -> get_icon(val.source.type)

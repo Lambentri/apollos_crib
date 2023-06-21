@@ -151,11 +151,11 @@ defmodule RoomSanctum.Configuration do
   def get_query!(id), do: Repo.get!(Query, id) |> Repo.preload(:source)
 
   def get_queries!(ids) do
-    from( q in Query, where: q.id in ^ids) |> Repo.all |> Repo.preload(:source)
+    from(q in Query, where: q.id in ^ids) |> Repo.all() |> Repo.preload(:source)
   end
 
   def get_queries(:source, id) do
-    from(q in Query, where: q.source_id == ^id) |> Repo.all |> Repo.preload(:source)
+    from(q in Query, where: q.source_id == ^id) |> Repo.all() |> Repo.preload(:source)
   end
 
   @doc """
@@ -261,7 +261,7 @@ defmodule RoomSanctum.Configuration do
   def get_vision(id), do: Repo.get(Vision, id)
 
   def get_visions(:query, id) do
-    from(v in Vision, where: ^id in v.query_ids) |> Repo.all
+    from(v in Vision, where: ^id in v.query_ids) |> Repo.all()
   end
 
   @doc """
@@ -336,14 +336,15 @@ defmodule RoomSanctum.Configuration do
 
   #
   def get_landing_vision() do
-    q = from v in Vision,
-             where: v.public == true,
-             order_by: fragment("RANDOM()"),
-             limit: 1
-    q
-    |> Repo.one
-  end
+    q =
+      from v in Vision,
+        where: v.public == true,
+        order_by: fragment("RANDOM()"),
+        limit: 1
 
+    q
+    |> Repo.one()
+  end
 
   alias RoomSanctum.Configuration.Foci
 
@@ -483,9 +484,8 @@ defmodule RoomSanctum.Configuration do
   def get_pythiae!(:name, name), do: Repo.get_by(Pythiae, name: name)
 
   def get_pythiae(:vision, id) do
-    from(p in Pythiae, where: ^id in p.visions) |> Repo.all
+    from(p in Pythiae, where: ^id in p.visions) |> Repo.all()
   end
-
 
   @doc """
   Creates a pythiae.

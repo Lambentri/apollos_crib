@@ -5,9 +5,12 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp inj_uid(params, socket) do
     params
-#    |> IO.inspect
+    #    |> IO.inspect
     |> Map.put("user_id", socket.assigns.current_user.id)
-    |> Map.put("query_ids", params |> Map.get("queries", %{}) |> Enum.map(fn {k,v} -> v["data"]["query"] end ))
+    |> Map.put(
+      "query_ids",
+      params |> Map.get("queries", %{}) |> Enum.map(fn {k, v} -> v["data"]["query"] end)
+    )
   end
 
   defp inj_types(params) do
@@ -49,7 +52,8 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
       socket.assigns.vision
       |> Configuration.change_vision(vision_params)
       |> Map.put(:action, :validate)
-#      |> IO.inspect()
+
+    #      |> IO.inspect()
 
     {:noreply, assign_form(socket, changeset)}
   end
@@ -61,41 +65,55 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   def handle_event("add-entry", _data, socket) do
-#    IO.inspect(socket.assigns.form)
+    #    IO.inspect(socket.assigns.form)
     f = socket.assigns.form
 
-    existing_as_simple = case f.params do
-        map when map == %{} -> f.data.queries |> Poison.encode!() |> Poison.decode!() |> Enum.with_index |> Enum.map(fn {k,v} -> {"#{v}",k} end) |> Map.new
-        otherwise -> f.params |> Map.get("queries") #|> Enum.map(fn {k,v} -> v end)
-    end
+    existing_as_simple =
+      case f.params do
+        map when map == %{} ->
+          f.data.queries
+          |> Poison.encode!()
+          |> Poison.decode!()
+          |> Enum.with_index()
+          |> Enum.map(fn {k, v} -> {"#{v}", k} end)
+          |> Map.new()
 
-#     IO.inspect(existing_as_simple)
-    combined = case existing_as_simple do
-      list when list == [] ->  %{"0" => %{
-            "data" => %{"__type__" => "pinned", "query" => 0},
-            "id" => nil,
-            "type" => "pinned",
-            "order" => 0
-          }
-        }
-      _otherwise -> existing_as_simple |> Map.merge(
-        %{ "#{existing_as_simple |> Map.keys |> length }" =>
+        # |> Enum.map(fn {k,v} -> v end)
+        otherwise ->
+          f.params |> Map.get("queries")
+      end
+
+    #     IO.inspect(existing_as_simple)
+    combined =
+      case existing_as_simple do
+        list when list == [] ->
           %{
-            "data" => %{"__type__" => "pinned", "query" => 0},
-            "id" => nil,
-            "type" => "pinned",
-            "order" => 0
+            "0" => %{
+              "data" => %{"__type__" => "pinned", "query" => 0},
+              "id" => nil,
+              "type" => "pinned",
+              "order" => 0
+            }
           }
-        }
-        )
-    end
 
+        _otherwise ->
+          existing_as_simple
+          |> Map.merge(%{
+            "#{existing_as_simple |> Map.keys() |> length}" => %{
+              "data" => %{"__type__" => "pinned", "query" => 0},
+              "id" => nil,
+              "type" => "pinned",
+              "order" => 0
+            }
+          })
+      end
 
     changeset =
       socket.assigns.vision
       |> Configuration.change_vision(%{queries: combined})
       |> Map.put(:action, :validate)
-#      |> IO.inspect()
+
+    #      |> IO.inspect()
 
     {
       :noreply,
@@ -108,6 +126,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     case Configuration.update_vision(socket.assigns.vision, vision_params) do
       {:ok, vision} ->
         notify_parent({:saved, vision})
+
         {
           :noreply,
           socket
@@ -121,9 +140,10 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   defp save_vision(socket, :new, vision_params) do
-    case Configuration.create_vision(vision_params)do
+    case Configuration.create_vision(vision_params) do
       {:ok, vision} ->
         notify_parent({:saved, vision})
+
         {
           :noreply,
           socket
@@ -188,12 +208,13 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
     #      |> Map.get(:type)
     #    )
 
-    q = form.params |> Map.get("queries", %{}) |> Map.get("#{ctr}", %{}) |> Map.get("type") ||
-      form.data
-      |> Map.get(:queries, [])
-      |> Enum.at(ctr, %{})
-      |> Map.get(:changes, %{})
-      |> Map.get(:type) ||
+    q =
+      form.params |> Map.get("queries", %{}) |> Map.get("#{ctr}", %{}) |> Map.get("type") ||
+        form.data
+        |> Map.get(:queries, [])
+        |> Enum.at(ctr, %{})
+        |> Map.get(:changes, %{})
+        |> Map.get(:type) ||
         fq.data
         |> Map.get(:source, %{})
         |> Map.get(:changes, %{})
@@ -202,6 +223,7 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
         |> Map.get(:data, %{})
         |> Map.get(:type)
 
-    q # |> IO.inspect
+    # |> IO.inspect
+    q
   end
 end

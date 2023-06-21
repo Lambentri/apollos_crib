@@ -3,10 +3,10 @@ defmodule RoomHermes.Accounts.RabbitUser do
   import Ecto.Changeset
 
   schema "users_rabbit" do
-    field :password, :string
-    field :username, :binary_id
-    field :topic, :string
-    belongs_to :user, RoomSanctum.Accounts.User
+    field(:password, :string)
+    field(:username, :binary_id)
+    field(:topic, :string)
+    belongs_to(:user, RoomSanctum.Accounts.User)
 
     timestamps()
   end

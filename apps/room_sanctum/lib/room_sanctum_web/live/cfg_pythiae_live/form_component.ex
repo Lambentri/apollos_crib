@@ -22,32 +22,32 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
      |> assign(assigns)
      |> assign(:changeset, changeset)
      |> assign_form(changeset)
-      |> assign(:cfg_ankyra, list_cfg_ankyra(assigns.current_user.id))
-      |> assign(:cfg_visions, list_cfg_visions(assigns.current_user.id))
-      |> assign(
-           :cfg_ankyra_sel,
-           list_cfg_ankyra(assigns.current_user.id)
-           |> Enum.map(fn x -> {x.topic, x.id} end)
-           |> Enum.into(%{})
-         )
-      |> assign(
-           :cfg_visions_sel,
-           list_cfg_visions(assigns.current_user.id)
-           |> Enum.map(fn x -> {x.name, x.id} end)
-           |> Enum.into(%{})
-         )
+     |> assign(:cfg_ankyra, list_cfg_ankyra(assigns.current_user.id))
+     |> assign(:cfg_visions, list_cfg_visions(assigns.current_user.id))
      |> assign(
-          :cfg_foci_sel,
-          list_cfg_foci(assigns.current_user.id)
-          |> Enum.map(fn x -> {x.name, x.id} end)
-          |> Enum.into(%{})
-        )
-    }
+       :cfg_ankyra_sel,
+       list_cfg_ankyra(assigns.current_user.id)
+       |> Enum.map(fn x -> {x.topic, x.id} end)
+       |> Enum.into(%{})
+     )
+     |> assign(
+       :cfg_visions_sel,
+       list_cfg_visions(assigns.current_user.id)
+       |> Enum.map(fn x -> {x.name, x.id} end)
+       |> Enum.into(%{})
+     )
+     |> assign(
+       :cfg_foci_sel,
+       list_cfg_foci(assigns.current_user.id)
+       |> Enum.map(fn x -> {x.name, x.id} end)
+       |> Enum.into(%{})
+     )}
   end
 
   @impl true
   def handle_event("validate", %{"pythiae" => pythiae_params}, socket) do
     pythiae_params = inj_uid(pythiae_params, socket)
+
     changeset =
       socket.assigns.pythiae
       |> Configuration.change_pythiae(pythiae_params)
@@ -67,12 +67,13 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
     {:noreply, assign_form(socket, changeset)}
   end
 
-
   defp save_pythiae(socket, :edit, pythiae_params) do
     IO.inspect(pythiae_params)
+
     case Configuration.update_pythiae(socket.assigns.pythiae, pythiae_params) do
       {:ok, pythiae} ->
         notify_parent({:saved, pythiae})
+
         {:noreply,
          socket
          |> put_flash(:info, "Pythiae updated successfully")
@@ -87,6 +88,7 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
     case Configuration.create_pythiae(pythiae_params) do
       {:ok, pythiae} ->
         notify_parent({:saved, pythiae})
+
         {:noreply,
          socket
          |> put_flash(:info, "Pythiae created successfully")

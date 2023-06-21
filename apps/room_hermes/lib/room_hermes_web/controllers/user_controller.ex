@@ -13,7 +13,9 @@ defmodule RoomHermesWeb.UserController do
           nil -> send_resp(conn, :ok, "deny")
           val -> send_resp(conn, :ok, "allow")
         end
-      false -> send_resp(conn, :ok, "deny")
+
+      false ->
+        send_resp(conn, :ok, "deny")
     end
   end
 end

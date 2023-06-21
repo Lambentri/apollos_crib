@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.HourlyObsDataLive.FormComponent do
     case AirNow.update_hourly_obs_data(socket.assigns.hourly_obs_data, hourly_obs_data_params) do
       {:ok, hourly_obs_data} ->
         notify_parent({:saved, hourly_obs_data})
+
         {:noreply,
          socket
          |> put_flash(:info, "Hourly obs data updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.HourlyObsDataLive.FormComponent do
     case AirNow.create_hourly_obs_data(hourly_obs_data_params) do
       {:ok, hourly_obs_data} ->
         notify_parent({:saved, hourly_obs_data})
+
         {:noreply,
          socket
          |> put_flash(:info, "Hourly obs data created successfully")

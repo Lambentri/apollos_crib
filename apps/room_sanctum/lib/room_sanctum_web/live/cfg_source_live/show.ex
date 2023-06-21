@@ -6,6 +6,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
+
     {
       :ok,
       socket
@@ -40,10 +41,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:page_title, page_title(socket.assigns.live_action))
       |> assign(:source, source)
       |> assign(
-           :source_id,
-           id
-           |> String.to_integer()
-         )
+        :source_id,
+        id
+        |> String.to_integer()
+      )
     }
   end
 
@@ -52,8 +53,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("do-update", %{"type" => type, "id" => id}, socket) do
-    id = id
-         |> String.to_integer()
+    id =
+      id
+      |> String.to_integer()
 
     case type do
       "gtfs" ->
@@ -85,10 +87,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
     IO.inspect({type, id})
-    stats = case type do
-      "gtfs" -> %{"gtfs": RoomGtfs.Worker.source_stats(id), "rt": %{}}
-      _otherwise -> %{}
-    end
+
+    stats =
+      case type do
+        "gtfs" -> %{gtfs: RoomGtfs.Worker.source_stats(id), rt: %{}}
+        _otherwise -> %{}
+      end
+
     {
       :noreply,
       socket
@@ -112,8 +117,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_info({:gbfs, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id
-                                   |> String.to_integer() do
+    if socket.assigns.source_id ==
+         id
+         |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -122,8 +128,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_info({:gtfs, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id
-                                   |> String.to_integer() do
+    if socket.assigns.source_id ==
+         id
+         |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}
@@ -132,8 +139,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_info({:aqi, id, file, complete, total} = info, socket) do
-    if socket.assigns.source_id == id
-                                   |> String.to_integer() do
+    if socket.assigns.source_id ==
+         id
+         |> String.to_integer() do
       gen_pct(file, complete, total, socket)
     else
       {:noreply, socket}

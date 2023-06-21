@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.StopTimeLive.FormComponent do
     case Storage.update_stop_time(socket.assigns.stop_time, stop_time_params) do
       {:ok, stop_time} ->
         notify_parent({:saved, stop_time})
+
         {:noreply,
          socket
          |> put_flash(:info, "Stop time updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.StopTimeLive.FormComponent do
     case Storage.create_stop_time(stop_time_params) do
       {:ok, stop_time} ->
         notify_parent({:saved, stop_time})
+
         {:noreply,
          socket
          |> put_flash(:info, "Stop time created successfully")

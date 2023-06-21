@@ -110,11 +110,12 @@ defmodule RoomSanctum.Accounts do
   end
 
   def find_rabbit_user(username) do
-    from(r in RabbitUser, where: r.username == ^username) |> Repo.one
+    from(r in RabbitUser, where: r.username == ^username) |> Repo.one()
   end
 
   def find_rabbit_user(username, password) do
-    from(r in RabbitUser, where: r.username == ^username and r.password == ^password) |> Repo.one
+    from(r in RabbitUser, where: r.username == ^username and r.password == ^password)
+    |> Repo.one()
   end
 
   alias RoomSanctum.Accounts.{User, UserToken, UserNotifier}

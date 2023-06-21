@@ -37,7 +37,6 @@ defmodule RoomSanctumWeb.CalendarLive.Index do
     {:noreply, stream_insert(socket, :calendars, calendar)}
   end
 
-
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     calendar = Storage.get_calendar!(id)

@@ -1,6 +1,6 @@
 defmodule RoomSanctum.Configuration.Queries.Rideshare do
   use Ecto.Schema
-#  import Ecto.Changeset
+  #  import Ecto.Changeset
 
   @primary_key false
 

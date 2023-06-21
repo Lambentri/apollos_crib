@@ -24,7 +24,7 @@ defmodule RoomSanctum.MixProject do
   def application do
     [
       mod: {RoomSanctum.Application, []},
-      extra_applications: [:logger, :runtime_tools, :amqp],
+      extra_applications: [:logger, :runtime_tools, :amqp]
     ]
   end
 
@@ -56,7 +56,6 @@ defmodule RoomSanctum.MixProject do
       {:plug_cowboy, "~> 2.5"},
       {:timex, "~> 3.7.8"},
       {:poison, "~> 5.0", override: true},
-
       {:parent, "~> 0.12.1"},
 
       # tz provider, less shitty than tzworld, still shitty for diff reasons
@@ -79,9 +78,9 @@ defmodule RoomSanctum.MixProject do
       {:healthchex, "~> 0.2"},
 
       # hermes
-#      {:room_hermes, in_umbrella: true}
+      #      {:room_hermes, in_umbrella: true}
       {:amqp, "~> 3.1"},
-      {:sentry, "~> 8.0"},
+      {:sentry, "~> 8.0"}
     ]
   end
 

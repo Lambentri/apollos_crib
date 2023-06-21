@@ -31,8 +31,6 @@ defmodule RoomTidal.MixProject do
       # => When using Caching Annotations
       {:decorator, "~> 1.4"},
       {:telemetry, "~> 1.0"},
-
-
       {:httpoison, "~> 1.8"},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}

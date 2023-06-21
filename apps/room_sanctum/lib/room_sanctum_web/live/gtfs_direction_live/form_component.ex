@@ -31,6 +31,7 @@ defmodule RoomSanctumWeb.DirectionLive.FormComponent do
     case Storage.update_direction(socket.assigns.direction, direction_params) do
       {:ok, direction} ->
         notify_parent({:saved, direction})
+
         {:noreply,
          socket
          |> put_flash(:info, "Direction updated successfully")
@@ -45,6 +46,7 @@ defmodule RoomSanctumWeb.DirectionLive.FormComponent do
     case Storage.create_direction(direction_params) do
       {:ok, direction} ->
         notify_parent({:saved, direction})
+
         {:noreply,
          socket
          |> put_flash(:info, "Direction created successfully")

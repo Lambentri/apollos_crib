@@ -33,7 +33,10 @@ defmodule RoomSanctumWeb.HourlyObsDataLive.Index do
   end
 
   @impl true
-  def handle_info({RoomSanctumWeb.HourlyObsDataLive.FormComponent, {:saved, hourly_obs_data}}, socket) do
+  def handle_info(
+        {RoomSanctumWeb.HourlyObsDataLive.FormComponent, {:saved, hourly_obs_data}},
+        socket
+      ) do
     {:noreply, stream_insert(socket, :hourly_observations, hourly_obs_data)}
   end
 

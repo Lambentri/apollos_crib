@@ -8,7 +8,7 @@
 import Config
 
 config :room_hermes,
-       ecto_repos: [RoomHermes.Repo]
+  ecto_repos: [RoomHermes.Repo]
 
 # Configures the endpoint
 config :room_hermes,
@@ -27,7 +27,7 @@ config :room_hermes,
        ]
 
 config :room_sanctum,
-       ecto_repos: [RoomSanctum.Repo]
+  ecto_repos: [RoomSanctum.Repo]
 
 # Configures the endpoint
 config :room_sanctum,
@@ -59,26 +59,26 @@ config :swoosh, :api_client, false
 
 # Configure esbuild (the version is required)
 config :esbuild,
-       version: "0.14.0",
-       default: [
-         args:
-           ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
-         cd: Path.expand("../apps/room_sanctum/assets", __DIR__),
-         env: %{
-           "NODE_PATH" => Path.expand("../deps", __DIR__)
-         }
-       ]
+  version: "0.14.0",
+  default: [
+    args:
+      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
+    cd: Path.expand("../apps/room_sanctum/assets", __DIR__),
+    env: %{
+      "NODE_PATH" => Path.expand("../deps", __DIR__)
+    }
+  ]
 
 config :tailwind,
-       version: "3.1.6",
-       default: [
-         args: ~w(
+  version: "3.1.6",
+  default: [
+    args: ~w(
     --config=tailwind.config.js
     --input=css/app.css
     --output=../priv/static/assets/app.css
   ),
-         cd: Path.expand("../apps/room_sanctum/assets", __DIR__)
-       ]
+    cd: Path.expand("../apps/room_sanctum/assets", __DIR__)
+  ]
 
 # Configures Elixir's Logger
 config :logger,
