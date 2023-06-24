@@ -9,12 +9,30 @@ defmodule RoomGbfs.Worker do
   alias RoomSanctum.Repo
 
   @registry :zeus
+  @dynamic_refresh_seconds 300
+
+  # 1d
+  @static_refresh_seconds 86400
+  @static_delay_seconds 600
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gbfs" <> opts[:name]))
   end
 
+  @impl true
   def init(opts) do
+    Periodic.start_link(
+      every: :timer.seconds(@dynamic_refresh_seconds),
+      run: fn -> RoomGbfs.Worker.update_realtime_data(opts[:name]) end,
+      initial_delay: 100
+    )
+
+    Periodic.start_link(
+      every: :timer.seconds(@static_refresh_seconds),
+      run: fn -> RoomGbfs.Worker.update_static_data(opts[:name]) end,
+      initial_delay: :timer.minutes(@static_delay_seconds)
+    )
+
     {:ok, %{id: opts[:name], inst: nil}}
   end
 
@@ -23,6 +41,12 @@ defmodule RoomGbfs.Worker do
     "gbfs#{name}"
     |> via_tuple()
     |> GenServer.cast(:refresh_db_cfg)
+  end
+
+  def scheduled_static(name) do
+    "gbfs#{name}"
+    |> via_tuple()
+    |> GenServer.cast(:scheduled_static)
   end
 
   def update_static_data(name) do
@@ -41,13 +65,8 @@ defmodule RoomGbfs.Worker do
     [Storage.get_current_information_for_bikestop(id, query.stop_id)]
   end
 
-  def handle_call(_msg, _from, state) do
-    {:reply, :ok, state}
-  end
-
-  def handle_cast(:refresh_db_cfg, state) do
-    IO.puts("rerere")
-    {:noreply, state |> Map.put(:inst, nil)}
+  defp bcast(id, :disabled) do
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gbfs", {:gbfs, id, :disabled})
   end
 
   defp bcast(id, file, complete, total) do
@@ -173,74 +192,147 @@ defmodule RoomGbfs.Worker do
     end
   end
 
+  def handle_call(_msg, _from, state) do
+    {:reply, :ok, state}
+  end
+
+  @impl true
+  def handle_cast(:refresh_db_cfg, state) do
+    IO.puts("rerere")
+    {:noreply, state |> Map.put(:inst, nil)}
+  end
+
+  @impl true
   def handle_cast(:update_static, state) do
-    Logger.info("GBFS::#{state.id} updating static info ")
     cfg = Configuration.get_source!(state.id)
 
-    bcast(state.id, :downloading, 1, 10)
+    case cfg.enabled do
+      true ->
+        Logger.info("GBFS::#{state.id} updating static info ")
+        bcast(state.id, :downloading, 1, 10)
 
-    case HTTPoison.get(cfg.config.url) do
-      {:ok, result} ->
-        json_body =
-          result.body
-          |> Poison.decode!()
+        case HTTPoison.get(cfg.config.url) do
+          {:ok, result} ->
+            json_body =
+              result.body
+              |> Poison.decode!()
 
-        if json_body["data"]
-           |> Map.has_key?(cfg.config.lang) do
-          bcast(state.id, :parsing, 2, 10)
+            if json_body["data"]
+               |> Map.has_key?(cfg.config.lang) do
+              bcast(state.id, :parsing, 2, 10)
 
-          json_body["data"][cfg.config.lang]["feeds"]
-          |> Enum.map(fn %{"name" => name, "url" => url} ->
-            case name do
-              "system_information" ->
-                write_data(url, :sys_info, state.id)
-                bcast(state.id, :system_information, 3, 10)
+              json_body["data"][cfg.config.lang]["feeds"]
+              |> Enum.map(fn %{"name" => name, "url" => url} ->
+                case name do
+                  "system_information" ->
+                    write_data(url, :sys_info, state.id)
+                    bcast(state.id, :system_information, 3, 10)
 
-              "station_information" ->
-                write_data(url, :stat_info, state.id)
-                bcast(state.id, :system_information, 4, 10)
+                  "station_information" ->
+                    write_data(url, :stat_info, state.id)
+                    bcast(state.id, :system_information, 4, 10)
 
-              "station_status" ->
-                write_data(url, :stat_status, state.id)
-                bcast(state.id, :system_information, 5, 10)
+                  "station_status" ->
+                    write_data(url, :stat_status, state.id)
+                    bcast(state.id, :system_information, 5, 10)
 
-              "free_bike_status" ->
-                write_data(url, :free_bike, state.id)
-                bcast(state.id, :system_information, 6, 10)
+                  "free_bike_status" ->
+                    write_data(url, :free_bike, state.id)
+                    bcast(state.id, :system_information, 6, 10)
 
-              "system_hours" ->
-                write_data(url, :sys_hours, state.id)
-                bcast(state.id, :system_information, 7, 10)
+                  "system_hours" ->
+                    write_data(url, :sys_hours, state.id)
+                    bcast(state.id, :system_information, 7, 10)
 
-              "system_calendar" ->
-                write_data(url, :sys_cal, state.id)
-                bcast(state.id, :system_information, 8, 10)
+                  "system_calendar" ->
+                    write_data(url, :sys_cal, state.id)
+                    bcast(state.id, :system_information, 8, 10)
 
-              "system_regions" ->
-                write_data(url, :sys_regions, state.id)
-                bcast(state.id, :system_information, 9, 10)
+                  "system_regions" ->
+                    write_data(url, :sys_regions, state.id)
+                    bcast(state.id, :system_information, 9, 10)
 
-              "system_alerts" ->
-                write_data(url, :sys_alerts, state.id)
-                bcast(state.id, :system_information, 10, 10)
+                  "system_alerts" ->
+                    write_data(url, :sys_alerts, state.id)
+                    bcast(state.id, :system_information, 10, 10)
+                end
+              end)
+
+              {:noreply, state}
+            else
+              bcast(
+                state.id,
+                :language_error,
+                "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
+              )
+
+              {:noreply, state}
             end
-          end)
 
-          {:noreply, state}
-        else
-          bcast(
-            state.id,
-            :language_error,
-            "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
-          )
-
-          {:noreply, state}
+          {:error, info} ->
+            Logger.info(info.reason)
+            {:noreply, state}
         end
 
-      {:error, info} ->
-        Logger.info(info.reason)
+      false ->
+        bcast(state.id, :disabled)
         {:noreply, state}
     end
+  end
+
+  @impl true
+  def handle_cast(:update_realtime, state) do
+    cfg = Configuration.get_source!(state.id)
+
+    case cfg.enabled do
+      true ->
+        Logger.info("GBFS::#{state.id} updating realtime info ")
+        bcast(state.id, :downloading, 1, 3)
+
+        case HTTPoison.get(cfg.config.url) do
+          {:ok, result} ->
+            json_body =
+              result.body
+              |> Poison.decode!()
+
+            if json_body["data"]
+               |> Map.has_key?(cfg.config.lang) do
+              bcast(state.id, :parsing, 2, 3)
+
+              json_body["data"][cfg.config.lang]["feeds"]
+              |> Enum.map(fn %{"name" => name, "url" => url} ->
+                case name do
+                  "station_information" ->
+                    write_data(url, :stat_info, state.id)
+                    bcast(state.id, :system_information, 3, 3)
+
+                  _otherwise ->
+                    :ok
+                end
+              end)
+
+              {:noreply, state}
+            else
+              bcast(
+                state.id,
+                :language_error,
+                "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
+              )
+
+              {:noreply, state}
+            end
+
+          {:error, info} ->
+            Logger.info(info.reason)
+            {:noreply, state}
+        end
+
+      false ->
+        bcast(state.id, :disabled)
+        {:noreply, state}
+    end
+
+    {:noreply, state}
   end
 
   def handle_cast(_msg, state) do
@@ -248,4 +340,21 @@ defmodule RoomGbfs.Worker do
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
+
+  def sys_info_as_stats(id) do
+    %{
+    operator: "balls"
+    }
+  end
+
+  def source_stats(id) do
+    %{
+      calendars: Storage.count_calendars(id),
+      directions: Storage.count_directions(id),
+      routes: Storage.count_routes(id),
+      stops: Storage.count_stops(id),
+      stop_times: Storage.count_stop_times(id),
+      trips: Storage.count_calendars(id)
+    }
+  end
 end

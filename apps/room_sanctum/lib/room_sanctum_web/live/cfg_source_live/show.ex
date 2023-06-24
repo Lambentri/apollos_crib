@@ -91,6 +91,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     stats =
       case type do
         "gtfs" -> %{gtfs: RoomGtfs.Worker.source_stats(id), rt: %{}}
+        "gbfs" -> %{gbfs: RoomGbfs.Worker.source_stats(id), system: RoomGbfs.Worker.sys_info_as_stats(id)}
         _otherwise -> %{}
       end
 
@@ -99,6 +100,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       socket
       |> assign(:stats, stats)
     }
+  end
+
+  def handle_event("toggle-source-enabled", _params, socket) do
+    src = socket.assigns.source
+    {:ok, source} = Configuration.update_source(src, %{enabled: !src.enabled})
+    {:noreply, socket |> assign(:source, source)}
   end
 
   defp percent(num, denom) do
@@ -124,6 +131,11 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     else
       {:noreply, socket}
     end
+  end
+
+  @impl true
+  def handle_info({type, id, :disabled} = info, socket) do
+    {:noreply, socket |> put_flash(:info, "Updates will not fire while disabled")}
   end
 
   @impl true

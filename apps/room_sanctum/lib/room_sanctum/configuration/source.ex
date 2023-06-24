@@ -41,6 +41,11 @@ defmodule RoomSanctum.Configuration.Source do
       on_type_not_found: :raise,
       on_replace: :update
 
+    embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
+      field :last_run, :utc_datetime
+      field :run_period, :integer
+    end
+
     timestamps()
   end
 
@@ -48,8 +53,14 @@ defmodule RoomSanctum.Configuration.Source do
   def changeset(source, attrs) do
     source
     |> cast(attrs, [:name, :notes, :type, :enabled, :user_id])
+    |> cast_embed(:meta, required: false, with: &meta_changeset/2)
     |> foreign_key_constraint(:user_id)
     |> cast_polymorphic_embed(:config, required: true)
     |> validate_required([:name, :type, :enabled, :user_id])
+  end
+
+  def meta_changeset(meta, attrs \\ %{}) do
+    meta
+    |> cast(attrs, [:last_run, :run_period])
   end
 end

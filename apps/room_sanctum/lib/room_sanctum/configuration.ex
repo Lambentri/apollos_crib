@@ -81,6 +81,11 @@ defmodule RoomSanctum.Configuration do
     |> Repo.update()
   end
 
+  def update_source_meta(%Source{} = source, attrs) do
+    m = source.meta |> Map.merge(attrs) |> Map.from_struct
+    update_source(source, %{meta: m})
+  end
+
   @doc """
   Deletes a source.
 

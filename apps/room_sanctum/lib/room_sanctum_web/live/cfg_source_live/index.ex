@@ -50,7 +50,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   def handle_event("toggle-source-enabled", %{"id" => id, "current" => current}, socket) do
     curr_bool = current |> String.to_existing_atom()
-
+    src_og = Configuration.get_source!(id)
     {:ok, src} = Configuration.toggle_source!(id, not curr_bool)
 
     icon = """
@@ -60,7 +60,8 @@ defmodule RoomSanctumWeb.SourceLive.Index do
     {
       :noreply,
       socket
-      |> stream_insert(:cfg_sources, src)
+      |> stream_delete(:cfg_sources, src_og)
+      |> stream_insert(:cfg_sources, src, at: -1)
       |> put_flash(:info, ["Toggled ", src.name, " ", raw(icon), " Successfully"])
     }
   end

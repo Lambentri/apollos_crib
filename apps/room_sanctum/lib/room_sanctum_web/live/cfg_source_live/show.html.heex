@@ -23,11 +23,11 @@
             <div class="card-body text-center">
                 <%= case @source.enabled do %>
                 <%= true -> %>
-                <i class="fa-solid fa-check fa-6x" phx-click="toggle-source-enabled" phx-value-current="true"></i>
+                <i class="fa-solid fa-fw fa-check fa-6x" phx-click="toggle-source-enabled" phx-value-current="true"></i>
                 <span class="text-xs">Enabled</span>
                 <% false -> %>
-                <i class="fa-solid fa-times" phx-click="toggle-source-enabled" phx-value-current="false"></i>
-                <span class="text-xs">Disabled</span>
+                <i class="fa-solid fa-fw fa-times fa-6x text-warning" phx-click="toggle-source-enabled" phx-value-current="false"></i>
+                <span class="text-xs text-warning">Disabled</span>
                 <% end %>
             </div>
         </div>

@@ -9,6 +9,8 @@ defmodule RoomGtfs.Worker do
   alias RoomSanctum.Repo
 
   @registry :zeus
+  # 1 week
+  @default_refresh_seconds 604_800
 
   def start_link(opts) do
     Parent.GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs" <> opts[:name]))
@@ -19,6 +21,12 @@ defmodule RoomGtfs.Worker do
     "gtfs#{name}"
     |> via_tuple()
     |> GenServer.cast(:refresh_db_cfg)
+  end
+
+  def scheduled_static(name) do
+    "gtfs#{name}"
+    |> via_tuple()
+    |> GenServer.cast(:scheduled_static)
   end
 
   def update_static_data(name) do
@@ -101,6 +109,12 @@ defmodule RoomGtfs.Worker do
       initial_delay: 10
     )
 
+    Periodic.start_link(
+      every: :timer.seconds(60),
+      when: fn -> match?(%Time{hour: 0, minute: 0}, Time.utc_now()) end,
+      run: fn -> RoomGtfs.Worker.scheduled_static(opts[:name]) end
+    )
+
     {:ok, child_rt} = Parent.start_child({RoomGtfs.Worker.RT, opts})
     {:ok, child_static} = Parent.start_child({RoomGtfs.Worker.Static, opts})
 
@@ -116,6 +130,31 @@ defmodule RoomGtfs.Worker do
   def handle_cast(:refresh_db_cfg, state) do
     inst = Configuration.get_source!(state.id)
     {:noreply, state |> Map.put(:inst, inst)}
+  end
+
+  def handle_cast(:scheduled_static, state) do
+    inst = state.inst
+
+    if inst.enabled do
+      diff_period = inst.meta.run_period || @default_refresh_seconds
+      last_run = inst.meta.last_run
+
+      case last_run do
+        nil ->
+          RoomGtfs.Worker.update_static_data(state.id)
+
+        val ->
+          case DateTime.diff(DateTime.utc_now(), val) do
+            diff when diff > diff_period ->
+              RoomGtfs.Worker.update_static_data(state.id)
+
+            _otherwise ->
+              :ok
+          end
+      end
+    end
+
+    {:noreply, state}
   end
 
   def handle_cast(:update_static, state) do
@@ -195,13 +234,13 @@ defmodule RoomGtfs.Worker.RT do
     Periodic.start_link(
       every: :timer.seconds(4),
       run: fn -> RoomGtfs.Worker.RT.refresh_db_cfg(opts[:name]) end,
-      initial_delay: 10
+      initial_delay: :timer.seconds(10)
     )
 
     Periodic.start_link(
       every: :timer.seconds(30),
       run: fn -> RoomGtfs.Worker.RT.update_realtime_data(opts[:name]) end,
-      initial_delay: 100
+      initial_delay: :timer.seconds(60)
     )
 
     {:ok,
@@ -212,6 +251,10 @@ defmodule RoomGtfs.Worker.RT do
        rt_tu: nil,
        rt_vp: nil
      }}
+  end
+
+  defp bcast(id, :disabled) do
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :disabled})
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -230,60 +273,68 @@ defmodule RoomGtfs.Worker.RT do
 
   def handle_cast(:update_realtime, state) do
     state =
-      case state.inst.config |> Map.get(:url_rt_sa) do
-        nil ->
+      case state.inst.enabled do
+        true ->
+          state =
+            case state.inst.config |> Map.get(:url_rt_sa) do
+              nil ->
+                state
+
+              val ->
+                case fetch_rt_url(val) do
+                  {:ok, data_sa} ->
+                    state |> Map.put(:rt_sa, data_sa)
+
+                  {:error, error} ->
+                    Logger.info(
+                      "failed to fetch gtfs-rt url[sa] for '#{state.inst.name}', reason: #{error.reason}"
+                    )
+
+                    state
+                end
+            end
+
+          state =
+            case state.inst.config |> Map.get(:url_rt_tu) do
+              nil ->
+                state
+
+              val ->
+                case fetch_rt_url(val) do
+                  {:ok, data_tu} ->
+                    state |> Map.put(:rt_tu, data_tu)
+
+                  {:error, error} ->
+                    Logger.info(
+                      "failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{error.reason}"
+                    )
+
+                    state
+                end
+            end
+
+          state =
+            case state.inst.config |> Map.get(:url_rt_vp) do
+              nil ->
+                state
+
+              val ->
+                case fetch_rt_url(val) do
+                  {:ok, data_vp} ->
+                    state |> Map.put(:rt_vp, data_vp)
+
+                  {:error, error} ->
+                    Logger.info(
+                      "failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{error.reason}"
+                    )
+
+                    state
+                end
+            end
+
+        false ->
+          bcast(state.id, :disabled)
           state
-
-        val ->
-          case fetch_rt_url(val) do
-            {:ok, data_sa} ->
-              state |> Map.put(:rt_sa, data_sa)
-
-            {:error, error} ->
-              Logger.info(
-                "failed to fetch gtfs-rt url[sa] for '#{state.inst.name}', reason: #{error.reason}"
-              )
-
-              state
-          end
-      end
-
-    state =
-      case state.inst.config |> Map.get(:url_rt_tu) do
-        nil ->
-          state
-
-        val ->
-          case fetch_rt_url(val) do
-            {:ok, data_tu} ->
-              state |> Map.put(:rt_tu, data_tu)
-
-            {:error, error} ->
-              Logger.info(
-                "failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{error.reason}"
-              )
-
-              state
-          end
-      end
-
-    state =
-      case state.inst.config |> Map.get(:url_rt_vp) do
-        nil ->
-          state
-
-        val ->
-          case fetch_rt_url(val) do
-            {:ok, data_vp} ->
-              state |> Map.put(:rt_vp, data_vp)
-
-            {:error, error} ->
-              Logger.info(
-                "failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{error.reason}"
-              )
-
-              state
-          end
       end
 
     {:noreply, state}
@@ -325,6 +376,10 @@ defmodule RoomGtfs.Worker.Static do
 
   defp bcast(id, file, complete, total) do
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, file, complete, total})
+  end
+
+  defp bcast(id, :disabled) do
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :disabled})
   end
 
   def init(opts) do
@@ -452,68 +507,78 @@ defmodule RoomGtfs.Worker.Static do
   end
 
   def handle_cast(:update_static, state) do
-    Logger.info("GTFS::#{state.id} updating static info")
     cfg = Configuration.get_source!(state.id)
-    bcast(state.id, :downloading, 1, 9)
 
-    case HTTPoison.get(cfg.config.url) do
-      {:ok, result} ->
-        bcast(state.id, :extracting, 2, 9)
+    case cfg.enabled do
+      true ->
+        Logger.info("GTFS::#{state.id} updating static info")
+        bcast(state.id, :downloading, 1, 9)
 
-        case result.body
-             |> :zip.unzip([:memory]) do
-          {:ok, files} ->
-            files
-            |> Enum.map(fn {name, data} ->
-              as_csv =
-                data
-                |> String.split("\n")
-                |> Enum.filter(fn x -> x != "" end)
-                |> CSV.decode(headers: true)
+        case HTTPoison.get(cfg.config.url) do
+          {:ok, result} ->
+            bcast(state.id, :extracting, 2, 9)
 
-              case name do
-                'agency.txt' ->
-                  write_file(as_csv, :agency, state.id)
-                  bcast(state.id, :agency, 3, 9)
+            case result.body
+                 |> :zip.unzip([:memory]) do
+              {:ok, files} ->
+                files
+                |> Enum.map(fn {name, data} ->
+                  as_csv =
+                    data
+                    |> String.split("\n")
+                    |> Enum.filter(fn x -> x != "" end)
+                    |> CSV.decode(headers: true)
 
-                'calendar.txt' ->
-                  write_file(as_csv, :calendar, state.id)
-                  bcast(state.id, :calendar, 4, 9)
+                  case name do
+                    'agency.txt' ->
+                      write_file(as_csv, :agency, state.id)
+                      bcast(state.id, :agency, 3, 9)
 
-                'directions.txt' ->
-                  write_file(as_csv, :directions, state.id)
-                  bcast(state.id, :directions, 5, 9)
+                    'calendar.txt' ->
+                      write_file(as_csv, :calendar, state.id)
+                      bcast(state.id, :calendar, 4, 9)
 
-                'routes.txt' ->
-                  write_file(as_csv, :routes, state.id)
-                  bcast(state.id, :routes, 6, 9)
+                    'directions.txt' ->
+                      write_file(as_csv, :directions, state.id)
+                      bcast(state.id, :directions, 5, 9)
 
-                'stops.txt' ->
-                  write_file(as_csv, :stops, state.id)
-                  bcast(state.id, :stops, 7, 9)
+                    'routes.txt' ->
+                      write_file(as_csv, :routes, state.id)
+                      bcast(state.id, :routes, 6, 9)
 
-                'stop_times.txt' ->
-                  write_file(as_csv, :stop_times, state.id)
-                  bcast(state.id, :stop_times, 8, 9)
+                    'stops.txt' ->
+                      write_file(as_csv, :stops, state.id)
+                      bcast(state.id, :stops, 7, 9)
 
-                'trips.txt' ->
-                  write_file(as_csv, :trips, state.id)
-                  bcast(state.id, :trips, 9, 9)
+                    'stop_times.txt' ->
+                      write_file(as_csv, :stop_times, state.id)
+                      bcast(state.id, :stop_times, 8, 9)
 
-                _other ->
-                  :ok
-              end
-            end)
+                    'trips.txt' ->
+                      write_file(as_csv, :trips, state.id)
+                      bcast(state.id, :trips, 9, 9)
 
-            Logger.info("GTFS::#{state.id} completed import")
+                    _other ->
+                      :ok
+                  end
+                end)
 
-          {:error, _info} ->
-            bcast(state.id, :error, 1, 1)
-            Logger.info("GTFS::#{state.id} Got invalid zip file #{_info.reason}")
+                Logger.info("GTFS::#{state.id} completed import")
+
+                Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
+
+              {:error, _info} ->
+                bcast(state.id, :error, 1, 1)
+                Logger.info("GTFS::#{state.id} Got invalid zip file #{_info.reason}")
+            end
+
+          {:error, info} ->
+            Logger.info(info.reason)
         end
 
-      {:error, info} ->
-        Logger.info(info.reason)
+      false ->
+        bcast(state.id, :disabled)
+        {:noreply, state}
     end
 
     {:noreply, state}
