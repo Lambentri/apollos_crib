@@ -344,20 +344,24 @@ defmodule RoomGtfs.Worker.RT do
     #    IO.inspect(trips)
 
     # filter out the protobuf for all relevant trips and then the relevant stop on that trip, nice and small
-    relevant_trips =
-      state.rt_tu.entity
-      |> Enum.filter(fn x -> Enum.member?(trips, x.trip_update.trip.trip_id) end)
-      |> Enum.map(fn x ->
-        x
-        |> Kernel.put_in(
-          [Access.key(:trip_update, %{}), Access.key(:stop_time_update, %{})],
-          x.trip_update.stop_time_update
-          |> Enum.filter(fn x -> x.stop_id == stop end)
-          |> List.first()
-        )
-      end)
+    case state.rt_tu do
+      nil -> {:reply, [], state}
+      _otherwise -> relevant_trips =
+                      state.rt_tu.entity
+                      |> Enum.filter(fn x -> Enum.member?(trips, x.trip_update.trip.trip_id) end)
+                      |> Enum.map(fn x ->
+                        x
+                        |> Kernel.put_in(
+                             [Access.key(:trip_update, %{}), Access.key(:stop_time_update, %{})],
+                             x.trip_update.stop_time_update
+                             |> Enum.filter(fn x -> x.stop_id == stop end)
+                             |> List.first()
+                           )
+                      end)
 
-    {:reply, relevant_trips, state}
+                    {:reply, relevant_trips, state}
+    end
+
   end
 end
 
@@ -501,7 +505,7 @@ defmodule RoomGtfs.Worker.Static do
           )
       end
     end)
-    |> Enum.count()
+    |> Stream.run()
 
     DateTime.utc_now()
   end
