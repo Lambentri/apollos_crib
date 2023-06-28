@@ -13,6 +13,7 @@ defmodule RoomSanctumWeb.LivePreview do
       "Funicular" -> "fa-mountain"
       "Trolleybus" -> "fa-bus-simple"
       "Monorail" -> "fa-magic"
+      _otherwise ->  "fa-train-tram"
     end
   end
 
