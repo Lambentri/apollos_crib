@@ -505,7 +505,7 @@ defmodule RoomGtfs.Worker.Static do
           )
       end
     end)
-    |> Stream.run()
+    |> Enum.count()
 
     DateTime.utc_now()
   end
