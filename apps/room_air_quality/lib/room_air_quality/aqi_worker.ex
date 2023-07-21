@@ -9,10 +9,15 @@ defmodule RoomAirQuality.Worker do
   alias RoomSanctum.Repo
 
   @registry :zeus
-  # @monitoring_site_url "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/Monitoring_Site_Locations_V2.dat"
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("aqi" <> opts[:name]))
+
+    Periodic.start_link(
+      every: :timer.seconds(60 * 60),
+      run: fn -> RoomGitlab.Worker.query_projects(opts[:name]) end,
+      initial_delay: :timer.seconds(60 * 30),
+    )
   end
 
   # Public
@@ -26,12 +31,6 @@ defmodule RoomAirQuality.Worker do
     "aqi#{name}"
     |> via_tuple()
     |> GenServer.cast(:update_static)
-  end
-
-  def update_realtime_data(name) do
-    "aqi#{name}"
-    |> via_tuple()
-    |> GenServer.cast(:update_realtime)
   end
 
   def query_place(id, query) do
@@ -264,7 +263,7 @@ defmodule RoomAirQuality.Worker do
   #  end
 
   defp build_obs_url(ts \\ DateTime.utc_now()) do
-    sh = ts |> DateTime.add(-2 * 60 * 60, :second)
+    sh = ts |> DateTime.add(-1 * 60 * 60, :second)
     file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
     date_str = sh |> Timex.format!("%Y%m%d", :strftime)
 
