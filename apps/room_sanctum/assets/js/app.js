@@ -27,7 +27,7 @@ import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
 import L from 'leaflet'
-import "../vendor/leaflet-centermarker"
+import 'leaflet-centermarker'
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 
