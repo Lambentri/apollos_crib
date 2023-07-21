@@ -210,4 +210,20 @@ defmodule RoomSanctumWeb.LivePreview do
     <% end %>
     """
   end
+
+  def p_gitlab(assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+    <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
+    <div class="card-body textd-left">
+    <h2 class="card-title">
+      <p><i class="fa-solid fa-fw fa-clock"></i> <%= e["commit"]["message"] %> </p>
+    </h2>
+    <p><%= e["duration"] %> Seconds Elapsed
+    </p>
+    </div>
+    </div>
+    <% end %>
+    """
+  end
 end

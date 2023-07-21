@@ -291,39 +291,42 @@ defmodule RoomGbfs.Worker do
 
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
-            json_body =
-              result.body
-              |> Poison.decode!()
+            case result.body |> Poison.decode() do
+              {:ok, json_body} ->
+                if json_body["data"]
+                   |> Map.has_key?(cfg.config.lang) do
+                  bcast(state.id, :parsing, 2, 3)
 
-            if json_body["data"]
-               |> Map.has_key?(cfg.config.lang) do
-              bcast(state.id, :parsing, 2, 3)
+                  json_body["data"][cfg.config.lang]["feeds"]
+                  |> Enum.map(fn %{"name" => name, "url" => url} ->
+                    case name do
+                      "station_information" ->
+                        write_data(url, :stat_info, state.id)
+                        bcast(state.id, :system_information, 3, 3)
 
-              json_body["data"][cfg.config.lang]["feeds"]
-              |> Enum.map(fn %{"name" => name, "url" => url} ->
-                case name do
-                  "station_information" ->
-                    write_data(url, :stat_info, state.id)
-                    bcast(state.id, :system_information, 3, 3)
+                      _otherwise ->
+                        :ok
+                    end
+                  end)
 
-                  _otherwise ->
-                    :ok
+                  {:noreply, state}
+                else
+                  bcast(
+                    state.id,
+                    :language_error,
+                    "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
+                  )
+
+                  {:noreply, state}
                 end
-              end)
 
-              {:noreply, state}
-            else
-              bcast(
-                state.id,
-                :language_error,
-                "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
-              )
-
-              {:noreply, state}
+              {:error, error} ->
+                Logger.info(error.data)
+                {:noreply, state}
             end
 
-          {:error, info} ->
-            Logger.info(info.reason)
+          {:error, error} ->
+            Logger.info(error.reason)
             {:noreply, state}
         end
 
@@ -343,7 +346,7 @@ defmodule RoomGbfs.Worker do
 
   def sys_info_as_stats(id) do
     %{
-    operator: "balls"
+      operator: "balls"
     }
   end
 

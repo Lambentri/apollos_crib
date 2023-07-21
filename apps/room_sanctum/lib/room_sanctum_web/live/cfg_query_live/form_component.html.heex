@@ -124,7 +124,15 @@
       </div>
     <% end %>
 
-
+  <% :gitlab -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :gitlab, fn gitlab_form -> %>
+      <div class="form-control">
+        <.input field={gitlab_form[:id]} type="number" label="ID" />
+      </div>
+      <div class="form-control">
+        <.input field={gitlab_form[:statuses]} type="text" label="Statuses" />
+      </div>
+      <% end %>
   <% _ -> %>
     <span class="text-xs">Pick an offering above</span>
   <% end %>

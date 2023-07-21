@@ -14,6 +14,7 @@ defmodule RoomZeus.DynSupervisor do
         :tidal -> {RoomTidal.Worker, [name: instance_id]}
         :weather -> {RoomWeather.Worker, [name: instance_id]}
         :calendar -> {RoomCalendar.Worker, [name: instance_id]}
+        :gitlab -> {RoomGitlab.Worker, [name: instance_id]}
         _ -> nil
       end
 

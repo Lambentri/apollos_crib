@@ -56,5 +56,7 @@
     <orderEntry type="library" name="csvlixir" level="project" />
     <orderEntry type="library" name="cesso" level="project" />
     <orderEntry type="library" name="inch_ex" level="project" />
+    <orderEntry type="library" name="eflame" level="project" />
+    <orderEntry type="library" name="nimble_csv" level="project" />
   </component>
 </module>

@@ -20,7 +20,8 @@ defmodule RoomSanctum.Configuration.Query do
         tidal: RoomSanctum.Configuration.Queries.Tidal,
         weather: RoomSanctum.Configuration.Queries.Weather,
         email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
-        cronos: RoomSanctum.Configuration.Queries.Cronos
+        cronos: RoomSanctum.Configuration.Queries.Cronos,
+        gitlab: RoomSanctum.Configuration.Queries.Gitlab
       ],
       on_type_not_found: :raise,
       on_replace: :update

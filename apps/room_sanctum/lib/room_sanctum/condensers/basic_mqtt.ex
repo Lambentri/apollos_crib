@@ -167,6 +167,9 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
 
       :cronos ->
         data
+
+      :gitlab ->
+        data
     end
   end
 end

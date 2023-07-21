@@ -21,7 +21,8 @@ defmodule RoomSanctum.Configuration.Source do
         :rideshare,
         :tidal,
         :weather,
-        :cronos
+        :cronos,
+        :gitlab
       ]
 
     field :config, PolymorphicEmbed,
@@ -36,7 +37,8 @@ defmodule RoomSanctum.Configuration.Source do
         tidal: RoomSanctum.Configuration.Configs.Tidal,
         weather: RoomSanctum.Configuration.Configs.Weather,
         email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
-        cronos: RoomSanctum.Configuration.Configs.Cronos
+        cronos: RoomSanctum.Configuration.Configs.Cronos,
+        gitlab: RoomSanctum.Configuration.Configs.Gitlab,
       ],
       on_type_not_found: :raise,
       on_replace: :update

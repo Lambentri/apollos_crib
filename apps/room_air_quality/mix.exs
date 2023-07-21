@@ -25,7 +25,7 @@ defmodule RoomAirQuality.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:csv, "~> 2.4"},
+      {:csv, "~> 3.0"},
       {:httpoison, "~> 1.8"},
       {:poison, "~> 5.0"},
       {:parent, "~> 0.12.1"},

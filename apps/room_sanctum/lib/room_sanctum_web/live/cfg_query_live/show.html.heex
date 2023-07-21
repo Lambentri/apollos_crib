@@ -42,7 +42,7 @@
   <div class="flex">
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
       <div class="card-body">
-        <h3 class="card-title">Preview</h3>
+        <h3 class="card-title">Quick Data Preview</h3>
         <p>
           <%= for x <- @preview do %>
           <%= case @type do %>
@@ -70,6 +70,8 @@
             <%= x.date_start %> <%= x.blob["description"] %>
             <% :cronos -> %>
             <%= x.name %> <strong><%= x.value %></strong>
+            <% :gitlab -> %>
+            <strong><%= x["commit"]["title"] %></strong> <%= x["duration"] %> seconds elapsed
           <% end %>
           <br />
           <% end %>

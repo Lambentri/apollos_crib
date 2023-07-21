@@ -105,6 +105,9 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
       :cronos ->
         "fa-clock"
+
+      :gitlab ->
+        "fa-code-branch"
     end
   end
 end

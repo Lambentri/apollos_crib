@@ -68,6 +68,12 @@ defmodule RoomSanctumWeb.QueryLive.Show do
             socket.assigns.query.id,
             socket.assigns.query.query
           )
+
+        :gitlab ->
+          RoomGitlab.Worker.read_jobs(
+            socket.assigns.query.id,
+            socket.assigns.query.query
+          )
       end
 
     {:noreply, assign(socket, :preview, result)}

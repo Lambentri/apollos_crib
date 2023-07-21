@@ -116,6 +116,17 @@
     <%= polymorphic_embed_inputs_for @form, :config, :cronos, fn _cronos_form -> %>
     <% end %>
 
+    <% :gitlab -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :gitlab, fn gitlab_form -> %>
+    <div class="form-control">
+        <.input field={gitlab_form[:url]} type="text" label="URL"/>
+    </div>
+
+    <div class="form-control">
+        <.input field={gitlab_form[:pat]} type="text" label="PAT"/>
+    </div>
+    <% end %>
+
     <% _ -> %>
     <span class="text-xs">Pick an offering type above</span>
     <% end %>

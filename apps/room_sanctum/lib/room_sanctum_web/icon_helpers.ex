@@ -30,6 +30,9 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :cronos ->
         "fa-clock"
+
+      :gitlab ->
+        "fa-code-branch"
     end
   end
 
