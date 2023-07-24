@@ -26,10 +26,14 @@ defmodule RoomGtfs.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:csv, "~> 2.4"},
+      {:csv, "~> 3.0"},
+      {:postgrex, "~> 0.17", override: true},
+#      {:ecto_interval, "~> 0.2.5"},
+      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
       {:httpoison, "~> 1.8"},
       {:protobuf, "~> 0.8.0"},
       {:parent, "~> 0.12.1"},
+      {:unzip, "~> 0.8"},
       {:room_sanctum, in_umbrella: true}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
