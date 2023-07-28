@@ -178,7 +178,8 @@ if config_env() == :prod do
       "#{File.cwd!()}/apps/room_sanctum",
       "#{File.cwd!()}/apps/room_tidal",
       "#{File.cwd!()}/apps/room_weather",
-      "#{File.cwd!()}/apps/room_zeus"
+      "#{File.cwd!()}/apps/room_zeus",
+      "#{File.cwd!()}/apps/room_gitlab"
     ],
     tags: %{
       env: "production"

@@ -25,6 +25,7 @@ defmodule ApollosCrib.MixProject do
             room_tidal: :permanent,
             room_weather: :permanent,
             room_cronos: :permanent,
+            room_gitlab: :permanent,
             runtime_tools: :permanent
           ]
         ]
