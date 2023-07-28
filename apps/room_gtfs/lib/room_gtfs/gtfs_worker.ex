@@ -473,7 +473,7 @@ defmodule RoomGtfs.Worker.Static do
     |> Enum.join(", ")
 end
 
-  defp write_file(contents, type, id, via: :copy, pid) do
+  defp write_file(contents, type, id, pid, via: :copy) do
     datetime = NaiveDateTime.local_now()
     Logger.info("GTFS::#{id} writing #{type} (c)")
 
@@ -784,7 +784,7 @@ end
                     bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 9)
 
                     Unzip.file_stream!(unzip, e.file_name)
-                    |> write_file(file_to_atom(e.file_name), state.id, via: :copy, state.pg_pid)
+                    |> write_file(file_to_atom(e.file_name), state.id, state.pg_pid, via: :copy)
 
                     #                    bcast(state.id, :stop_times, 8, 9)
                   end
