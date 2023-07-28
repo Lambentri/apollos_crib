@@ -753,14 +753,13 @@ end
   @impl true
   def handle_cast(:update_static, state) do
     cfg = Configuration.get_source!(state.id)
-    IO.puts("kkk")
 
     case cfg.enabled do
       true ->
         Logger.info("GTFS::#{state.id} updating static info")
         bcast(state.id, :downloading, 1, 9)
 
-        case HTTPoison.get(cfg.config.url) do
+        case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
           {:ok, result} ->
             bcast(state.id, :extracting, 2, 9)
 
