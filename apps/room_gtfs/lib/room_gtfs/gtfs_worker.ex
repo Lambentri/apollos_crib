@@ -126,15 +126,12 @@ defmodule RoomGtfs.Worker do
     {:ok, child_rt} = Parent.start_child({RoomGtfs.Worker.RT, opts})
     {:ok, child_static} = Parent.start_child({RoomGtfs.Worker.Static, opts})
 
-    {:ok, pid} = Postgrex.start_link(opts)
-
     {:ok,
      %{
        id: opts[:name],
        inst: nil,
        child_rt: child_rt,
-       child_static: child_static,
-       pg_pid: pid,
+       child_static: child_static
      }}
   end
 
@@ -405,9 +402,14 @@ defmodule RoomGtfs.Worker.Static do
   end
 
   def init(opts) do
+
+    pgopts = RoomSanctum.Repo.config()
+    {:ok, pid} = Postgrex.start_link(pgopts)
+
     {:ok,
      %{
-       id: opts[:name]
+       id: opts[:name],
+       pg_pid: pid
      }}
   end
 
@@ -473,7 +475,7 @@ defmodule RoomGtfs.Worker.Static do
     |> Enum.join(", ")
 end
 
-  defp write_file(contents, type, id, pid, via: :copy) do
+  defp write_file(contents, type, id, pid) do
     datetime = NaiveDateTime.local_now()
     Logger.info("GTFS::#{id} writing #{type} (c)")
 
@@ -784,7 +786,7 @@ end
                     bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 9)
 
                     Unzip.file_stream!(unzip, e.file_name)
-                    |> write_file(file_to_atom(e.file_name), state.id, state.pg_pid, via: :copy)
+                    |> write_file(file_to_atom(e.file_name), state.id, state.pg_pid)
 
                     #                    bcast(state.id, :stop_times, 8, 9)
                   end
