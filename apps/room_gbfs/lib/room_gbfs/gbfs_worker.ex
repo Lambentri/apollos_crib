@@ -255,6 +255,9 @@ defmodule RoomGbfs.Worker do
                   "system_alerts" ->
                     write_data(url, :sys_alerts, state.id)
                     bcast(state.id, :system_information, 10, 10)
+
+                  otherwise ->
+                    Logger.info("GBFS::#{state.id} System has unhandled file #{otherwise}")
                 end
               end)
 

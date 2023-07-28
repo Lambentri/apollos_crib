@@ -15,7 +15,7 @@ defmodule RoomSanctum.Repo.Migrations.CreateStopTimes do
       add :timepoint, :integer
       add :checkpoint_id, :string
       add :continuous_pickup, :string
-      add :continuous_dropoff, :string
+      add :continuous_drop_off, :string
 
       timestamps()
     end

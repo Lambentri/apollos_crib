@@ -635,18 +635,20 @@ defmodule RoomSanctum.Storage do
 
   def list_stops(source_id, search_term) do
     from(p in Stop,
-    where: p.source_id == ^source_id and fragment(
-          "searchable @@ websearch_to_tsquery(?)",
-          ^search_term
-        ),
-    order_by: {
+      where:
+        p.source_id == ^source_id and
+          fragment(
+            "searchable @@ websearch_to_tsquery(?)",
+            ^search_term
+          ),
+      order_by: {
         :desc,
         fragment(
           "ts_rank_cd(searchable, websearch_to_tsquery(?), 4)",
           ^search_term
         )
       }
-      )
+    )
     |> Repo.all()
   end
 
@@ -880,25 +882,59 @@ defmodule RoomSanctum.Storage do
   end
 
   defp conditional_where(queryable, source_id, stop_id, timestamp_time_hour, timestamp_time) do
-    case timestamp_time < timestamp_time_hour do
-      true ->
+#    case timestamp_time < timestamp_time_hour do
+#      true ->
         where(
           queryable,
           [st],
-          st.source_id == ^source_id and st.arrival_time >= ^timestamp_time and
-            st.arrival_time <= ^timestamp_time_hour and st.stop_id == ^stringify(stop_id)
+          st.source_id == ^source_id and st.arrival_time >= ^time_to_interval(timestamp_time) and
+            st.arrival_time <= ^time_to_interval(timestamp_time_hour) and st.stop_id == ^stringify(stop_id)
         )
 
-      false ->
-        where(
-          queryable,
-          [st],
-          st.source_id == ^source_id and
-            ((st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50)) or
-               (^Time.new!(0, 0, 0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour)) and
-            st.stop_id == ^stringify(stop_id)
-        )
+#      false ->
+#        where(
+#          queryable,
+#          [st],
+#          st.source_id == ^source_id and
+#            ((st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50)) or
+#               (^Time.new!(0, 0, 0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour)) and
+#            st.stop_id == ^stringify(stop_id)
+#        )
+#    end
+  end
+
+  defp divrem(num, den) do
+    {div(num, den), rem(num, den)}
+  end
+
+  def time_to_interval(time) do
+    as_interval =
+      if time.hour < 5 do
+        %{hours: time.hour + 24, minutes: time.minute, seconds: time.second}
+      else
+        %{hours: time.hour, minutes: time.minute, seconds: time.second}
+      end
+    as_seconds = as_interval.hours * 60 * 60 + as_interval.minutes * 60 + as_interval.seconds
+    struct(Postgrex.Interval, %{secs: as_seconds})
+  end
+
+  def interval_to_time(interval) do
+    {h, r1} = divrem(interval, (60*60))
+    {m, s} = divrem(r1, 60)
+    h = if h > 23 do
+      h - 24
+      else
+      h
     end
+    Time.new!(h,m,s)
+  end
+
+  def fix_arrival_times(res) do
+    res |> Enum.map(fn map -> map |> Map.put(:arrival_time, map.arrival_time.secs |> interval_to_time) end)
+  end
+
+  def get_all_arrivals_for_stop(source_id, stop_id) do
+
   end
 
   def get_upcoming_arrivals_for_stop(source_id, stop_id, limit \\ 16, timestamp \\ :now) do
@@ -1199,18 +1235,20 @@ defmodule RoomSanctum.Storage do
 
   def list_gbfs_station_information(source_id, search_term) do
     from(p in StationInfo,
-    where: p.source_id == ^source_id and fragment(
-          "searchable @@ websearch_to_tsquery(?)",
-          ^search_term
-        ),
-    order_by: {
+      where:
+        p.source_id == ^source_id and
+          fragment(
+            "searchable @@ websearch_to_tsquery(?)",
+            ^search_term
+          ),
+      order_by: {
         :desc,
         fragment(
           "ts_rank_cd(searchable, websearch_to_tsquery(?), 4)",
           ^search_term
         )
       }
-      )
+    )
     |> Repo.all()
   end
 

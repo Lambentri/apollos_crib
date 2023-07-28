@@ -49,9 +49,18 @@
     <div class="flex">
         <div class="card card-compact w-1/4 bg-base-100 shadow-xl m-2">
             <div class="card-body">
-                <h3 class="card-title">Control</h3>
-                <%= case @source.type do %>
+                <div class="flex justify-between">
+                    <div class="card-title">Control</div>
+                    <div class="py-1">
+                    <%= case @source.type do %>
                     <% :gtfs -> %>
+                        Last Updated <%= @source.meta |> is_updated %>
+                    <% _default -> %>
+                    <% end %>
+                    </div>
+                </div>
+                <%= case @source.type do %>
+                <% :gtfs -> %>
                 <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gtfs" phx-value-id={@source.id}>
                     Update
                 </button>

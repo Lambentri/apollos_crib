@@ -4,11 +4,11 @@ defmodule RoomSanctum.Storage.GTFS.StopTime do
 
   schema "gtfs_stop_times" do
     belongs_to :source, RoomSanctum.Configuration.Source
-    field :arrival_time, :time
+    field :arrival_time, EctoInterval
     field :checkpoint_id, :string
-    field :continuous_dropoff, :string
+    field :continuous_drop_off, :string
     field :continuous_pickup, :string
-    field :departure_time, :time
+    field :departure_time, EctoInterval
     field :drop_off_type, :integer
     field :pickup_type, :integer
     field :stop_headsign, :string

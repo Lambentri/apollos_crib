@@ -9,8 +9,8 @@ defmodule RoomGtfs.Worker do
   alias RoomSanctum.Repo
 
   @registry :zeus
-  # 1 week
-  @default_refresh_seconds 604_800
+  # 4 weeks
+  @default_refresh_seconds 604_800 * 4
 
   def start_link(opts) do
     Parent.GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs" <> opts[:name]))
@@ -35,6 +35,14 @@ defmodule RoomGtfs.Worker do
     |> GenServer.cast(:update_static)
   end
 
+  def update_static_data(name, :str) do
+    IO.puts("qqq")
+
+    "gtfs#{name}"
+    |> via_tuple()
+    |> GenServer.cast(:update_static_str)
+  end
+
   def update_realtime_data(name) do
     "gtfs#{name}"
     |> via_tuple()
@@ -49,7 +57,7 @@ defmodule RoomGtfs.Worker do
 
   def query_stop(id, query) do
     inst = Configuration.get_source!(id)
-    res = Storage.get_upcoming_arrivals_for_stop(id, query.stop)
+    res = Storage.get_upcoming_arrivals_for_stop(id, query.stop) |> Storage.fix_arrival_times
 
     case inst.config.url_rt_tu do
       nil ->
@@ -345,23 +353,25 @@ defmodule RoomGtfs.Worker.RT do
 
     # filter out the protobuf for all relevant trips and then the relevant stop on that trip, nice and small
     case state.rt_tu do
-      nil -> {:reply, [], state}
-      _otherwise -> relevant_trips =
-                      state.rt_tu.entity
-                      |> Enum.filter(fn x -> Enum.member?(trips, x.trip_update.trip.trip_id) end)
-                      |> Enum.map(fn x ->
-                        x
-                        |> Kernel.put_in(
-                             [Access.key(:trip_update, %{}), Access.key(:stop_time_update, %{})],
-                             x.trip_update.stop_time_update
-                             |> Enum.filter(fn x -> x.stop_id == stop end)
-                             |> List.first()
-                           )
-                      end)
+      nil ->
+        {:reply, [], state}
 
-                    {:reply, relevant_trips, state}
+      _otherwise ->
+        relevant_trips =
+          state.rt_tu.entity
+          |> Enum.filter(fn x -> Enum.member?(trips, x.trip_update.trip.trip_id) end)
+          |> Enum.map(fn x ->
+            x
+            |> Kernel.put_in(
+              [Access.key(:trip_update, %{}), Access.key(:stop_time_update, %{})],
+              x.trip_update.stop_time_update
+              |> Enum.filter(fn x -> x.stop_id == stop end)
+              |> List.first()
+            )
+          end)
+
+        {:reply, relevant_trips, state}
     end
-
   end
 end
 
@@ -373,6 +383,7 @@ defmodule RoomGtfs.Worker.Static do
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
   alias RoomSanctum.Repo
+  alias RoomSanctum.Storage.GTFS
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs-st" <> opts[:name]))
@@ -386,6 +397,10 @@ defmodule RoomGtfs.Worker.Static do
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :disabled})
   end
 
+  defp bcast(id, :done) do
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :done})
+  end
+
   def init(opts) do
     {:ok,
      %{
@@ -394,6 +409,185 @@ defmodule RoomGtfs.Worker.Static do
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
+
+  defp get_cols(schema) do
+    schema.__schema__(:fields)
+    |> Enum.map(&Atom.to_string/1)
+    |> List.delete("id")
+    #    |> List.delete("updated_at")
+    #    |> List.delete("inserted_at")
+    |> Enum.join(", ")
+  end
+
+  defp get_cols(schema, cols) do
+    schema.__schema__(:fields)
+    |> Enum.map(&Atom.to_string/1)
+    |> Enum.filter(fn f -> Enum.member?(cols, f) end)
+    |> List.delete("id")
+    |> Enum.join(", ")
+  end
+
+  defp as_pg(type) do
+    case type do
+      :id -> "bigint"
+      :string -> "varchar"
+      :naive_datetime -> "timestamp"
+      :time -> "time"
+      :integer -> "integer"
+      :float -> "double precision"
+      :date -> "date"
+      EctoInterval -> "interval"
+    end
+  end
+
+  def get_cols_pgtypes(schema) do
+    schema.__schema__(:fields)
+    |> List.delete(:id)
+    |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
+    |> Enum.map(fn {k,v} -> "#{k}::#{v}" end)
+    |> Enum.join(", ")
+  end
+
+  def get_cols_pgtypes(schema, cols) do
+    schema.__schema__(:fields)
+    |> List.delete(:id)
+    |> Enum.filter(fn f -> Enum.member?(cols |> Enum.map(&String.to_atom/1), f) end)
+    |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
+    |> Enum.map(fn {k,v} -> "#{k}::#{v}" end)
+    |> Enum.join(", ")
+  end
+
+  def csv_cols_to_tmp_cols(cols) do
+    cols
+    |> Enum.map(fn x -> "#{x} varchar" end)
+    |> Enum.join(", ")
+  end
+
+  def csv_cols_to_tmp_cols(cols, :add) do
+    cols
+    |> Kernel.++(["inserted_at", "updated_at", "source_id"])
+    |> Enum.map(fn x -> "#{x} varchar" end)
+    |> Enum.join(", ")
+end
+
+  defp write_file(contents, type, id, via: :copy) do
+    datetime = NaiveDateTime.local_now()
+    Logger.info("GTFS::#{id} writing #{type} (c)")
+
+    cols_j =
+      contents
+      |> Stream.chunk_every(500)
+      |> Stream.map(&String.split(&1 |> List.flatten() |> List.first(), "\n"))
+      |> Stream.take(1)
+      |> Enum.to_list()
+      |> List.flatten()
+      |> List.first()
+      |> String.strip
+      |> String.split(",")
+
+#    cols_j = ["source_id" |cols_j]
+      cols_j_plus = cols_j ++ ["inserted_at", "updated_at", "source_id"]
+
+#    contents |> Stream.take(500) |> Enum.to_list() |> IO.inspect
+
+
+    # add truncation here as necessary
+    case type do
+      :agencies -> RoomSanctum.Storage.truncate_agency(id)
+      :calendars -> RoomSanctum.Storage.truncate_calendar(id)
+      :directions -> RoomSanctum.Storage.truncate_direction(id)
+      :routes -> RoomSanctum.Storage.truncate_route(id)
+      :stops -> RoomSanctum.Storage.truncate_stop(id)
+      :stop_times -> RoomSanctum.Storage.truncate_stop_time(id)
+      :trips -> RoomSanctum.Storage.truncate_trip(id)
+      _ -> :ok
+    end
+
+    # set our variables based on the type
+    {table, columns, pg_cols} =
+      case type do
+        :agencies -> {:gtfs_agencies, [GTFS.Agency |> get_cols(cols_j_plus)], GTFS.Agency |> get_cols_pgtypes(cols_j_plus)}
+        :calendars -> {:gtfs_calendars, [GTFS.Calendar |> get_cols(cols_j_plus)], GTFS.Calendar |> get_cols_pgtypes(cols_j_plus)}
+        :directions -> {:gtfs_directions, [GTFS.Direction |> get_cols(cols_j_plus)], GTFS.Direction |> get_cols_pgtypes(cols_j_plus)}
+        :routes -> {:gtfs_routes, [GTFS.Route |> get_cols(cols_j_plus)], GTFS.Route |> get_cols_pgtypes(cols_j_plus)}
+        :stops -> {:gtfs_stops, [GTFS.Stop |> get_cols(cols_j_plus)], GTFS.Stop |> get_cols_pgtypes(cols_j_plus)}
+        :stop_times -> {:gtfs_stop_times, [GTFS.StopTime |> get_cols(cols_j_plus)], GTFS.StopTime |> get_cols_pgtypes(cols_j_plus)}
+        :trips -> {:gtfs_trips, [GTFS.Trip |> get_cols(cols_j_plus)], GTFS.Trip |> get_cols_pgtypes(cols_j_plus)}
+      end
+
+#    IO.inspect({table, columns, pg_cols})
+    opts = RoomSanctum.Repo.config()
+    {:ok, pid} = Postgrex.start_link(opts)
+
+    tmp_table_name = "tmp_#{type}_#{id}"
+
+    Postgrex.transaction(
+      pid,
+      fn conn ->
+        # temp table
+        qt =
+          Postgrex.prepare!(
+            conn,
+            "",
+            "CREATE TEMPORARY TABLE #{tmp_table_name} (#{cols_j |> csv_cols_to_tmp_cols})"
+          )
+
+        Postgrex.execute(conn, qt, [])
+
+        qt2 =
+          Postgrex.prepare!(
+            conn,
+            "",
+            "CREATE TEMPORARY TABLE #{tmp_table_name}_allcols (#{cols_j |> csv_cols_to_tmp_cols(:add)})"
+          )
+
+        Postgrex.execute(conn, qt2, [])
+
+        # write csv
+        stream =
+          Postgrex.stream(
+            conn,
+            "COPY #{tmp_table_name}(#{cols_j |> Enum.join(",")}) FROM STDIN CSV HEADER DELIMITER ','",
+            []
+          )
+
+        Enum.into(contents, stream)
+
+        qtc =
+          Postgrex.prepare!(
+            conn,
+            "",
+            "INSERT INTO #{tmp_table_name}_allcols (#{cols_j |> Enum.join(",")}) SELECT * FROM #{tmp_table_name}"
+          )
+
+        Postgrex.execute(conn, qtc, [])
+
+        # update fields
+        qtu =
+          Postgrex.prepare!(
+            conn,
+            "",
+            "UPDATE #{tmp_table_name}_allcols SET inserted_at = CURRENT_TIMESTAMP, updated_at = CURRENT_TIMESTAMP, source_id = #{id}"
+          )
+
+        Postgrex.execute(conn, qtu, [])
+
+        # write into dest table
+        qs =
+          Postgrex.prepare!(
+            conn,
+            "",
+            "INSERT INTO #{atom_to_table(type)} (#{columns}) SELECT #{pg_cols} FROM #{tmp_table_name}_allcols"
+          )
+
+        Postgrex.execute(conn, qs, [])
+
+#        qd = Postgrex.prepare!(conn, "", "DROP TABLE #{tmp_table_name}")
+#        Postgrex.execute(conn, qd, [])
+      end,
+      timeout: :infinity
+    ) |> IO.inspect
+  end
 
   defp write_file(contents, type, id) do
     datetime = NaiveDateTime.local_now()
@@ -510,7 +704,101 @@ defmodule RoomGtfs.Worker.Static do
     DateTime.utc_now()
   end
 
+  defp file_to_atom(filename) do
+    case filename do
+      "agency.txt" ->
+        :agencies
+
+      "calendar.txt" ->
+        :calendars
+
+      "directions.txt" ->
+        :directions
+
+      "routes.txt" ->
+        :routes
+
+      "stops.txt" ->
+        :stops
+
+      "stop_times.txt" ->
+        :stop_times
+
+      "trips.txt" ->
+        :trips
+    end
+  end
+
+  def file_to_order(filename) do
+    case filename do
+      "agency.txt" -> 3
+      "calendar.txt" -> 4
+      "directions.txt" -> 5
+      "routes.txt" -> 6
+      "stops.txt" -> 7
+      "stop_times.txt" -> 8
+      "trips.txt" -> 9
+    end
+  end
+
+  defp atom_to_table(atom) do
+    "gtfs_#{atom}"
+  end
+
+  @impl true
   def handle_cast(:update_static, state) do
+    cfg = Configuration.get_source!(state.id)
+    IO.puts("kkk")
+
+    case cfg.enabled do
+      true ->
+        Logger.info("GTFS::#{state.id} updating static info")
+        bcast(state.id, :downloading, 1, 9)
+
+        case HTTPoison.get(cfg.config.url) do
+          {:ok, result} ->
+            bcast(state.id, :extracting, 2, 9)
+
+            case result.body |> Unzip.InMem.new() |> Unzip.new() do
+              {:ok, unzip} ->
+                files = Unzip.list_entries(unzip)
+
+                files
+                |> Enum.map(fn e ->
+                  if Enum.member?(
+                       [
+                        "agency.txt",
+                        "calendar.txt",
+                        "directions.txt",
+                        "routes.txt",
+                        "stops.txt",
+                        "stop_times.txt",
+                        "trips.txt",
+                       ],
+                       e.file_name
+                     ) do
+
+                    bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 9)
+
+                    Unzip.file_stream!(unzip, e.file_name)
+                    |> write_file(file_to_atom(e.file_name), state.id, via: :copy)
+
+                    #                    bcast(state.id, :stop_times, 8, 9)
+                  end
+                end)
+              Configuration.update_source(cfg, %{meta: %{last_run: DateTime.utc_now()}})
+              bcast(state.id, :done)
+              {:error, term} ->
+                Logger.error(term)
+            end
+        end
+    end
+
+    {:noreply, state}
+  end
+
+  @impl true
+  def handle_cast(:update_static_old, state) do
     cfg = Configuration.get_source!(state.id)
 
     case cfg.enabled do
@@ -555,7 +843,7 @@ defmodule RoomGtfs.Worker.Static do
                       bcast(state.id, :stops, 7, 9)
 
                     'stop_times.txt' ->
-                      write_file(as_csv, :stop_times, state.id)
+                      write_file(data, :stop_times, state.id, via: :copy)
                       bcast(state.id, :stop_times, 8, 9)
 
                     'trips.txt' ->

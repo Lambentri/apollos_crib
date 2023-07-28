@@ -44,5 +44,18 @@
     <orderEntry type="library" name="protobuf" level="project" />
     <orderEntry type="library" name="csv" level="project" />
     <orderEntry type="library" name="protobuf" level="project" />
+    <orderEntry type="library" name="unzip" level="project" />
+    <orderEntry type="library" name="eflame" level="project" />
+    <orderEntry type="library" name="nimble_csv" level="project" />
+    <orderEntry type="library" name="ecto_interval" level="project" />
+    <orderEntry type="library" name="postgrex" level="project" />
+    <orderEntry type="library" name="table" level="project" />
+    <orderEntry type="library" name="decimal" level="project" />
+    <orderEntry type="library" name="db_connection" level="project" />
+    <orderEntry type="library" name="ecto" level="project" />
+    <orderEntry type="library" name="phoenix_html" level="project" />
+    <orderEntry type="library" name="plug" level="project" />
+    <orderEntry type="library" name="mime" level="project" />
+    <orderEntry type="library" name="plug_crypto" level="project" />
   </component>
 </module>

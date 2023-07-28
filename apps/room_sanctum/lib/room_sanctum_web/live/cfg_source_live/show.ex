@@ -139,6 +139,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
+  def handle_info({type, id, :done} = info, socket) do
+    source = Configuration.get_source!(socket.assigns.source_id)
+    {:noreply, socket |> assign(:source, source) |> put_flash(:info, "Completed")}
+  end
+
+
+  @impl true
   def handle_info({:gtfs, id, file, complete, total} = info, socket) do
     if socket.assigns.source_id ==
          id
@@ -225,5 +232,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   defp icon_code(source_type) do
     RoomSanctumWeb.IconHelpers.icon_code(source_type)
+  end
+
+  defp is_updated(source_meta) do
+    case source_meta |> Map.get(:last_run) do
+      nil -> "NEVER"
+      val -> val # |> Timex.format!("%Y-%m-%d @ %H:%M", :strftime)
+    end
   end
 end
