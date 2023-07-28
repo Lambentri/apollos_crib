@@ -403,13 +403,13 @@ defmodule RoomGtfs.Worker.Static do
 
   def init(opts) do
 
-    pgopts = RoomSanctum.Repo.config()
-    {:ok, pid} = Postgrex.start_link(pgopts)
+#    pgopts = RoomSanctum.Repo.config()
+#    {:ok, pid} = Postgrex.start_link(pgopts)
 
     {:ok,
      %{
        id: opts[:name],
-       pg_pid: pid
+#       pg_pid: pid
      }}
   end
 
@@ -522,7 +522,7 @@ end
 
 #    IO.inspect({table, columns, pg_cols})
     opts = RoomSanctum.Repo.config()
-#    {:ok, pid} = Postgrex.start_link(opts)
+    {:ok, pid} = Postgrex.start_link(opts)
 
     tmp_table_name = "tmp_#{type}_#{id}"
 
@@ -592,6 +592,7 @@ end
       end,
       timeout: :infinity
     ) |> IO.inspect
+    GenServer.stop(pid)
   end
 
   defp write_file(contents, type, id) do
@@ -785,7 +786,7 @@ end
                     bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 9)
 
                     Unzip.file_stream!(unzip, e.file_name)
-                    |> write_file(file_to_atom(e.file_name), state.id, state.pg_pid)
+                    |> write_file(file_to_atom(e.file_name), state.id, nil)
 
                     #                    bcast(state.id, :stop_times, 8, 9)
                   end
