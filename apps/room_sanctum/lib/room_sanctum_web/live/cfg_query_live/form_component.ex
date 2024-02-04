@@ -73,7 +73,6 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       changeset =
       socket.assigns.query
       |> Configuration.change_query(%{"query" => %{"stop" => stop, "__type__" => type}, "__type__" => type})
-#       |> Ecto.Changeset.change(%{query: %{stop: stop, __type__: type}})
       |> Map.put(:action, :validate)
       |> IO.inspect
     IO.inspect(changeset.data)
@@ -84,8 +83,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     IO.inspect(socket.assigns.query)
     changeset =
       socket.assigns.query
-      |> Configuration.change_query(%{"query" => %{"stop" => stop, "__type__" => type}, "__type__" => type})
-        #       |> Ecto.Changeset.change(%{query: %{stop: stop, __type__: type}})
+      |> Configuration.change_query(%{"query" => %{"stop_id" => stop, "__type__" => type}, "__type__" => type})
       |> Map.put(:action, :validate)
       |> IO.inspect
     IO.inspect(changeset.data)
