@@ -80,6 +80,18 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     {:noreply, socket |> assign(:results, []) |>  assign_form(changeset)}
   end
 
+  def handle_event("set-gbfs", %{"val" => stop, "type" => type}, socket) do
+    IO.inspect(socket.assigns.query)
+    changeset =
+      socket.assigns.query
+      |> Configuration.change_query(%{"query" => %{"stop" => stop, "__type__" => type}, "__type__" => type})
+        #       |> Ecto.Changeset.change(%{query: %{stop: stop, __type__: type}})
+      |> Map.put(:action, :validate)
+      |> IO.inspect
+    IO.inspect(changeset.data)
+    {:noreply, socket |> assign(:results, []) |>  assign_form(changeset)}
+  end
+
   defp save_query(socket, :edit, query_params) do
     case Configuration.update_query(socket.assigns.query, query_params) do
       {:ok, query} ->
