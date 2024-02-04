@@ -11,7 +11,7 @@ build-master:
     BUILDAH_ISOLATION: "rootless"
 
   script:
-    - buildah login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
+    - echo $CI_REGISTRY_PASSWORD buildah login --username $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
     - buildah bud --build-arg CI_REGISTRY_IMAGE=$CI_REGISTRY_IMAGE --tag $CI_REGISTRY_IMAGE $CI_PROJECT_DIR
     - buildah push $CI_REGISTRY_IMAGE docker://$CI_REGISTRY_IMAGE
 

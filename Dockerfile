@@ -1,4 +1,4 @@
-FROM elixir:1.15-alpine
+FROM docker.io/elixir:1.15-alpine
 MAINTAINER Gabe <gmp@gmp.io>
 ARG app_name=apollos_crib
 ARG phoenix_subdir=.
