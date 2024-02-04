@@ -8,7 +8,7 @@ build-master:
   variables:
     STORAGE_DRIVER: "vfs"
     BUILDAH_FORMAT: "docker"
-    BUILDAH_ISOLATION: "rootless"
+    BUILDAH_ISOLATION: "chroot"
 
   script:
     - echo $CI_REGISTRY_PASSWORD buildah login --username $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
