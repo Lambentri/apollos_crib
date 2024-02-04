@@ -5,6 +5,10 @@ image:
 build-master:
   retry: 1
   stage: build
+  variables:
+    STORAGE_DRIVER: "vfs"
+    BUILDAH_FORMAT: "docker"
+    BUILDAH_ISOLATION: "rootless"
 
   script:
     - buildah login --username $CI_REGISTRY_USER --password $CI_REGISTRY_PASSWORD $CI_REGISTRY
