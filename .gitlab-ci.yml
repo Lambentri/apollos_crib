@@ -5,10 +5,11 @@ image:
 build-master:
   retry: 1
   stage: build
+  tags: ["privileged"]
   variables:
     STORAGE_DRIVER: "vfs"
     BUILDAH_FORMAT: "docker"
-    BUILDAH_ISOLATION: "chroot"
+    BUILDAH_ISOLATION: "rootless"
 
   script:
     - buildah login -u gitlab-ci-token -p ${CI_JOB_TOKEN} ${CI_REGISTRY}
