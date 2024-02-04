@@ -101,10 +101,10 @@ defmodule RoomSanctum.Worker.Vision do
               RoomCronos.Worker.query_cronos(q.id, q.query)
 
             :gitlab ->
-            case RoomGitlab.Worker.pid(q.id) do
+            case RoomGitlab.Worker.pid(q.source.id) do
               nil -> []
-              val ->  (Process.alive?(RoomGitlab.Worker.pid(q.id)) &&
-                         RoomGitlab.Worker.read_jobs(q.id, q.query)) || []
+              val ->  (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
+                         RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
             end
           end
 

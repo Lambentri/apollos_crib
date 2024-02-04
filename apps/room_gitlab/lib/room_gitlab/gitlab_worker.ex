@@ -40,8 +40,6 @@ defmodule RoomGitlab.Worker do
       initial_delay: 6
     )
 
-    IO.puts("gottem")
-
     {:ok,
      %{
        id: opts[:name],
@@ -176,7 +174,7 @@ defmodule RoomGitlab.Worker do
   end
 
   def handle_cast(:query_projects, state) do
-    #    IO.inspect({state, state |> Map.get(:inst)})
+    Logger.info("GLab::#{state.inst.id} Querying Projects")
 
     case state |> Map.get(:inst, %{}) |> Map.get(:enabled) do
       true ->
@@ -198,10 +196,12 @@ defmodule RoomGitlab.Worker do
 
   def handle_cast(:query_commits, state) do
     if state |> Map.get(:inst, %{}) |> Map.get(:enabled) do
+      IO.inspect(state.projects)
       all =
         state.projects
         |> Enum.map(
           fn p ->
+            Logger.info("GLab::#{state.inst.id} Querying Commits for #{p["name"]}")
             {:ok, ref} =
               do_gitlab_reqa(state.inst.config.url, state.inst.config.pat, :commits, p["id"])
 
@@ -227,14 +227,16 @@ defmodule RoomGitlab.Worker do
   def handle_cast({:query_jobs, query}, state) do
     case state |> Map.get(:inst, %{}) |> Map.get(:enabled) do
       x when x in [false, nil] ->
-        Logger.debug("Instance not populated")
+        Logger.info("Instance not populated")
         {:noreply, state}
 
       true ->
+        Logger.info("GLab::#{state.inst.id} Querying Jobs")
         all =
           state.commits
           |> Enum.filter(fn {k, v} -> v end)
           |> Enum.map(fn {id, enabled} ->
+            Logger.debug("GLab::#{state.inst.id} Querying Jobs for #{id}")
             {:ok, ref} = do_gitlab_reqa(state.inst.config.url, state.inst.config.pat, :jobs, id)
 
             {:ok, fd} = StringIO.open("")

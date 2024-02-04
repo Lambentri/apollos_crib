@@ -69,6 +69,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
       "ical" ->
         RoomCalendar.Worker.update_static_data(id)
+      "gitlab-projects" ->
+        RoomGitlab.Worker.query_projects(id)
+      "gitlab-commits" ->
+        RoomGitlab.Worker.query_commits(id)
     end
 
     {:noreply, socket}

@@ -65,13 +65,13 @@ defmodule RoomSanctumWeb.QueryLive.Show do
         :cronos ->
           RoomCronos.Worker.query_cronos(
             # we want the query's name here
-            socket.assigns.query.id,
+            socket.assigns.query.source.id,
             socket.assigns.query.query
           )
 
         :gitlab ->
           RoomGitlab.Worker.read_jobs(
-            socket.assigns.query.id,
+            socket.assigns.query.source.id,
             socket.assigns.query.query
           )
       end

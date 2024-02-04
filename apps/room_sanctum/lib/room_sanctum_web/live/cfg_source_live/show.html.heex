@@ -76,6 +76,16 @@
                 <button class="btn btn-secondary" phx-click="do-update" phx-value-type="ical" phx-value-id={@source.id}>
                     Update
                 </button>
+                <% :gitlab -> %>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-projects" phx-value-id={@source.id}>
+                    Projects
+                </button>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-commits" phx-value-id={@source.id}>
+                    Commits
+                </button>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-jobs" phx-value-id={@source.id}>
+                    Jobs
+                </button>
                 <% _default -> %>
 
                 <% end %>
