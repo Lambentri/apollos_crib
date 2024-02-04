@@ -4,7 +4,7 @@ services:
     restart: always
     image: postgis/postgis:15-master
     ports:
-      - "5432:5432"
+      - "54321:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data/
     environment:
@@ -14,7 +14,7 @@ services:
       - POSTGRES_MULTIPLE_EXTENSIONS=postgis,hstore,postgis_topology
   rabbitmq:
     restart: always
-    image: rabbitmq:management-alpine
+    image: rabbitmq:3.12-management-alpine
     ports:
       # The standard AMQP protocol port
       - '5672:5672'

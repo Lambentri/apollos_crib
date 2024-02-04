@@ -52,5 +52,6 @@
     <orderEntry type="library" name="ex2ms" level="project" />
     <orderEntry type="library" name="mock" level="project" />
     <orderEntry type="library" name="sobelow" level="project" />
+    <orderEntry type="library" name="doctor" level="project" />
   </component>
 </module>

@@ -102,6 +102,7 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/sentry" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/unzip" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/ecto_interval" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/thoas" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="sentry" level="project" />

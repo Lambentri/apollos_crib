@@ -8,6 +8,7 @@ config :room_sanctum,
        hostname: "localhost",
        database: "room_sanctum_dev",
        show_sensitive_data_on_connection_error: true,
+       port: 54321,
        pool_size: 10,
        types: RoomSanctum.PostgresTypes
 

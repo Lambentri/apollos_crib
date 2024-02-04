@@ -8,6 +8,7 @@ config :room_hermes,
        hostname: "localhost",
        database: "room_sanctum_dev",
        show_sensitive_data_on_connection_error: true,
+       port: 54321,
        pool_size: 10
 
 # For development, we disable any cache and enable
@@ -71,6 +72,7 @@ config :room_sanctum,
        password: "postgres",
        hostname: "localhost",
        database: "room_sanctum_dev",
+       port: 54321,
        show_sensitive_data_on_connection_error: true,
        pool_size: 10,
        types: RoomSanctum.PostgresTypes

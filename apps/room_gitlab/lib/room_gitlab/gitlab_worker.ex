@@ -160,7 +160,7 @@ defmodule RoomGitlab.Worker do
       ["PRIVATE-TOKEN": "#{token}", Accept: "Application/json; Charset=utf-8"],
       params: params,
       follow_redirect: true,
-      stream_to: self
+      stream_to: self()
     )
 #    |> IO.inspect()
   end

@@ -86,7 +86,13 @@ defmodule RoomSanctumWeb.LivePreview do
         <h2 class="card-title">
           <p><i class="fa-solid fa-fw fa-bicycle"></i> <%= e.name %> </p>
         </h2>
-        <p><i class="fa-solid fa-bicycle fa-fw"></i> <%= e.avail %> <i class="fa-solid fa-square-parking fa-fw"></i> <%= e.capacity %></p>
+        <p>
+          <i class="fa-solid fa-bicycle fa-fw"></i> <%= e.avail_std %>
+          <i class="fa-solid fa-bolt-lightning"></i>
+          <i class="fa-solid fa-bicycle"></i>
+          <%= e.avail_elec %>
+          <i class="fa-solid fa-square-parking fa-fw"></i> <%= e.capacity %>
+        </p>
         </div>
       </div>
     <% end %>

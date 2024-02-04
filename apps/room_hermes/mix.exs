@@ -40,6 +40,8 @@ defmodule RoomHermes.MixProject do
       {:phoenix, "~> 1.7"},
       {:phoenix_view, "~> 2.0"},
       {:phoenix_ecto, "~> 4.4"},
+      {:ecto_sql, "~> 3.10"},
+      {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 3.3"},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
       {:phoenix_live_view, "~> 0.19.1"},
@@ -53,7 +55,10 @@ defmodule RoomHermes.MixProject do
       {:plug_cowboy, "~> 2.5"},
 
       #     {:room_sanctum, in_umbrella: true},
-      {:sentry, "~> 8.0"}
+      {:sentry, "~> 8.0"},
+
+        # makes the configs go Vroom
+      {:polymorphic_embed, "~> 2.0.0"},
     ]
   end
 

@@ -98,7 +98,13 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       :gbfs ->
         data
         |> Enum.map(fn f ->
-          %{name: f.name, avail: f.num_bikes_available, capacity: f.capacity}
+          %{
+            name: f.name,
+            avail: f.num_bikes_available,
+            avail_elec: f.num_ebikes_available,
+            avail_std: f.num_bikes_available - f.num_ebikes_available,
+            capacity: f.capacity
+          }
         end)
 
       :tidal ->

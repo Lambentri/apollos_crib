@@ -33,5 +33,6 @@
     <orderEntry type="library" name="ex_doc" level="project" />
     <orderEntry type="library" name="inch_ex" level="project" />
     <orderEntry type="library" name="mox" level="project" />
+    <orderEntry type="library" name="doctor" level="project" />
   </component>
 </module>
