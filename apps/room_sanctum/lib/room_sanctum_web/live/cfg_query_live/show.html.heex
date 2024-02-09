@@ -80,12 +80,28 @@
     </div>
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
       <div class="card-body">
-        <h3 class="card-title">Visions</h3>
+        <h3 class="card-title flex justify-between">
+          Visions
+          <%= if @avail_visions != [] do %>
+            <%= if @avail_sel do %>
+              <span class="" phx-click="toggle-sel"><i class="fa-solid fa-minus"></i></span>
+            <% else %>
+              <span class="" phx-click="toggle-sel"><i class="fa-solid fa-plus"></i></span>
+            <% end %>
+
+          <% end %>
+        </h3>
         <%= for v <- @visions do %>
-        <%= live_patch to: Routes.vision_show_path(@socket, :show, v.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
-        <%= v.name %>
-                  <% end %>
+          <%= live_patch to: Routes.vision_show_path(@socket, :show, v.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+            <%= v.name %>
+          <% end %>
         <% end%>
+        <%= if @avail_sel do %>
+            <h4 class="text-xl text-accent font-bold">Add to</h4>
+            <%= for v <- @avail_visions do %>
+                <div class="btn btn-secondary gap-2 float-left mx-2" phx-click="add-to" phx-value-vision={v.id}><%= v.name %></div>
+            <% end %>
+        <% end %>
       </div>
     </div>
   </div>

@@ -27,6 +27,7 @@ defmodule RoomGtfs.MixProject do
   defp deps do
     [
       {:csv, "~> 3.0"},
+      {:nimble_csv, "~> 1.2"},
       {:postgrex, "~> 0.17", override: true},
 #      {:ecto_interval, "~> 0.2.5"},
       {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},

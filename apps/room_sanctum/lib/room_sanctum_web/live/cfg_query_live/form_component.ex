@@ -138,7 +138,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     Configuration.list_focis({:user, uid})
   end
 
-  defp get_source_id(form) do
+  defp  get_source_id(form) do
       form.source
       |> Map.get(:changes)
       |> Map.get(:source_id) ||

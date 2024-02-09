@@ -2,10 +2,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Configuration
+  alias RoomSanctum.Storage
 
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
+    if connected?(socket), do: Process.send_after(self(), :update_tester, 200)
 
     {
       :ok,
@@ -14,13 +16,36 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:status_val, 0)
       |> assign(:stats, %{})
       |> assign(:queries, [])
+      |> assign(:tester, false)
+      |> assign(:tester_query, nil)
+      |> assign(:tester_results, [])
+      |> assign(:tester_selected, nil)
+      |> assign(:tester_selected_name, nil)
+      |> assign(:tester_selected_data, %{})
     }
   end
 
   @impl true
   def handle_info(:update_sec, socket) do
+    Process.send_after(self(), :update_sec, 10000)
     queries = Configuration.get_queries(:source, socket.assigns.source_id)
     {:noreply, socket |> assign(:queries, queries)}
+  end
+
+  @impl true
+  def handle_info(:update_tester, socket) do
+    Process.send_after(self(), :update_tester, 2000)
+    case socket.assigns.tester_selected do
+      nil -> {:noreply, socket}
+      _otherwise ->
+        data = case socket.assigns.source.type do
+          :gtfs -> RoomGtfs.Worker.query_stop(socket.assigns.source.id, %{stop: socket.assigns.tester_selected})
+          :gbfs -> RoomGbfs.Worker.query_stop(socket.assigns.source.id, %{stop_id: socket.assigns.tester_selected})
+        end
+        {:noreply, socket |> assign(:tester_selected_data, data)}
+    end
+
+
   end
 
   @impl true
@@ -89,6 +114,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     {:noreply, socket}
   end
 
+  @impl true
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
     IO.inspect({type, id})
 
@@ -110,6 +136,51 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     src = socket.assigns.source
     {:ok, source} = Configuration.update_source(src, %{enabled: !src.enabled})
     {:noreply, socket |> assign(:source, source)}
+  end
+
+  @impl true
+  def handle_event("add-tester", _params, socket) do
+    {:noreply, socket |> assign(:tester, !socket.assigns.tester)}
+  end
+
+  @impl true
+  def handle_event("do-gbfs-search", %{"name" => name, "id" => id}, socket) do
+    results = Storage.list_gbfs_station_information(id, name)
+    {:noreply, socket |> assign(:tester_results, results)}
+  end
+
+  def handle_event("do-gtfs-search", %{"name" => name, "id" => id}, socket) do
+    results = Storage.list_stops(id, name)
+    {:noreply, socket |> assign(:tester_results, results)}
+  end
+
+  @impl true
+  def handle_event("pick-result", %{"id" => val, "name" => name}, socket) do
+    {:noreply, socket |> assign(:tester_selected, val) |> assign(:tester_selected_name, name)}
+  end
+
+  @impl true
+  def handle_event("add-query", _params, socket) do
+    case socket.assigns.source.type do
+      :gbfs -> Configuration.create_query(
+                %{
+                  user_id: socket.assigns.current_user.id,
+                  source_id: socket.assigns.source.id,
+                  name: socket.assigns.tester_selected_name,
+                  query: %{"stop_id": socket.assigns.tester_selected, "__type__": "gbfs"},
+                  public: true
+                }) |> IO.inspect
+      :gtfs -> Configuration.create_query(
+                 %{
+                   user_id: socket.assigns.current_user.id,
+                   source_id: socket.assigns.source.id,
+                   name: socket.assigns.tester_selected_name,
+                   query: %{"stop": socket.assigns.tester_selected, "__type__": "gtfs"},
+                   public: true
+                 }) |> IO.inspect
+    end
+
+    {:noreply, socket |> assign(:tester_selected, nil) |> assign(:tester_selected_name, nil)}
   end
 
   defp percent(num, denom) do
@@ -243,5 +314,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       nil -> "NEVER"
       val -> val # |> Timex.format!("%Y-%m-%d @ %H:%M", :strftime)
     end
+  end
+
+  defp condense({id, type}, data) do
+    RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+  end
+  def preview(condensed, {id, type}) do
+    %{data: condensed, id: id, type: type}
   end
 end

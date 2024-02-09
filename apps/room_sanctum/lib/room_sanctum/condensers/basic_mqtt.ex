@@ -103,6 +103,8 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             avail: f.num_bikes_available,
             avail_elec: f.num_ebikes_available,
             avail_std: f.num_bikes_available - f.num_ebikes_available,
+            docks_avail: f.num_docks_available,
+            docks_disabled: f.num_docks_disabled,
             capacity: f.capacity
           }
         end)

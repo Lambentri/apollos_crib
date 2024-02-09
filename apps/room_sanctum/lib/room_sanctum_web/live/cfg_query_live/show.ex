@@ -20,7 +20,10 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:query, q)
      |> assign(:query_id, id)
      |> assign(:type, q.source.type)
-     |> assign(:visions, [])}
+     |> assign(:visions, [])
+     |> assign(:avail_visions, [])
+     |> assign(:avail_sel, :false)
+    }
   end
 
   @impl true
@@ -81,7 +84,23 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   def handle_info(:update_sec, socket) do
     visions = Configuration.get_visions(:query, socket.assigns.query_id)
-    {:noreply, socket |> assign(:visions, visions)}
+    nv = Configuration.get_visions_nv(:query, socket.assigns.query_id)
+    {:noreply, socket |> assign(:visions, visions) |>  assign(:avail_visions, nv)}
+  end
+
+  def handle_event("toggle-sel", _params, socket) do
+    {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+  end
+
+  def handle_event("add-to", %{"vision" => vision}, socket) do
+    Process.send_after(self(), :update_sec, 200)
+    vis = Configuration.get_vision!(vision)
+    new_query = %{id: nil, data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"}, type: "pinned"}
+    queries = vis.queries ++ [new_query]
+    new_ids = vis.query_ids ++ [socket.assigns.query_id]
+    Configuration.update_vision_ni(vis, %{queries: queries, query_ids: new_ids})
+
+    {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
   end
 
   defp page_title(:show), do: "Query Detail"

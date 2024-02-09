@@ -129,6 +129,7 @@ defmodule RoomSanctumWeb do
       import RoomSanctumWeb.LiveHelpers
       import RoomSanctumWeb.CoreComponents
       import RoomSanctumWeb.SearchComponent
+      import RoomSanctumWeb.PreviewComponent
 
       # import custom widgets to preview data
       import RoomSanctumWeb.LivePreview

@@ -4,15 +4,15 @@
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Offering Detail</h1>
 
 <.modal :if={@live_action == :edit} id="source-modal" show on_cancel={JS.patch(Routes.source_show_path(@socket, :show, @source))}>
-    <.live_component
-    module={RoomSanctumWeb.SourceLive.FormComponent}
-    id={@source.id}
-    title={@page_title}
-    action={@live_action}
-    source={@source}
-    patch={Routes.source_show_path(@socket, :show, @source)}
-    current_user={@current_user}
-    />
+<.live_component
+module={RoomSanctumWeb.SourceLive.FormComponent}
+id={@source.id}
+title={@page_title}
+action={@live_action}
+source={@source}
+patch={Routes.source_show_path(@socket, :show, @source)}
+current_user={@current_user}
+/>
 </.modal>
 <div class="mx-4 py-2">
     <div class="flex">
@@ -26,7 +26,8 @@
                 <i class="fa-solid fa-fw fa-check fa-6x" phx-click="toggle-source-enabled" phx-value-current="true"></i>
                 <span class="text-xs">Enabled</span>
                 <% false -> %>
-                <i class="fa-solid fa-fw fa-times fa-6x text-warning" phx-click="toggle-source-enabled" phx-value-current="false"></i>
+                <i class="fa-solid fa-fw fa-times fa-6x text-warning" phx-click="toggle-source-enabled"
+                   phx-value-current="false"></i>
                 <span class="text-xs text-warning">Disabled</span>
                 <% end %>
             </div>
@@ -52,7 +53,7 @@
                 <div class="flex justify-between">
                     <div class="card-title">Control</div>
                     <div class="py-1">
-                    <%= case @source.type do %>
+                        <%= case @source.type do %>
                     <% :gtfs -> %>
                         Last Updated <%= @source.meta |> is_updated %>
                     <% _default -> %>
@@ -77,13 +78,16 @@
                     Update
                 </button>
                 <% :gitlab -> %>
-                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-projects" phx-value-id={@source.id}>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-projects"
+                        phx-value-id={@source.id}>
                     Projects
                 </button>
-                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-commits" phx-value-id={@source.id}>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-commits"
+                        phx-value-id={@source.id}>
                     Commits
                 </button>
-                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-jobs" phx-value-id={@source.id}>
+                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-jobs"
+                        phx-value-id={@source.id}>
                     Jobs
                 </button>
                 <% _default -> %>
@@ -130,18 +134,18 @@
             <div class="card-body">
                 <h3 class="card-title">Stats Results</h3>
                 <div class="flex">
-                <%= for {type,data} <-  @stats  do %>
+                    <%= for {type,data} <-  @stats  do %>
                     <div>
                         <div class="font-bold uppercase"><%= type %> </div>
                         <ul class="menu bg-primary">
-                        <%= for {data_k, data_v} <- data do %>
+                            <%= for {data_k, data_v} <- data do %>
                             <li class="text-primary-content uppercase">
                                 <a><%= data_k %> <span class="text-accent"><%= data_v %></span></a>
                             </li>
-                        <% end %>
+                            <% end %>
                         </ul>
                     </div>
-                <% end %>
+                    <% end %>
                 </div>
             </div>
         </div>
@@ -151,10 +155,17 @@
     <div class="flex">
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
             <div class="card-body">
-                <h3 class="card-title">Queries</h3>
+                <h3 class="card-title flex justify-between">
+                    Queries
+                    <%= case @source.type do %>
+                    <% val when val in [:gtfs, :gbfs] -> %>
+                    <span class="" phx-click="add-tester"><i class="fa-solid fa-plus"></i>Test</span>
+                    <% _default -> %>
+                    <% end %>
+                </h3>
                 <p>
-                <%= for q <- @queries do %>
-                  <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+                    <%= for q <- @queries do %>
+                    <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
                     <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
                   <% end %>
                 <% end %>
@@ -162,5 +173,117 @@
             </div>
         </div>
     </div>
-
+    <%= if @tester do %>
+    <div class="flex">
+        <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title flex justify-between">
+                    Tester
+                    <span class="" phx-click="add-tester"><i class="fa-solid fa-close"></i></span>
+                </h3>
+                <p>
+                    <%= case @source.type do %>
+                    <% :gtfs -> %>
+                <div class="flex justify-between">
+                    <div class="flex flex-col">
+                        <div class="">
+                            <form phx-change="do-gtfs-search" phx-debounce="100">
+                                <fieldset>
+                                    <label for="name">Term</label>
+                                    <input type="hidden" value={@source_id} name="id"/>
+                                    <input type="term" name="name" value={@tester_query}
+                                           placeholder="Main Street"
+                                           autofocus autocomplete="off"
+                                           class="input input-bordered input-info w-full max-w-xs"
+                                    />
+                                </fieldset>
+                            </form>
+                        </div>
+                        <div class="">
+                            <ul class="menu bg-secondary rounded">
+                                <%= for r <- @tester_results |> Enum.slice(0..10) do %>
+                                <li class="hover-bordered">
+                                    <a class="text-secondary-content" phx-click="pick-result" phx-value-id={r |>
+                                        Map.from_struct |> Map.get :stop_id} phx-value-name={r |> Map.from_struct |>
+                                        Map.get :stop_name}>
+                                        <div class="flex justify-between w-full">
+                                            <div><%= r |> Map.from_struct |> Map.get :stop_name %></div>
+                                            <div class="badge badge-accent"><%= r |> Map.from_struct |> Map.get :stop_id  %></div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <% end %>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div class="text-xl">Selected: <%= @tester_selected_name %></div>
+                        <div class="text-xs">id: <%= @tester_selected %></div>
+                        <div class="">
+                            <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
+                            <.p_gtfs entries={condense({@source_id, :gtfs}, @tester_selected_data) |>
+                            preview({@source_id, :gtfs})} />
+                                <%= if @tester_selected_data != %{} do %>
+                                    <span phx-click="add-query"><i class="fa fa-plus fa-fw"></i>query</span>
+                                <% end %>
+                            <% else %>
+                            -waiting on data-
+                            <% end %>
+                        </div>
+                    </div>
+                </div>
+                <% :gbfs -> %>
+                <div class="flex justify-between gap-4">
+                    <div class="flex flex-col gap-2">
+                        <div class="">
+                            <form phx-change="do-gbfs-search" phx-debounce="100">
+                                <fieldset>
+                                    <label for="name">Term</label>
+                                    <input type="hidden" value={@source_id} name="id"/>
+                                    <input type="term" name="name" value={@tester_query}
+                                           placeholder="Main Street"
+                                           autofocus autocomplete="off"
+                                           class="input input-bordered input-info w-full max-w-xs"
+                                    />
+                                </fieldset>
+                            </form>
+                        </div>
+                        <div class="">
+                            <ul class="menu bg-secondary rounded">
+                                <%= for r <- @tester_results |> Enum.slice(0..10) do %>
+                                <li class="hover-bordered">
+                                    <a class="text-secondary-content" phx-click="pick-result" phx-value-id={r |>
+                                        Map.from_struct |> Map.get :station_id} phx-value-name={r |> Map.from_struct |>
+                                        Map.get :name}>
+                                        <div class="flex justify-between w-full">
+                                            <div><%= r |> Map.from_struct |> Map.get :name %></div>
+                                            <div class="badge badge-accent"><%= r |> Map.from_struct |> Map.get :station_id  %></div>
+                                        </div>
+                                    </a>
+                                </li>
+                                <% end %>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <div class="text-xl">Selected: <%= @tester_selected_name %></div>
+                        <div class="text-xs">id: <%= @tester_selected %></div>
+                        <div class="">
+                            <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
+                            <.p_gbfs entries={condense({@source_id, :gbfs}, @tester_selected_data) |>
+                            preview({@source_id, :gbfs})} />
+                            <span phx-click="add-query"><i class="fa fa-plus fa-fw"></i>query</span>
+                            <% else %>
+                            -waiting on data-
+                            <% end %>
+                        </div>
+                    </div>
+                </div>
+                <% _default -> %>
+                    <% end %>
+                </p>
+            </div>
+        </div>
+    </div>
+    <% end %>
 </div>

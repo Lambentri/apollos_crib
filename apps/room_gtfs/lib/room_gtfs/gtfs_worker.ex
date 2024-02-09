@@ -1,3 +1,5 @@
+NimbleCSV.define(XP, separator: ",", escape: "\"")
+
 defmodule RoomGtfs.Worker do
   @moduledoc false
   use Parent.GenServer
@@ -802,6 +804,10 @@ end
     {:noreply, state}
   end
 
+  defp replace(string) do
+    String.replace(string, ~s("), "")
+  end
+
   @impl true
   def handle_cast(:update_static_old, state) do
     cfg = Configuration.get_source!(state.id)
@@ -823,8 +829,9 @@ end
                   as_csv =
                     data
                     |> String.split("\n")
+                    |> Enum.map(&replace/1)
                     |> Enum.filter(fn x -> x != "" end)
-                    |> CSV.decode(headers: true)
+                    |> XP.parse_stream
 
                   case name do
                     'agency.txt' ->

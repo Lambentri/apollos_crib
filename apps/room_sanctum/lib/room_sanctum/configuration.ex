@@ -269,6 +269,10 @@ defmodule RoomSanctum.Configuration do
     from(v in Vision, where: ^id in v.query_ids) |> Repo.all()
   end
 
+  def get_visions_nv(:query, id) do
+    from(v in Vision, where: ^id not in v.query_ids) |> Repo.all()
+  end
+
   @doc """
   Creates a vision.
 
@@ -302,6 +306,12 @@ defmodule RoomSanctum.Configuration do
   def update_vision(%Vision{} = vision, attrs) do
     vision
     |> Vision.changeset(inj_fake_ids(attrs))
+    |> Repo.update()
+  end
+
+  def update_vision_ni(%Vision{} = vision, attrs) do
+    vision
+    |> Vision.changeset(attrs)
     |> Repo.update()
   end
 
