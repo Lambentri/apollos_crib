@@ -110,9 +110,7 @@
                     </div>
                     <%= case k do %>
                       <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
-                      <% {_, :gbfs} -> %>
-                            <%= {k,p} %>
-                            <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
+                      <% {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
                       <% {_, :tidal} -> %>  <.p_tidal entries={condense(k, p) |> preview(k)}> </.p_tidal>
                       <% {_, :weather} -> %> <.p_weather entries={condense(k, p) |> preview(k)}> </.p_weather>
                       <% {_, :aqi} -> %> <.p_aqi entries={condense(k, p) |> preview(k)}> </.p_aqi>
