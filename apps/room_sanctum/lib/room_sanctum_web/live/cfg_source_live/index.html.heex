@@ -28,7 +28,15 @@
         <th>Name</th>
         <th>Type</th>
         <th>Enabled</th>
-
+        <th>
+            <span class="text-amber-500"></span>
+            <span class="text-violet-500"></span>
+            <span class="text-rose-500"></span>
+            <span class="text-emerald-500"></span>
+            <span class="text-sky-500"></span>
+            <span class="text-stone-500"></span>
+            <span class="text-stone-950"></span>
+        </th>
         <th></th>
     </tr>
     </thead>
@@ -51,9 +59,14 @@
                phx-value-current="false"></i>
             <% end %>
         </td>
-
+        <td>
+            <%= if source.meta.tint do %>
+            <i class={"fa fa-circle text-#{source.meta.tint}-500"}></i>
+            <% end %>
+        </td>
         <td>
           <span>
+
             <.ib icon="fa-eye" to={Routes.source_show_path(@socket, :show, source)} function={:live_redirect}></.ib>
             </span>
             <span>

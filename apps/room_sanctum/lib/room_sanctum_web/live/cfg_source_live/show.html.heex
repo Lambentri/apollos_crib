@@ -201,7 +201,7 @@ current_user={@current_user}
                         </div>
                         <div class="">
                             <ul class="menu bg-secondary rounded">
-                                <%= for r <- @tester_results |> Enum.slice(0..10) do %>
+                                <%= for r <- @tester_results |> Enum.slice(0..25) do %>
                                 <li class="hover-bordered">
                                     <a class="text-secondary-content" phx-click="pick-result" phx-value-id={r |>
                                         Map.from_struct |> Map.get :stop_id} phx-value-name={r |> Map.from_struct |>

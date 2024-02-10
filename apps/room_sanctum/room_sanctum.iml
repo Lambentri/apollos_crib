@@ -134,5 +134,7 @@
     <orderEntry type="library" name="dart_sass" level="project" />
     <orderEntry type="library" name="websock" level="project" />
     <orderEntry type="library" name="bandit" level="project" />
+    <orderEntry type="library" name="makeup_diff" level="project" />
+    <orderEntry type="library" name="ecto_interval" level="project" />
   </component>
 </module>

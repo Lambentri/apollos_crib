@@ -96,8 +96,9 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     Process.send_after(self(), :update_sec, 200)
     vis = Configuration.get_vision!(vision)
     new_query = %{id: nil, data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"}, type: "pinned"}
-    queries = vis.queries ++ [new_query]
-    new_ids = vis.query_ids ++ [socket.assigns.query_id]
+    destruct = vis.queries |> Poison.encode!() |> Poison.decode!()
+    queries = destruct ++ [new_query]
+    new_ids = vis.query_ids ++ [socket.assigns.query_id |> String.to_integer]
     Configuration.update_vision_ni(vis, %{queries: queries, query_ids: new_ids})
 
     {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}

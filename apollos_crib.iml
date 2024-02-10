@@ -153,5 +153,6 @@
     <orderEntry type="library" name="websock" level="project" />
     <orderEntry type="library" name="bandit" level="project" />
     <orderEntry type="library" name="credo" level="project" />
+    <orderEntry type="library" name="makeup_diff" level="project" />
   </component>
 </module>

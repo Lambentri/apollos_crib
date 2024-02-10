@@ -27,7 +27,7 @@
     <tr>
       <th>Source</th>
       <th>Query</th>
-
+      <th></th>
       <th></th>
     </tr>
   </thead>
@@ -41,7 +41,11 @@
           <%= query.source.name %>
         </td>
         <td><%= query.name %></td>
-
+        <td>
+          <%= if query.source.meta.tint do %>
+          <i class={"fa fa-circle text-#{query.source.meta.tint}-500"}></i>
+          <% end %>
+        </td>
         <td>
           <span>
             <.ib icon="fa-eye" to={Routes.query_show_path(@socket, :show, query)} function={:live_redirect}></.ib>

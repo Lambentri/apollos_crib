@@ -46,6 +46,7 @@ defmodule RoomSanctum.Configuration.Source do
     embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
       field :last_run, :utc_datetime
       field :run_period, :integer
+      field :tint, :string
     end
 
     timestamps()
@@ -63,6 +64,6 @@ defmodule RoomSanctum.Configuration.Source do
 
   def meta_changeset(meta, attrs \\ %{}) do
     meta
-    |> cast(attrs, [:last_run, :run_period])
+    |> cast(attrs, [:last_run, :run_period, :tint])
   end
 end

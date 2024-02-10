@@ -20,17 +20,22 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     {:ok,
      socket
      |> assign(assigns)
+     |> assign(:tint_opts, ["amber", "violet", "emerald", "sky", "rose", "stone"])
      |> assign_form(changeset)}
   end
 
   @impl true
   def handle_event("validate", %{"source" => source_params}, socket) do
     source_params = inj_uid(source_params, socket)
+    IO.inspect({"params", source_params})
 
     changeset =
       socket.assigns.source
       |> Configuration.change_source(source_params)
       |> Map.put(:action, :validate)
+
+    IO.inspect(changeset.data)
+    IO.inspect(changeset)
 
     {:noreply, assign_form(socket, changeset)}
   end

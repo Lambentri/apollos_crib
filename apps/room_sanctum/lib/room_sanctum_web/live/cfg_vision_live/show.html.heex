@@ -27,8 +27,11 @@
                 <h3 class="card-title">Queries</h3>
                 <p>
                 <%= for q <- @queries do %>
-                  <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
-                  <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
+                  <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2 " do %>
+                    <%= if q.source.meta.tint do %>
+                    <i class={"fa fa-circle text-#{q.source.meta.tint}-500"}></i>
+                    <% end %>
+                    <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
                   <% end %>
                 <% end %>
                 </p>
