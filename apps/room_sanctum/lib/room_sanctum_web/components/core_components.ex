@@ -275,6 +275,7 @@ defmodule RoomSanctumWeb.CoreComponents do
   attr :options, :list, doc: "the options to pass to Phoenix.HTML.Form.options_for_select/2"
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
 
+  attr :checked_value, :string, doc: "the currently checked value"
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
                 multiple pattern placeholder readonly required rows size step)
@@ -348,6 +349,56 @@ defmodule RoomSanctumWeb.CoreComponents do
         ]}
         {@rest}
       ><%= Phoenix.HTML.Form.normalize_value("textarea", @value) %></textarea>
+      <.error :for={msg <- @errors}><%= msg %></.error>
+    </div>
+    """
+  end
+
+  # checked={(@checked_value == opt) || (@field.value == String.to_atom(opt))}
+
+
+  def input(%{type: "radio"} = assigns) do
+    ~H"""
+    <div phx-feedback-for={@name}>
+        <fieldset>
+        <div class="grid grid-cols-3">
+        <%= for opt <- @options do %>
+          <input
+            field={@field}
+            label={opt}
+            type={@type}
+            name={@id}
+            id={"#{@id}_#{opt}"}
+            value={opt}
+            class={[
+              "mt-2 radio sm:leading-6",
+              "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
+              @errors == [] && "border-zinc-300 focus:border-zinc-400",
+              @errors != [] && "border-rose-400 focus:border-rose-400",
+              "bg-#{opt}-500 checked:bg-#{opt}-500  checked:hover:bg-#{opt}-500"
+            ]}
+
+            {@rest}
+          />
+        <% end %>
+      </div>
+      <input
+            field={@field}
+            type={@type}
+            name={@id <> @label}
+            id={@id <> "None"}
+            value={nil}
+            class={[
+              "mt-2 radio sm:leading-6 w-full",
+              "phx-no-feedback:border-zinc-300 phx-no-feedback:focus:border-zinc-400",
+              @errors == [] && "border-zinc-300 focus:border-zinc-400",
+              @errors != [] && "border-rose-400 focus:border-rose-400",
+              "bg-stone-950 checked:bg-stone-950",
+            ]}
+            {@rest}
+          />
+      </fieldset>
+
       <.error :for={msg <- @errors}><%= msg %></.error>
     </div>
     """
