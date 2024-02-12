@@ -42,7 +42,10 @@ current_user={@current_user}
         <% end %>
         <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
             <div class="card-body">
-                <h3 class="card-title">Config</h3>
+                <h3 class="card-title">Config
+                    <%= if @source.meta.tint do %>
+                    <i class={"fa fa-circle text-#{@source.meta.tint}-500"}></i>
+                    <% end %></h3>
                 <pre><%= @source.config |> Poison.encode!( pretty: true) %></pre>
             </div>
         </div>
