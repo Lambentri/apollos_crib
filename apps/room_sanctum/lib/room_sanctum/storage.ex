@@ -1552,12 +1552,111 @@ defmodule RoomSanctum.Storage do
     GBFSAlert.changeset(alert, attrs)
   end
 
+
+  alias RoomSanctum.Storage.GBFS.V1.EbikesAtStations
+
+  @doc """
+  Returns the list of gbfs_ebikes_stations.
+
+  ## Examples
+
+      iex> list_gbfs_ebikes_stations()
+      [%EbikesAtStations{}, ...]
+
+  """
+  def list_gbfs_ebikes_stations do
+    Repo.all(EbikesAtStations)
+  end
+
+  @doc """
+  Gets a single ebikes_at_stations.
+
+  Raises `Ecto.NoResultsError` if the Ebikes at stations does not exist.
+
+  ## Examples
+
+      iex> get_ebikes_at_stations!(123)
+      %EbikesAtStations{}
+
+      iex> get_ebikes_at_stations!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_ebikes_at_stations!(id), do: Repo.get!(EbikesAtStations, id)
+
+  @doc """
+  Creates a ebikes_at_stations.
+
+  ## Examples
+
+      iex> create_ebikes_at_stations(%{field: value})
+      {:ok, %EbikesAtStations{}}
+
+      iex> create_ebikes_at_stations(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_ebikes_at_stations(attrs \\ %{}) do
+    %EbikesAtStations{}
+    |> EbikesAtStations.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a ebikes_at_stations.
+
+  ## Examples
+
+      iex> update_ebikes_at_stations(ebikes_at_stations, %{field: new_value})
+      {:ok, %EbikesAtStations{}}
+
+      iex> update_ebikes_at_stations(ebikes_at_stations, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_ebikes_at_stations(%EbikesAtStations{} = ebikes_at_stations, attrs) do
+    ebikes_at_stations
+    |> EbikesAtStations.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a ebikes_at_stations.
+
+  ## Examples
+
+      iex> delete_ebikes_at_stations(ebikes_at_stations)
+      {:ok, %EbikesAtStations{}}
+
+      iex> delete_ebikes_at_stations(ebikes_at_stations)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_ebikes_at_stations(%EbikesAtStations{} = ebikes_at_stations) do
+    Repo.delete(ebikes_at_stations)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking ebikes_at_stations changes.
+
+  ## Examples
+
+      iex> change_ebikes_at_stations(ebikes_at_stations)
+      %Ecto.Changeset{data: %EbikesAtStations{}}
+
+  """
+  def change_ebikes_at_stations(%EbikesAtStations{} = ebikes_at_stations, attrs \\ %{}) do
+    EbikesAtStations.changeset(ebikes_at_stations, attrs)
+  end
+
   def get_current_information_for_bikestop(source_id, stop_id) do
     q =
       from st in StationStatus,
         where: st.source_id == ^source_id and st.station_id == ^stringify(stop_id),
         left_join: si in StationInfo,
         on: si.station_id == st.station_id,
+        left_join: eb in EbikesAtStations,
+        on: eb.station_id == st.station_id,
         #        left_join: t in GBFSAlert,
         #        on: t.station_id == st.trip_id,
         select: %{
@@ -1577,7 +1676,8 @@ defmodule RoomSanctum.Storage do
           lon: si.lon,
           place: si.place,
           name: si.name,
-          short_name: si.short_name
+          short_name: si.short_name,
+          ebikes_info: eb.ebikes
         }
 
     Repo.one(q)

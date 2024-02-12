@@ -181,6 +181,28 @@ defmodule RoomGbfs.Worker do
                   on_conflict: {:replace_all_except, [:id]},
                   conflict_target: [:source_id, :alert_id]
                 )
+
+              :ebikes_at_stations ->
+                data =
+                  json.data.stations
+                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+                  |> Enum.map(fn x ->
+                    cs = RoomSanctum.Storage.change_ebikes_at_stations(
+                      %RoomSanctum.Storage.GBFS.V1.EbikesAtStations{},
+                      x
+                    ).changes
+                    |> inj_iddt(id, dt)
+
+                    eb = cs.ebikes |> Enum.map(fn eb -> eb |> Ecto.Changeset.apply_changes end)
+                    cs |> Map.put(:ebikes, eb)
+                  end)
+
+                Repo.insert_all(
+                  RoomSanctum.Storage.GBFS.V1.EbikesAtStations,
+                  data,
+                  on_conflict: {:replace_all_except, [:id]},
+                  conflict_target: [:source_id, :station_id]
+                )
             end
 
           {:error, info} ->
@@ -209,7 +231,7 @@ defmodule RoomGbfs.Worker do
     case cfg.enabled do
       true ->
         Logger.info("GBFS::#{state.id} updating static info ")
-        bcast(state.id, :downloading, 1, 10)
+        bcast(state.id, :downloading, 1, 11)
 
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
@@ -219,42 +241,46 @@ defmodule RoomGbfs.Worker do
 
             if json_body["data"]
                |> Map.has_key?(cfg.config.lang) do
-              bcast(state.id, :parsing, 2, 10)
+              bcast(state.id, :parsing, 2, 11)
 
               json_body["data"][cfg.config.lang]["feeds"]
               |> Enum.map(fn %{"name" => name, "url" => url} ->
                 case name do
+                  "ebikes_at_stations" ->
+                    write_data(url, :ebikes_at_stations, state.id)
+                    bcast(state.id, :system_information, 3, 11)
+
                   "system_information" ->
                     write_data(url, :sys_info, state.id)
-                    bcast(state.id, :system_information, 3, 10)
+                    bcast(state.id, :system_information, 4, 11)
 
                   "station_information" ->
                     write_data(url, :stat_info, state.id)
-                    bcast(state.id, :system_information, 4, 10)
+                    bcast(state.id, :system_information, 5, 11)
 
                   "station_status" ->
                     write_data(url, :stat_status, state.id)
-                    bcast(state.id, :system_information, 5, 10)
+                    bcast(state.id, :system_information, 6, 11)
 
                   "free_bike_status" ->
                     write_data(url, :free_bike, state.id)
-                    bcast(state.id, :system_information, 6, 10)
+                    bcast(state.id, :system_information, 7, 11)
 
                   "system_hours" ->
                     write_data(url, :sys_hours, state.id)
-                    bcast(state.id, :system_information, 7, 10)
+                    bcast(state.id, :system_information, 8, 11)
 
                   "system_calendar" ->
                     write_data(url, :sys_cal, state.id)
-                    bcast(state.id, :system_information, 8, 10)
+                    bcast(state.id, :system_information, 9, 11)
 
                   "system_regions" ->
                     write_data(url, :sys_regions, state.id)
-                    bcast(state.id, :system_information, 9, 10)
+                    bcast(state.id, :system_information, 10, 11)
 
                   "system_alerts" ->
                     write_data(url, :sys_alerts, state.id)
-                    bcast(state.id, :system_information, 10, 10)
+                    bcast(state.id, :system_information, 11, 11)
 
                   otherwise ->
                     Logger.info("GBFS::#{state.id} System has unhandled file #{otherwise}")
@@ -290,7 +316,7 @@ defmodule RoomGbfs.Worker do
     case cfg.enabled do
       true ->
         Logger.info("GBFS::#{state.id} updating realtime info ")
-        bcast(state.id, :downloading, 1, 3)
+        bcast(state.id, :downloading, 1, 4)
 
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
@@ -298,14 +324,18 @@ defmodule RoomGbfs.Worker do
               {:ok, json_body} ->
                 if json_body["data"]
                    |> Map.has_key?(cfg.config.lang) do
-                  bcast(state.id, :parsing, 2, 3)
+                  bcast(state.id, :parsing, 2, 4)
 
                   json_body["data"][cfg.config.lang]["feeds"]
                   |> Enum.map(fn %{"name" => name, "url" => url} ->
                     case name do
                       "station_information" ->
                         write_data(url, :stat_info, state.id)
-                        bcast(state.id, :system_information, 3, 3)
+                        bcast(state.id, :system_information, 3, 4)
+
+                      "ebikes_at_stations" ->
+                        write_data(url, :ebikes_at_stations, state.id)
+                        bcast(state.id, :system_information, 4, 4)
 
                       _otherwise ->
                         :ok

@@ -143,6 +143,12 @@ defmodule RoomSanctumWeb.Router do
       live "/storage/gbfs/v1/alerts/:id", AlertLive.Show, :show
       live "/storage/gbfs/v1/alerts/:id/show/edit", AlertLive.Show, :edit
 
+      live "/storage/gbfs_ebikes_stations", EbikesAtStationsLive.Index, :index
+      live "/storage/gbfs_ebikes_stations/new", EbikesAtStationsLive.Index, :new
+      live "/storage/gbfs_ebikes_stations/:id/edit", EbikesAtStationsLive.Index, :edit
+      live "/storage/gbfs_ebikes_stations/:id", EbikesAtStationsLive.Show, :show
+      live "/storage/gbfs_ebikes_stations/:id/show/edit", EbikesAtStationsLive.Show, :edit
+
       live "/airnow/reporting_area", ReportingAreaLive.Index, :index
       live "/airnow/reporting_area/new", ReportingAreaLive.Index, :new
       live "/airnow/reporting_area/:id/edit", ReportingAreaLive.Index, :edit

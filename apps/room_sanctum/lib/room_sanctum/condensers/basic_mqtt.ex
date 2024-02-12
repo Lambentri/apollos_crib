@@ -100,12 +100,14 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         |> Enum.map(fn f ->
           %{
             name: f.name,
+            id: f.station_id,
             avail: f.num_bikes_available,
             avail_elec: f.num_ebikes_available,
             avail_std: f.num_bikes_available - f.num_ebikes_available,
             docks_avail: f.num_docks_available,
             docks_disabled: f.num_docks_disabled,
-            capacity: f.capacity
+            capacity: f.capacity,
+            ebikes_info: f.ebikes_info |> Enum.map(fn eb -> %{name: eb.displayed_number, battery_pct: eb.battery_charge_percentage, range_mi_cons: eb.range_estimate.conservative_range_miles, range_me_est: eb.range_estimate.estimated_range_miles} end)
           }
         end)
 

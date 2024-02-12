@@ -166,13 +166,13 @@ current_user={@current_user}
                     <% _default -> %>
                     <% end %>
                 </h3>
-                <p>
+                <div class="flex flex-wrap gap-2">
                     <%= for q <- @queries do %>
-                    <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
+                    <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary float-left" do %>
                     <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
                   <% end %>
                 <% end %>
-                </p>
+                </div>
             </div>
         </div>
     </div>
