@@ -67,6 +67,9 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :cronos ->
         "f017"
+
+      :gitlab ->
+        "f126"
     end
   end
 end

@@ -1144,6 +1144,11 @@ defmodule RoomSanctum.Storage do
   """
   def get_sys_info!(id), do: Repo.get!(SysInfo, id)
 
+  def get_sys_info!(:src, source_id) do
+    from(s in SysInfo, where: s.source_id == ^source_id)
+    |> Repo.one()
+  end
+
   @doc """
   Creates a sys_info.
 
@@ -1649,6 +1654,11 @@ defmodule RoomSanctum.Storage do
     EbikesAtStations.changeset(ebikes_at_stations, attrs)
   end
 
+  def truncate_ebikes_at_stations(source_id) do
+    from(e in EbikesAtStations, where: e.source_id == ^source_id)
+    |> Repo.delete_all()
+  end
+
   def get_current_information_for_bikestop(source_id, stop_id) do
     q =
       from st in StationStatus,
@@ -1681,6 +1691,42 @@ defmodule RoomSanctum.Storage do
         }
 
     Repo.one(q)
+  end
+
+  def count_gbfs_stations(source_id) do
+    from(s in StationInfo,
+      where:
+        s.source_id == ^source_id,
+      select: fragment("count(*)")
+    )
+    |> Repo.one()
+  end
+
+  def count_gbfs_slots(source_id) do
+    from(s in StationStatus,
+      where:
+        s.source_id == ^source_id,
+      select: fragment("sum(abs(?))", s.num_docks_available)
+    )
+    |> Repo.one()
+  end
+
+  def count_gbfs_bikes(source_id) do
+    from(s in StationStatus,
+      where:
+        s.source_id == ^source_id,
+      select: fragment("sum(abs(?))", s.num_bikes_available)
+    )
+    |> Repo.one()
+  end
+
+  def count_gbfs_ebikes(source_id) do
+    from(s in StationStatus,
+      where:
+        s.source_id == ^source_id,
+      select: fragment("sum(abs(?))", s.num_ebikes_available)
+    )
+    |> Repo.one()
   end
 
   alias RoomSanctum.Storage.AirNow.ReportingArea

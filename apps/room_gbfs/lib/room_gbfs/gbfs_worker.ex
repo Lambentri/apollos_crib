@@ -197,6 +197,7 @@ defmodule RoomGbfs.Worker do
                     cs |> Map.put(:ebikes, eb)
                   end)
 
+                RoomSanctum.Storage.truncate_ebikes_at_stations(id)
                 Repo.insert_all(
                   RoomSanctum.Storage.GBFS.V1.EbikesAtStations,
                   data,
@@ -378,19 +379,22 @@ defmodule RoomGbfs.Worker do
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
   def sys_info_as_stats(id) do
+    s = Storage.get_sys_info!(:src, id)
     %{
-      operator: "balls"
+      name: s.name,
+      start_date: s.start_date,
+      system_id: s.system_id,
+      operator: s.operator,
+      tz: s.timezone,
     }
   end
 
   def source_stats(id) do
     %{
-      calendars: Storage.count_calendars(id),
-      directions: Storage.count_directions(id),
-      routes: Storage.count_routes(id),
-      stops: Storage.count_stops(id),
-      stop_times: Storage.count_stop_times(id),
-      trips: Storage.count_calendars(id)
+      stations: Storage.count_gbfs_stations(id),
+      slots: Storage.count_gbfs_slots(id),
+      bikes: Storage.count_gbfs_bikes(id),
+      ebikes: Storage.count_gbfs_ebikes(id),
     }
   end
 end
