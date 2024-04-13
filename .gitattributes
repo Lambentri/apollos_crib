@@ -1,2 +1,2 @@
 assets/* linguist-vendored
-apps/*/assets/ linguist-vendored
+apps/*/assets/* linguist-vendored
