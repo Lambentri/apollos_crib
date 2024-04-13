@@ -1659,6 +1659,412 @@ defmodule RoomSanctum.Storage do
     |> Repo.delete_all()
   end
 
+  alias RoomSanctum.Storage.GBFS.V1.FreeBikeStatus
+
+  @doc """
+  Returns the list of gbfs_free_bike_status.
+
+  ## Examples
+
+      iex> list_gbfs_free_bike_status()
+      [%FreeBikeStatus{}, ...]
+
+  """
+  def list_gbfs_free_bike_status do
+    Repo.all(FreeBikeStatus)
+  end
+
+  @doc """
+  Gets a single free_bike_status.
+
+  Raises `Ecto.NoResultsError` if the Free bike status does not exist.
+
+  ## Examples
+
+      iex> get_free_bike_status!(123)
+      %FreeBikeStatus{}
+
+      iex> get_free_bike_status!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_free_bike_status!(id), do: Repo.get!(FreeBikeStatus, id)
+
+  @doc """
+  Creates a free_bike_status.
+
+  ## Examples
+
+      iex> create_free_bike_status(%{field: value})
+      {:ok, %FreeBikeStatus{}}
+
+      iex> create_free_bike_status(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_free_bike_status(attrs \\ %{}) do
+    %FreeBikeStatus{}
+    |> FreeBikeStatus.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a free_bike_status.
+
+  ## Examples
+
+      iex> update_free_bike_status(free_bike_status, %{field: new_value})
+      {:ok, %FreeBikeStatus{}}
+
+      iex> update_free_bike_status(free_bike_status, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_free_bike_status(%FreeBikeStatus{} = free_bike_status, attrs) do
+    free_bike_status
+    |> FreeBikeStatus.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a free_bike_status.
+
+  ## Examples
+
+      iex> delete_free_bike_status(free_bike_status)
+      {:ok, %FreeBikeStatus{}}
+
+      iex> delete_free_bike_status(free_bike_status)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_free_bike_status(%FreeBikeStatus{} = free_bike_status) do
+    Repo.delete(free_bike_status)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking free_bike_status changes.
+
+  ## Examples
+
+      iex> change_free_bike_status(free_bike_status)
+      %Ecto.Changeset{data: %FreeBikeStatus{}}
+
+  """
+  def change_free_bike_status(%FreeBikeStatus{} = free_bike_status, attrs \\ %{}) do
+    FreeBikeStatus.changeset(free_bike_status, attrs)
+  end
+
+  def truncate_free_bike_status(source_id) do
+    from(e in FreeBikeStatus, where: e.source_id == ^source_id)
+    |> Repo.delete_all()
+  end
+
+  alias RoomSanctum.Storage.GBFS.V1.VehicleTypes
+
+  @doc """
+  Returns the list of gbfs_vehicle_types.
+
+  ## Examples
+
+      iex> list_gbfs_vehicle_types()
+      [%VehicleTypes{}, ...]
+
+  """
+  def list_gbfs_vehicle_types do
+    Repo.all(VehicleTypes)
+  end
+
+  @doc """
+  Gets a single vehicle_types.
+
+  Raises `Ecto.NoResultsError` if the Vehicle types does not exist.
+
+  ## Examples
+
+      iex> get_vehicle_types!(123)
+      %VehicleTypes{}
+
+      iex> get_vehicle_types!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_vehicle_types!(id), do: Repo.get!(VehicleTypes, id)
+
+  @doc """
+  Creates a vehicle_types.
+
+  ## Examples
+
+      iex> create_vehicle_types(%{field: value})
+      {:ok, %VehicleTypes{}}
+
+      iex> create_vehicle_types(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_vehicle_types(attrs \\ %{}) do
+    %VehicleTypes{}
+    |> VehicleTypes.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a vehicle_types.
+
+  ## Examples
+
+      iex> update_vehicle_types(vehicle_types, %{field: new_value})
+      {:ok, %VehicleTypes{}}
+
+      iex> update_vehicle_types(vehicle_types, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_vehicle_types(%VehicleTypes{} = vehicle_types, attrs) do
+    vehicle_types
+    |> VehicleTypes.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a vehicle_types.
+
+  ## Examples
+
+      iex> delete_vehicle_types(vehicle_types)
+      {:ok, %VehicleTypes{}}
+
+      iex> delete_vehicle_types(vehicle_types)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_vehicle_types(%VehicleTypes{} = vehicle_types) do
+    Repo.delete(vehicle_types)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking vehicle_types changes.
+
+  ## Examples
+
+      iex> change_vehicle_types(vehicle_types)
+      %Ecto.Changeset{data: %VehicleTypes{}}
+
+  """
+  def change_vehicle_types(%VehicleTypes{} = vehicle_types, attrs \\ %{}) do
+    VehicleTypes.changeset(vehicle_types, attrs)
+  end
+
+  def truncate_vehicle_types(source_id) do
+    from(e in VehicleTypes, where: e.source_id == ^source_id)
+    |> Repo.delete_all()
+  end
+
+
+  alias RoomSanctum.Storage.GBFS.V1.SystemPricingPlans
+
+  @doc """
+  Returns the list of gbfs_system_pricing_plans.
+
+  ## Examples
+
+      iex> list_gbfs_system_pricing_plans()
+      [%SystemPricingPlans{}, ...]
+
+  """
+  def list_gbfs_system_pricing_plans do
+    Repo.all(SystemPricingPlans)
+  end
+
+  @doc """
+  Gets a single system_pricing_plans.
+
+  Raises `Ecto.NoResultsError` if the System pricing plans does not exist.
+
+  ## Examples
+
+      iex> get_system_pricing_plans!(123)
+      %SystemPricingPlans{}
+
+      iex> get_system_pricing_plans!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_system_pricing_plans!(id), do: Repo.get!(SystemPricingPlans, id)
+
+  @doc """
+  Creates a system_pricing_plans.
+
+  ## Examples
+
+      iex> create_system_pricing_plans(%{field: value})
+      {:ok, %SystemPricingPlans{}}
+
+      iex> create_system_pricing_plans(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_system_pricing_plans(attrs \\ %{}) do
+    %SystemPricingPlans{}
+    |> SystemPricingPlans.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a system_pricing_plans.
+
+  ## Examples
+
+      iex> update_system_pricing_plans(system_pricing_plans, %{field: new_value})
+      {:ok, %SystemPricingPlans{}}
+
+      iex> update_system_pricing_plans(system_pricing_plans, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_system_pricing_plans(%SystemPricingPlans{} = system_pricing_plans, attrs) do
+    system_pricing_plans
+    |> SystemPricingPlans.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a system_pricing_plans.
+
+  ## Examples
+
+      iex> delete_system_pricing_plans(system_pricing_plans)
+      {:ok, %SystemPricingPlans{}}
+
+      iex> delete_system_pricing_plans(system_pricing_plans)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_system_pricing_plans(%SystemPricingPlans{} = system_pricing_plans) do
+    Repo.delete(system_pricing_plans)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking system_pricing_plans changes.
+
+  ## Examples
+
+      iex> change_system_pricing_plans(system_pricing_plans)
+      %Ecto.Changeset{data: %SystemPricingPlans{}}
+
+  """
+  def change_system_pricing_plans(%SystemPricingPlans{} = system_pricing_plans, attrs \\ %{}) do
+    SystemPricingPlans.changeset(system_pricing_plans, attrs)
+  end
+
+  def truncate_system_pricing_plans(source_id) do
+    from(e in SystemPricingPlans, where: e.source_id == ^source_id)
+    |> Repo.delete_all()
+  end
+
+  alias RoomSanctum.Storage.GBFS.V1.GeoFencingZones
+
+  @doc """
+  Returns the list of gbfs_geofencing_zones.
+
+  ## Examples
+
+      iex> list_gbfs_geofencing_zones()
+      [%GeoFencingZones{}, ...]
+
+  """
+  def list_gbfs_geofencing_zones do
+    Repo.all(GeoFencingZones)
+  end
+
+  @doc """
+  Gets a single geo_fencing_zones.
+
+  Raises `Ecto.NoResultsError` if the Geo fencing zones does not exist.
+
+  ## Examples
+
+      iex> get_geo_fencing_zones!(123)
+      %GeoFencingZones{}
+
+      iex> get_geo_fencing_zones!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_geo_fencing_zones!(id), do: Repo.get!(GeoFencingZones, id)
+
+  @doc """
+  Creates a geo_fencing_zones.
+
+  ## Examples
+
+      iex> create_geo_fencing_zones(%{field: value})
+      {:ok, %GeoFencingZones{}}
+
+      iex> create_geo_fencing_zones(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_geo_fencing_zones(attrs \\ %{}) do
+    %GeoFencingZones{}
+    |> GeoFencingZones.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a geo_fencing_zones.
+
+  ## Examples
+
+      iex> update_geo_fencing_zones(geo_fencing_zones, %{field: new_value})
+      {:ok, %GeoFencingZones{}}
+
+      iex> update_geo_fencing_zones(geo_fencing_zones, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_geo_fencing_zones(%GeoFencingZones{} = geo_fencing_zones, attrs) do
+    geo_fencing_zones
+    |> GeoFencingZones.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a geo_fencing_zones.
+
+  ## Examples
+
+      iex> delete_geo_fencing_zones(geo_fencing_zones)
+      {:ok, %GeoFencingZones{}}
+
+      iex> delete_geo_fencing_zones(geo_fencing_zones)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_geo_fencing_zones(%GeoFencingZones{} = geo_fencing_zones) do
+    Repo.delete(geo_fencing_zones)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking geo_fencing_zones changes.
+
+  ## Examples
+
+      iex> change_geo_fencing_zones(geo_fencing_zones)
+      %Ecto.Changeset{data: %GeoFencingZones{}}
+
+  """
+  def change_geo_fencing_zones(%GeoFencingZones{} = geo_fencing_zones, attrs \\ %{}) do
+    GeoFencingZones.changeset(geo_fencing_zones, attrs)
+  end
+
+  def truncate_geo_fencing_zones(source_id) do
+    from(e in GeoFencingZones, where: e.source_id == ^source_id)
+    |> Repo.delete_all()
+  end
+
+
   def get_current_information_for_bikestop(source_id, stop_id) do
     q =
       from st in StationStatus,
@@ -1727,6 +2133,27 @@ defmodule RoomSanctum.Storage do
       select: fragment("sum(abs(?))", s.num_ebikes_available)
     )
     |> Repo.one()
+  end
+
+  def count_free_bikes(source_id) do
+    from(s in FreeBikeStatus,
+      where:
+        s.source_id == ^source_id,
+      select: fragment("count(*)")
+    )
+    |> Repo.one()
+  end
+
+  def count_free_bikes_types(source_id) do
+    from(s in FreeBikeStatus,
+      where:
+        s.source_id == ^source_id,
+      join: vt in VehicleTypes,
+      on: s.vehicle_type_id == vt.vehicle_type_id,
+      group_by: vt.form_factor,
+      select: %{cnt: count(s.vehicle_type_id), ff: vt.form_factor}
+    )
+    |> Repo.all()
   end
 
   alias RoomSanctum.Storage.AirNow.ReportingArea

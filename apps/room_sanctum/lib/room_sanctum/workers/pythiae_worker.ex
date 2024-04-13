@@ -72,8 +72,8 @@ defmodule RoomSanctum.Worker.Pythiae do
     comparison = DateTime.add(state.lastpub, cfg_ttl, :second)
 
     if current != state.vision and DateTime.compare(DateTime.utc_now(), comparison) == :gt do
-      IO.puts("change detected")
-      IO.inspect({DateTime.utc_now(), comparison})
+#      IO.puts("change detected")
+#      IO.inspect({DateTime.utc_now(), comparison})
 
       for a <- state.pythiae.ankyra do
         RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)

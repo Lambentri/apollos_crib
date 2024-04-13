@@ -155,7 +155,96 @@ defmodule RoomGbfs.Worker do
                 )
 
               :free_bike ->
-                :ok
+                data =
+                  json.data.bikes
+                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+                  |> Enum.map(fn x ->
+                    point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
+                    x |> Map.put(:point, point)
+                  end)
+                  |> Enum.map(fn x ->
+                    RoomSanctum.Storage.change_free_bike_status(
+                      %RoomSanctum.Storage.GBFS.V1.FreeBikeStatus{},
+                      x
+                    ).changes
+                    |> inj_iddt(id, dt)
+                  end)
+
+
+                RoomSanctum.Storage.truncate_free_bike_status(id)
+                Repo.insert_all(
+                  RoomSanctum.Storage.GBFS.V1.FreeBikeStatus,
+                  data,
+                  on_conflict: {:replace_all_except, [:id]},
+                  conflict_target: [:source_id, :bike_id]
+                )
+
+              :vehicle_types ->
+                data =
+                  json.data.vehicle_types
+                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+                  |> Enum.map(fn x ->
+                    RoomSanctum.Storage.change_vehicle_types(
+                      %RoomSanctum.Storage.GBFS.V1.VehicleTypes{},
+                      x
+                    ).changes
+                    |> inj_iddt(id, dt)
+                  end)
+
+
+                RoomSanctum.Storage.truncate_vehicle_types(id)
+                Repo.insert_all(
+                  RoomSanctum.Storage.GBFS.V1.VehicleTypes,
+                  data,
+                  on_conflict: {:replace_all_except, [:id]},
+                  conflict_target: [:source_id, :vehicle_type_id]
+                )
+
+              :pricing_plans ->
+                data =
+                  json.data.plans
+                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+                  |> Enum.map(fn x ->
+                    RoomSanctum.Storage.change_system_pricing_plans(
+                      %RoomSanctum.Storage.GBFS.V1.SystemPricingPlans{},
+                      x
+                    ).changes
+                    |> inj_iddt(id, dt)
+                  end)
+
+
+                RoomSanctum.Storage.truncate_system_pricing_plans(id)
+                Repo.insert_all(
+                  RoomSanctum.Storage.GBFS.V1.SystemPricingPlans,
+                  data,
+                  on_conflict: {:replace_all_except, [:id]},
+                  conflict_target: [:source_id, :plan_id]
+                )
+
+              :geofencing_zones ->
+                data =
+                  json.data.geofencing_zones.features
+                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+                  |> Enum.map(fn x ->
+                    point = %Geo.MultiPolygon{coordinates: x.geometry.coordinates , srid: 4326}
+                    x |> Map.put(:place, point)
+                  end)
+                  |> IO.inspect
+                  |> Enum.map(fn x ->
+                    RoomSanctum.Storage.change_geo_fencing_zones(
+                      %RoomSanctum.Storage.GBFS.V1.GeoFencingZones{},
+                      x
+                    ).changes
+                    |> inj_iddt(id, dt)
+                  end)
+                  |> IO.inspect
+
+
+                RoomSanctum.Storage.truncate_geo_fencing_zones(id)
+#                Repo.insert_all(
+#                  RoomSanctum.Storage.GBFS.V1.GeoFencingZones,
+#                  data
+#                )
 
               :sys_hours ->
                 :ok
@@ -225,6 +314,8 @@ defmodule RoomGbfs.Worker do
     {:noreply, state |> Map.put(:inst, nil)}
   end
 
+  @tfh 14
+
   @impl true
   def handle_cast(:update_static, state) do
     cfg = Configuration.get_source!(state.id)
@@ -232,7 +323,7 @@ defmodule RoomGbfs.Worker do
     case cfg.enabled do
       true ->
         Logger.info("GBFS::#{state.id} updating static info ")
-        bcast(state.id, :downloading, 1, 11)
+        bcast(state.id, :downloading, 1, @tfh)
 
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
@@ -242,46 +333,58 @@ defmodule RoomGbfs.Worker do
 
             if json_body["data"]
                |> Map.has_key?(cfg.config.lang) do
-              bcast(state.id, :parsing, 2, 11)
+              bcast(state.id, :parsing, 2, @tfh)
 
               json_body["data"][cfg.config.lang]["feeds"]
               |> Enum.map(fn %{"name" => name, "url" => url} ->
                 case name do
                   "ebikes_at_stations" ->
                     write_data(url, :ebikes_at_stations, state.id)
-                    bcast(state.id, :system_information, 3, 11)
+                    bcast(state.id, :system_information, 3, @tfh)
 
                   "system_information" ->
                     write_data(url, :sys_info, state.id)
-                    bcast(state.id, :system_information, 4, 11)
+                    bcast(state.id, :system_information, 4, @tfh)
 
                   "station_information" ->
                     write_data(url, :stat_info, state.id)
-                    bcast(state.id, :system_information, 5, 11)
+                    bcast(state.id, :system_information, 5, @tfh)
 
                   "station_status" ->
                     write_data(url, :stat_status, state.id)
-                    bcast(state.id, :system_information, 6, 11)
+                    bcast(state.id, :system_information, 6, @tfh)
 
                   "free_bike_status" ->
                     write_data(url, :free_bike, state.id)
-                    bcast(state.id, :system_information, 7, 11)
+                    bcast(state.id, :system_information, 7, @tfh)
 
                   "system_hours" ->
                     write_data(url, :sys_hours, state.id)
-                    bcast(state.id, :system_information, 8, 11)
+                    bcast(state.id, :system_information, 8, @tfh)
 
                   "system_calendar" ->
                     write_data(url, :sys_cal, state.id)
-                    bcast(state.id, :system_information, 9, 11)
+                    bcast(state.id, :system_information, 9, @tfh)
 
                   "system_regions" ->
                     write_data(url, :sys_regions, state.id)
-                    bcast(state.id, :system_information, 10, 11)
+                    bcast(state.id, :system_information, 10, @tfh)
 
                   "system_alerts" ->
                     write_data(url, :sys_alerts, state.id)
-                    bcast(state.id, :system_information, 11, 11)
+                    bcast(state.id, :system_alerts, 11, @tfh)
+
+                  "vehicle_types" ->
+                    write_data(url, :vehicle_types, state.id)
+                    bcast(state.id, :vehicle_types, 12, @tfh)
+
+                  "system_pricing_plans" ->
+                    write_data(url, :pricing_plans, state.id)
+                    bcast(state.id, :pricing_plans, 13, @tfh)
+
+                  "geofencing_zones" ->
+                    write_data(url, :geofencing_zones, state.id)
+                    bcast(state.id, :geofencing_zones, 14, @tfh)
 
                   otherwise ->
                     Logger.info("GBFS::#{state.id} System has unhandled file #{otherwise}")
@@ -396,5 +499,13 @@ defmodule RoomGbfs.Worker do
       bikes: Storage.count_gbfs_bikes(id),
       ebikes: Storage.count_gbfs_ebikes(id),
     }
+  end
+
+  def free_stats(id) do
+    details = Storage.count_free_bikes_types(id) |> Enum.map(fn %{cnt: cnt, ff: ff} -> {ff, cnt} end) |> Map.new |> IO.inspect
+    %{
+      free_bikes: Storage.count_free_bikes(id)
+    } |> Map.merge(details)
+
   end
 end

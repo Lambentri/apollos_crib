@@ -121,7 +121,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     stats =
       case type do
         "gtfs" -> %{gtfs: RoomGtfs.Worker.source_stats(id), rt: %{}}
-        "gbfs" -> %{gbfs: RoomGbfs.Worker.source_stats(id), system: RoomGbfs.Worker.sys_info_as_stats(id)}
+        "gbfs" -> %{gbfs: RoomGbfs.Worker.source_stats(id), system: RoomGbfs.Worker.sys_info_as_stats(id), free: RoomGbfs.Worker.free_stats(id)}
         _otherwise -> %{}
       end
 

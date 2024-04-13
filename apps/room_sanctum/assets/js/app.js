@@ -50,6 +50,7 @@ Hooks.mkMap = {
         } else {
             coords = [42.3736, -71.1097]
         }
+        coords = [18.33967, -67.23713]
         var map = L.map('map', {keyboard: true}).setView(coords, 13);
 
         const view = this;
@@ -67,7 +68,7 @@ Hooks.mkMap = {
         }).addTo(map);
 
         this.handleEvent("add_marker", ({lat, lon}) => {
-            const marker = L.marker(L.latLng(lat, lon))
+            const marker = L.marker(L.latLng(lat, lomn))
             marker.addTo(map)
         })
     }

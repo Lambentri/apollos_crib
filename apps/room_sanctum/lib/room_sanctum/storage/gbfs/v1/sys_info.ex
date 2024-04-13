@@ -41,15 +41,9 @@ defmodule RoomSanctum.Storage.GBFS.V1.SysInfo do
     |> foreign_key_constraint(:source_id)
     |> validate_required([
       :name,
-      :email,
       :timezone,
-      :short_name,
-      :phone_number,
       :language,
-      :start_date,
-      :url,
       :operator,
-      :purchase_url,
       :system_id
     ])
   end

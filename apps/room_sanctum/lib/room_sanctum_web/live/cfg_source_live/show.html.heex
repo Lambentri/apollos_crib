@@ -136,11 +136,11 @@ current_user={@current_user}
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
             <div class="card-body">
                 <h3 class="card-title">Stats Results</h3>
-                <div class="flex">
+                <div class="flex justify-evenly">
                     <%= for {type,data} <-  @stats  do %>
                     <div>
                         <div class="font-bold uppercase"><%= type %> </div>
-                        <ul class="menu bg-primary">
+                        <ul class="menu bg-primary rounded">
                             <%= for {data_k, data_v} <- data do %>
                             <li class="text-primary-content uppercase">
                                 <a><%= data_k %> <span class="text-accent"><%= data_v %></span></a>
@@ -248,6 +248,9 @@ current_user={@current_user}
                                            autofocus autocomplete="off"
                                            class="input input-bordered input-info w-full max-w-xs"
                                     />
+
+                                    <div>-foci-dropdown-</div>
+                                    <div>-distance-dropdown-</div>
                                 </fieldset>
                             </form>
                         </div>

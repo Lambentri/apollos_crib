@@ -149,6 +149,26 @@ defmodule RoomSanctumWeb.Router do
       live "/storage/gbfs_ebikes_stations/:id", EbikesAtStationsLive.Show, :show
       live "/storage/gbfs_ebikes_stations/:id/show/edit", EbikesAtStationsLive.Show, :edit
 
+      live "/storage/gbfs_free_bike_status", FreeBikeStatusLive.Index, :index
+      live "/storage/gbfs_free_bike_status/new", FreeBikeStatusLive.Index, :new
+      live "/storage/gbfs_free_bike_status/:id/edit", FreeBikeStatusLive.Index, :edit
+      live "/storage/gbfs_free_bike_status/:id", FreeBikeStatusLive.Show, :show
+      live "/storage/gbfs_free_bike_status/:id/show/edit", FreeBikeStatusLive.Show, :edit
+
+      live "/storage/gbfs_vehicle_types", VehicleTypesLive.Index, :index
+      live "/storage/gbfs_vehicle_types/new", VehicleTypesLive.Index, :new
+      live "/storage/gbfs_vehicle_types/:id/edit", VehicleTypesLive.Index, :edit
+      live "/storage/gbfs_vehicle_types/:id", VehicleTypesLive.Show, :show
+      live "/storage/gbfs_vehicle_types/:id/show/edit", VehicleTypesLive.Show, :edit
+
+      live "/storage/gbfs_system_pricing_plans", SystemPricingPlansLive.Index, :index
+      live "/storage/gbfs_system_pricing_plans/new", SystemPricingPlansLive.Index, :new
+      live "/storage/gbfs_system_pricing_plans/:id/edit", SystemPricingPlansLive.Index, :edit
+
+      live "/storage/gbfs_system_pricing_plans/:id", SystemPricingPlansLive.Show, :show
+      live "/storage/gbfs_system_pricing_plans/:id/show/edit", SystemPricingPlansLive.Show, :edit
+
+
       live "/airnow/reporting_area", ReportingAreaLive.Index, :index
       live "/airnow/reporting_area/new", ReportingAreaLive.Index, :new
       live "/airnow/reporting_area/:id/edit", ReportingAreaLive.Index, :edit
