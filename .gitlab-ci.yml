@@ -20,8 +20,8 @@
 #    - master
 
 image:
-    name: gcr.io/kaniko-project/executor:latest
-    entrypoint: [""]
+  name: gcr.io/kaniko-project/executor:latest
+  entrypoint: [""]
 build-master:
   retry: 1
   stage: build
