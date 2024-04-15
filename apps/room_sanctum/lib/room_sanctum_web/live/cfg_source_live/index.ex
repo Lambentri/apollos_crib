@@ -9,7 +9,9 @@ defmodule RoomSanctumWeb.SourceLive.Index do
     {:ok,
      socket
      |> assign(:show_info, false)
-     |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id))}
+     |> assign(:tint, nil)
+     |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id))
+    }
   end
 
   @impl true
@@ -68,6 +70,15 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   def handle_event("info", _params, socket) do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
+  end
+
+  def handle_event("set-tint", %{"tint"=> tint}, socket) do
+    IO.inspect({"set-tint", tint, socket.assigns.tint})
+    case socket.assigns.tint == tint do
+      true -> {:noreply, socket |> assign(:tint, nil)}
+      false -> {:noreply, socket |> assign(:tint, tint)}
+    end
+
   end
 
   defp list_cfg_sources(uid) do

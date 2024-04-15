@@ -1,19 +1,22 @@
-<html>
+<html data-theme="her">
 <head>
   <meta charset="utf-8"/>
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <%= csrf_meta_tag() %>
-  <%= live_title_tag assigns[:page_title] || "RoomSanctum", suffix: " · Phoenix Framework" %>
+  <%= live_title_tag assigns[:page_title] || "RoomSanctum", suffix: " · Apollos Crib" %>
   <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn,
   "/assets/app.css")}/>
   <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn,
-  "/assets/app.js")}></script>
+  "/assets/app.js")}></script>t
 </head>
 <body>
-<div class="p-2">
-  <div class="bg-neutral sm:rounded-lg shadow-xl pb-8">
+<div class="p-2 h-full">
+  <div class="bg-neutral sm:rounded-lg shadow-xl p-4 h-full">
     <%= @inner_content %>
+    <div class="absolute bottom-2 right-2 ...">
+      <p><a class="btn btn-ghost normal-case text-lg neon" href="/">apollo's</a></p>
+    </div>
   </div>
 </div>
 </body>

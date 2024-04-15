@@ -1,5 +1,5 @@
 defmodule RoomSanctumWeb.PythiaeLive.Public do
-  use RoomSanctumWeb, :live_view_a
+  use RoomSanctumWeb, :live_view_ca
 
   alias RoomSanctum.Configuration
 

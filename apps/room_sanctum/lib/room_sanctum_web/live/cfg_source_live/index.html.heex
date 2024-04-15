@@ -61,7 +61,7 @@
         </td>
         <td>
             <%= if source.meta.tint do %>
-            <i class={"fa fa-circle text-#{source.meta.tint}-500"}></i>
+            <i class={"fa fa-circle text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
             <% end %>
         </td>
         <td>
