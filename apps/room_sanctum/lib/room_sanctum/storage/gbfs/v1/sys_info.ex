@@ -43,7 +43,6 @@ defmodule RoomSanctum.Storage.GBFS.V1.SysInfo do
       :name,
       :timezone,
       :language,
-      :operator,
       :system_id
     ])
   end
