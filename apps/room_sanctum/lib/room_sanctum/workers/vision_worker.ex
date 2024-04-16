@@ -120,7 +120,7 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   def handle_call(:return_state, _from, state) do
-    {:reply, %{data: state.data, queries: state.vision_q}, state}
+    {:reply, %{data: state.data, queries: state.vision_q, name: state.vision.name}, state}
   end
 
   def handle_call(_msg, _from, state) do

@@ -1,4 +1,11 @@
 <div class="2xl:columns-5 xl:columns-3 lg:columns-3 md:columns-3 sm:columns-3 gap-1">
+    <div class="absolute bottom-2 left-2 ...">
+        <p><a class="btn btn-ghost normal-case text-md" href="#">VISION: <%= @curr_vision %></a></p>
+    </div>
+    <div class="absolute bottom-2 right-2 ...">
+        <p><a class="btn btn-ghost normal-case text-lg neon" href="/">apollo's</a></p>
+    </div>
+    <!-- here together because it made sense to have both here instead of the root -->
   <%= for {k, p} <- @preview do %>
     <%= if p != [] do %>
     <div class="card card-compact bg-base-300 shadow-xl w-full mb-1">

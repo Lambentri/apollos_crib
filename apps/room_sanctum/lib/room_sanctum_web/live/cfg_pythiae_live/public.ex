@@ -23,6 +23,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
      |> assign(:pythiae, Configuration.get_pythiae!(:name, name))
+     |> assign(:curr_vision, "Pending")
      |> assign(:preview, [])
      |> assign(:preview_mode, :basic)}
   end
@@ -31,10 +32,10 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 15000)
 
-    %{data: data, queries: queries} =
+    %{data: data, queries: queries, name: name} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
 
-    {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
+    {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries) |> assign(:curr_vision, name)}
   end
 
   defp condense({id, type}, data) do
