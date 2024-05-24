@@ -3,6 +3,8 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Accounts
+  alias RoomSanctum.Configuration.Pythiae.Const
+
 
   def gen_name() do
     FriendlyID.generate(2, separator: "-")
@@ -12,6 +14,84 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
     params
     |> Map.put("user_id", socket.assigns.current_user.id)
   end
+
+  def line(assigns) do
+    assigns =
+      assign(
+        assigns,
+        :deleted,
+        Phoenix.HTML.Form.input_value(assigns.f_line, :delete) == true
+      )
+
+    ~H"""
+    <div class={if(@deleted, do: "opacity-50")}>
+      <input
+        type="hidden"
+        name={Phoenix.HTML.Form.input_name(@f_line, :delete)}
+        value={to_string(Phoenix.HTML.Form.input_value(@f_line, :delete))}
+      />
+      <div class="flex gap-4 items-end">
+        <div class="grow">
+          <.input class="mt-0" field={@f_line[:title]} readonly={@deleted} label="Title" />
+        </div>
+        <div class="grow">
+          <.input
+            class="mt-0"
+            field={@f_line[:body]}
+            readonly={@deleted}
+            label="Body"
+          />
+        </div>
+        <.button
+          class="grow-0"
+          type="button"
+          phx-click="delete-line"
+          phx-value-index={@f_line.index}
+          phx-target={@myself}
+          disabled={@deleted}
+        >
+          Delete
+        </.button>
+      </div>
+    </div>
+    """
+  end
+
+  @impl true
+  def handle_event("add-const", _, socket) do
+    socket =
+      update(socket, :form, fn %{source: changeset} ->
+        existing = Ecto.Changeset.get_embed(changeset, :consts)
+        changeset = Ecto.Changeset.put_embed(changeset, :consts, existing ++ [%{}])
+        to_form(changeset)
+      end)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("delete-line", %{"index" => index}, socket) do
+    index = String.to_integer(index)
+
+    socket =
+      update(socket, :form, fn %{source: changeset} ->
+        existing = Ecto.Changeset.get_embed(changeset, :consts)
+        {to_delete, rest} = List.pop_at(existing, index)
+
+        lines =
+          if Ecto.Changeset.change(to_delete).data.id do
+            List.replace_at(existing, index, Ecto.Changeset.change(to_delete, delete: true))
+          else
+            rest
+          end
+
+        changeset
+        |> Ecto.Changeset.put_embed(:consts, lines)
+        |> to_form()
+      end)
+
+    {:noreply, socket}
+  end
+
 
   @impl true
   def update(%{pythiae: pythiae} = assigns, socket) do
@@ -41,7 +121,11 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
        list_cfg_foci(assigns.current_user.id)
        |> Enum.map(fn x -> {x.name, x.id} end)
        |> Enum.into(%{})
-     )}
+     )
+    |> assign(:consts, [
+       %Const{title: "Fun Fact", body: "A Coconut will reach approx 10 meters per second before crushing your skull"},
+       %Const{title: "Fun Fact", body: "Poseidon will take blood, it's guaranteed."}
+     ])}
   end
 
   @impl true

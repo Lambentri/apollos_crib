@@ -33,6 +33,9 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :gitlab ->
         "fa-code-branch"
+
+      :const ->
+        "fa-triangle-exclamation"
     end
   end
 
@@ -70,6 +73,9 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :gitlab ->
         "f126"
+
+      :const ->
+        "f071"
     end
   end
 end

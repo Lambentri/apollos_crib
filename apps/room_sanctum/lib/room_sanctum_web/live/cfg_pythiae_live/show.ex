@@ -4,6 +4,12 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
   alias RoomSanctum.Configuration
   alias RoomSanctum.Accounts
 
+  def intersperse([], _), do: []
+  def intersperse(_, []), do: []
+  def intersperse([x | xs], [y | ys]) do
+    [y, x | intersperse(xs, ys)]
+  end
+
   @impl true
   def mount(_params, _session, socket) do
     if connected?(socket), do: Process.send_after(self(), :update, 500)
@@ -29,6 +35,10 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
 
     %{data: data, queries: queries} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
+
+    shuffled_consts = socket.assigns.pythiae.consts |> Enum.shuffle |> Enum.with_index |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end) |> Map.new
+
+    data = Map.merge(data, shuffled_consts) |> Enum.shuffle
 
     {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
   end

@@ -1,5 +1,6 @@
 defmodule RoomSanctumWeb.LivePreview do
   use Phoenix.Component
+  use Phoenix.HTML
   import Phoenix.LiveView.Helpers
 
   defp gtfs_icon(route_str) do
@@ -231,5 +232,28 @@ defmodule RoomSanctumWeb.LivePreview do
     </div>
     <% end %>
     """
+  end
+
+  def is_uri(path) do
+    res = URI.parse(path)
+    case {res.host, res.scheme} do
+      {nil, nil} -> false
+      {val, val2} -> true
+    end
+  end
+
+  def do_fmt(str) do
+    MDEx.to_html(str)
+  end
+
+  def p_const(assigns) do
+    ~H"""
+    <div class="text-xl text-accent">
+      <%= case is_uri(@entries.data.body) do %>
+        <%= true -> %> <img src={@entries.data.body} class="rounded-sm" />
+        <%= false -> %> <%= raw do_fmt(@entries.data.body) %>
+      <% end %>
+    </div>
+      """
   end
 end

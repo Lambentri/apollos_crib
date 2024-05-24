@@ -68,10 +68,17 @@
       </div>
     </div>
     <div class="flex flex flex-wrap md:flex-nowrap flex-col flex-col-reverse md:flex-row">
-      <div class="card card-compact w-full md:w-1/5 bg-base-100 shadow-xl m-2">
-        <div class="card-body">
-          <h3 class="card-title">Control</h3>
-          <p><button class="btn btn-primary" phx-click="do-publish" phx-value-id={@pythiae.id}>Publish</button></p>
+      <div class="flex flex-col md:w-1/5 m-2">
+        <div class="card card-compact w-full bg-base-100 shadow-xl">
+          <div class="card-body">
+            <a href={~p"/p/p/#{@pythiae.name}"} ><button class="btn btn-primary">Public View</button></a>
+          </div>
+        </div>
+        <div class="card card-compact w-full bg-base-100 shadow-xl my-4">
+          <div class="card-body">
+            <h3 class="card-title">Control</h3>
+            <p><button class="btn btn-primary" phx-click="do-publish" phx-value-id={@pythiae.id}>Publish</button></p>
+          </div>
         </div>
       </div>
       <div class="card card-compact w-full md:w-4/5 bg-base-100 shadow-xl m-2 ">
@@ -108,6 +115,7 @@
                         <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
                         <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
                         <% {_, :gitlab} -> %> <.p_gitlab entries={condense(k, p) |> preview(k)}> </.p_gitlab>
+                        <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
                       <% end %>
                       </div>
                     </div>

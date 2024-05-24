@@ -74,6 +74,7 @@ defmodule RoomSanctum.MixProject do
 
       # UI
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
+      {:mdex, "~> 0.1"},
 
       # kube
       {:healthchex, "~> 0.2"},

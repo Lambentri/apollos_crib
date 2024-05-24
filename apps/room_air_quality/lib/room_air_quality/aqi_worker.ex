@@ -56,7 +56,7 @@ defmodule RoomAirQuality.Worker do
 
   defp write_data(result, type, id) do
     datetime = NaiveDateTime.local_now()
-    Logger.info("AQI::#{id} writing bundle")
+    Logger.info("AQI::#{id} writing bundle #{type}")
 
     case type do
       :hourly ->
@@ -165,6 +165,7 @@ defmodule RoomAirQuality.Worker do
         result.body
         |> String.split("\r\n")
         |> List.delete_at(0)
+        |> IO.inspect
         |> Enum.filter(fn x -> x != "" end)
         |> CSV.decode(
           headers: [
@@ -205,6 +206,7 @@ defmodule RoomAirQuality.Worker do
           ]
         )
         |> Enum.to_list()
+        |> IO.inspect
         |> Enum.map(fn {:ok, x} -> x end)
         |> Enum.map(fn data ->
           point = %Geo.Point{
@@ -233,6 +235,7 @@ defmodule RoomAirQuality.Worker do
               data.valid_time |> Timex.parse!("%H:%M", :strftime) |> NaiveDateTime.to_time()
             )
           )
+          |> IO.inspect
           |> Map.put(:inserted_at, datetime)
           |> Map.put(:updated_at, datetime)
           |> Map.put(:ozone_aqi, data.ozone_aqi |> intify)
@@ -240,6 +243,7 @@ defmodule RoomAirQuality.Worker do
           |> Map.put(:pm25_aqi, data.pm25_aqi |> intify)
           |> Map.put(:no2_aqi, data.no2_aqi |> intify)
         end)
+        |> IO.inspect
         |> Enum.map(fn x ->
           Repo.insert(
             x,
@@ -266,9 +270,10 @@ defmodule RoomAirQuality.Worker do
     sh = ts |> DateTime.add(-1 * 60 * 60, :second)
     file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
     date_str = sh |> Timex.format!("%Y%m%d", :strftime)
-
-    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
-    |> IO.inspect()
+    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/2024/20240418/HourlyAQObs_2024041817.dat"
+#    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/2024/20240418/HourlyAQObs_2024041816.dat"
+#    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
+#    |> IO.inspect()
   end
 
   def handle_cast(:refresh_db_cfg, state) do

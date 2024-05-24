@@ -14,16 +14,36 @@
         <.input field={@form[:name]} type="text" label="Topic" lb_a="generate-new-name" lb_i="fa-arrows-rotate" lb_tgt="#pythiae-form" />
       </div>
       <div class="form-control">
-        <.input field={@form[:visions]} type="select" multiple="true" label="Visions" options={@cfg_visions_sel}/>
+        <.input field={@form[:visions]} type="select" multiple="true" label="Visions" options={@cfg_visions_sel} />
       </div>
       <div class="form-control">
-        <.input field={@form[:ankyra]} type="select" multiple="true" label="Ankyra"  options={@cfg_ankyra_sel}/>
+        <.input field={@form[:ankyra]} type="select" multiple="true" label="Ankyra"  options={@cfg_ankyra_sel} />
       </div>
       <div class="form-control">
-        <.input field={@form[:curr_vision]} type="select" label="Current Vision"  options={@cfg_visions_sel}/>
+        <.input field={@form[:curr_vision]} type="select" label="Current Vision"  options={@cfg_visions_sel} />
       </div>
       <div class="form-control">
-        <.input field={@form[:curr_foci]} type="select" label="Current Foci"  options={@cfg_foci_sel}/>
+        <.input field={@form[:curr_foci]} type="select" label="Current Foci"  options={@cfg_foci_sel} />
+      </div>
+      <div class="form-control">
+        <label class="block text-md font-bold leading-6 pt-4 text-primary-content">
+          Consts
+          <span class="float-right">
+            <span class="" phx-click="add-const" phx-target={@myself}><i class="fa-solid fa-plus"></i></span>
+          </span>
+        </label>
+        <.inputs_for :let={f_line} field={@form[:consts]}>
+          <.line f_line={f_line} myself={@myself} />
+        </.inputs_for>
+        <%= for {c, i} <- @consts |> Enum.with_index do %>
+          <div class="rounded-sm p-2 m-1 bg-secondary text-secondary-content flex justify-between">
+            <div>
+              <span class="font-bold"><%= c.title %>:</span>
+              <span class="italic"><%= c.body %></span>
+            </div>
+            <span class="" phx-click="del-const" phx-value-idx={i}><i class="fa-solid fa-close"></i></span>
+          </div>
+        <% end %>
       </div>
 
     </div>

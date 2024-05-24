@@ -420,7 +420,7 @@ defmodule RoomGbfs.Worker do
     case cfg.enabled do
       true ->
         Logger.info("GBFS::#{state.id} updating realtime info ")
-        bcast(state.id, :downloading, 1, 4)
+        bcast(state.id, :downloading, 1, 5)
 
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
@@ -428,18 +428,22 @@ defmodule RoomGbfs.Worker do
               {:ok, json_body} ->
                 if json_body["data"]
                    |> Map.has_key?(cfg.config.lang) do
-                  bcast(state.id, :parsing, 2, 4)
+                  bcast(state.id, :parsing, 2, 5)
 
                   json_body["data"][cfg.config.lang]["feeds"]
                   |> Enum.map(fn %{"name" => name, "url" => url} ->
                     case name do
                       "station_information" ->
                         write_data(url, :stat_info, state.id)
-                        bcast(state.id, :system_information, 3, 4)
+                        bcast(state.id, :system_information, 3, 5)
 
                       "ebikes_at_stations" ->
                         write_data(url, :ebikes_at_stations, state.id)
-                        bcast(state.id, :system_information, 4, 4)
+                        bcast(state.id, :system_information, 4, 5)
+
+                      "free_bike_status" ->
+                        write_data(url, :free_bike, state.id)
+                        bcast(state.id, :system_information, 5, 5)
 
                       _otherwise ->
                         :ok

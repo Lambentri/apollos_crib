@@ -136,5 +136,9 @@
     <orderEntry type="library" name="bandit" level="project" />
     <orderEntry type="library" name="makeup_diff" level="project" />
     <orderEntry type="library" name="ecto_interval" level="project" />
+    <orderEntry type="library" name="mdex" level="project" />
+    <orderEntry type="library" name="rustler" level="project" />
+    <orderEntry type="library" name="rustler_precompiled" level="project" />
+    <orderEntry type="library" name="toml" level="project" />
   </component>
 </module>

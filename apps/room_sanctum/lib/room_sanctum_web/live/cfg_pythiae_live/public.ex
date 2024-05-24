@@ -35,6 +35,10 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
     %{data: data, queries: queries, name: name} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
 
+    shuffled_consts = socket.assigns.pythiae.consts |> Enum.shuffle |> Enum.with_index |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end) |> Map.new
+
+    data = Map.merge(data, shuffled_consts) |> Enum.shuffle
+
     {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries) |> assign(:curr_vision, name)}
   end
 

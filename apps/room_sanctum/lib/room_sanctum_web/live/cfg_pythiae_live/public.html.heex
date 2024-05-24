@@ -24,6 +24,7 @@
               <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
               <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
               <% {_, :gitlab} -> %> <.p_gitlab entries={condense(k, p) |> preview(k)}> </.p_gitlab>
+              <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
             <% end %>
             </div>
           </div>

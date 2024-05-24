@@ -104,6 +104,10 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/ecto_interval" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/thoas" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/nimble_csv" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/rustler" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/mdex" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/toml" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/rustler_precompiled" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="sentry" level="project" />

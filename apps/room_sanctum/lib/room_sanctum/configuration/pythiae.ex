@@ -17,6 +17,24 @@ end
 
 alias RoomSanctum.Configuration.Pythiae.Tweaks
 
+defmodule RoomSanctum.Configuration.Pythiae.Const do
+  use Ecto.Schema
+  import Ecto.Changeset
+
+  embedded_schema do
+    field :title, :string
+    field :body, :string
+  end
+
+  def changeset(source, params) do
+    source
+    |> cast(params, ~w(title body)a)
+    |> validate_required([:title, :body])
+  end
+end
+
+alias RoomSanctum.Configuration.Pythiae.Const
+
 defmodule RoomSanctum.Configuration.Pythiae do
   use Ecto.Schema
   import Ecto.Changeset
@@ -28,7 +46,7 @@ defmodule RoomSanctum.Configuration.Pythiae do
     belongs_to :user, RoomSanctum.Accounts.User
     field :curr_vision, :id
     field :curr_foci, :id
-
+    embeds_many :consts, Const
     embeds_one :tweaks, Tweaks
 
     timestamps()
@@ -38,6 +56,7 @@ defmodule RoomSanctum.Configuration.Pythiae do
   def changeset(pythiae, attrs) do
     pythiae
     |> cast(attrs, [:visions, :ankyra, :user_id, :curr_vision, :curr_foci, :name])
+    |> cast_embed(:consts, with: &Const.changeset/2)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:curr_vision)
     |> foreign_key_constraint(:curr_foci)
