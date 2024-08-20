@@ -19,12 +19,12 @@
 #  only:
 #    - master
 
-image:
-  name: gcr.io/kaniko-project/executor:debug
-  entrypoint: [""]
 build-master:
   retry: 1
   stage: build
+  image:
+    name: gcr.io/kaniko-project/executor:v1.23.2-debug
+    entrypoint: [""]
   only:
     - master
   script:
