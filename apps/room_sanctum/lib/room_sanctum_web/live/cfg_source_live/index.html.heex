@@ -64,7 +64,7 @@
             <i class={"fa fa-circle text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
             <% end %>
         </td>
-        <td>
+        <td class={"bg-#{@tint}-500"}>
           <span>
 
             <.ib icon="fa-eye" to={Routes.source_show_path(@socket, :show, source)} function={:live_redirect}></.ib>

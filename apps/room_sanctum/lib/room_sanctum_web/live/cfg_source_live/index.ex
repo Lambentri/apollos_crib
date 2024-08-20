@@ -75,14 +75,18 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   def handle_event("set-tint", %{"tint"=> tint}, socket) do
     IO.inspect({"set-tint", tint, socket.assigns.tint})
     case socket.assigns.tint == tint do
-      true -> {:noreply, socket |> assign(:tint, nil)}
-      false -> {:noreply, socket |> assign(:tint, tint)}
+      true -> {:noreply, socket |> assign(:tint, nil) |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id), reset: true)}
+      false -> {:noreply, socket |> assign(:tint, tint) |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id, tint), reset: true)}
     end
 
   end
 
   defp list_cfg_sources(uid) do
     Configuration.list_cfg_sources({:user, uid})
+  end
+
+  defp list_cfg_sources(uid, tint) do
+    Configuration.list_cfg_sources({:user, uid}) |> Enum.filter(fn s -> s.meta.tint == tint end)
   end
 
   defp get_icon(source_type) do
@@ -119,6 +123,9 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
       :gitlab ->
         "fa-code-branch"
+
+      :packages ->
+        "fa-envelopes-bulk"
     end
   end
 end
