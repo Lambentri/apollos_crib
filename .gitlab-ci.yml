@@ -23,7 +23,7 @@ build-master:
   retry: 1
   stage: build
   tags:
-    privileged: true
+    - privileged: true
   image:
     name: gcr.io/kaniko-project/executor:v1.23.2-debug
     entrypoint: [""]
