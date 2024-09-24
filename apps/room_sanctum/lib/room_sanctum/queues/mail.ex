@@ -104,9 +104,8 @@ defmodule RoomSanctum.Queues.Mail do
     type = "standard"
     version = "v1"
 
-    #    url = "https://wwwcie.ups.com/api/track/" + version + "/subscription/" + type + "/package"
-    url =
-      "http://e6166b4a-082f-487f-81b8-125e1b55cf27:cf098949-a9b3-499e-9efa-784336fc261f@localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0"
+    url = "https://wwwcie.ups.com/api/track/" + version + "/subscription/" + type + "/package"
+    #    url = "http://e6166b4a-082f-487f-81b8-125e1b55cf27:cf098949-a9b3-499e-9efa-784336fc261f@localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0"
 
     payload = %{
       "locale" => "en_US",
