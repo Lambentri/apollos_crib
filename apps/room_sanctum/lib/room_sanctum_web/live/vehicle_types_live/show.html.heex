@@ -1,0 +1,29 @@
+<.header>
+  Vehicle types <%= @vehicle_types.id %>
+  <:subtitle>This is a vehicle_types record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/gbfs_vehicle_types/#{@vehicle_types}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit vehicle_types</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Vehicle type"><%= @vehicle_types.vehicle_type_id %></:item>
+  <:item title="Form factor"><%= @vehicle_types.form_factor %></:item>
+  <:item title="Propulsion type"><%= @vehicle_types.propulsion_type %></:item>
+  <:item title="Max range meters"><%= @vehicle_types.max_range_meters %></:item>
+</.list>
+
+<.back navigate={~p"/gbfs_vehicle_types"}>Back to gbfs_vehicle_types</.back>
+
+<.modal :if={@live_action == :edit} id="vehicle_types-modal" show on_cancel={JS.patch(~p"/gbfs_vehicle_types/#{@vehicle_types}")}>
+  <.live_component
+    module={RoomSanctumWeb.VehicleTypesLive.FormComponent}
+    id={@vehicle_types.id}
+    title={@page_title}
+    action={@live_action}
+    vehicle_types={@vehicle_types}
+    patch={~p"/gbfs_vehicle_types/#{@vehicle_types}"}
+  />
+</.modal>

@@ -1,0 +1,44 @@
+<.header>
+  Listing Gbfs vehicle types
+  <:actions>
+    <.link patch={~p"/gbfs_vehicle_types/new"}>
+      <.button>New Vehicle types</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="gbfs_vehicle_types"
+  rows={@streams.gbfs_vehicle_types}
+  row_click={fn {_id, vehicle_types} -> JS.navigate(~p"/gbfs_vehicle_types/#{vehicle_types}") end}
+>
+  <:col :let={{_id, vehicle_types}} label="Vehicle type"><%= vehicle_types.vehicle_type_id %></:col>
+  <:col :let={{_id, vehicle_types}} label="Form factor"><%= vehicle_types.form_factor %></:col>
+  <:col :let={{_id, vehicle_types}} label="Propulsion type"><%= vehicle_types.propulsion_type %></:col>
+  <:col :let={{_id, vehicle_types}} label="Max range meters"><%= vehicle_types.max_range_meters %></:col>
+  <:action :let={{_id, vehicle_types}}>
+    <div class="sr-only">
+      <.link navigate={~p"/gbfs_vehicle_types/#{vehicle_types}"}>Show</.link>
+    </div>
+    <.link patch={~p"/gbfs_vehicle_types/#{vehicle_types}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, vehicle_types}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: vehicle_types.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="vehicle_types-modal" show on_cancel={JS.patch(~p"/gbfs_vehicle_types")}>
+  <.live_component
+    module={RoomSanctumWeb.VehicleTypesLive.FormComponent}
+    id={@vehicle_types.id || :new}
+    title={@page_title}
+    action={@live_action}
+    vehicle_types={@vehicle_types}
+    patch={~p"/gbfs_vehicle_types"}
+  />
+</.modal>

@@ -98,4 +98,36 @@ defmodule RoomSanctum.ConfigurationFixtures do
 
     scribus
   end
+
+  @doc """
+  Generate a agyr.
+  """
+  def agyr_fixture(attrs \\ %{}) do
+    {:ok, agyr} =
+      attrs
+      |> Enum.into(%{
+        designator: "some designator",
+        path: "some path",
+        token: "some token",
+        user: "some user"
+      })
+      |> RoomSanctum.Configuration.create_agyr()
+
+    agyr
+  end
+
+  @doc """
+  Generate a taxid.
+  """
+  def taxid_fixture(attrs \\ %{}) do
+    {:ok, taxid} =
+      attrs
+      |> Enum.into(%{
+        designator: "some designator",
+        user: "some user"
+      })
+      |> RoomSanctum.Configuration.create_taxid()
+
+    taxid
+  end
 end

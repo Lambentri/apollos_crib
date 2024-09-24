@@ -30,7 +30,7 @@ defmodule RoomGtfs.MixProject do
       {:nimble_csv, "~> 1.2"},
       {:postgrex, "~> 0.17", override: true},
 #      {:ecto_interval, "~> 0.2.5"},
-      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
+#      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
       {:httpoison, "~> 1.8"},
       {:protobuf, "~> 0.8.0"},
       {:parent, "~> 0.12.1"},

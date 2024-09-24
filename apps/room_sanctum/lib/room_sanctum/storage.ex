@@ -2672,4 +2672,100 @@ defmodule RoomSanctum.Storage do
 
     Repo.all(q)
   end
+
+  alias RoomSanctum.Storage.Taxidae
+
+  @doc """
+  Returns the list of storage_mail.
+
+  ## Examples
+
+      iex> list_storage_mail()
+      [%Taxidae{}, ...]
+
+  """
+  def list_storage_mail do
+    Repo.all(Taxidae)
+  end
+
+  @doc """
+  Gets a single taxidae.
+
+  Raises `Ecto.NoResultsError` if the Taxidae does not exist.
+
+  ## Examples
+
+      iex> get_taxidae!(123)
+      %Taxidae{}
+
+      iex> get_taxidae!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_taxidae!(id), do: Repo.get!(Taxidae, id)
+
+  @doc """
+  Creates a taxidae.
+
+  ## Examples
+
+      iex> create_taxidae(%{field: value})
+      {:ok, %Taxidae{}}
+
+      iex> create_taxidae(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_taxidae(attrs \\ %{}) do
+    %Taxidae{}
+    |> Taxidae.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a taxidae.
+
+  ## Examples
+
+      iex> update_taxidae(taxidae, %{field: new_value})
+      {:ok, %Taxidae{}}
+
+      iex> update_taxidae(taxidae, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_taxidae(%Taxidae{} = taxidae, attrs) do
+    taxidae
+    |> Taxidae.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a taxidae.
+
+  ## Examples
+
+      iex> delete_taxidae(taxidae)
+      {:ok, %Taxidae{}}
+
+      iex> delete_taxidae(taxidae)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_taxidae(%Taxidae{} = taxidae) do
+    Repo.delete(taxidae)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking taxidae changes.
+
+  ## Examples
+
+      iex> change_taxidae(taxidae)
+      %Ecto.Changeset{data: %Taxidae{}}
+
+  """
+  def change_taxidae(%Taxidae{} = taxidae, attrs \\ %{}) do
+    Taxidae.changeset(taxidae, attrs)
+  end
 end

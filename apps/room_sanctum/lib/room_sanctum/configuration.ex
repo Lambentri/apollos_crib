@@ -43,7 +43,7 @@ defmodule RoomSanctum.Configuration do
       ** (Ecto.NoResultsError)
 
   """
-  def get_source!(id), do: Repo.get!(Source, id)
+  def get_source!(id), do: Repo.get!(Source, id) |> Repo.preload([:mailboxes, :webhooks])
 
   @doc """
   Creates a source.
@@ -58,9 +58,23 @@ defmodule RoomSanctum.Configuration do
 
   """
   def create_source(attrs \\ %{}) do
-    %Source{}
-    |> Source.changeset(attrs)
-    |> Repo.insert()
+    r = %Source{} |> Source.changeset(attrs) |> Repo.insert()
+    {:ok, d} = r
+    case d.type do
+      :packages ->
+        ## create main mailbox
+        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate, designator: "mail_main"})
+        ## create mailbox for usps handling
+        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate, designator: "mail_usps"})
+
+        ## create default webhook url
+        create_agyr(%{source_id: d.id, path: Ecto.UUID.generate, user: Ecto.UUID.generate, token: Ecto.UUID.generate, designator: "ups_webhook"})
+
+      _otherwise ->
+        :ok
+    end
+
+    r
   end
 
   @doc """
@@ -82,8 +96,34 @@ defmodule RoomSanctum.Configuration do
   end
 
   def update_source_meta(%Source{} = source, attrs) do
-    m = source.meta |> Map.merge(attrs) |> Map.from_struct
+    m = source.meta |> Map.merge(attrs) |> Map.from_struct()
     update_source(source, %{meta: m})
+  end
+
+  def create_source_meta_tracking(%Source{} = source, number, type) do
+    s = source.meta
+    original_tracking = source.meta.tracking
+    extant_id = original_tracking |> Enum.filter(fn t -> t.number == number end)
+    case length(extant_id) do
+      0 -> new_entry = %{number: number, type: type, entries: []}
+           new_tracking = List.insert_at(original_tracking, -1 ,new_entry)
+           RoomSanctum.Configuration.update_source_meta(source, %{tracking: new_tracking})
+           new_tracking
+      _otherwise ->
+          original_tracking
+    end
+  end
+
+  def update_source_meta_tracking(%Source{} = source, number, payload) do
+    s = source.meta
+    original_tracking = source.meta.tracking
+    {extant_id, idx} = original_tracking |> Enum.with_index |> Enum.filter(fn {t, _i} -> t.number == number end) |> List.first
+    entries = extant_id |> Map.get(:entries)
+    new_entries = entries |> List.insert_at(-1, payload)
+    updated_id = extant_id |> Map.put(:entries, new_entries) |> Map.from_struct
+
+    updated_tracking = original_tracking |> List.replace_at(idx, updated_id)
+    RoomSanctum.Configuration.update_source_meta(source, %{tracking: updated_tracking})
   end
 
   @doc """
@@ -661,5 +701,204 @@ defmodule RoomSanctum.Configuration do
   """
   def change_scribus(%Scribus{} = scribus, attrs \\ %{}) do
     Scribus.changeset(scribus, attrs)
+  end
+
+  alias RoomSanctum.Configuration.Agyr
+
+  @doc """
+  Returns the list of cfg_webhooks.
+
+  ## Examples
+
+      iex> list_cfg_webhooks()
+      [%Agyr{}, ...]
+
+  """
+  def list_cfg_webhooks do
+    Repo.all(Agyr)
+  end
+
+  @doc """
+  Gets a single agyr.
+
+  Raises `Ecto.NoResultsError` if the Agyr does not exist.
+
+  ## Examples
+
+      iex> get_agyr!(123)
+      %Agyr{}
+
+      iex> get_agyr!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_agyr!(id), do: Repo.get!(Agyr, id)
+
+  def get_agyr!(:src, src, des), do: Repo.get_by(Agyr, source_id: src, designator: des)
+
+  def get_agyr!(:path, path), do: Repo.get_by(Agyr, path: path)
+
+  @doc """
+  Creates a agyr.
+
+  ## Examples
+
+      iex> create_agyr(%{field: value})
+      {:ok, %Agyr{}}
+
+      iex> create_agyr(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_agyr(attrs \\ %{}) do
+    %Agyr{}
+    |> Agyr.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a agyr.
+
+  ## Examples
+
+      iex> update_agyr(agyr, %{field: new_value})
+      {:ok, %Agyr{}}
+
+      iex> update_agyr(agyr, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_agyr(%Agyr{} = agyr, attrs) do
+    agyr
+    |> Agyr.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a agyr.
+
+  ## Examples
+
+      iex> delete_agyr(agyr)
+      {:ok, %Agyr{}}
+
+      iex> delete_agyr(agyr)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_agyr(%Agyr{} = agyr) do
+    Repo.delete(agyr)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking agyr changes.
+
+  ## Examples
+
+      iex> change_agyr(agyr)
+      %Ecto.Changeset{data: %Agyr{}}
+
+  """
+  def change_agyr(%Agyr{} = agyr, attrs \\ %{}) do
+    Agyr.changeset(agyr, attrs)
+  end
+
+  alias RoomSanctum.Configuration.Taxid
+
+  @doc """
+  Returns the list of cfg_mailboxes.
+
+  ## Examples
+
+      iex> list_cfg_mailboxes()
+      [%Taxid{}, ...]
+
+  """
+  def list_cfg_mailboxes do
+    Repo.all(Taxid)
+  end
+
+  @doc """
+  Gets a single taxid.
+
+  Raises `Ecto.NoResultsError` if the Taxid does not exist.
+
+  ## Examples
+
+      iex> get_taxid!(123)
+      %Taxid{}
+
+      iex> get_taxid!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+
+  def get_taxid(:id, id), do: Repo.get(Taxid, id)
+  def get_taxid(:user, id), do: Repo.get_by(Taxid, user: id)
+  def get_taxid!(id), do: Repo.get!(Taxid, id)
+
+  @doc """
+  Creates a taxid.
+
+  ## Examples
+
+      iex> create_taxid(%{field: value})
+      {:ok, %Taxid{}}
+
+      iex> create_taxid(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_taxid(attrs \\ %{}) do
+    %Taxid{}
+    |> Taxid.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a taxid.
+
+  ## Examples
+
+      iex> update_taxid(taxid, %{field: new_value})
+      {:ok, %Taxid{}}
+
+      iex> update_taxid(taxid, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_taxid(%Taxid{} = taxid, attrs) do
+    taxid
+    |> Taxid.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a taxid.
+
+  ## Examples
+
+      iex> delete_taxid(taxid)
+      {:ok, %Taxid{}}
+
+      iex> delete_taxid(taxid)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_taxid(%Taxid{} = taxid) do
+    Repo.delete(taxid)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking taxid changes.
+
+  ## Examples
+
+      iex> change_taxid(taxid)
+      %Ecto.Changeset{data: %Taxid{}}
+
+  """
+  def change_taxid(%Taxid{} = taxid, attrs \\ %{}) do
+    Taxid.changeset(taxid, attrs)
   end
 end

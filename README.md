@@ -6,7 +6,7 @@ A generalized automated data collection platform, for the purpose of collecting 
 It supports the creation of offerings data from 8+ generalized sources, with more to come:
 
 - GTFS (+RT)
-- GBFS (+EBikes)
+- GBFS (+EBikes/FreeBikes)
 - iCal
 - Tidal
 - Ephem
@@ -14,6 +14,8 @@ It supports the creation of offerings data from 8+ generalized sources, with mor
 - OpenWeather
 - Cronos
 - Gitlab
+- Package Tracking
+- Webhooks
 
 These can be formed into reusable Queries that can be grouped into Visions.
 Visions are interpreted by the Pythiae who forward them to clients via Ankyra.

@@ -1,0 +1,27 @@
+<.header>
+  Ebikes at stations <%= @ebikes_at_stations.id %>
+  <:subtitle>This is a ebikes_at_stations record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/gbfs_ebikes_stations/#{@ebikes_at_stations}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit ebikes_at_stations</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Station"><%= @ebikes_at_stations.station_id %></:item>
+  <:item title="Ebikes"><%= @ebikes_at_stations.ebikes %></:item>
+</.list>
+
+<.back navigate={~p"/gbfs_ebikes_stations"}>Back to gbfs_ebikes_stations</.back>
+
+<.modal :if={@live_action == :edit} id="ebikes_at_stations-modal" show on_cancel={JS.patch(~p"/gbfs_ebikes_stations/#{@ebikes_at_stations}")}>
+  <.live_component
+    module={RoomSanctumWeb.EbikesAtStationsLive.FormComponent}
+    id={@ebikes_at_stations.id}
+    title={@page_title}
+    action={@live_action}
+    ebikes_at_stations={@ebikes_at_stations}
+    patch={~p"/gbfs_ebikes_stations/#{@ebikes_at_stations}"}
+  />
+</.modal>

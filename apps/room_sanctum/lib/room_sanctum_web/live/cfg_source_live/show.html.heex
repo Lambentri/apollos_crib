@@ -1,3 +1,11 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+      integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+        integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+        crossorigin=""></script>
+<script type="text/javascript" src={Routes.static_path(@socket, "/assets/leaflet-centermarker.js")}></script>
+
 <.itb icon="fa-chevron-left" to={Routes.source_index_path(@socket, :index)} what="Back"></.itb>
 <.itb icon="fa-pencil" to={Routes.source_show_path(@socket, :edit, @source)} what="Edit"></.itb>
 
@@ -50,6 +58,44 @@ current_user={@current_user}
             </div>
         </div>
     </div>
+    <%= case @source.type do %>
+        <% :packages -> %>
+    <div class="flex">
+        <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <div class="flex flex-col">
+                    <div class="card-title">Webhooks</div>
+                    <div class="py-1">
+                        <ul>
+                        <%= for w <- @source.webhooks do %>
+                        <li>https://<%= w.user %>:<%= w.token %>@ac.gmp.io/api/data/<%= w.path %></li>
+                        <% end %>
+                        </ul>
+                        <br/>
+                        Last Triggered <%= @source.meta |> is_updated %>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <div class="flex flex-col">
+                    <div class="card-title">Mails</div>
+                    <div class="py-1">
+                        <ul>
+                            <%= for w <- @source.mailboxes do %>
+                            <li><b><%= w.designator %>:</b> <%= w.user %>@ac.gmp.io</li>
+                            <% end %>
+                        </ul>
+                        <br/>
+                        Last Triggered <%= @source.meta |> is_updated %>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <% _otherwise -> %>
+    <% end %>
     <div class="flex">
         <div class="card card-compact w-1/4 bg-base-100 shadow-xl m-2">
             <div class="card-body">
@@ -140,7 +186,7 @@ current_user={@current_user}
                     <%= for {type,data} <-  @stats  do %>
                     <div>
                         <div class="font-bold uppercase"><%= type %> </div>
-                        <ul class="menu bg-primary rounded">
+                            <ul class="menu bg-primary rounded">
                             <%= for {data_k, data_v} <- data do %>
                             <li class="text-primary-content uppercase">
                                 <a><%= data_k %> <span class="text-accent"><%= data_v %></span></a>
@@ -226,9 +272,9 @@ current_user={@current_user}
                             <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
                             <.p_gtfs entries={condense({@source_id, :gtfs}, @tester_selected_data) |>
                             preview({@source_id, :gtfs})} />
-                                <%= if @tester_selected_data != %{} do %>
-                                    <span phx-click="add-query"><i class="fa fa-plus fa-fw"></i>query</span>
-                                <% end %>
+                            <%= if @tester_selected_data != %{} do %>
+                            <span phx-click="add-query"><i class="fa fa-plus fa-fw"></i>query</span>
+                            <% end %>
                             <% else %>
                             -waiting on data-
                             <% end %>
@@ -239,20 +285,36 @@ current_user={@current_user}
                 <div class="flex justify-between gap-4">
                     <div class="flex flex-col gap-2">
                         <div class="">
-                            <form phx-change="do-gbfs-search" phx-debounce="100">
-                                <fieldset>
-                                    <label for="name">Term</label>
-                                    <input type="hidden" value={@source_id} name="id"/>
-                                    <input type="term" name="name" value={@tester_query}
-                                           placeholder="Main Street"
-                                           autofocus autocomplete="off"
-                                           class="input input-bordered input-info w-full max-w-xs"
-                                    />
-
-                                    <div>-foci-dropdown-</div>
-                                    <div>-distance-dropdown-</div>
-                                </fieldset>
-                            </form>
+                            <div class="flex flex-col w-full border-opacity-50">
+                                <div class="grid h-20 card bg-base-300 rounded-box place-items-center">
+                                    <form phx-change="do-gbfs-search" phx-debounce="100">
+                                        <fieldset>
+                                            <label for="name">Term</label>
+                                            <input type="hidden" value={@source_id} name="id"/>
+                                            <input type="term" name="name" value={@tester_query}
+                                                   placeholder="Main Street"
+                                                   autofocus autocomplete="off"
+                                                   class="input input-bordered input-info w-full max-w-xs"
+                                            />
+                                        </fieldset>
+                                    </form>
+                                </div>
+                                <div class="divider">OR</div>
+                                <div class="grid h-20 card bg-base-300 rounded-box place-items-center">
+                                    <form phx-change="select-foci">
+                                        <label for="foci">Select Foci:</label>
+                                        <select name="foci" id="foci">
+                                            <%= for option <- @tester_foci do %>
+                                            <option value={ option.place.coordinates |> pt_for_form
+                                                }><%= option.name %></option>
+                                            <% end %>
+                                        </select>
+                                        <label for="distance">Distance <%= @tester_foci_distance %></label>
+                                        <input type="range" min="0" max="250" value="100" class="range"
+                                               name="distance"/>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                         <div class="">
                             <ul class="menu bg-secondary rounded">
@@ -271,6 +333,25 @@ current_user={@current_user}
                             </ul>
                         </div>
                     </div>
+                    <div class="flex flex-col gap-2 h-full" id="foci_map" phx-update="replace">
+                        <leaflet-map style="height: 400px; width: 600px" lat={@tester_foci_coords_lat}
+                                     lng={@tester_foci_coords_lon} zoom="13" class="h-full">
+                            <%= for marker <- @tester_foci_vehicles do %>
+                            <leaflet-marker
+                                    lat={ marker.point.coordinates |> get_second }
+                                lng={ marker.point.coordinates |> get_first }
+                                selected={false}
+                                phx-click="toggle_marker"
+                                phx-value-id={ marker.id }>
+                                <leaflet-icon
+                                        icon-url={ get_icon_url(false) }
+                                        width="64"
+                                        height="64">
+                                </leaflet-icon>
+                            </leaflet-marker>
+                            <% end %>
+                        </leaflet-map>
+                    </div>
                     <div class="flex flex-col gap-2">
                         <div class="text-xl">Selected: <%= @tester_selected_name %></div>
                         <div class="text-xs">id: <%= @tester_selected %></div>
@@ -282,6 +363,10 @@ current_user={@current_user}
                             <% else %>
                             -waiting on data-
                             <% end %>
+                        </div>
+                        <div class="">
+                            brrr <br/>
+                            brrr <br/>brrr <br/>brrr <br/>brrr <br/>brrr <br/>brrr <br/>
                         </div>
                     </div>
                 </div>

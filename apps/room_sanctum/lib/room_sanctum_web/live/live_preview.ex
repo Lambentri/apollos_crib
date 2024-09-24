@@ -1,6 +1,8 @@
 defmodule RoomSanctumWeb.LivePreview do
   use Phoenix.Component
-  use Phoenix.HTML
+  import Phoenix.HTML
+import Phoenix.HTML.Form
+use PhoenixHTMLHelpers
   import Phoenix.LiveView.Helpers
 
   defp gtfs_icon(route_str) do
@@ -70,8 +72,14 @@ defmodule RoomSanctumWeb.LivePreview do
         <h2 class="card-title">
           <p><i class={"fa-solid fa-fw #{gtfs_icon(e.mode)}"}></i> <%= e.route %> to <%= e.dest %></p>
         </h2>
-        <%= for t <- e.times |> Enum.take(3) do %>
+        <%= if Map.get(e, :times_live, []) != [] do %>
+          <%= for t <- (e.times_live |> Enum.filter(fn t -> !is_nil(t) end )) do %>
+            <p><i class="fa-solid fa-tower-broadcast fa-fw"></i> <%= t %></p>
+          <% end %>
+        <% else %>
+          <%= for t <- e.times |> Enum.take(3) do %>
           <p><i class="fa-solid fa-clock fa-fw"></i> <%= t %></p>
+          <% end %>
         <% end %>
         </div>
       </div>
@@ -234,6 +242,38 @@ defmodule RoomSanctumWeb.LivePreview do
     """
   end
 
+  def p_packages(assigns) do
+    ~H"""
+    <%= for x <- @entries.data do %>
+    <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
+      <div class="card-body textd-left">
+        <h2 class="card-title">
+          <p><i class="fa-solid fa-fw fa-box"></i></p>
+        </h2>
+        <p>
+          <i class={package_icon(x.type)}></i> <%= x.number %>
+        </p>
+        <ul>
+          <%= for ee <- x.entries |> Enum.reverse do %>
+            <li>
+              <i class="fa-solid fa-clock"></i>
+              <%= get_timestamp(ee) %>
+              <%= ee |> Map.get("activityStatus", %{}) |> Map.get("description") %>
+            </li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+    <% end %>
+    """
+  end
+
+  def get_timestamp(trackingentity) do
+    date = trackingentity |> Map.get("localActivityDate") |> String.slice(4,4)
+    time = trackingentity |> Map.get("localActivityTime")
+    date <> time
+  end
+
   def is_uri(path) do
     res = URI.parse(path)
     case {res.host, res.scheme} do
@@ -255,5 +295,14 @@ defmodule RoomSanctumWeb.LivePreview do
       <% end %>
     </div>
       """
+  end
+
+  defp package_icon(carrier) do
+    case carrier do
+      :ups -> "fa-brands fa-ups fa-fw"
+      :fedex -> "fa-brands fa-fedex fa-fw"
+      :usps -> "fa-brands fa-usps fa-fw"
+      _otherwise -> "fa-solid fa-box fa-fw"
+    end
   end
 end

@@ -30,6 +30,8 @@ defmodule RoomSanctumWeb.Endpoint do
     plug Phoenix.LiveReloader
     plug Phoenix.CodeReloader
     plug Phoenix.Ecto.CheckRepoStatus, otp_app: :room_sanctum
+
+    plug LiveViewNative.LiveReloader
   end
 
   plug Phoenix.LiveDashboard.RequestLogger,

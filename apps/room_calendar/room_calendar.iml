@@ -29,5 +29,9 @@
     <orderEntry type="library" name="hackney" level="project" />
     <orderEntry type="library" name="icalendar" level="project" />
     <orderEntry type="module" module-name="room_sanctum" />
+    <orderEntry type="library" name="expo" level="project" />
+    <orderEntry type="library" name="castore" level="project" />
+    <orderEntry type="library" name="jason" level="project" />
+    <orderEntry type="library" name="credo" level="project" />
   </component>
 </module>

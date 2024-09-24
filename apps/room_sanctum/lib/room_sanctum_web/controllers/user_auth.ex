@@ -1,4 +1,4 @@
-defmodule RoomSanctumWeb.UserAuth do
+defmodule RoomSanctumWeb.UserAuthC do
   import Plug.Conn
   import Phoenix.Controller
 

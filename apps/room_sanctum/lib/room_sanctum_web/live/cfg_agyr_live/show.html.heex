@@ -1,0 +1,29 @@
+<.header>
+  Agyr <%= @agyr.id %>
+  <:subtitle>This is a agyr record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/cfg_webhooks/#{@agyr}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit agyr</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Designator"><%= @agyr.designator %></:item>
+  <:item title="Path"><%= @agyr.path %></:item>
+  <:item title="User"><%= @agyr.user %></:item>
+  <:item title="Token"><%= @agyr.token %></:item>
+</.list>
+
+<.back navigate={~p"/cfg_webhooks"}>Back to cfg_webhooks</.back>
+
+<.modal :if={@live_action == :edit} id="agyr-modal" show on_cancel={JS.patch(~p"/cfg_webhooks/#{@agyr}")}>
+  <.live_component
+    module={RoomSanctumWeb.AgyrLive.FormComponent}
+    id={@agyr.id}
+    title={@page_title}
+    action={@live_action}
+    agyr={@agyr}
+    patch={~p"/cfg_webhooks/#{@agyr}"}
+  />
+</.modal>

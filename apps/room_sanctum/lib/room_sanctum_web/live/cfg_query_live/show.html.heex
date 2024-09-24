@@ -72,6 +72,13 @@
             <%= x.name %> <strong><%= x.value %></strong>
             <% :gitlab -> %>
             <strong><%= x["commit"]["title"] %></strong> <%= x["duration"] %> seconds elapsed
+            <% :packages -> %>
+              <i class={package_icon(x.type)}></i> <%= x.number %>
+              <%= if x.entries != [] do %>
+                <%= x.entries |> List.last |> Map.get("activityStatus", %{}) |> Map.get("description")  %>
+              <% else %>
+                No Tracking Data, Yet
+              <% end %>
           <% end %>
           <br />
           <% end %>

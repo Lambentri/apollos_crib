@@ -1,0 +1,43 @@
+<.header>
+  Listing Gbfs geofencing zones
+  <:actions>
+    <.link patch={~p"/gbfs_geofencing_zones/new"}>
+      <.button>New Geo fencing zones</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="gbfs_geofencing_zones"
+  rows={@streams.gbfs_geofencing_zones}
+  row_click={fn {_id, geo_fencing_zones} -> JS.navigate(~p"/gbfs_geofencing_zones/#{geo_fencing_zones}") end}
+>
+  <:col :let={{_id, geo_fencing_zones}} label="Properties"><%= geo_fencing_zones.properties %></:col>
+  <:col :let={{_id, geo_fencing_zones}} label="Geometry"><%= geo_fencing_zones.geometry %></:col>
+  <:col :let={{_id, geo_fencing_zones}} label="Place"><%= geo_fencing_zones.place %></:col>
+  <:action :let={{_id, geo_fencing_zones}}>
+    <div class="sr-only">
+      <.link navigate={~p"/gbfs_geofencing_zones/#{geo_fencing_zones}"}>Show</.link>
+    </div>
+    <.link patch={~p"/gbfs_geofencing_zones/#{geo_fencing_zones}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, geo_fencing_zones}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: geo_fencing_zones.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="geo_fencing_zones-modal" show on_cancel={JS.patch(~p"/gbfs_geofencing_zones")}>
+  <.live_component
+    module={RoomSanctumWeb.GeoFencingZonesLive.FormComponent}
+    id={@geo_fencing_zones.id || :new}
+    title={@page_title}
+    action={@live_action}
+    geo_fencing_zones={@geo_fencing_zones}
+    patch={~p"/gbfs_geofencing_zones"}
+  />
+</.modal>

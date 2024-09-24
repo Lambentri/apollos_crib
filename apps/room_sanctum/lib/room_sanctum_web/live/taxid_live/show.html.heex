@@ -1,0 +1,27 @@
+<.header>
+  Taxid <%= @taxid.id %>
+  <:subtitle>This is a taxid record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/cfg_mailboxes/#{@taxid}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit taxid</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Designator"><%= @taxid.designator %></:item>
+  <:item title="User"><%= @taxid.user %></:item>
+</.list>
+
+<.back navigate={~p"/cfg_mailboxes"}>Back to cfg_mailboxes</.back>
+
+<.modal :if={@live_action == :edit} id="taxid-modal" show on_cancel={JS.patch(~p"/cfg_mailboxes/#{@taxid}")}>
+  <.live_component
+    module={RoomSanctumWeb.TaxidLive.FormComponent}
+    id={@taxid.id}
+    title={@page_title}
+    action={@live_action}
+    taxid={@taxid}
+    patch={~p"/cfg_mailboxes/#{@taxid}"}
+  />
+</.modal>

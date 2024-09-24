@@ -11,7 +11,7 @@ defmodule RoomHermes.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:gettext] ++ Mix.compilers(),
+      compilers: Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -42,9 +42,9 @@ defmodule RoomHermes.MixProject do
       {:phoenix_ecto, "~> 4.4"},
       {:ecto_sql, "~> 3.10"},
       {:postgrex, ">= 0.0.0"},
-      {:phoenix_html, "~> 3.3"},
+#      {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
-      {:phoenix_live_view, "~> 0.20"},
+      {:phoenix_live_view, "~> 1.0.0-rc.6", override: true},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.3", runtime: Mix.env() == :dev},
@@ -58,7 +58,8 @@ defmodule RoomHermes.MixProject do
       {:sentry, "~> 8.0"},
 
         # makes the configs go Vroom
-      {:polymorphic_embed, "~> 2.0.0"},
+#      {:polymorphic_embed, "~> 4.0.0"},
+      {:gen_smtp, "~> 1.2"},
     ]
   end
 

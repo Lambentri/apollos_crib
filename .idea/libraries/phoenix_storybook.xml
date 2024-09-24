@@ -1,0 +1,19 @@
+<component name="libraryTable">
+  <library name="phoenix_storybook" type="mix">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_storybook/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_storybook/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/phoenix_storybook/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_storybook/priv" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_storybook/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_storybook/priv" />
+    </SOURCES>
+  </library>
+</component>

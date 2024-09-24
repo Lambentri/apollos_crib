@@ -77,6 +77,12 @@ defmodule RoomSanctumWeb.QueryLive.Show do
             socket.assigns.query.source.id,
             socket.assigns.query.query
           )
+
+        :packages ->
+          RoomPackages.Worker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
       end
 
     {:noreply, assign(socket, :preview, result)}
@@ -106,4 +112,13 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   defp page_title(:show), do: "Query Detail"
   defp page_title(:edit), do: "Modify Query"
+
+  defp package_icon(carrier) do
+    case carrier do
+      :ups -> "fa-brands fa-ups fa-fw"
+      :fedex -> "fa-brands fa-fedex fa-fw"
+      :usps -> "fa-brands fa-usps fa-fw"
+      _otherwise -> "fa-solid fa-box fa-fw"
+    end
+  end
 end

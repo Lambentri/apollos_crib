@@ -1,0 +1,161 @@
+POST http://localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0
+Content-Type: application/json
+
+{
+  "activityLocation": {
+    "city": "",
+    "country": "US",
+    "postalCode": "",
+    "stateProvince": ""
+  },
+  "activityStatus": {
+    "code": "MP",
+    "description": "Shipment Ready for UPS",
+    "descriptionCode": "003",
+    "type": "M"
+  },
+  "actualDeliveryDate": "",
+  "actualDeliveryTime": "",
+  "deliveryEndTime": "",
+  "deliveryPhoto": "",
+  "deliveryStartTime": "",
+  "deliveryTimeDescription": "",
+  "gmtActivityDate": "20240422",
+  "gmtActivityTime": "041230",
+  "localActivityDate": "20240422",
+  "localActivityTime": "091230",
+  "scheduledDeliveryDate": "",
+  "trackingNumber": "1ZF1F5420432213504"
+}
+
+### // # curl smtp: //localhost:2525 --mail-from john@example.com --mail-rcpt eba3d3a4-2bd4-4eae-89d3-35ef91910b5a@ac.gmp.io  --upload-file ~/Downloads/Your\ JLCPCB\ Order\ Is\ On\ Its\ Way\ To\ You.eml
+
+POST http://localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0
+Content-Type: application/json
+
+{
+  "activityLocation": {
+    "city": "Hickory",
+    "country": "US",
+    "postalCode": "",
+    "stateProvince": "NC"
+  },
+  "activityStatus": {
+    "code": "DP",
+    "description": "On the Way",
+    "descriptionCode": "005",
+    "type": "I"
+  },
+  "actualDeliveryDate": "",
+  "actualDeliveryTime": "",
+  "deliveryEndTime": "",
+  "deliveryStartTime": "",
+  "deliveryTimeDescription": "end of day",
+  "gmtActivityDate": "20240423",
+  "gmtActivityTime": "025400",
+  "localActivityDate": "20240422",
+  "localActivityTime": "225400",
+  "scheduledDeliveryDate": "20240423",
+  "trackingNumber": "1ZF1F5420432213504"
+}
+
+###
+
+POST http://localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0
+Content-Type: application/json
+
+{
+  "trackingNumber": "1ZF1F5420432213504",
+  "localActivityDate": "20240423",
+  "localActivityTime": "003052",
+  "activityLocation": {
+    "city": "Charlotte",
+    "stateProvince": "NC",
+    "postalCode": "",
+    "country": "US"
+  },
+  "activityStatus": {
+    "type": "I",
+    "code": "YP",
+    "description": "Preparing for Delivery",
+    "descriptionCode": "071"
+  },
+  "scheduledDeliveryDate": "20240423",
+  "actualDeliveryDate": "",
+  "actualDeliveryTime": "",
+  "gmtActivityDate": "20240423",
+  "gmtActivityTime": "043052",
+  "deliveryStartTime": "",
+  "deliveryEndTime": "",
+  "deliveryTimeDescription": "end of day"
+}
+
+###
+
+POST http://localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0
+Content-Type: application/json
+
+{
+
+  "trackingNumber": "1ZF1F5420432213504",
+  "localActivityDate": "20240423",
+  "localActivityTime": "091519",
+  "activityLocation":
+
+  {
+
+    "city": "Charlotte",
+    "stateProvince": "NC",
+    "postalCode": "",
+    "country": "US"
+
+  },
+  "activityStatus":
+
+  {
+    "type": "I",
+    "code": "OT",
+    "description": "Out for Delivery",
+    "descriptionCode": "021"
+  },
+  "scheduledDeliveryDate": "20240423",
+  "actualDeliveryDate": "",
+  "actualDeliveryTime": "",
+  "gmtActivityDate": "20240423",
+  "gmtActivityTime": "131519",
+  "deliveryStartTime": "",
+  "deliveryEndTime": "",
+  "deliveryTimeDescription": "end of day"
+
+}
+
+###
+
+POST http://localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0
+Content-Type: application/json
+
+{
+  "trackingNumber": "1ZF1F5420432213504",
+  "localActivityDate": "20240423",
+  "localActivityTime": "095004",
+  "activityLocation": {
+    "city": "CHARLOTTE",
+    "stateProvince": "NC",
+    "postalCode": "28209",
+    "country": "US"
+  },
+  "activityStatus": {
+    "type": "D",
+    "code": "FS",
+    "description": "Delivered",
+    "descriptionCode": "011"
+  },
+  "scheduledDeliveryDate": "",
+  "actualDeliveryDate": "20240423",
+  "actualDeliveryTime": "095004",
+  "gmtActivityDate": "20240423",
+  "gmtActivityTime": "135004",
+  "deliveryStartTime": "",
+  "deliveryEndTime": "",
+  "deliveryTimeDescription": ""
+}

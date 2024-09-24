@@ -1,0 +1,42 @@
+<.header>
+  Listing Gbfs ebikes stations
+  <:actions>
+    <.link patch={~p"/gbfs_ebikes_stations/new"}>
+      <.button>New Ebikes at stations</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="gbfs_ebikes_stations"
+  rows={@streams.gbfs_ebikes_stations}
+  row_click={fn {_id, ebikes_at_stations} -> JS.navigate(~p"/gbfs_ebikes_stations/#{ebikes_at_stations}") end}
+>
+  <:col :let={{_id, ebikes_at_stations}} label="Station"><%= ebikes_at_stations.station_id %></:col>
+  <:col :let={{_id, ebikes_at_stations}} label="Ebikes"><%= ebikes_at_stations.ebikes %></:col>
+  <:action :let={{_id, ebikes_at_stations}}>
+    <div class="sr-only">
+      <.link navigate={~p"/gbfs_ebikes_stations/#{ebikes_at_stations}"}>Show</.link>
+    </div>
+    <.link patch={~p"/gbfs_ebikes_stations/#{ebikes_at_stations}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, ebikes_at_stations}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: ebikes_at_stations.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="ebikes_at_stations-modal" show on_cancel={JS.patch(~p"/gbfs_ebikes_stations")}>
+  <.live_component
+    module={RoomSanctumWeb.EbikesAtStationsLive.FormComponent}
+    id={@ebikes_at_stations.id || :new}
+    title={@page_title}
+    action={@live_action}
+    ebikes_at_stations={@ebikes_at_stations}
+    patch={~p"/gbfs_ebikes_stations"}
+  />
+</.modal>

@@ -14,6 +14,7 @@ defmodule RoomSanctumWeb.CoreComponents do
 
   Icons are provided by [heroicons](https://heroicons.com). See `icon/1` for usage.
   """
+  use Doggo.Components
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
@@ -184,7 +185,7 @@ defmodule RoomSanctumWeb.CoreComponents do
   def simple_form(assigns) do
     ~H"""
     <.form :let={f} for={@for} as={@as} {@rest}>
-      <div class="mt-10 space-y-6 bg-primary">
+      <div class="mt-10 space-y-6 bg-primary rounded-sm p-4">
         <%= render_slot(@inner_block, f) %>
         <div :for={action <- @actions} class="mt-2 flex items-center justify-between gap-6">
           <%= render_slot(action, f) %>
@@ -362,13 +363,14 @@ defmodule RoomSanctumWeb.CoreComponents do
     <div phx-feedback-for={@name}>
         <fieldset>
         <div class="grid grid-cols-3">
-        <%= for opt <- @options do %>
+        <%= for {opt, idx} <- Enum.with_index(@options) do %>
           <input
             field={@field}
             label={opt}
             type={@type}
-            name={@id}
-            id={"#{@id}_#{opt}"}
+            option={opt}
+            name={@name}
+            id={"#{@id}-#{idx}"}
             value={opt}
             class={[
               "mt-2 radio sm:leading-6",
@@ -555,10 +557,10 @@ defmodule RoomSanctumWeb.CoreComponents do
     ~H"""
     <header class={[@actions != [] && "flex items-center justify-between gap-6", @class]}>
       <div>
-        <h1 class="text-lg font-semibold leading-8 text-zinc-800">
+        <h1 class="text-lg font-semibold leading-8 text-accent-800">
           <%= render_slot(@inner_block) %>
         </h1>
-        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-zinc-600">
+        <p :if={@subtitle != []} class="mt-2 text-sm leading-6 text-accent">
           <%= render_slot(@subtitle) %>
         </p>
       </div>
@@ -794,5 +796,43 @@ defmodule RoomSanctumWeb.CoreComponents do
   """
   def translate_errors(errors, field) when is_list(errors) do
     for {^field, {msg, opts}} <- errors, do: translate_error({msg, opts})
+  end
+
+  @doc """
+  Provides a radio group input for a given form field.
+
+  ## Examples
+
+      <.radio_group field={@form[:tip]}>
+        <:radio value="0">No Tip</:radio>
+        <:radio value="10">10%</:radio>
+        <:radio value="20">20%</:radio>
+      </.radio_group>
+  """
+  attr :field, Phoenix.HTML.FormField, required: true
+
+  slot :radio, required: true do
+    attr :value, :string, required: true
+  end
+
+  slot :inner_block
+
+  def radio_group(assigns) do
+    ~H"""
+    <div>
+      <%= render_slot(@inner_block) %>
+      <div :for={{%{value: value} = rad, idx} <- Enum.with_index(@radio)}>
+        <label for={"#{@field.id}-#{idx}"}><%= render_slot(rad) %></label>
+        <input
+          type="radio"
+          name={@field.name}
+          id={"#{@field.id}-#{idx}"}
+          value={value}
+          checked={to_string(@field.value) == to_string(value)}
+          class="rounded-lg text-zinc-900 focus:ring-0 sm:text-sm sm:leading-6"
+        />
+      </div>
+    </div>
+    """
   end
 end

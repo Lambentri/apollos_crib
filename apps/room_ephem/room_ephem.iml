@@ -63,5 +63,7 @@
     <orderEntry type="module" module-name="room_sanctum" />
     <orderEntry type="library" name="telemetry" level="project" />
     <orderEntry type="library" name="doctor" level="project" />
+    <orderEntry type="library" name="expo" level="project" />
+    <orderEntry type="library" name="castore" level="project" />
   </component>
 </module>

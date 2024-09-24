@@ -58,11 +58,12 @@ config :room_hermes,
        RoomHermesWeb.Endpoint,
        live_reload: [
          patterns: [
-           ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
-           ~r"priv/gettext/.*(po)$",
-           ~r"lib/room_hermes/(live|views)/.*(ex)$",
-           ~r"lib/room_hermes/templates/.*(eex)$"
-         ]
+          ~r"priv/static/.*(js|css|png|jpeg|jpg|gif|svg)$",
+          ~r"priv/gettext/.*(po)$",
+          ~r"lib/room_hermes/(live|views)/.*(ex)$",
+          ~r"lib/room_hermes/templates/.*(eex)$",
+          ~r"lib/room_sanctum_web/(live|components)/.*neex$"
+        ]
        ]
 
 # Configure your database

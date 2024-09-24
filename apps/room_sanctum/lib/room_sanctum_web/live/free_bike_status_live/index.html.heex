@@ -1,0 +1,51 @@
+<.header>
+  Listing Gbfs free bike status
+  <:actions>
+    <.link patch={~p"/gbfs_free_bike_status/new"}>
+      <.button>New Free bike status</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="gbfs_free_bike_status"
+  rows={@streams.gbfs_free_bike_status}
+  row_click={fn {_id, free_bike_status} -> JS.navigate(~p"/gbfs_free_bike_status/#{free_bike_status}") end}
+>
+  <:col :let={{_id, free_bike_status}} label="Bike"><%= free_bike_status.bike_id %></:col>
+  <:col :let={{_id, free_bike_status}} label="Lat"><%= free_bike_status.lat %></:col>
+  <:col :let={{_id, free_bike_status}} label="Lon"><%= free_bike_status.lon %></:col>
+  <:col :let={{_id, free_bike_status}} label="Point"><%= free_bike_status.point %></:col>
+  <:col :let={{_id, free_bike_status}} label="Is disabled"><%= free_bike_status.is_disabled %></:col>
+  <:col :let={{_id, free_bike_status}} label="Is reserved"><%= free_bike_status.is_reserved %></:col>
+  <:col :let={{_id, free_bike_status}} label="Vehicle type"><%= free_bike_status.vehicle_type_id %></:col>
+  <:col :let={{_id, free_bike_status}} label="Last reported"><%= free_bike_status.last_reported %></:col>
+  <:col :let={{_id, free_bike_status}} label="Current range meters"><%= free_bike_status.current_range_meters %></:col>
+  <:col :let={{_id, free_bike_status}} label="Current fuel percent"><%= free_bike_status.current_fuel_percent %></:col>
+  <:col :let={{_id, free_bike_status}} label="Pricing plan"><%= free_bike_status.pricing_plan_id %></:col>
+  <:action :let={{_id, free_bike_status}}>
+    <div class="sr-only">
+      <.link navigate={~p"/gbfs_free_bike_status/#{free_bike_status}"}>Show</.link>
+    </div>
+    <.link patch={~p"/gbfs_free_bike_status/#{free_bike_status}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, free_bike_status}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: free_bike_status.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="free_bike_status-modal" show on_cancel={JS.patch(~p"/gbfs_free_bike_status")}>
+  <.live_component
+    module={RoomSanctumWeb.FreeBikeStatusLive.FormComponent}
+    id={@free_bike_status.id || :new}
+    title={@page_title}
+    action={@live_action}
+    free_bike_status={@free_bike_status}
+    patch={~p"/gbfs_free_bike_status"}
+  />
+</.modal>

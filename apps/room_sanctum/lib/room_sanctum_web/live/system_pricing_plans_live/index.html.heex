@@ -1,0 +1,47 @@
+<.header>
+  Listing Gbfs system pricing plans
+  <:actions>
+    <.link patch={~p"/gbfs_system_pricing_plans/new"}>
+      <.button>New System pricing plans</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="gbfs_system_pricing_plans"
+  rows={@streams.gbfs_system_pricing_plans}
+  row_click={fn {_id, system_pricing_plans} -> JS.navigate(~p"/gbfs_system_pricing_plans/#{system_pricing_plans}") end}
+>
+  <:col :let={{_id, system_pricing_plans}} label="Plan"><%= system_pricing_plans.plan_id %></:col>
+  <:col :let={{_id, system_pricing_plans}} label="Name"><%= system_pricing_plans.name %></:col>
+  <:col :let={{_id, system_pricing_plans}} label="Currency"><%= system_pricing_plans.currency %></:col>
+  <:col :let={{_id, system_pricing_plans}} label="Price"><%= system_pricing_plans.price %></:col>
+  <:col :let={{_id, system_pricing_plans}} label="Is taxable"><%= system_pricing_plans.is_taxable %></:col>
+  <:col :let={{_id, system_pricing_plans}} label="Description"><%= system_pricing_plans.description %></:col>
+  <:col :let={{_id, system_pricing_plans}} label="Per min pricing"><%= system_pricing_plans.per_min_pricing %></:col>
+  <:action :let={{_id, system_pricing_plans}}>
+    <div class="sr-only">
+      <.link navigate={~p"/gbfs_system_pricing_plans/#{system_pricing_plans}"}>Show</.link>
+    </div>
+    <.link patch={~p"/gbfs_system_pricing_plans/#{system_pricing_plans}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, system_pricing_plans}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: system_pricing_plans.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="system_pricing_plans-modal" show on_cancel={JS.patch(~p"/gbfs_system_pricing_plans")}>
+  <.live_component
+    module={RoomSanctumWeb.SystemPricingPlansLive.FormComponent}
+    id={@system_pricing_plans.id || :new}
+    title={@page_title}
+    action={@live_action}
+    system_pricing_plans={@system_pricing_plans}
+    patch={~p"/gbfs_system_pricing_plans"}
+  />
+</.modal>

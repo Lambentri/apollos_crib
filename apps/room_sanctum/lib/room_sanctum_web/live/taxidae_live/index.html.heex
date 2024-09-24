@@ -1,0 +1,42 @@
+<.header>
+  Listing Storage mail
+  <:actions>
+    <.link patch={~p"/storage_mail/new"}>
+      <.button>New Taxidae</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="storage_mail"
+  rows={@streams.storage_mail}
+  row_click={fn {_id, taxidae} -> JS.navigate(~p"/storage_mail/#{taxidae}") end}
+>
+  <:col :let={{_id, taxidae}} label="Meta"><%= taxidae.meta %></:col>
+  <:col :let={{_id, taxidae}} label="Body"><%= taxidae.body %></:col>
+  <:action :let={{_id, taxidae}}>
+    <div class="sr-only">
+      <.link navigate={~p"/storage_mail/#{taxidae}"}>Show</.link>
+    </div>
+    <.link patch={~p"/storage_mail/#{taxidae}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, taxidae}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: taxidae.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="taxidae-modal" show on_cancel={JS.patch(~p"/storage_mail")}>
+  <.live_component
+    module={RoomSanctumWeb.TaxidaeLive.FormComponent}
+    id={@taxidae.id || :new}
+    title={@page_title}
+    action={@live_action}
+    taxidae={@taxidae}
+    patch={~p"/storage_mail"}
+  />
+</.modal>

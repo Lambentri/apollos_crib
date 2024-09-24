@@ -1,0 +1,36 @@
+<.header>
+  Free bike status <%= @free_bike_status.id %>
+  <:subtitle>This is a free_bike_status record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/gbfs_free_bike_status/#{@free_bike_status}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit free_bike_status</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Bike"><%= @free_bike_status.bike_id %></:item>
+  <:item title="Lat"><%= @free_bike_status.lat %></:item>
+  <:item title="Lon"><%= @free_bike_status.lon %></:item>
+  <:item title="Point"><%= @free_bike_status.point %></:item>
+  <:item title="Is disabled"><%= @free_bike_status.is_disabled %></:item>
+  <:item title="Is reserved"><%= @free_bike_status.is_reserved %></:item>
+  <:item title="Vehicle type"><%= @free_bike_status.vehicle_type_id %></:item>
+  <:item title="Last reported"><%= @free_bike_status.last_reported %></:item>
+  <:item title="Current range meters"><%= @free_bike_status.current_range_meters %></:item>
+  <:item title="Current fuel percent"><%= @free_bike_status.current_fuel_percent %></:item>
+  <:item title="Pricing plan"><%= @free_bike_status.pricing_plan_id %></:item>
+</.list>
+
+<.back navigate={~p"/gbfs_free_bike_status"}>Back to gbfs_free_bike_status</.back>
+
+<.modal :if={@live_action == :edit} id="free_bike_status-modal" show on_cancel={JS.patch(~p"/gbfs_free_bike_status/#{@free_bike_status}")}>
+  <.live_component
+    module={RoomSanctumWeb.FreeBikeStatusLive.FormComponent}
+    id={@free_bike_status.id}
+    title={@page_title}
+    action={@live_action}
+    free_bike_status={@free_bike_status}
+    patch={~p"/gbfs_free_bike_status/#{@free_bike_status}"}
+  />
+</.modal>

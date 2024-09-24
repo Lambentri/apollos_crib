@@ -11,7 +11,7 @@ defmodule RoomSanctum.MixProject do
       lockfile: "../../mix.lock",
       elixir: "~> 1.12",
       elixirc_paths: elixirc_paths(Mix.env()),
-      compilers: [:gettext] ++ Mix.compilers(),
+      compilers: Mix.compilers(),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
       deps: deps()
@@ -39,13 +39,19 @@ defmodule RoomSanctum.MixProject do
     [
       {:bcrypt_elixir, "~> 3.0"},
       {:phoenix, "~> 1.7"},
-      {:phoenix_ecto, "~> 4.4"},
+      {:phoenix_ecto, "~> 4.6"},
       {:ecto_sql, "~> 3.10"},
-      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
+      {:ecto_interval, git: "git@github.com:gmorell/ecto_interval.git"},
+#      {:ecto_interval, "~> 0.2"},
       {:postgrex, ">= 0.0.0"},
-      {:phoenix_html, "~> 3.3"},
+      {:phoenix_html, "~> 4.0", override: true},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
-      {:phoenix_live_view, "~> 0.20"},
+      {:phoenix_live_view, "~> 1.0.0-rc.6", override: true},
+      {:phoenix_html_helpers, "~> 1.0"},
+#      {:live_view_native, "~> 0.3.0"},
+      {:live_view_native_jetpack,
+       git: "git@github.com:liveview-native/liveview-client-jetpack.git"},
+#      {:live_view_native_live_form, "~> 0.3.0"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.7", runtime: Mix.env() == :dev},
@@ -64,7 +70,7 @@ defmodule RoomSanctum.MixProject do
       {:tzdata, "~> 1.1"},
 
       # makes the configs go Vroom
-      {:polymorphic_embed, "~> 2.0.0"},
+      {:polymorphic_embed, "~> 5.0.0", override: true},
 
       # for the foci
       {:geo_postgis, "~> 3.4"},
@@ -75,6 +81,7 @@ defmodule RoomSanctum.MixProject do
       # UI
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
       {:mdex, "~> 0.1"},
+      {:doggo, "~> 0.8.2"},
 
       # kube
       {:healthchex, "~> 0.2"},
@@ -82,7 +89,12 @@ defmodule RoomSanctum.MixProject do
       # hermes
       #      {:room_hermes, in_umbrella: true}
       {:amqp, "~> 3.3"},
-      {:sentry, "~> 8.0"}
+      {:sentry, "~> 8.0"},
+
+      # Q's and other misc
+      {:oban, "~> 2.17"},
+      {:iconv, "~> 1.0"},
+          {:oban_live_dashboard, "~> 0.1.0"},
     ]
   end
 

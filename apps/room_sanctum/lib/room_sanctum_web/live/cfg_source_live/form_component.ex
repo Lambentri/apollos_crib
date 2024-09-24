@@ -1,3 +1,4 @@
+
 defmodule RoomSanctumWeb.SourceLive.FormComponent do
   use RoomSanctumWeb, :live_component
 
@@ -20,7 +21,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     {:ok,
      socket
      |> assign(assigns)
-     |> assign(:tint_opts, ["amber", "violet", "emerald", "sky", "rose", "stone"])
+     |> assign(:tint_opts, ["amber", "lime", "emerald", "sky", "violet", "fuschia", "rose", "stone", "slate"])
      |> assign_form(changeset)}
   end
 

@@ -43,6 +43,7 @@ Hooks.mkMap = {
     latlng() { return this.el.dataset.latlng },
     mounted() {
         var latlng = this.latlng()
+        console.log(latlng)
         if (latlng == null) {
             let map = L.map('map', {keyboard: true}).setView([42.3736, -71.1097], 13);
         } else {
@@ -59,9 +60,9 @@ Hooks.mkMap = {
         });
         marker.addTo(map);
 
-        L.tileLayer('https:{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https:openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+            attribution: '&copy; <a href="https//:openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         }).addTo(map);
 
         this.handleEvent("add_marker", ({lat, lon}) => {
@@ -70,6 +71,8 @@ Hooks.mkMap = {
         })
     }
 }
+
+
 
 let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}, hooks: Hooks})
 

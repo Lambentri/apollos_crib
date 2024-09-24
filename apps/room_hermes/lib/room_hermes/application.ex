@@ -13,10 +13,11 @@ defmodule RoomHermes.Application do
       # Start the Endpoint (http/https)
       RoomHermesWeb.Endpoint,
       RoomHermes.Repo,
-      {Phoenix.PubSub, name: RoomHermes.PubSub}
+      {Phoenix.PubSub, name: RoomHermes.PubSub},
 
       # Start a worker by calling: RoomHermes.Worker.start_link(arg)
       # {RoomHermes.Worker, arg}
+      RoomHermes.Mail.Supervisor
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

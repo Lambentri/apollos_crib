@@ -26,6 +26,10 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
+import './leaflet/leaflet-map'
+import './leaflet/leaflet-marker'
+import './leaflet/leaflet-icon'
+
 import L from 'leaflet'
 import 'leaflet-centermarker'
 
@@ -69,6 +73,40 @@ Hooks.mkMap = {
 
         this.handleEvent("add_marker", ({lat, lon}) => {
             const marker = L.marker(L.latLng(lat, lomn))
+            marker.addTo(map)
+        })
+    }
+}
+
+Hooks.mkTesterMap = {
+    latlng() { return this.el.dataset.latlng },
+    mounted() {
+        var latlng = this.latlng()
+        console.log("MOUNTEd")
+        console.log(latlng)
+        if (latlng == null) {
+            let map = L.map('map', {keyboard: true}).setView([42.3736, -71.1097], 13);
+        } else {
+            let map = L.map("map", { keyboard: true }).setView(JSON.parse(this.latlng()), 13);
+        }
+        const markers = {}
+
+        const view = this;
+        // var marker = L.centerMarker(map).on("newposition", function() {
+        //     var latlng = marker.getLatLng()
+        //     console.log("New position: " + latlng.lat + ", " + latlng.lng);
+        //     view.pushEventTo("#foci-form", "map-update", {latlng: latlng})
+        //
+        // });
+        // marker.addTo(map);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https//:openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+        }).addTo(map);
+
+        this.handleEvent("add_marker", ({lat, lon}) => {
+            const marker = L.marker(L.latLng(lat, lon))
             marker.addTo(map)
         })
     }

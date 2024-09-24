@@ -1,14 +1,14 @@
 defmodule RoomSanctum.Configuration.Query do
   use Ecto.Schema
   import Ecto.Changeset
-  import PolymorphicEmbed, only: [cast_polymorphic_embed: 3]
+  import PolymorphicEmbed
 
   schema "cfg_queries" do
     belongs_to :user, RoomSanctum.Accounts.User
     field :name, :string
     field :notes, :string
 
-    field :query, PolymorphicEmbed,
+    polymorphic_embeds_one :query,
       types: [
         aqi: RoomSanctum.Configuration.Queries.AQI,
         calendar: RoomSanctum.Configuration.Queries.Calendar,
@@ -21,7 +21,8 @@ defmodule RoomSanctum.Configuration.Query do
         weather: RoomSanctum.Configuration.Queries.Weather,
         email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
         cronos: RoomSanctum.Configuration.Queries.Cronos,
-        gitlab: RoomSanctum.Configuration.Queries.Gitlab
+        gitlab: RoomSanctum.Configuration.Queries.Gitlab,
+        packages: RoomSanctum.Configuration.Queries.Packages,
       ],
       on_type_not_found: :raise,
       on_replace: :update

@@ -1,0 +1,32 @@
+<.header>
+  System pricing plans <%= @system_pricing_plans.id %>
+  <:subtitle>This is a system_pricing_plans record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/gbfs_system_pricing_plans/#{@system_pricing_plans}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit system_pricing_plans</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Plan"><%= @system_pricing_plans.plan_id %></:item>
+  <:item title="Name"><%= @system_pricing_plans.name %></:item>
+  <:item title="Currency"><%= @system_pricing_plans.currency %></:item>
+  <:item title="Price"><%= @system_pricing_plans.price %></:item>
+  <:item title="Is taxable"><%= @system_pricing_plans.is_taxable %></:item>
+  <:item title="Description"><%= @system_pricing_plans.description %></:item>
+  <:item title="Per min pricing"><%= @system_pricing_plans.per_min_pricing %></:item>
+</.list>
+
+<.back navigate={~p"/gbfs_system_pricing_plans"}>Back to gbfs_system_pricing_plans</.back>
+
+<.modal :if={@live_action == :edit} id="system_pricing_plans-modal" show on_cancel={JS.patch(~p"/gbfs_system_pricing_plans/#{@system_pricing_plans}")}>
+  <.live_component
+    module={RoomSanctumWeb.SystemPricingPlansLive.FormComponent}
+    id={@system_pricing_plans.id}
+    title={@page_title}
+    action={@live_action}
+    system_pricing_plans={@system_pricing_plans}
+    patch={~p"/gbfs_system_pricing_plans/#{@system_pricing_plans}"}
+  />
+</.modal>

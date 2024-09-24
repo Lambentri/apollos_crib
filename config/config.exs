@@ -88,6 +88,44 @@ config :logger,
 
 # Use Jason for JSON parsing in Phoenix
 config :phoenix, :json_library, Jason
+config :room_sanctum, Oban,
+       engine: Oban.Engines.Basic,
+       queues: [default: 10, webhooks: 20, emails: 20],
+       repo: RoomSanctum.Repo
+config :messenger, smtp_opts: [[port: 2525]]
+
+config :live_view_native,
+  plugins: [
+    LiveViewNative.Jetpack
+  ]
+
+config :mime, :types, %{
+  "text/jetpack" => ["jetpack"],
+  "text/swiftui" => [:swiftui]
+}
+
+config :live_view_native_stylesheet,
+  content: [
+    swiftui: [
+      "lib/**/*swiftui*"
+    ],
+    jetpack: [
+      "lib/**/*jetpack*"
+    ]
+  ]
+
+# instructs Phoenix on how to encode a given format
+config :phoenix_template, :format_encoders,
+  [
+    jetpack: Phoenix.HTML.Engine,
+    swiftui: Phoenix.HTML.Engine
+  ]
+
+# instructs Phoenix on which engine to
+# use when compiling `neex` templates
+config :phoenix, :template_engines, [
+  neex: LiveViewNative.Engine
+]
 
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.

@@ -57,5 +57,7 @@
     <orderEntry type="library" name="plug" level="project" />
     <orderEntry type="library" name="mime" level="project" />
     <orderEntry type="library" name="plug_crypto" level="project" />
+    <orderEntry type="library" name="makeup_eex" level="project" />
+    <orderEntry type="library" name="makeup_diff" level="project" />
   </component>
 </module>

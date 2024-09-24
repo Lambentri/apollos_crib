@@ -1,0 +1,44 @@
+<.header>
+  Listing Cfg webhooks
+  <:actions>
+    <.link patch={~p"/cfg_webhooks/new"}>
+      <.button>New Agyr</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="cfg_webhooks"
+  rows={@streams.cfg_webhooks}
+  row_click={fn {_id, agyr} -> JS.navigate(~p"/cfg_webhooks/#{agyr}") end}
+>
+  <:col :let={{_id, agyr}} label="Designator"><%= agyr.designator %></:col>
+  <:col :let={{_id, agyr}} label="Path"><%= agyr.path %></:col>
+  <:col :let={{_id, agyr}} label="User"><%= agyr.user %></:col>
+  <:col :let={{_id, agyr}} label="Token"><%= agyr.token %></:col>
+  <:action :let={{_id, agyr}}>
+    <div class="sr-only">
+      <.link navigate={~p"/cfg_webhooks/#{agyr}"}>Show</.link>
+    </div>
+    <.link patch={~p"/cfg_webhooks/#{agyr}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, agyr}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: agyr.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="agyr-modal" show on_cancel={JS.patch(~p"/cfg_webhooks")}>
+  <.live_component
+    module={RoomSanctumWeb.AgyrLive.FormComponent}
+    id={@agyr.id || :new}
+    title={@page_title}
+    action={@live_action}
+    agyr={@agyr}
+    patch={~p"/cfg_webhooks"}
+  />
+</.modal>

@@ -26,12 +26,12 @@ end
 defmodule RoomSanctum.Configuration.Vision.Schema do
   use Ecto.Schema
   import Ecto.Changeset
-  import PolymorphicEmbed, only: [cast_polymorphic_embed: 3]
+  import PolymorphicEmbed
 
   embedded_schema do
     field :type, Ecto.Enum, values: [:alerts, :time, :pinned, :background]
 
-    field :data, PolymorphicEmbed,
+    polymorphic_embeds_one :data,
       types: [
         alerts: RoomSanctum.Configuration.Vision.Schema0Alerts,
         time: RoomSanctum.Configuration.Vision.Schema1Time,

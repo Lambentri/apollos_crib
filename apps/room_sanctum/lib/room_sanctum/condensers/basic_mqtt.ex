@@ -181,6 +181,9 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       :gitlab ->
         data
 
+      :packages ->
+        data
+
       :const ->
         data
     end

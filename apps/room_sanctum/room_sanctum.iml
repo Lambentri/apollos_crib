@@ -140,5 +140,37 @@
     <orderEntry type="library" name="rustler" level="project" />
     <orderEntry type="library" name="rustler_precompiled" level="project" />
     <orderEntry type="library" name="toml" level="project" />
+    <orderEntry type="library" name="live_view_native_jetpack" level="project" />
+    <orderEntry type="library" name="live_view_native" level="project" />
+    <orderEntry type="library" name="live_view_native_stylesheet" level="project" />
+    <orderEntry type="library" name="live_view_native_test" level="project" />
+    <orderEntry type="library" name="nimble_parsec" level="project" />
+    <orderEntry type="library" name="sourceror" level="project" />
+    <orderEntry type="library" name="text_diff" level="project" />
+    <orderEntry type="library" name="ex_check" level="project" />
+    <orderEntry type="library" name="sobelow" level="project" />
+    <orderEntry type="library" name="live_view_native_live_form" level="project" />
+    <orderEntry type="library" name="html5ever" level="project" />
+    <orderEntry type="library" name="fast_html" level="project" />
+    <orderEntry type="library" name="req" level="project" />
+    <orderEntry type="library" name="mua" level="project" />
+    <orderEntry type="library" name="multipart" level="project" />
+    <orderEntry type="library" name="expo" level="project" />
+    <orderEntry type="library" name="certifi" level="project" />
+    <orderEntry type="library" name="phoenix_html_helpers" level="project" />
+    <orderEntry type="library" name="phoenix_html" level="project" />
+    <orderEntry type="library" name="phoenix_ecto" level="project" />
+    <orderEntry type="library" name="attrs" level="project" />
+    <orderEntry type="library" name="doggo" level="project" />
+    <orderEntry type="library" name="phoenix_storybook" level="project" />
+    <orderEntry type="library" name="makeup" level="project" />
+    <orderEntry type="library" name="makeup_html" level="project" />
+    <orderEntry type="library" name="unicode_set" level="project" />
+    <orderEntry type="library" name="benchee_markdown" level="project" />
+    <orderEntry type="library" name="heroicons" level="project" />
+    <orderEntry type="library" name="oban" level="project" />
+    <orderEntry type="library" name="tz" level="project" />
+    <orderEntry type="library" name="iconv" level="project" />
+    <orderEntry type="library" name="oban_live_dashboard" level="project" />
   </component>
 </module>

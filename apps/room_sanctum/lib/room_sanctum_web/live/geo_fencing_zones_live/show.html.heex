@@ -1,0 +1,28 @@
+<.header>
+  Geo fencing zones <%= @geo_fencing_zones.id %>
+  <:subtitle>This is a geo_fencing_zones record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/gbfs_geofencing_zones/#{@geo_fencing_zones}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit geo_fencing_zones</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Properties"><%= @geo_fencing_zones.properties %></:item>
+  <:item title="Geometry"><%= @geo_fencing_zones.geometry %></:item>
+  <:item title="Place"><%= @geo_fencing_zones.place %></:item>
+</.list>
+
+<.back navigate={~p"/gbfs_geofencing_zones"}>Back to gbfs_geofencing_zones</.back>
+
+<.modal :if={@live_action == :edit} id="geo_fencing_zones-modal" show on_cancel={JS.patch(~p"/gbfs_geofencing_zones/#{@geo_fencing_zones}")}>
+  <.live_component
+    module={RoomSanctumWeb.GeoFencingZonesLive.FormComponent}
+    id={@geo_fencing_zones.id}
+    title={@page_title}
+    action={@live_action}
+    geo_fencing_zones={@geo_fencing_zones}
+    patch={~p"/gbfs_geofencing_zones/#{@geo_fencing_zones}"}
+  />
+</.modal>

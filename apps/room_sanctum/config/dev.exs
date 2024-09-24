@@ -69,6 +69,7 @@ config :room_sanctum,
            ~r"priv/gettext/.*(po)$",
            ~r"lib/room_sanctum_web/(live|views)/.*(ex)$",
            ~r"lib/room_sanctum_web/templates/.*(eex)$"
+           ~r"lib/room_sanctum_web/templates/.*(ex)$"
          ]
        ]
 

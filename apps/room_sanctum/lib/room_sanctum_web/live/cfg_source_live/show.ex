@@ -22,6 +22,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:tester_selected, nil)
       |> assign(:tester_selected_name, nil)
       |> assign(:tester_selected_data, %{})
+      |> assign(:tester_foci_distance, 100)
+      |> assign(:tester_foci_coords, {42.3736, -71.1097})
+      |> assign(:tester_foci_coords_lat, 42.3736)
+      |> assign(:tester_foci_coords_lon, -71.1097)
+      |> assign(:tester_foci, {})
+      |> assign(:tester_foci_vehicles, [])
     }
   end
 
@@ -50,7 +56,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    source = Configuration.get_source!(id)
+    source = Configuration.get_source!(id) |> IO.inspect
 
     case source.type do
       :gtfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs")
@@ -140,7 +146,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("add-tester", _params, socket) do
-    {:noreply, socket |> assign(:tester, !socket.assigns.tester)}
+    foci = Configuration.list_focis({:user,socket.assigns.current_user.id})
+    {:noreply, socket |> assign(:tester, !socket.assigns.tester) |> assign(:tester_foci, foci)}
   end
 
   @impl true
@@ -181,6 +188,21 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     end
 
     {:noreply, socket |> assign(:tester_selected, nil) |> assign(:tester_selected_name, nil)}
+  end
+
+  @impl true
+  def handle_event("select-foci", %{"foci" => foci, "distance" => distance} = data, socket) do
+    IO.inspect(data)
+    [lat, lon] = foci |> String.split(",") |> Enum.map(&String.to_float/1)
+    point = %Geo.Point{coordinates: {lat, lon}, srid: 4326}
+    vehicles = Storage.find_free_bikes_around_point(socket.assigns.source_id, point, distance |> String.to_integer) |> IO.inspect
+    {:noreply, socket
+               |> assign(:tester_foci_distance, distance)
+               |> assign(:tester_foci_coords, {lat, lon})
+               |> assign(:tester_foci_coords_lat, lat)
+               |> assign(:tester_foci_coords_lon, lon)
+               |> assign(:tester_foci_vehicles, vehicles)
+    }
   end
 
   defp percent(num, denom) do
@@ -322,4 +344,23 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def preview(condensed, {id, type}) do
     %{data: condensed, id: id, type: type}
   end
+
+  defp pt_for_form({lat, lon}) do
+      "#{lat},#{lon}"
+  end
+
+  defp getlatlng(coords) do
+    coords |> Tuple.to_list() |> Poison.encode!()
+  end
+
+  def get_icon_url(true) do
+    "/images/elixir-icon.png"
+  end
+
+  def get_icon_url(false) do
+    "/assets/img/marker.png"
+  end
+
+  def get_first({a, _b}), do: a
+  def get_second({_a, b}), do: b
 end

@@ -94,6 +94,8 @@ if config_env() == :prod do
   sport = String.to_integer(System.get_env("SPORT") || "4000")
   hport = String.to_integer(System.get_env("HPORT") || "4001")
 
+  Application.
+
   config :room_sanctum,
          RoomSanctumWeb.Endpoint,
          url: [
@@ -185,4 +187,12 @@ if config_env() == :prod do
       env: "production"
     },
     included_environments: [:prod]
+
+  else
+
 end
+
+config :room_sanctum,
+       env: config_env(),
+       host: System.get_env("PHX_HOST", "localhost")
+

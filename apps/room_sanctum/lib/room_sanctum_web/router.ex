@@ -23,7 +23,7 @@ defmodule RoomSanctumWeb.Router do
   scope "/", RoomSanctumWeb do
     pipe_through [:browser]
     live "/", LandingLive.Index, :index
-#    live "/p/p/:name", PythiaeLive.Public, :show
+    #    live "/p/p/:name", PythiaeLive.Public, :show
 
     live_session :public, root_layout: {RoomSanctumWeb.Layouts, :root_public} do
       live "/p/p/:name", PythiaeLive.Public, :show
@@ -169,7 +169,6 @@ defmodule RoomSanctumWeb.Router do
       live "/storage/gbfs_system_pricing_plans/:id", SystemPricingPlansLive.Show, :show
       live "/storage/gbfs_system_pricing_plans/:id/show/edit", SystemPricingPlansLive.Show, :edit
 
-
       live "/airnow/reporting_area", ReportingAreaLive.Index, :index
       live "/airnow/reporting_area/new", ReportingAreaLive.Index, :new
       live "/airnow/reporting_area/:id/edit", ReportingAreaLive.Index, :edit
@@ -199,13 +198,34 @@ defmodule RoomSanctumWeb.Router do
       live "/calendar_entries/:id/edit", ICalendarLive.Index, :edit
       live "/calendar_entries/:id", ICalendarLive.Show, :show
       live "/calendar_entries/:id/show/edit", ICalendarLive.Show, :edit
+
+      live "/cfg/webhooks", AgyrLive.Index, :index
+      live "/cfg/webhooks/new", AgyrLive.Index, :new
+      live "/cfg/webhooks/:id/edit", AgyrLive.Index, :edit
+
+      live "/cfg/webhooks/:id", AgyrLive.Show, :show
+      live "/cfg/webhooks/:id/show/edit", AgyrLive.Show, :edit
+
+      live "/cfg/mailboxes", TaxidLive.Index, :index
+      live "/cfg/mailboxes/new", TaxidLive.Index, :new
+      live "/cfg/mailboxes/:id/edit", TaxidLive.Index, :edit
+
+      live "/cfg/mailboxes/:id", TaxidLive.Show, :show
+      live "/cfg/mailboxes/:id/show/edit", TaxidLive.Show, :edit
+
+      live "/storage/mail", TaxidaeLive.Index, :index
+      live "/storage/mail/new", TaxidaeLive.Index, :new
+      live "/storage/mail/:id/edit", TaxidaeLive.Index, :edit
+      live "/storage/mail/:id", TaxidaeLive.Show, :show
+      live "/storage/mail/:id/show/edit", TaxidaeLive.Show, :edit
     end
   end
 
   # Other scopes may use custom stacks.
-  # scope "/api", RoomSanctumWeb do
-  #   pipe_through :api
-  # end
+  scope "/api", RoomSanctumWeb do
+    pipe_through :api
+    resources "/data/:path", DataController, only: [:create, :index]
+  end
 
   # Enables LiveDashboard only for development
   #
@@ -220,7 +240,11 @@ defmodule RoomSanctumWeb.Router do
     scope "/" do
       pipe_through :browser
 
-      live_dashboard "/dashboard", metrics: RoomSanctumWeb.Telemetry
+      live_dashboard "/dashboard",
+        metrics: RoomSanctumWeb.Telemetry,
+        additional_pages: [
+          oban: Oban.LiveDashboard
+        ]
     end
   end
 

@@ -366,4 +366,120 @@ defmodule RoomSanctum.ConfigurationTest do
       assert %Ecto.Changeset{} = Configuration.change_scribus(scribus)
     end
   end
+
+  describe "cfg_webhooks" do
+    alias RoomSanctum.Configuration.Agyr
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{user: nil, path: nil, token: nil, designator: nil}
+
+    test "list_cfg_webhooks/0 returns all cfg_webhooks" do
+      agyr = agyr_fixture()
+      assert Configuration.list_cfg_webhooks() == [agyr]
+    end
+
+    test "get_agyr!/1 returns the agyr with given id" do
+      agyr = agyr_fixture()
+      assert Configuration.get_agyr!(agyr.id) == agyr
+    end
+
+    test "create_agyr/1 with valid data creates a agyr" do
+      valid_attrs = %{user: "some user", path: "some path", token: "some token", designator: "some designator"}
+
+      assert {:ok, %Agyr{} = agyr} = Configuration.create_agyr(valid_attrs)
+      assert agyr.user == "some user"
+      assert agyr.path == "some path"
+      assert agyr.token == "some token"
+      assert agyr.designator == "some designator"
+    end
+
+    test "create_agyr/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_agyr(@invalid_attrs)
+    end
+
+    test "update_agyr/2 with valid data updates the agyr" do
+      agyr = agyr_fixture()
+      update_attrs = %{user: "some updated user", path: "some updated path", token: "some updated token", designator: "some updated designator"}
+
+      assert {:ok, %Agyr{} = agyr} = Configuration.update_agyr(agyr, update_attrs)
+      assert agyr.user == "some updated user"
+      assert agyr.path == "some updated path"
+      assert agyr.token == "some updated token"
+      assert agyr.designator == "some updated designator"
+    end
+
+    test "update_agyr/2 with invalid data returns error changeset" do
+      agyr = agyr_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_agyr(agyr, @invalid_attrs)
+      assert agyr == Configuration.get_agyr!(agyr.id)
+    end
+
+    test "delete_agyr/1 deletes the agyr" do
+      agyr = agyr_fixture()
+      assert {:ok, %Agyr{}} = Configuration.delete_agyr(agyr)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_agyr!(agyr.id) end
+    end
+
+    test "change_agyr/1 returns a agyr changeset" do
+      agyr = agyr_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_agyr(agyr)
+    end
+  end
+
+  describe "cfg_mailboxes" do
+    alias RoomSanctum.Configuration.Taxid
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{user: nil, designator: nil}
+
+    test "list_cfg_mailboxes/0 returns all cfg_mailboxes" do
+      taxid = taxid_fixture()
+      assert Configuration.list_cfg_mailboxes() == [taxid]
+    end
+
+    test "get_taxid!/1 returns the taxid with given id" do
+      taxid = taxid_fixture()
+      assert Configuration.get_taxid!(taxid.id) == taxid
+    end
+
+    test "create_taxid/1 with valid data creates a taxid" do
+      valid_attrs = %{user: "some user", designator: "some designator"}
+
+      assert {:ok, %Taxid{} = taxid} = Configuration.create_taxid(valid_attrs)
+      assert taxid.user == "some user"
+      assert taxid.designator == "some designator"
+    end
+
+    test "create_taxid/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_taxid(@invalid_attrs)
+    end
+
+    test "update_taxid/2 with valid data updates the taxid" do
+      taxid = taxid_fixture()
+      update_attrs = %{user: "some updated user", designator: "some updated designator"}
+
+      assert {:ok, %Taxid{} = taxid} = Configuration.update_taxid(taxid, update_attrs)
+      assert taxid.user == "some updated user"
+      assert taxid.designator == "some updated designator"
+    end
+
+    test "update_taxid/2 with invalid data returns error changeset" do
+      taxid = taxid_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_taxid(taxid, @invalid_attrs)
+      assert taxid == Configuration.get_taxid!(taxid.id)
+    end
+
+    test "delete_taxid/1 deletes the taxid" do
+      taxid = taxid_fixture()
+      assert {:ok, %Taxid{}} = Configuration.delete_taxid(taxid)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_taxid!(taxid.id) end
+    end
+
+    test "change_taxid/1 returns a taxid changeset" do
+      taxid = taxid_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_taxid(taxid)
+    end
+  end
 end

@@ -133,6 +133,15 @@
         <.input field={gitlab_form[:statuses]} type="text" label="Statuses" />
       </div>
       <% end %>
+    <% :packages -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :packages, fn packages_form -> %>
+      <div class="form-control">
+        <.input field={packages_form[:show_delivered_for]} type="number" label="Show delivered packages for X days" />
+      </div>
+      <div class="form-control">
+        <.input field={packages_form[:carriers]} type="select" multiple="true" label="Carriers" prompt={nil} options={[:ups, :fedex, :usps, :uniuni]} />
+      </div>
+      <% end %>
   <% _ -> %>
     <span class="text-xs">Pick an offering above</span>
   <% end %>

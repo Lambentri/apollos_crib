@@ -1,9 +1,11 @@
 defmodule RoomSanctum.Configuration.Source do
   use Ecto.Schema
   import Ecto.Changeset
-  import PolymorphicEmbed, only: [cast_polymorphic_embed: 3]
+  import PolymorphicEmbed
 
   schema "cfg_sources" do
+    has_many :mailboxes, RoomSanctum.Configuration.Taxid
+    has_many :webhooks, RoomSanctum.Configuration.Agyr
     belongs_to :user, RoomSanctum.Accounts.User
     field :enabled, :boolean, default: false
     field :public, :boolean, default: true
@@ -22,10 +24,11 @@ defmodule RoomSanctum.Configuration.Source do
         :tidal,
         :weather,
         :cronos,
-        :gitlab
+        :gitlab,
+        :packages,
       ]
 
-    field :config, PolymorphicEmbed,
+    polymorphic_embeds_one :config,
       types: [
         aqi: RoomSanctum.Configuration.Configs.AQI,
         calendar: RoomSanctum.Configuration.Configs.Calendar,
@@ -39,6 +42,7 @@ defmodule RoomSanctum.Configuration.Source do
         email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
         cronos: RoomSanctum.Configuration.Configs.Cronos,
         gitlab: RoomSanctum.Configuration.Configs.Gitlab,
+        packages: RoomSanctum.Configuration.Configs.Packages,
       ],
       on_type_not_found: :raise,
       on_replace: :update
@@ -47,6 +51,11 @@ defmodule RoomSanctum.Configuration.Source do
       field :last_run, :utc_datetime
       field :run_period, :integer
       field :tint, :string
+      embeds_many :tracking, Tracking, on_replace: :delete, primary_key: :false do
+        field :number, :string
+        field :type, Ecto.Enum, values: [:ups, :fedex, :usps, :uniuni]
+        field :entries, {:array, :map}
+      end
     end
 
     timestamps()
@@ -65,5 +74,11 @@ defmodule RoomSanctum.Configuration.Source do
   def meta_changeset(meta, attrs \\ %{}) do
     meta
     |> cast(attrs, [:last_run, :run_period, :tint])
+    |> cast_embed(:tracking, required: false, with: &tracking_changeset/2)
+  end
+
+  def tracking_changeset(meta, attrs \\ %{}) do
+    meta
+    |> cast(attrs, [:number, :type, :entries])
   end
 end
