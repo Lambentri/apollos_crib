@@ -143,7 +143,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             hum: f.main.humidity,
             pressure: f.main.pressure,
             wind: f.wind,
-            visibility: f.visibility,
+            visibility: f |> Map.get(:visibility),
             units: f.units
           }
         end)
