@@ -172,5 +172,6 @@
     <orderEntry type="library" name="tz" level="project" />
     <orderEntry type="library" name="iconv" level="project" />
     <orderEntry type="library" name="oban_live_dashboard" level="project" />
+    <orderEntry type="library" name="live_view_native_test_endpoint" level="project" />
   </component>
 </module>
