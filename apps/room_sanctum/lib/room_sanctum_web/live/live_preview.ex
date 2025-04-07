@@ -116,7 +116,7 @@ use PhoenixHTMLHelpers
                   <% end %>
                 <% else %>
                   <%= for t <- e.times |> Enum.take(2) do %>
-                  <p><i class="fa-solid fa-clock fa-fw"></i> <span class="text-accent"><%= tsl(t) %></span></p>
+                  <p  class="lg:text-4xl"><i class="fa-solid fa-clock fa-fw"></i> <span class="text-accent"><%= tsl(t) %></span></p>
                   <% end %>
                 <% end %>
               </div>
