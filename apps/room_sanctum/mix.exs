@@ -50,7 +50,7 @@ defmodule RoomSanctum.MixProject do
       {:phoenix_html_helpers, "~> 1.0"},
 #      {:live_view_native, "~> 0.3.0"},
       {:live_view_native_jetpack,
-       git: "git@github.com:liveview-native/liveview-client-jetpack.git"},
+       git: "https://github.com/liveview-native/liveview-client-jetpack.git"},
 #      {:live_view_native_live_form, "~> 0.3.0"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
