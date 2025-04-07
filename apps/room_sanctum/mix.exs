@@ -41,7 +41,7 @@ defmodule RoomSanctum.MixProject do
       {:phoenix, "~> 1.7"},
       {:phoenix_ecto, "~> 4.6"},
       {:ecto_sql, "~> 3.10"},
-      {:ecto_interval, git: "git@github.com:gmorell/ecto_interval.git"},
+      {:ecto_interval, git: "https://github.com/gmorell/ecto_interval.git"},
 #      {:ecto_interval, "~> 0.2"},
       {:postgrex, ">= 0.0.0"},
       {:phoenix_html, "~> 4.0", override: true},
