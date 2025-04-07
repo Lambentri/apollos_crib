@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.ScribusLive.FormComponent do
         phx-submit="save"
       >
         <.input field={@form[:name]} type="text" label="Name" />
-        <.input field={@form[:resolution]} type="select" label="Resolution" options={["850x480"]} />
+        <.input field={@form[:resolution]} type="select" label="Resolution" options={["540x960"]} />
         <.input
           field={@form[:configuration]}
           type="select"

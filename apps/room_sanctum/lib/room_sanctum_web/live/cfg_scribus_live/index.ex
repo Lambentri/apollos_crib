@@ -6,7 +6,9 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, stream(socket, :cfg_scribus, Configuration.list_cfg_scribus())}
+    {:ok,
+     socket |> stream(:cfg_scribus, Configuration.list_cfg_scribus()) |> assign(:show_info, false)
+    }
   end
 
   @impl true
@@ -43,5 +45,8 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
     {:ok, _} = Configuration.delete_scribus(scribus)
 
     {:noreply, stream_delete(socket, :cfg_scribus, scribus)}
+  end
+  def handle_event("info", _params, socket) do
+    {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
 end

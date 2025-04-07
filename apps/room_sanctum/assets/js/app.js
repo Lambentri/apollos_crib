@@ -115,7 +115,7 @@ Hooks.mkTesterMap = {
 let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}, hooks: Hooks})
 
 // Show progress bar on live navigation and form submits
-topbar.config({barColors: {0: "#38357F"}, shadowColor: "rgba(0, 0, 0, .3)"})
+topbar.config({barColors: {0: "#b57979"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", info => topbar.show())
 window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 

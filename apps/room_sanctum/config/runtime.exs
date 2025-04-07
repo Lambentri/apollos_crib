@@ -85,6 +85,6 @@ if config_env() == :prod do
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
 end
 
-config :room_sanctum,
+config :room_sanctum, 
        env: config_env(),
        host: System.get_env("PHX_HOST", "localhost")

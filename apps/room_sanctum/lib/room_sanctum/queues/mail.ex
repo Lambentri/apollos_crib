@@ -53,10 +53,18 @@ defmodule RoomSanctum.Queues.Mail do
                   :ups ->
                     ag = RoomSanctum.Configuration.get_agyr!(:src, taxid.source_id, "ups_webhook")
                     register_ups(v, ag)
-                  :fedex -> register_fedex(v)
-                  :usps -> register_usps(v)
-                  :uniuni -> register_uniuni(v)
-                  _otherwise -> IO.inspect({"owowowow", k,v})
+
+                  :fedex ->
+                    register_fedex(v)
+
+                  :usps ->
+                    register_usps(v)
+
+                  :uniuni ->
+                    register_uniuni(v)
+
+                  _otherwise ->
+                    IO.inspect({"owowowow", k, v})
                 end
               end)
 
@@ -87,41 +95,141 @@ defmodule RoomSanctum.Queues.Mail do
     "#{scheme}#{host}/api/data/#{agyr.path}"
   end
 
-  def register_ups(trackings, agyr) do
-
+  def can_ups_token(agyr) do
     source = RoomSanctum.Configuration.get_source!(agyr.source_id)
-    trackings |> Enum.map(fn t -> RoomSanctum.Configuration.create_source_meta_tracking(source, t, :ups) end)
+    conf = source.config
 
-
-    our_scheme = case Application.get_env(:room_sanctum, :env) do
-      :dev -> "http://"
-      :prod -> "https://"
+    case {conf.apikey_ups_id != nil, conf.apikey_ups_secret != nil} do
+      {true, true} -> true
+      _otherwise -> false
     end
-    our_host = Application.get_env(:room_sanctum, RoomSanctumWeb.Endpoint) |> Keyword.get(:url) |> Keyword.get(:host)
-    our_url = build_webhookurl(our_scheme, our_host, agyr)
-    our_creds = "#{agyr.user}:#{agyr.token}"
+  end
 
-    type = "standard"
-    version = "v1"
+  def need_to_ups_token(agyr) do
+    source = RoomSanctum.Configuration.get_source!(agyr.source_id)
+    conf = source.config
+    now = DateTime.now!("UTC")
 
-    url = "https://wwwcie.ups.com/api/track/" + version + "/subscription/" + type + "/package"
-    #    url = "http://e6166b4a-082f-487f-81b8-125e1b55cf27:cf098949-a9b3-499e-9efa-784336fc261f@localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0"
+    case conf.token_ups_expiry do
+      nil ->
+        true
 
-    payload = %{
-      "locale" => "en_US",
-      "countryCode" => "US",
-      "trackingNumberList" => trackings,
-      "eventPreference" => [
-        "string"
-      ],
-      "destination" => %{
-        "url" => our_url,
-        "credentialType" => "basic",
-        "credential" => our_creds
-      }
-    } |> Poison.encode!
+      _otherwise ->
+        {:ok, token_expiry, _extra} = DateTime.from_iso8601(conf.token_ups_expiry)
+        IO.inspect({"tetete", token_expiry, now, now > token_expiry})
+        comp = DateTime.compare(token_expiry,now)
+        comp == :lt
+    end
+  end
 
-    HTTPoison.post(url, payload, [{"Accept", "application/json"}])
+  def update_ups(agyr) do
+    source = RoomSanctum.Configuration.get_source!(agyr.source_id)
+    conf = source.config
+
+    url = "https://onlinetools.ups.com/security/v1/oauth/token"
+    #    url = "https://wwwcie.ups.com/security/v1/oauth/token"
+
+    headers = [
+      {"Content-Type", "application/x-www-form-urlencoded"},
+      {"Authorization",
+       "Basic #{Base.encode64("#{conf.apikey_ups_id}:#{conf.apikey_ups_secret}")}"}
+    ]
+
+    body = "grant_type=client_credentials"
+    #    body = "username=#{conf.apikey_ups_id};password=#{conf.apikey_ups_secret}"
+    case HTTPoison.post(url, body, headers) do
+      {:ok, result} ->
+        case result.status_code do
+          200 ->
+            now = DateTime.now!("UTC")
+            decoded = result.body |> Poison.decode!()
+            access_token = decoded |> Map.get("access_token")
+            expiry_seconds = decoded |> Map.get("expires_in")
+
+            expiry_time =
+              now
+              |> DateTime.add(seconds = String.to_integer(expiry_seconds))
+              |> DateTime.to_iso8601()
+
+            update = %{token_ups: access_token, token_ups_expiry: expiry_time}
+            RoomSanctum.Configuration.update_source_config(source, update)
+            {:ok, access_token}
+
+          otherwise ->
+            Logger.error(result.body)
+            {:error, :http_status_code}
+        end
+
+      {:error, reason} ->
+        Logger.error(reason)
+        {:error, :http_bad_req}
+    end
+  end
+
+  def register_ups(trackings, agyr) do
+    case can_ups_token(agyr) do
+      true ->
+        source = RoomSanctum.Configuration.get_source!(agyr.source_id)
+
+        {:ok, token} =
+          case need_to_ups_token(agyr) do
+            true -> update_ups(agyr)
+            false -> {:ok, source.config.token_ups}
+          end
+
+        trackings
+        |> Enum.map(fn t ->
+          RoomSanctum.Configuration.create_source_meta_tracking(source, t, :ups)
+        end)
+
+        our_scheme =
+          case Application.get_env(:room_sanctum, :env) do
+            :dev -> "http://"
+            :prod -> "https://"
+          end
+
+        our_host = Application.get_env(:room_sanctum, :host)
+        our_url = build_webhookurl(our_scheme, our_host, agyr)
+        our_creds = "#{agyr.user}:#{agyr.token}"
+
+        type = "standard"
+        version = "v1"
+        # "https://wwwcie.ups.com/api/track/" 
+        url =
+          "https://onlinetools.ups.com/api/track/" <>
+            version <> "/subscription/" <> type <> "/package"
+
+        #        url = "http://e6166b4a-082f-487f-81b8-125e1b55cf27:cf098949-a9b3-499e-9efa-784336fc261f@localhost:4002/api/data/cef8601a-229a-4d72-b16d-a52c64638aa0"
+
+        payload =
+          %{
+            "locale" => "en_US",
+            "countryCode" => "US",
+            "trackingNumberList" => trackings,
+            "eventPreference" => [
+              "string"
+            ],
+            "destination" => %{
+              "url" => our_url,
+              "credentialType" => "Bearer",
+              "credential" => our_creds
+            }
+          }
+          |> Poison.encode!()
+
+        res =
+          HTTPoison.post(url, payload, [
+            {"Content-Type", "application/json"},
+            {"transId", "ACT-#{DateTime.now!("UTC") |> DateTime.to_unix()}"},
+            {"transactionSrc", "apollos-crib-tracker"},
+            {"Authorization", "Bearer #{token}"}
+          ])
+
+        IO.inspect({"ups-post", res, url, payload})
+
+      false ->
+        Logger.info("Source #{agyr.source_id} missing API keys for UPS")
+    end
   end
 
   def register_fedex(tracking) do

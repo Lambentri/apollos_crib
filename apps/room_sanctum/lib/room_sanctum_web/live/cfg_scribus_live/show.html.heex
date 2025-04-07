@@ -1,28 +1,89 @@
 <.header>
-  Scribus <%= @scribus.id %>
-  <:subtitle>This is a scribus record from your database.</:subtitle>
-  <:actions>
-    <.link patch={~p"/cfg_scribus/#{@scribus}/show/edit"} phx-click={JS.push_focus()}>
-      <.button>Edit scribus</.button>
-    </.link>
-  </:actions>
+Scribus
+<:subtitle> <%= @scribus.name %></:subtitle>
+<:actions>
+    <.itb icon="fa-chevron-left" to={Routes.scribus_index_path(@socket, :index)} what="Back"></.itb>
+    <.itb icon="fa-pencil" to={Routes.scribus_show_path(@socket, :edit, @scribus)} what="Edit"></.itb>
+</:actions>
 </.header>
 
-<.list>
-  <:item title="Name"><%= @scribus.name %></:item>
-  <:item title="Resolution"><%= @scribus.resolution %></:item>
-  <:item title="Configuration"><%= @scribus.configuration %></:item>
-</.list>
 
-<.back navigate={~p"/cfg_scribus"}>Back to cfg_scribus</.back>
-
-<.modal :if={@live_action == :edit} id="scribus-modal" show on_cancel={JS.patch(~p"/cfg_scribus/#{@scribus}")}>
-  <.live_component
-    module={RoomSanctumWeb.ScribusLive.FormComponent}
-    id={@scribus.id}
-    title={@page_title}
-    action={@live_action}
-    scribus={@scribus}
-    patch={~p"/cfg_scribus/#{@scribus}"}
-  />
+<.modal :if={@live_action == :edit} id="scribus-modal" show on_cancel={JS.patch(~p"/cfg/scribus/#{@scribus}")}>
+<.live_component
+module={RoomSanctumWeb.ScribusLive.FormComponent}
+id={@scribus.id}
+title={@page_title}
+action={@live_action}
+scribus={@scribus}
+patch={~p"/cfg/scribus/#{@scribus}"}
+current_user={@current_user}
+/>
 </.modal>
+
+
+<div class="mx-4 py-2">
+    <div class="flex">
+        <div class="flex w-1/2 ">
+            <div class="flex flex-col w-full ">
+                <div class="flex">
+                    <div class="card card-compact w-1/5 bg-base-100 shadow-xl m-2">
+                        <div class="card-body text-center">
+                            <%= case @scribus.enabled do %>
+                            <%= true -> %>
+                            <i class="fa-solid fa-fw fa-check fa-6x" phx-click="toggle-enabled"
+                               phx-value-current="true"></i>
+                            <span class="text-xs">Enabled</span>
+                            <% false -> %>
+                            <i class="fa-solid fa-fw fa-times fa-6x text-warning" phx-click="toggle-enabled"
+                               phx-value-current="false"></i>
+                            <span class="text-xs text-warning">Disabled</span>
+                            <% end %>
+                        </div>
+                    </div>
+                    <div class="card card-compact w-4/5 bg-base-100 shadow-xl m-2">
+                        <div class="card-body text-center">
+                            <h3 class="card-title">Resolution: <span class="text-accent"><%= @scribus.resolution %></span></h3>
+                            <h3 class="card-title">PostProcess <span class="text-accent"><%= @scribus.color %></span></h3>
+                            <h3 class="card-title">Wait <span class="text-accent"><%= @scribus.wait %>s</span></h3>
+                            <h3 class="card-title">Buffer <span class="text-accent"><%= @scribus.buffer %>s</span></h3>
+                            <h3 class="card-title">Theme <span class="text-accent"><%= @scribus.theme %></span></h3>
+                            <h3 class="card-title">Showing
+                                <%= if @scribus.show_name do %>
+                                    <span class="text-accent">Name</span>
+                                <% else %>
+                                    <span class="text-primary">Name</span>
+                                <% end %>
+                                <%= if @scribus.show_time do %>
+                                    <span class="text-accent">Time</span>
+                                <% else %>
+                                    <span class="text-primary">Time</span>
+                                <% end %>
+                            </h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="card card-compact bg-base-100 shadow-xl m-2">
+                    <div class="card-body text-center">
+                        <a class="btn" >PREVIEW </a>
+                        <a class="btn" phx-click="fire">FIRE </a>
+                        <a class="btn" phx-click="repub">REPUB </a>
+                    </div>
+                </div>
+                <div class="card card-compact bg-base-100 shadow-xl m-2">
+                    <div class="card-body text-center">
+                        <h3 class="card-title">Configurations </h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Preview</h3>
+                <%= if @preview do %>
+                <img src={@preview} />
+                <p></p>
+                <% end %>
+            </div>
+        </div>
+    </div>
+</div>

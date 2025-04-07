@@ -18,8 +18,10 @@ defmodule RoomZeus.Application do
       {RoomZeus.VisionSupervisor, strategy: :one_for_one},
       {RoomZeus.PythiaeSupervisor, strategy: :one_for_one},
       {RoomZeus.AnkyraSupervisor, strategy: :one_for_one},
+      {RoomZeus.ScribusSupervisor, strategy: :one_for_one},
       #      Supervisor.child_spec({RoomZeus.DynSupervisor, strategy: :one_for_one, subtype: :gbfs, name: :gbfs}, id: :zgbfs),
-      {Registry, [keys: :unique, name: @registry]}
+      {Registry, [keys: :unique, name: @registry]},
+      {RoomScribe.Worker, []},
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

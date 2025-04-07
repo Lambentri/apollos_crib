@@ -45,6 +45,7 @@ defmodule RoomHermes.MixProject do
 #      {:phoenix_html, "~> 4.1"},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
       {:phoenix_live_view, "~> 1.0.0-rc.6", override: true},
+      {:phoenix_html_helpers, "~> 1.0"},
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.3", runtime: Mix.env() == :dev},
@@ -57,8 +58,8 @@ defmodule RoomHermes.MixProject do
       #     {:room_sanctum, in_umbrella: true},
       {:sentry, "~> 8.0"},
 
-        # makes the configs go Vroom
-#      {:polymorphic_embed, "~> 4.0.0"},
+      # makes the configs go Vroom
+      {:polymorphic_embed, "~> 5.0.0", override: true},
       {:gen_smtp, "~> 1.2"},
     ]
   end

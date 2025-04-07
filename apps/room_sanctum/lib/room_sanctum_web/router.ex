@@ -7,10 +7,20 @@ defmodule RoomSanctumWeb.Router do
   import RoomSanctumWeb.UserAuth
 
   pipeline :browser do
-    plug :accepts, ["html"]
+    plug :accepts, [
+      "html",
+      "jetpack",
+      "swiftui"
+    ]
+
     plug :fetch_session
     plug :fetch_live_flash
-    plug :put_root_layout, {RoomSanctumWeb.Layouts, :root}
+
+    plug :put_root_layout,
+      html: {RoomSanctumWeb.Layouts, :root},
+      jetpack: {MyAppWeb.Layouts.Jetpack, :root},
+      swiftui: {MyAppWeb.Layouts.SwiftUI, :root}
+
     plug :protect_from_forgery
     plug :put_secure_browser_headers
     plug :fetch_current_user
@@ -27,6 +37,16 @@ defmodule RoomSanctumWeb.Router do
 
     live_session :public, root_layout: {RoomSanctumWeb.Layouts, :root_public} do
       live "/p/p/:name", PythiaeLive.Public, :show
+      live "/p/s/c/:id", ScribusLive.Public, :show # color version
+    end
+    live_session :public_inky, root_layout: {RoomSanctumWeb.Layouts, :root_public_inky} do
+      live "/p/s/i/:id", ScribusLive.Public, :show # monochrome
+    end
+    live_session :public_afterdark, root_layout: {RoomSanctumWeb.Layouts, :root_public_afterdark} do
+      live "/p/s/a/:id", ScribusLive.Public, :show # monochrome
+    end
+    live_session :public_her, root_layout: {RoomSanctumWeb.Layouts, :root_public_her} do
+      live "/p/s/h/:id", ScribusLive.Public, :show # monochrome
     end
   end
 

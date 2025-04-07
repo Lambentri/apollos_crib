@@ -147,10 +147,22 @@
     <% :packages -> %>
     <%= polymorphic_embed_inputs_for @form, :config, :packages, fn packages_form -> %>
     <div class="form-control">
-        <.input field={packages_form[:apikey_ups]} type="text" label="API Key UPS"/>
+        <.input field={packages_form[:apikey_ups_id]} type="text" label="UPS OAuth ID"/>
     </div>
     <div class="form-control">
-        <.input field={packages_form[:apikey_fedex]} type="text" label="API Key Fedex"/>
+        <.input field={packages_form[:apikey_ups_secret]} type="text" label="UPS OAuth Secret"/>
+    </div>
+    <div class="form-control">
+        <.input field={packages_form[:apikey_fedex_id]} type="text" label="Fedex OAuth ID"/>
+    </div>
+    <div class="form-control">
+        <.input field={packages_form[:apikey_fedex_secret]} type="text" label="Fedex OAuth Secret"/>
+    </div>
+    <div class="form-control">
+        <.input field={packages_form[:apikey_dhl_id]} type="text" label="DHL OAuth ID"/>
+    </div>
+    <div class="form-control">
+        <.input field={packages_form[:apikey_dhl_secret]} type="text" label="DHL OAuth Secret"/>
     </div>
     <div class="form-control">
         <.input field={packages_form[:apikey_uniuni]} type="text" label="API Key UniUni"/>

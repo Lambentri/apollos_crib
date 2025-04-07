@@ -139,6 +139,23 @@ current_user={@current_user}
                         phx-value-id={@source.id}>
                     Jobs
                 </button>
+                <% :packages -> %>
+                    <form action="" novalidate="" role="submit" phx-submit="submit-pkg">
+                        <input
+                        id="submit-input"
+                        name="submit[query]"
+                        class="flex-auto rounded-lg appearance-none bg-transparent pl-10 text-zinc-900 outline-none focus:outline-none border-slate-200 focus:border-slate-200 focus:ring-0 focus:shadow-none placeholder:text-zinc-500 focus:w-full focus:flex-none sm:text-sm [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden [&::-webkit-search-results-button]:hidden [&::-webkit-search-results-decoration]:hidden pr-4"
+                        autocomplete="off"
+                        autocorrect="off"
+                        autocapitalize="off"
+                        enterkeyhint="search"
+                        spellcheck="false"
+                        placeholder="Submit something..."
+                        type="search"
+                        value=""
+                        tabindex="0"
+                        />
+                    </form>
                 <% _default -> %>
 
                 <% end %>

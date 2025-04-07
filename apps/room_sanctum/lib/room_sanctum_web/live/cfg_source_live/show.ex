@@ -205,6 +205,20 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     }
   end
 
+  def handle_event("submit-pkg", %{"submit" =>%{"query" => query}} = data, socket) do
+    q = RoomSanctum.Queues.Mail.extract_tracking(query)
+    {typ, number} = Enum.at(q, 0)
+
+    case typ do
+      :ups ->
+         ag = RoomSanctum.Configuration.get_agyr!(:src, socket.assigns.source_id, "ups_webhook")
+         RoomSanctum.Queues.Mail.register_ups(number, ag)
+      typp -> IO.inspect("unhandled typ, #{typp}")
+    end
+    #IO.inspect(query)
+    {:noreply, socket}
+  end
+
   defp percent(num, denom) do
     (num / denom * 100)
     |> Float.floor()

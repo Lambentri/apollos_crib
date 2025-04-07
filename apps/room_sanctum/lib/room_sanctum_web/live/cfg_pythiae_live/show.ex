@@ -119,4 +119,9 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     RoomSanctum.Worker.Pythiae.query_current_now(id)
     {:noreply, socket}
   end
+
+  def handle_event("do-publish-img", %{"id" => id}, socket) do
+    RoomSanctum.Worker.Pythiae.publish_img(id)
+    {:noreply, socket}
+  end
 end

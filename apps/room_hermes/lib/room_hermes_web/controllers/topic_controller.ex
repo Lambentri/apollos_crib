@@ -13,16 +13,17 @@ defmodule RoomHermesWeb.TopicController do
         "name" => name,
         "permission" => permission,
         "routing_key" => routing_key
-      }) do
+      } = x) do
     user = Accounts.find_rabbit_user(username)
-
+    IO.inspect(x)
+    IO.inspect(user)
     case vhost do
       "/" ->
         case resource do
           "topic" ->
             case name do
               "amq.topic" ->
-                if routing_key == user.topic do
+                if String.starts_with?(routing_key, user.topic) do
                   send_resp(conn, :ok, "allow")
                 else
                   send_resp(conn, :ok, "deny")

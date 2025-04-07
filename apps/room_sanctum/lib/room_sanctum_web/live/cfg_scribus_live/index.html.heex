@@ -1,15 +1,19 @@
-<.header>
-  Listing Cfg scribus
-  <:actions>
-    <.link patch={~p"/cfg/scribus/new"}>
-      <.button>New Scribus</.button>
-    </.link>
-  </:actions>
-</.header>
+<.itb icon="fa-plus" to={Routes.scribus_index_path(@socket, :new)} what="Scribus"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Scribus <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+<%= if @show_info do %>
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+  <div class="card-body">
+    <h3 class="card-title italic">Scribus:</h3>
+    <p>A parcel containing how we want the scribes to do their work.</p>
+  </div>
+</div>
+<% end %>
 
 <.table
   id="cfg_scribus"
   rows={@streams.cfg_scribus}
+  class="table table-compact w-full mx-6"
   row_click={fn {_id, scribus} -> JS.navigate(~p"/cfg/scribus/#{scribus}") end}
 >
   <:col :let={{_id, scribus}} label="Name"><%= scribus.name %></:col>

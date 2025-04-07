@@ -37,7 +37,7 @@ defmodule RoomSanctum.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
-      {:bcrypt_elixir, "~> 3.0"},
+      {:bcrypt_elixir, "~> 3.2"},
       {:phoenix, "~> 1.7"},
       {:phoenix_ecto, "~> 4.6"},
       {:ecto_sql, "~> 3.10"},
@@ -94,7 +94,7 @@ defmodule RoomSanctum.MixProject do
       # Q's and other misc
       {:oban, "~> 2.17"},
       {:iconv, "~> 1.0"},
-          {:oban_live_dashboard, "~> 0.1.0"},
+      {:oban_live_dashboard, "~> 0.1.0"},
     ]
   end
 

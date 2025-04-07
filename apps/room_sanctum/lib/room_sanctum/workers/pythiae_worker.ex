@@ -48,6 +48,12 @@ defmodule RoomSanctum.Worker.Pythiae do
     |> GenServer.cast(:query_current_now)
   end
 
+  def publish_img(name) do
+    "pythiae#{name}"
+    |> via_tuple()
+    |> GenServer.cast(:publish_img)
+  end
+
   #
   def handle_cast(:refresh_db_cfg, state) do
     p = Configuration.get_pythiae!(state[:id])
@@ -90,6 +96,16 @@ defmodule RoomSanctum.Worker.Pythiae do
 
     for a <- state.pythiae.ankyra do
       RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)
+    end
+
+    {:noreply, state |> Map.put(:vision, current)}
+  end
+
+  def handle_cast(:publish_img, state) do
+    current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
+
+    for a <- state.pythiae.ankyra do
+      RoomSanctum.Worker.Ankyra.publish_img(a, current.data |> condense)
     end
 
     {:noreply, state |> Map.put(:vision, current)}

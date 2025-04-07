@@ -2156,6 +2156,15 @@ defmodule RoomSanctum.Storage do
     |> Repo.all()
   end
 
+  def find_free_bikes_around_point(source_id, point, distance) do
+    from(f in FreeBikeStatus,
+      where: fragment("ST_DWithin(?, ?, ?)", f.point, ^point, ^distance)
+      and
+      f.source_id == ^source_id,
+    )
+    |> Repo.all()
+  end
+
   alias RoomSanctum.Storage.AirNow.ReportingArea
 
   @doc """

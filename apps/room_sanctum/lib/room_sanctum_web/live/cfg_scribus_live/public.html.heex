@@ -1,0 +1,36 @@
+<div class="gap-1">
+    <!-- here together because it made sense to have both here instead of the root -->
+    <div class="flex justify-between text-bold text-2xl lg:text-5xl mx-4 mb-2">
+        <div><%= if @scribus.show_name do %><%= @scribus.name %><% end %></div>
+        <div class="lg:flex">
+            <div><%= if @scribus.show_time do %><%= @time |> tss %><% end %></div>
+            <div class="lg:flex lg:flex-col lg:text-2xl lg:text-bold hidden lg:block lg:leading-6">
+                <div>
+                    <%= if @scribus.show_time do %><%= @time |> tssa %><% end %>
+                </div>
+                <div>
+                    <%= if @scribus.show_time do %><%= @time |> tssb %><% end %>
+                </div>
+            </div>
+        </div>
+    </div>
+    <%= for {k, p} <- @preview do %>
+    <%= if p != [] do %>
+    <div class="w-full m-1 mb-4 px-4">
+            <%= case k do %>
+            <%= {_, :gtfs} -> %> <.i_gtfs entries={condense(k, p) |> preview(k)}> </.i_gtfs>
+            <% {_, :gbfs} -> %> <.i_gbfs entries={condense(k, p) |> preview(k)}> </.i_gbfs>
+            <% {_, :tidal} -> %>  <.i_tidal entries={condense(k, p) |> preview(k)}> </.i_tidal>
+            <% {_, :weather} -> %> <.i_weather entries={condense(k, p) |> preview(k)}> </.i_weather>
+            <% {_, :aqi} -> %> <.i_aqi entries={condense(k, p) |> preview(k)}> </.i_aqi>
+            <% {_, :ephem} -> %> <.i_ephem entries={condense(k, p) |> preview(k)}> </.i_ephem>
+            <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
+            <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
+            <% {_, :gitlab} -> %> <.p_gitlab entries={condense(k, p) |> preview(k)}> </.p_gitlab>
+            <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
+            <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
+            <% end %>
+    </div>
+<% end %>
+      <% end %>
+</div>

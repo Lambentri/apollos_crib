@@ -1,0 +1,26 @@
+<html data-theme="lofi">
+<head>
+  <meta charset="utf-8"/>
+  <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <%= csrf_meta_tag() %>
+  <%= live_title_tag assigns[:page_title] || "RoomSanctum", suffix: " · Apollos Crib" %>
+  <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
+  <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=B612+Mono:ital,wght@0,400;0,700;1,400;1,700&family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap" rel="stylesheet">
+  <style>
+    .b612-mono {
+      font-family: "B612 Mono", monospace;
+    }
+  </style>
+</head>
+<body>
+<div class="p-2">
+  <div class="bg-white sm:rounded-lg shadow-xl p-4 h-full overflow-y-clip b612-mono">
+    <%= @inner_content %>
+  </div>
+</div>
+</body>
+</html>

@@ -30,6 +30,7 @@ module.exports = {
                     "error": "#fca5a5",
                 },
             },
+            "lofi",
         ]
     },
     content: [

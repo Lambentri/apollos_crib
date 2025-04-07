@@ -127,6 +127,7 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/oban" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/iconv" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/oban_live_dashboard" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/pixels" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="sentry" level="project" />

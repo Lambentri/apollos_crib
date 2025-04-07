@@ -95,6 +95,11 @@ defmodule RoomSanctum.Configuration do
     |> Repo.update()
   end
 
+  def update_source_config(%Source{} = source, attrs) do
+    m = source.config |> Map.merge(attrs) |> Map.from_struct()
+    update_source(source, %{config: m})
+  end
+
   def update_source_meta(%Source{} = source, attrs) do
     m = source.meta |> Map.merge(attrs) |> Map.from_struct()
     update_source(source, %{meta: m})
@@ -102,7 +107,7 @@ defmodule RoomSanctum.Configuration do
 
   def create_source_meta_tracking(%Source{} = source, number, type) do
     s = source.meta
-    original_tracking = source.meta.tracking
+    original_tracking = source.meta.tracking |> Enum.map(fn x -> Map.from_struct(x) end)
     extant_id = original_tracking |> Enum.filter(fn t -> t.number == number end)
     case length(extant_id) do
       0 -> new_entry = %{number: number, type: type, entries: []}

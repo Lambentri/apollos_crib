@@ -27,7 +27,7 @@ spec:
     metadata:
       labels:
         name: apollos-crib
-      annotations:
+#      annotations:
     spec:
       containers:
         - image: r.g.gmp.io/lambentri/apollos-crib:latest

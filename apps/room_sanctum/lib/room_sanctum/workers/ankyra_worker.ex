@@ -42,6 +42,12 @@ defmodule RoomSanctum.Worker.Ankyra do
     |> GenServer.cast({:publish, data})
   end
 
+  def publish_img(name, data) do
+    "ankyra#{name}"
+    |> via_tuple()
+    |> GenServer.cast({:publish_img, data})
+  end
+
   def meta_check(name) do
     "ankyra#{name}"
     |> via_tuple()
@@ -88,6 +94,20 @@ defmodule RoomSanctum.Worker.Ankyra do
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
         AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!())
+
+      {:error, error} ->
+        IO.inspect(error)
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:publish_img, data}, state) do
+    IO.puts("and here")
+
+    case AMQP.Application.get_channel(:default) do
+      {:ok, chan} ->
+        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic <> ".img", data |> Poison.encode!()) |> IO.inspect
 
       {:error, error} ->
         IO.inspect(error)

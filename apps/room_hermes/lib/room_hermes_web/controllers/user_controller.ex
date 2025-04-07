@@ -9,7 +9,7 @@ defmodule RoomHermesWeb.UserController do
   def create(conn, %{"username" => username, "password" => password, "client_id" => client_id}) do
     case client_id == username do
       true ->
-        case Accounts.find_rabbit_user(username, password) do
+        case Accounts.find_rabbit_user(username, password) |> IO.inspect do
           nil -> send_resp(conn, :ok, "deny")
           val -> send_resp(conn, :ok, "allow")
         end

@@ -10,6 +10,6 @@ defmodule RoomSanctum.Repo.Migrations.CreateCfgMailboxes do
       timestamps()
     end
 
-    create index(:cfg_mailboxes, [:source])
+    create index(:cfg_mailboxes, [:source_id])
   end
 end

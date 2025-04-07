@@ -78,6 +78,7 @@
           <div class="card-body">
             <h3 class="card-title">Control</h3>
             <p><button class="btn btn-primary" phx-click="do-publish" phx-value-id={@pythiae.id}>Publish</button></p>
+            <p><button class="btn btn-primary" phx-click="do-publish-img" phx-value-id={@pythiae.id}>Image Publish</button></p>
           </div>
         </div>
       </div>
@@ -115,6 +116,7 @@
                         <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
                         <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
                         <% {_, :gitlab} -> %> <.p_gitlab entries={condense(k, p) |> preview(k)}> </.p_gitlab>
+                        <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
                         <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
                       <% end %>
                       </div>

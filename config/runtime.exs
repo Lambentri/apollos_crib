@@ -94,8 +94,6 @@ if config_env() == :prod do
   sport = String.to_integer(System.get_env("SPORT") || "4000")
   hport = String.to_integer(System.get_env("HPORT") || "4001")
 
-  Application.
-
   config :room_sanctum,
          RoomSanctumWeb.Endpoint,
          url: [
@@ -181,7 +179,9 @@ if config_env() == :prod do
       "#{File.cwd!()}/apps/room_tidal",
       "#{File.cwd!()}/apps/room_weather",
       "#{File.cwd!()}/apps/room_zeus",
-      "#{File.cwd!()}/apps/room_gitlab"
+      "#{File.cwd!()}/apps/room_gitlab",
+      "#{File.cwd!()}/apps/room_scribe",
+      "#{File.cwd!()}/apps/room_packages"
     ],
     tags: %{
       env: "production"
