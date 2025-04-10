@@ -24,6 +24,6 @@ defmodule RoomSanctum.Configuration.Scribus do
   def changeset(scribus, attrs) do
     scribus
     |> cast(attrs, [:name, :resolution, :configuration, :enabled, :ankyra, :color, :wait, :buffer, :theme, :vision])
-    |> validate_required([:name, :resolution, :vision, :enabled, :ankyra, :color, :wait, :buffer, :theme])
+    |> validate_required([:name, :resolution, :vision, :enabled, :color, :wait, :buffer, :theme])
   end
 end

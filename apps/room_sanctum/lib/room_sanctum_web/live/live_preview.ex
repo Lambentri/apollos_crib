@@ -388,6 +388,28 @@ use PhoenixHTMLHelpers
     """
   end
 
+  def i_calendar(assigns) do
+    ~H"""
+      <%= for e <- @entries.data do %>
+      <div class="flex items-center">
+        <div class="w-1/4 lg:w-1/12">
+          <i class={"fa-solid fa-3x fa-fw fa-calendar"}></i>
+        </div>
+        <div class="w-3/4 lg:w-11/12 mr-4">
+            <div class="flex flex-col lg:flex-row justify-between">
+              <div class="flex items-center justify-between lg:text-4xl lg:font-bold lg:gap-2">
+                <div class="text-lg text-accent lg:text-4xl"><%= e.description %></div>
+              </div>
+              <div class="flex items-center justify-between lg:text-4xl lg:gap-8">
+                <p><i class="fa-solid fa-fw fa-calendar"></i><span class="text-accent"><%= e.date_start  %></span></p>
+              </div>
+            </div>
+          </div>
+      </div>
+    <% end %>
+    """
+  end
+
   def p_cronos(assigns) do
     ~H"""
     <%= for e <- @entries.data do %>
@@ -403,6 +425,33 @@ use PhoenixHTMLHelpers
     </p>
     </div>
     </div>
+    <% end %>
+    """
+  end
+
+  def i_cronos(assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+      <div class="flex items-center">
+        <div class="w-1/4 lg:w-1/12">
+          <i class={"fa-solid fa-3x fa-fw fa-clock"}></i>
+        </div>
+        <div class="w-3/4 lg:w-11/12 mr-4">
+            <div class="flex flex-col lg:flex-row justify-between">
+              <div class="flex items-center justify-between lg:text-4xl lg:font-bold lg:gap-2">
+                <div class="text-lg text-accent lg:text-4xl"><%= e.name %></div>
+              </div>
+              <div class="flex items-center justify-between lg:text-4xl lg:gap-8">
+                <p>
+                <%= case e.value do %>
+                    <% true -> %> <i class="fa-solid fa-fw fa-check fa-2x"> </i>
+                  <% false -> %> <i class="fa-solid fa-fw fa-remove fa-2x"> </i>
+                  <% end %>
+                </p>
+              </div>
+            </div>
+          </div>
+      </div>
     <% end %>
     """
   end

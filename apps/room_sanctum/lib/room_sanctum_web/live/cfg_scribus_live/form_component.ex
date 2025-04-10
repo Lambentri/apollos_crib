@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.ScribusLive.FormComponent do
         phx-submit="save"
       >
         <.input field={@form[:name]} type="text" label="Name" />
-        <.input field={@form[:resolution]} type="select" label="Resolution" options={["540x960"]} />
+        <.input field={@form[:resolution]} type="select" label="Resolution" options={["180x180", "450x600", "540x960", "800x1280", "1404x1872"]} />
         <.input
           field={@form[:configuration]}
           type="select"
@@ -28,6 +28,43 @@ defmodule RoomSanctumWeb.ScribusLive.FormComponent do
           label="Configuration"
           options={[]}
         />
+        <div class="form-control">
+          <.input field={@form[:vision]} type="select" label="Vision"  options={[]}/>
+        </div>
+        <div class="form-control m-10">
+            <.input field={@form[:enabled]} type="checkbox" label="Enabled" />
+        </div>
+              <div class="form-control m-10">
+            <.input field={@form[:show_name]} type="checkbox" label="Show Name" />
+        </div>
+              <div class="form-control m-10">
+            <.input field={@form[:show_time]} type="checkbox" label="Show Time" />
+        </div>
+      <div>
+         <.input
+          field={@form[:color]}
+          type="select"
+          multiple
+          label="Configuration"
+          options={[:untouched, :gray16]}
+        />
+      </div>
+      <div>
+        <.input field={@form[:wait]} type="number" label="Wait" />
+      </div>
+      <div>
+        <.input field={@form[:buffer]} type="number" label="Buffer" />
+      </div>
+
+        <div>
+         <.input
+          field={@form[:theme]}
+          type="select"
+          multiple
+          label="Configuration"
+          options={[:inky, :color, :her, :afterdark]}
+        />
+      </div>
         <:actions>
           <.button phx-disable-with="Saving...">Save Scribus</.button>
         </:actions>

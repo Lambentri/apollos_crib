@@ -68,7 +68,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
         :cronos ->
           RoomCronos.Worker.query_cronos(
             # we want the query's name here
-            socket.assigns.query.source.id,
+            socket.assigns.query.id,
             socket.assigns.query.query
           )
 

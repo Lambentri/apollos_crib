@@ -24,8 +24,8 @@
             <% {_, :weather} -> %> <.i_weather entries={condense(k, p) |> preview(k)}> </.i_weather>
             <% {_, :aqi} -> %> <.i_aqi entries={condense(k, p) |> preview(k)}> </.i_aqi>
             <% {_, :ephem} -> %> <.i_ephem entries={condense(k, p) |> preview(k)}> </.i_ephem>
-            <% {_, :calendar} -> %> <.p_calendar entries={condense(k, p) |> preview(k)}> </.p_calendar>
-            <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
+            <% {_, :calendar} -> %> <.i_calendar entries={condense(k, p) |> preview(k)}> </.i_calendar>
+            <% {_, :cronos} -> %> <.i_cronos entries={condense(k, p) |> preview(k)}> </.i_cronos>
             <% {_, :gitlab} -> %> <.p_gitlab entries={condense(k, p) |> preview(k)}> </.p_gitlab>
             <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
             <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
