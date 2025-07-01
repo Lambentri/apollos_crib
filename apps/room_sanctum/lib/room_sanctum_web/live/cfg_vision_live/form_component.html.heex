@@ -1,77 +1,132 @@
 <div>
-    <h2 class="text-2xl font-bold text-accent"><%= @title %></h2>
+  <.header>
+    <%= @title %>
+    <:subtitle>Configure your vision with custom queries</:subtitle>
+  </.header>
 
-    <.simple_form
+  <.simple_form
     for={@form}
     id="vision-form"
     phx-target={@myself}
     phx-change="validate"
-    phx-submit="save">
+    phx-submit="save"
+  >
+    <.input field={@form[:name]} type="text" label="Name" />
 
-    <div class="flex">
-        <div class="w-full">
-            <div class="form-control">
-                <.input field={@form[:name]} type="text" label="Name"/>
-            </div>
-        </div>
-    </div>
-    <%= for {fq, ctr} <- safe_inputs_with_index(@form, :queries) do %>
-        <%= hidden_inputs_for(fq) %>
-        <div class="flex">
-            <div class="flex-none w-16 font-bold text-7xl py-6">
-                <%= ctr %>
-            </div>
-            <div class="flex-none w-32 p-1">
-                <div class="form-control">
-                <.input field={fq[:type]} type="select" label="Type" options={ Ecto.Enum.values(RoomSanctum.Configuration.Vision, :type)}/>
-                </div>
+    <.input field={@form[:public]} type="checkbox" label="Make this vision public (shown on homepage)" />
+
+    <div class="mt-6">
+      <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Queries</h3>
+
+      <div id="queries" class="space-y-4">
+        <.inputs_for :let={query_form} field={@form[:queries]}>
+          <div class="border rounded-lg p-4 relative">
+            <input type="hidden" name="vision[queries_sort][]" value={query_form.index} />
+
+            <div class="absolute top-2 right-2">
+              <.button
+                type="button"
+                phx-click="remove_query"
+                phx-value-index={query_form.index}
+                phx-target={@myself}
+                class="text-red-600 hover:text-red-800"
+              >
+                <.icon name="hero-trash" class="h-4 w-4" />
+              </.button>
             </div>
 
-        <%= for fd <- polymorphic_embed_inputs_for fq, :data do %>
-            <%= hidden_inputs_for(fd) %>
-            <div class="flex flex-col">
-                <div class="flex">
-                <div class="flex-none w-24 p-1">
-                    <div class="form-control">
-                        <.input field={fd[:order]} type="number" label="Order" />
-                    </div>
-                </div>
-                <div class="flex-1 w-full p-1">
-                    <div class="form-control">
-                        <.input field={fd[:query]} type="select" label="Type" options={@cfg_queries_sel}/>
-                    </div>
-                </div>
-                </div>
-                <div class="flex-1 w-full p-1">
-                    <%= case gfv(@form, fq, ctr) do %>
-                <% val when val in [:time, "time"] -> %>
-                    <div class="flex">
-                        <div class="form-control">
-                            <.input field={fd[:weekdays]} type="select" multiple="true" label="Weekday" options={Enum.map(Ecto.Enum.values(RoomSanctum.Configuration.Vision.Schema1Time, :weekdays), fn c -> etuple(c) end)}/>
-                        </div>
-                        <div class="px-4
-">
-                            <label class="block text-md font-bold leading-6 pt-4 text-primary-content">Times</label>
-                            <div class="time-inputs">
-                                <.input field={fd[:time_start]} type="time" label="Start")} />
-                            </div>
-                            <div class="time-inputs">
-                                <.input field={fd[:time_end]} type="time" label="End")} />
-                            </div>
-                        </div>
-                    </div>
-                    <% _ -> %>
+            <.input
+              field={query_form[:type]}
+              type="select"
+              label="Query Type"
+              options={[
+                {"Alerts", :alerts},
+                {"Time-based", :time},
+                {"Pinned", :pinned},
+                {"Background", :background}
+              ]}
+            />
+
+            <%= case Ecto.Changeset.get_field(query_form.source, :type) do %>
+              <% :alerts -> %>
+                <%= for data_form <- polymorphic_embed_inputs_for(query_form, :data) do %>
+                  <%= hidden_inputs_for(data_form) %>
+                  <div class="grid grid-cols-2 gap-4 mt-4">
+                    <.input field={data_form[:query]} type="number" label="Query ID" />
+                    <.input field={data_form[:order]} type="number" label="Order" />
+                  </div>
                 <% end %>
-                </div>
-            </div>
-        <% end %>
-        </div>
-    <% end %>
 
-    <br />
-    <div class="flex m-2">
-        <%= submit "Save", phx_disable_with: "Saving...", class: "btn btn-secondary mx-2" %>
-        <button href="#" phx-click="add-entry" phx-target={@myself} class="btn btn-secondary mx-2">Add Entry</button>
+              <% :time -> %>
+                <%= for data_form <- polymorphic_embed_inputs_for(query_form, :data) do %>
+                  <%= hidden_inputs_for(data_form) %>
+                  <div class="space-y-4 mt-4">
+                    <div class="grid grid-cols-2 gap-4">
+                      <.input field={data_form[:query]} type="number" label="Query ID" />
+                      <.input field={data_form[:order]} type="number" label="Order" />
+                    </div>
+
+                    <div>
+                      <label class="block text-sm font-medium text-gray-700 mb-2">Active Days</label>
+                      <div class="flex gap-2">
+                        <%= for {label, value} <- [{"Sun", :U}, {"Mon", :M}, {"Tue", :T}, {"Wed", :W}, {"Thu", :R}, {"Fri", :F}, {"Sat", :S}] do %>
+                          <label class="inline-flex items-center">
+                            <input
+                              type="checkbox"
+                              name={"vision[queries][#{query_form.index}][data][weekdays][]"}
+                              value={value}
+                              checked={value in (Ecto.Changeset.get_field(data_form.source, :weekdays) || [])}
+                              class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                            />
+                            <span class="ml-1 text-sm"><%= label %></span>
+                          </label>
+                        <% end %>
+                      </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                      <.input field={data_form[:time_start]} type="time" label="Start Time" />
+                      <.input field={data_form[:time_end]} type="time" label="End Time" />
+                    </div>
+                  </div>
+                <% end %>
+
+              <% :pinned -> %>
+                <%= for data_form <- polymorphic_embed_inputs_for(query_form, :data) do %>
+                  <%= hidden_inputs_for(data_form) %>
+                  <div class="grid grid-cols-2 gap-4 mt-4">
+                    <.input field={data_form[:query]} type="number" label="Query ID" />
+                    <.input field={data_form[:order]} type="number" label="Order" />
+                  </div>
+                <% end %>
+
+              <% :background -> %>
+                <%= for data_form <- polymorphic_embed_inputs_for(query_form, :data) do %>
+                  <%= hidden_inputs_for(data_form) %>
+                  <div class="grid grid-cols-2 gap-4 mt-4">
+                    <.input field={data_form[:query]} type="number" label="Query ID (optional)" />
+                    <.input field={data_form[:order]} type="number" label="Order" />
+                  </div>
+                <% end %>
+
+              <% _ -> %>
+                <div class="mt-4 text-sm text-gray-500">
+                  Select a query type to configure
+                </div>
+            <% end %>
+          </div>
+        </.inputs_for>
+      </div>
+
+      <div class="mt-4">
+        <.button type="button" phx-click="add_query" phx-target={@myself}>
+          <.icon name="hero-plus" class="h-4 w-4 mr-1" /> Add Query
+        </.button>
+      </div>
     </div>
-</.simple_form>
+
+    <:actions>
+      <.button phx-disable-with="Saving...">Save Vision</.button>
+    </:actions>
+  </.simple_form>
 </div>

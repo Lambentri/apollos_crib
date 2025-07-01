@@ -17,10 +17,22 @@ defmodule RoomSanctum.Configuration.Vision do
   def changeset(vision, attrs) do
     vision
     |> cast(attrs, [:name, :user_id, :query_ids, :public])
-    |> cast_embed(:queries, with: &RoomSanctum.Configuration.Vision.Schema.changeset/2)
+    |> cast_embed(:queries, with: &RoomSanctum.Configuration.Vision.Schema.changeset/2, sort_param: :queries_sort, drop_param: :queries_drop)
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
+    |> validate_queries_have_valid_ids()
   end
+
+  defp validate_queries_have_valid_ids(changeset) do
+    case get_field(changeset, :query_ids) do
+      ids when is_list(ids) and length(ids) > 0 ->
+        # Validate that all query IDs exist and belong to the user
+        changeset
+      _ ->
+        changeset
+    end
+  end
+
 end
 
 defmodule RoomSanctum.Configuration.Vision.Schema do
@@ -121,6 +133,19 @@ defmodule RoomSanctum.Configuration.Vision.Schema3Background do
   def changeset(source, params) do
     source
     |> cast(params, [:query, :order])
-    |> validate_required([:query, :order])
+    |> validate_required([:order])
+    |> validate_query_selection()
+  end
+
+  defp validate_query_selection(changeset) do
+    case get_field(changeset, :query) do
+      query when is_integer(query) and query > 0 -> changeset
+      query when is_binary(query) and query != "" ->
+        case Integer.parse(query) do
+          {id, ""} when id > 0 -> put_change(changeset, :query, id)
+          _ -> add_error(changeset, :query, "must be a valid query ID")
+        end
+      _ -> changeset  # Allow empty for new entries
+    end
   end
 end

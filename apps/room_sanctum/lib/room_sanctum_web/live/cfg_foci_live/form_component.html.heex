@@ -25,6 +25,18 @@
     </div>
     <div>
         <div class="w-full">
+            <div class="form-control mb-4">
+                <label class="block text-sm font-semibold leading-6 text-zinc-800 mb-2">Search Location</label>
+                <div class="relative">
+                    <input
+                        type="text"
+                        id="location-search"
+                        placeholder="Search for addresses, places, or POIs..."
+                        class="input input-bordered w-full pr-10"
+                    />
+                    <div id="search-results" class="absolute z-10 w-full bg-white border border-gray-300 rounded-md shadow-lg hidden max-h-60 overflow-y-auto"></div>
+                </div>
+            </div>
             <div class="form-control">
                 <label class="block text-sm font-semibold leading-6 text-zinc-800">
                 <div id="structural-shim" phx-update="ignore">

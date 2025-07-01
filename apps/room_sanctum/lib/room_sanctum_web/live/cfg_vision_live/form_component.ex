@@ -1,132 +1,191 @@
 defmodule RoomSanctumWeb.VisionLive.FormComponent do
   use RoomSanctumWeb, :live_component
+  import PolymorphicEmbed.HTML.Helpers
 
   alias RoomSanctum.Configuration
+  alias RoomSanctum.Configuration.Vision
 
-  defp inj_uid(params, socket) do
-    params
-    #    |> IO.inspect
-    |> Map.put("user_id", socket.assigns.current_user.id)
-    |> Map.put(
-      "query_ids",
-      params |> Map.get("queries", %{}) |> Enum.map(fn {k, v} -> v["data"]["query"] end)
-    )
-  end
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <div>
+      <.header>
+        <%= @title %>
+        <:subtitle>Configure your vision with custom queries</:subtitle>
+      </.header>
 
-  defp inj_types(params) do
-    params
-    |> Map.put(
-      "queries",
-      params
-      |> Map.get("queries", %{})
-      |> Enum.map(fn {k, v} -> {k, v |> Kernel.put_in(["data", "__type__"], v["type"])} end)
-      |> Enum.into(%{})
-    )
+      <.simple_form
+        for={@form}
+        id="vision-form"
+        phx-target={@myself}
+        phx-change="validate"
+        phx-submit="save"
+      >
+        <.input field={@form[:name]} type="text" label="Name" />
+
+        <.input field={@form[:public]} type="checkbox" label="Make this vision public" />
+
+        <div class="mt-6">
+          <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Queries</h3>
+
+          <div id="queries" class="space-y-4">
+            <.inputs_for :let={query_form} field={@form[:queries]}>
+              <div class="border rounded-lg p-4 relative">
+                <input type="hidden" name="vision[queries_sort][]" value={query_form.index} />
+
+                <div class="absolute top-2 right-2">
+                  <.button
+                    type="button"
+                    phx-click="remove_query"
+                    phx-value-index={query_form.index}
+                    phx-target={@myself}
+                    class="text-red-600 hover:text-red-800"
+                  >
+                    <.icon name="hero-trash" class="h-4 w-4" />
+                  </.button>
+                </div>
+
+                <.input
+                  field={query_form[:type]}
+                  type="select"
+                  label="Query Type"
+                  options={[
+                    {"Alerts", :alerts},
+                    {"Time-based", :time},
+                    {"Pinned", :pinned},
+                    {"Background", :background}
+                  ]}
+                />
+
+                <%= render_query_fields(query_form) %>
+              </div>
+            </.inputs_for>
+          </div>
+
+          <div class="mt-4">
+            <.button type="button" phx-click="add_query" phx-target={@myself}>
+              <.icon name="hero-plus" class="h-4 w-4 mr-1" /> Add Query
+            </.button>
+          </div>
+        </div>
+
+        <:actions>
+          <.button phx-disable-with="Saving...">Save Vision</.button>
+        </:actions>
+      </.simple_form>
+    </div>
+    """
   end
 
   @impl true
   def update(%{vision: vision} = assigns, socket) do
-    # Ensure vision has an empty queries list if it's nil or empty
-    vision = ensure_queries_initialized(vision)
     changeset = Configuration.change_vision(vision)
 
-    {
-      :ok,
+    {:ok,
       socket
       |> assign(assigns)
-      |> assign_form(changeset)
-      |> assign(:cfg_queries, list_cfg_queries(assigns.current_user.id))
-      |> assign(
-        :cfg_queries_sel,
-        list_cfg_queries(assigns.current_user.id)
-        |> Enum.map(fn x -> {"#{x.name} (#{x.source.type})", x.id} end)
-        |> Enum.into(%{})
-      )
-    }
-  end
-
-  defp ensure_queries_initialized(%{queries: queries} = vision) when is_list(queries), do: vision
-  defp ensure_queries_initialized(vision) do
-    %{vision | queries: []}
+      |> assign_form(changeset)}
   end
 
   @impl true
   def handle_event("validate", %{"vision" => vision_params}, socket) do
-    IO.puts("cvl-valid")
-    vision_params = inj_uid(vision_params, socket)
-
     changeset =
       socket.assigns.vision
       |> Configuration.change_vision(vision_params)
       |> Map.put(:action, :validate)
 
-    #      |> IO.inspect()
-
     {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"vision" => vision_params}, socket) do
-    IO.puts("cvl-save")
-    vision_params = inj_uid(vision_params, socket) |> inj_types
     save_vision(socket, socket.assigns.action, vision_params)
   end
 
-  def handle_event("add-entry", _data, socket) do
-    #    IO.inspect(socket.assigns.form)
-    f = socket.assigns.form
+  def handle_event("query_type_changed", %{"index" => index, "value" => new_type}, socket) do
+    existing_queries = Map.get(socket.assigns.form.params, "queries", %{})
 
-    existing_as_simple =
-      case f.params do
-        map when map == %{} ->
-          f.data.queries
-          |> Poison.encode!()
-          |> Poison.decode!()
-          |> Enum.with_index()
-          |> Enum.map(fn {k, v} -> {"#{v}", k} end)
-          |> Map.new()
-
-        # |> Enum.map(fn {k,v} -> v end)
-        otherwise ->
-          f.params |> Map.get("queries")
+    updated_query =
+      case Map.get(existing_queries, index) do
+        nil -> %{"type" => new_type}
+        query ->
+          order = get_in(query, ["data", "order"]) || 1
+          Map.put(query, "data", build_data_for_type(new_type, order))
       end
 
-    #     IO.inspect(existing_as_simple)
-    combined =
-      case existing_as_simple do
-        list when list == [] ->
-          %{
-            "0" => %{
-              "data" => %{"__type__" => "pinned", "query" => 0},
-              "id" => nil,
-              "type" => "pinned",
-              "order" => 0
-            }
-          }
-
-        _otherwise ->
-          existing_as_simple
-          |> Map.merge(%{
-            "#{existing_as_simple |> Map.keys() |> length}" => %{
-              "data" => %{"__type__" => "pinned", "query" => 0},
-              "id" => nil,
-              "type" => "pinned",
-              "order" => 0
-            }
-          })
-      end
+    updated_params =
+      socket.assigns.form.params
+      |> Map.put("queries", Map.put(existing_queries, index, updated_query))
 
     changeset =
       socket.assigns.vision
-      |> Configuration.change_vision(%{queries: combined})
+      |> Configuration.change_vision(updated_params)
       |> Map.put(:action, :validate)
 
-    #      |> IO.inspect()
+    {:noreply, assign_form(socket, changeset)}
+  end
 
-    {
-      :noreply,
-      socket
-      |> assign_form(changeset)
+  defp build_data_for_type(type, order) do
+    base_data = %{"__type__" => type, "order" => order}
+
+    case type do
+      "time" ->
+        Map.merge(base_data, %{
+          "query" => nil,
+          "weekdays" => [],
+          "time_start" => nil,
+          "time_end" => nil
+        })
+
+      "background" ->
+        # Background query is optional, so we don't include it
+        base_data
+
+      _ ->
+        # alerts and pinned require query
+        Map.put(base_data, "query", nil)
+    end
+  end
+
+  def handle_event("add_query", _params, socket) do
+    existing_queries = Map.get(socket.assigns.form.params, "queries", %{})
+    next_index = map_size(existing_queries)
+
+    new_query = %{
+      "type" => "pinned",
+      "data" => %{
+        "__type__" => "pinned",
+        "order" => next_index + 1,
+        "query" => nil
+      }
     }
+
+    updated_params =
+      socket.assigns.form.params
+      |> Map.put("queries", Map.put(existing_queries, to_string(next_index), new_query))
+
+    changeset =
+      socket.assigns.vision
+      |> Configuration.change_vision(updated_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign_form(socket, changeset)}
+  end
+
+  def handle_event("remove_query", %{"index" => index}, socket) do
+    existing_queries = Map.get(socket.assigns.form.params, "queries", %{})
+    updated_queries = Map.delete(existing_queries, index)
+
+    updated_params =
+      socket.assigns.form.params
+      |> Map.put("queries", updated_queries)
+      |> Map.put("queries_drop", [index])
+
+    changeset =
+      socket.assigns.vision
+      |> Configuration.change_vision(updated_params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign_form(socket, changeset)}
   end
 
   defp save_vision(socket, :edit, vision_params) do
@@ -134,12 +193,10 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
       {:ok, vision} ->
         notify_parent({:saved, vision})
 
-        {
-          :noreply,
+        {:noreply,
           socket
           |> put_flash(:info, "Vision updated successfully")
-          |> push_redirect(to: socket.assigns.patch)
-        }
+          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
@@ -147,16 +204,16 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
   end
 
   defp save_vision(socket, :new, vision_params) do
+    vision_params = Map.put(vision_params, "user_id", socket.assigns.current_user.id)
+
     case Configuration.create_vision(vision_params) do
       {:ok, vision} ->
         notify_parent({:saved, vision})
 
-        {
-          :noreply,
+        {:noreply,
           socket
           |> put_flash(:info, "Vision created successfully")
-          |> push_redirect(to: socket.assigns.patch)
-        }
+          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign_form(socket, changeset)}
@@ -169,76 +226,104 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
-  defp list_cfg_queries(uid) do
-    Configuration.list_cfg_queries({:user, uid})
-  end
-
-  defp safe_inputs_with_index(form, field) do
-    case inputs_for(form, field) do
-      {:safe, []} -> []
-      inputs when is_list(inputs) -> Enum.with_index(inputs)
-      _ -> []
+  defp render_query_fields(query_form) do
+    case Ecto.Changeset.get_field(query_form.source, :type) do
+      :alerts -> render_alerts_fields(query_form)
+      :time -> render_time_fields(query_form)
+      :pinned -> render_pinned_fields(query_form)
+      :background -> render_background_fields(query_form)
+      _ -> render_empty_state()
     end
   end
 
-  defp etuple(:U) do
-    {"Sunday", "U"}
+  defp render_alerts_fields(query_form) do
+    assigns = %{query_form: query_form}
+
+    ~H"""
+    <%= for data_form <- polymorphic_embed_inputs_for(@query_form, :data) do %>
+      <%= hidden_inputs_for(data_form) %>
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <.input field={data_form[:query]} type="number" label="Query ID" />
+        <.input field={data_form[:order]} type="number" label="Order" />
+      </div>
+    <% end %>
+    """
   end
 
-  defp etuple(:M) do
-    {"Monday", "M"}
+  defp render_time_fields(query_form) do
+    assigns = %{query_form: query_form}
+
+    ~H"""
+    <%= for data_form <- polymorphic_embed_inputs_for(@query_form, :data) do %>
+      <%= hidden_inputs_for(data_form) %>
+      <div class="space-y-4 mt-4">
+        <div class="grid grid-cols-2 gap-4">
+          <.input field={data_form[:query]} type="number" label="Query ID" />
+          <.input field={data_form[:order]} type="number" label="Order" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-2">Active Days</label>
+          <div class="flex gap-2">
+            <%= for {label, value} <- [{"Sun", :U}, {"Mon", :M}, {"Tue", :T}, {"Wed", :W}, {"Thu", :R}, {"Fri", :F}, {"Sat", :S}] do %>
+              <label class="inline-flex items-center">
+                <input
+                  type="checkbox"
+                  name={"vision[queries][#{@query_form.index}][data][weekdays][]"}
+                  value={value}
+                  checked={value in (Ecto.Changeset.get_field(data_form.source, :weekdays) || [])}
+                  class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
+                />
+                <span class="ml-1 text-sm"><%= label %></span>
+              </label>
+            <% end %>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <.input field={data_form[:time_start]} type="time" label="Start Time" />
+          <.input field={data_form[:time_end]} type="time" label="End Time" />
+        </div>
+      </div>
+    <% end %>
+    """
   end
 
-  defp etuple(:T) do
-    {"Tuesday", "T"}
+  defp render_pinned_fields(query_form) do
+    assigns = %{query_form: query_form}
+
+    ~H"""
+    <%= for data_form <- polymorphic_embed_inputs_for(@query_form, :data) do %>
+      <%= hidden_inputs_for(data_form) %>
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <.input field={data_form[:query]} type="number" label="Query ID" />
+        <.input field={data_form[:order]} type="number" label="Order" />
+      </div>
+    <% end %>
+    """
   end
 
-  defp etuple(:W) do
-    {"Wednesday", "W"}
+  defp render_background_fields(query_form) do
+    assigns = %{query_form: query_form}
+
+    ~H"""
+    <%= for data_form <- polymorphic_embed_inputs_for(@query_form, :data) do %>
+      <%= hidden_inputs_for(data_form) %>
+      <div class="grid grid-cols-2 gap-4 mt-4">
+        <.input field={data_form[:query]} type="number" label="Query ID (optional)" />
+        <.input field={data_form[:order]} type="number" label="Order" />
+      </div>
+    <% end %>
+    """
   end
 
-  defp etuple(:R) do
-    {"Thursday", "R"}
-  end
+  defp render_empty_state do
+    assigns = %{}
 
-  defp etuple(:F) do
-    {"Friday", "F"}
-  end
-
-  defp etuple(:S) do
-    {"Saturday", "S"}
-  end
-
-  defp gfv(form, fq, ctr) do
-    #    IO.puts("GFV")
-    #    IO.inspect(changeset)
-    #    IO.inspect(fq)
-    #
-    #    IO.inspect(
-    #      fq.data
-    #      |> Map.get(:type)
-    #    )
-    #    IO.inspect(
-    #      fq.source.data
-    #      |> Map.get(:type)
-    #    )
-
-    q =
-      form.params |> Map.get("queries", %{}) |> Map.get("#{ctr}", %{}) |> Map.get("type") ||
-        form.data
-        |> Map.get(:queries, [])
-        |> Enum.at(ctr, %{})
-        |> Map.get(:changes, %{})
-        |> Map.get(:type) ||
-        fq.data
-        |> Map.get(:source, %{})
-        |> Map.get(:changes, %{})
-        |> Map.get(:type) ||
-        fq.source
-        |> Map.get(:data, %{})
-        |> Map.get(:type)
-
-    # |> IO.inspect
-    q
+    ~H"""
+    <div class="mt-4 text-sm text-gray-500">
+      Select a query type to configure
+    </div>
+    """
   end
 end

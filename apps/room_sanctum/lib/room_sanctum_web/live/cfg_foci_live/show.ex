@@ -18,4 +18,12 @@ defmodule RoomSanctumWeb.FociLive.Show do
 
   defp page_title(:show), do: "Foci Detail"
   defp page_title(:edit), do: "Modify Foci"
+
+  defp getlatlng(%{:place => nil}) do
+    nil
+  end
+
+  defp getlatlng(%{:place => place}) do
+    place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> Poison.encode!()
+  end
 end

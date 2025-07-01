@@ -26,9 +26,9 @@ import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
 
-import './leaflet/leaflet-map'
-import './leaflet/leaflet-marker'
-import './leaflet/leaflet-icon'
+// import './leaflet/leaflet-map'
+// import './leaflet/leaflet-marker'
+// import './leaflet/leaflet-icon'
 
 import L from 'leaflet'
 import 'leaflet-centermarker'
@@ -48,31 +48,169 @@ Hooks.MapPush = {
 Hooks.mkMap = {
     mounted() {
         const markers = {}
-        latlng = document.getElementById('map').getAttribute('data-latlng')
+        let searchMarker = null;
+
+        let latlng = document.getElementById('map').getAttribute('data-latlng')
         if (latlng != null) {
-            coords = JSON.parse(latlng)
+            let coords = JSON.parse(latlng)
         } else {
-            coords = [42.3736, -71.1097]
+            let coords = [42.3736, -71.1097]
         }
-        coords = [18.33967, -67.23713]
+
         var map = L.map('map', {keyboard: true}).setView(coords, 13);
 
         const view = this;
-        var marker = L.centerMarker(map).on("newposition", function() {
-            var latlng = marker.getLatLng()
+        var centerMarker = L.centerMarker(map).on("newposition", function() {
+            var latlng = centerMarker.getLatLng()
             console.log("New position: " + latlng.lat + ", " + latlng.lng);
             view.pushEventTo("#foci-form", "map-update", { latlng: latlng });
+        });
+        centerMarker.addTo(map);
 
-        });;
-        marker.addTo(map);
-
-        L.tileLayer('https:{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             maxZoom: 19,
-            attribution: '&copy; <a href="https:openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
         }).addTo(map);
 
+        // Search functionality
+        const searchInput = document.getElementById('location-search');
+        const searchResults = document.getElementById('search-results');
+        let searchTimeout;
+
+        const performSearch = async (query) => {
+            if (query.length < 3) {
+                searchResults.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(
+                    `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`
+                );
+                const results = await response.json();
+
+                displaySearchResults(results);
+            } catch (error) {
+                console.error('Search error:', error);
+                searchResults.classList.add('hidden');
+            }
+        };
+
+        const displaySearchResults = (results) => {
+            searchResults.innerHTML = '';
+
+            if (results.length === 0) {
+                searchResults.innerHTML = '<div class="p-3 text-gray-500">No results found</div>';
+                searchResults.classList.remove('hidden');
+                return;
+            }
+
+            results.forEach(result => {
+                const resultDiv = document.createElement('div');
+                resultDiv.className = 'p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 last:border-b-0';
+                resultDiv.innerHTML = `
+                    <div class="font-medium">${result.display_name}</div>
+                    <div class="text-sm text-gray-600">${result.type} • ${result.class}</div>
+                `;
+
+                resultDiv.addEventListener('click', () => {
+                    selectSearchResult(result);
+                });
+
+                searchResults.appendChild(resultDiv);
+            });
+
+            searchResults.classList.remove('hidden');
+        };
+
+        const selectSearchResult = (result) => {
+            const lat = parseFloat(result.lat);
+            const lon = parseFloat(result.lon);
+
+            // Update search input
+            searchInput.value = result.display_name;
+            searchResults.classList.add('hidden');
+
+            // Remove previous search marker
+            if (searchMarker) {
+                map.removeLayer(searchMarker);
+            }
+
+            // Add new search marker
+            searchMarker = L.marker([lat, lon], {
+                icon: L.icon({
+                    iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                })
+            }).addTo(map);
+
+            // Add popup with result info
+            searchMarker.bindPopup(`
+                <div>
+                    <strong>${result.display_name}</strong><br>
+                    <small>${result.type} • ${result.class}</small><br>
+                    <button onclick="window.selectThisLocation(${lat}, ${lon})" class="btn btn-sm btn-primary mt-2">
+                        Select This Location
+                    </button>
+                </div>
+            `).openPopup();
+
+            // Pan to the result
+            map.setView([lat, lon], 16);
+        };
+
+        // Global function to select a location from popup
+        window.selectThisLocation = (lat, lon) => {
+            // Move center marker to selected location
+            centerMarker.setLatLng([lat, lon]);
+            map.setView([lat, lon], 16);
+
+            // Trigger the position update
+            view.pushEventTo("#foci-form", "map-update", {latlng: {lat: lat, lng: lon}});
+
+            // Close popup
+            if (searchMarker) {
+                searchMarker.closePopup();
+            }
+        };
+
+        // Search input event listeners
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                clearTimeout(searchTimeout);
+                const query = e.target.value.trim();
+
+                if (query.length === 0) {
+                    searchResults.classList.add('hidden');
+                    return;
+                }
+
+                searchTimeout = setTimeout(() => {
+                    performSearch(query);
+                }, 300);
+            });
+
+            // Hide search results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.add('hidden');
+                }
+            });
+
+            // Show search results when focusing on input
+            searchInput.addEventListener('focus', () => {
+                if (searchInput.value.trim().length >= 3) {
+                    performSearch(searchInput.value.trim());
+                }
+            });
+        }
+
         this.handleEvent("add_marker", ({lat, lon}) => {
-            const marker = L.marker(L.latLng(lat, lomn))
+            const marker = L.marker(L.latLng(lat, lon))
             marker.addTo(map)
         })
     }
@@ -109,6 +247,43 @@ Hooks.mkTesterMap = {
             const marker = L.marker(L.latLng(lat, lon))
             marker.addTo(map)
         })
+    }
+}
+
+Hooks.mkShowMap = {
+    latlng() { return this.el.dataset.latlng },
+    mounted() {
+        var latlng = this.latlng()
+        console.log("Show Map Mounted")
+        console.log(latlng)
+
+        let coords;
+        if (latlng == null) {
+            coords = [42.3736, -71.1097];
+        } else {
+            coords = JSON.parse(latlng);
+        }
+
+        // Create static map for show view with unique ID
+        let map = L.map(this.el.id, {
+            keyboard: false,
+            dragging: false,
+            touchZoom: false,
+            scrollWheelZoom: false,
+            doubleClickZoom: false,
+            boxZoom: false,
+            tap: false
+        }).setView(coords, 15);
+
+        // Add a marker at the location if coordinates exist
+        if (latlng != null) {
+            L.marker(coords).addTo(map);
+        }
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
+        }).addTo(map);
     }
 }
 
