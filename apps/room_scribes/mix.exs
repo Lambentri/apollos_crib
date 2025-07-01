@@ -25,13 +25,15 @@ defmodule RoomScribes.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:amqp, "~> 3.3"},
+      {:amqp, "~> 4.1"},
+      {:rabbit_common, "~> 4.0"},
       {:nebulex, "~> 2.4"},
       # => When using :shards as backend
       {:shards, "~> 1.0"},
       # => When using Caching Annotations
       {:decorator, "~> 1.4"},
       {:telemetry, "~> 1.0"},
+      {:elixir_make, "~> 0.9", override: true },
       {:pixels, "~> 0.3.0"},
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},

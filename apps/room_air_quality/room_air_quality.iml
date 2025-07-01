@@ -60,5 +60,6 @@
     <orderEntry type="library" name="nimble_csv" level="project" />
     <orderEntry type="library" name="expo" level="project" />
     <orderEntry type="library" name="castore" level="project" />
+    <orderEntry type="library" name="csv" level="project" />
   </component>
 </module>

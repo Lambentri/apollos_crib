@@ -1,0 +1,51 @@
+<component name="libraryTable">
+  <library name="autumn" type="mix">
+    <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/autumn/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/lib" />
+      <root url="file://$PROJECT_DIR$/deps/autumn/priv" />
+    </SOURCES>
+  </library>
+</component>

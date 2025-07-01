@@ -26,6 +26,8 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   @impl true
   def update(%{vision: vision} = assigns, socket) do
+    # Ensure vision has an empty queries list if it's nil or empty
+    vision = ensure_queries_initialized(vision)
     changeset = Configuration.change_vision(vision)
 
     {
@@ -41,6 +43,11 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
         |> Enum.into(%{})
       )
     }
+  end
+
+  defp ensure_queries_initialized(%{queries: queries} = vision) when is_list(queries), do: vision
+  defp ensure_queries_initialized(vision) do
+    %{vision | queries: []}
   end
 
   @impl true
@@ -164,6 +171,14 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp list_cfg_queries(uid) do
     Configuration.list_cfg_queries({:user, uid})
+  end
+
+  defp safe_inputs_with_index(form, field) do
+    case inputs_for(form, field) do
+      {:safe, []} -> []
+      inputs when is_list(inputs) -> Enum.with_index(inputs)
+      _ -> []
+    end
   end
 
   defp etuple(:U) do

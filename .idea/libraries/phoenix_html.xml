@@ -1,7 +1,27 @@
 <component name="libraryTable">
   <library name="phoenix_html" type="mix">
     <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/phoenix_html/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -10,6 +30,18 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
+      <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
       <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />
       <root url="file://$PROJECT_DIR$/deps/phoenix_html/priv" />
       <root url="file://$PROJECT_DIR$/deps/phoenix_html/lib" />

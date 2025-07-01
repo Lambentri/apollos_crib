@@ -59,5 +59,9 @@
     <orderEntry type="library" name="plug_crypto" level="project" />
     <orderEntry type="library" name="makeup_eex" level="project" />
     <orderEntry type="library" name="makeup_diff" level="project" />
+    <orderEntry type="library" name="nimble_csv" level="project" />
+    <orderEntry type="library" name="protobuf" level="project" />
+    <orderEntry type="library" name="unzip" level="project" />
+    <orderEntry type="library" name="benchee" level="project" />
   </component>
 </module>

@@ -33,5 +33,6 @@
     <orderEntry type="library" name="castore" level="project" />
     <orderEntry type="library" name="jason" level="project" />
     <orderEntry type="library" name="credo" level="project" />
+    <orderEntry type="library" name="icalendar" level="project" />
   </component>
 </module>

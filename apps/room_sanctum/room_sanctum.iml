@@ -173,5 +173,44 @@
     <orderEntry type="library" name="iconv" level="project" />
     <orderEntry type="library" name="oban_live_dashboard" level="project" />
     <orderEntry type="library" name="live_view_native_test_endpoint" level="project" />
+    <orderEntry type="library" name="bcrypt_elixir" level="project" />
+    <orderEntry type="library" name="phoenix" level="project" />
+    <orderEntry type="library" name="phoenix_ecto" level="project" />
+    <orderEntry type="library" name="ecto_sql" level="project" />
+    <orderEntry type="library" name="postgrex" level="project" />
+    <orderEntry type="library" name="phoenix_html" level="project" />
+    <orderEntry type="library" name="phoenix_live_reload" level="project" />
+    <orderEntry type="library" name="phoenix_live_view" level="project" />
+    <orderEntry type="library" name="phoenix_html_helpers" level="project" />
+    <orderEntry type="library" name="floki" level="project" />
+    <orderEntry type="library" name="phoenix_live_dashboard" level="project" />
+    <orderEntry type="library" name="esbuild" level="project" />
+    <orderEntry type="library" name="swoosh" level="project" />
+    <orderEntry type="library" name="telemetry_metrics" level="project" />
+    <orderEntry type="library" name="telemetry_poller" level="project" />
+    <orderEntry type="library" name="gettext" level="project" />
+    <orderEntry type="library" name="timex" level="project" />
+    <orderEntry type="library" name="wheretz" level="project" />
+    <orderEntry type="library" name="tzdata" level="project" />
+    <orderEntry type="library" name="polymorphic_embed" level="project" />
+    <orderEntry type="library" name="geo_postgis" level="project" />
+    <orderEntry type="library" name="friendlyid" level="project" />
+    <orderEntry type="library" name="tailwind" level="project" />
+    <orderEntry type="library" name="mdex" level="project" />
+    <orderEntry type="library" name="doggo" level="project" />
+    <orderEntry type="library" name="healthchex" level="project" />
+    <orderEntry type="library" name="amqp" level="project" />
+    <orderEntry type="library" name="oban" level="project" />
+    <orderEntry type="library" name="iconv" level="project" />
+    <orderEntry type="library" name="oban_live_dashboard" level="project" />
+    <orderEntry type="library" name="ecto" level="project" />
+    <orderEntry type="library" name="rabbit_common" level="project" />
+    <orderEntry type="library" name="makeup_syntect" level="project" />
+    <orderEntry type="library" name="gen_smtp" level="project" />
+    <orderEntry type="library" name="nimble_options" level="project" />
+    <orderEntry type="library" name="autumn" level="project" />
+    <orderEntry type="library" name="igniter" level="project" />
+    <orderEntry type="library" name="live_view_native" level="project" />
+    <orderEntry type="library" name="live_view_native_jetpack" level="project" />
   </component>
 </module>

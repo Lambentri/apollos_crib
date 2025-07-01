@@ -128,6 +128,8 @@
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/iconv" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/oban_live_dashboard" />
       <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/pixels" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/autumn" />
+      <excludeFolder url="file://$MODULE_DIR$/_build/dev/lib/nimble_options" />
     </content>
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="sentry" level="project" />
@@ -185,5 +187,10 @@
     <orderEntry type="library" name="makeup_html" level="project" />
     <orderEntry type="library" name="unicode_set" level="project" />
     <orderEntry type="library" name="benchee_markdown" level="project" />
+    <orderEntry type="library" name="sentry" level="project" />
+    <orderEntry type="library" name="jason" level="project" />
+    <orderEntry type="library" name="hackney" level="project" />
+    <orderEntry type="library" name="plug_cowboy" level="project" />
+    <orderEntry type="library" name="makeup_syntect" level="project" />
   </component>
 </module>

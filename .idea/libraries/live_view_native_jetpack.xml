@@ -1,11 +1,19 @@
 <component name="libraryTable">
   <library name="live_view_native_jetpack" type="mix">
     <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/live_view_native_jetpack/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -22,6 +30,14 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/lib" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/priv" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/lib" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/priv" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/lib" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/priv" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/lib" />
+      <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/priv" />
       <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/lib" />
       <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/priv" />
       <root url="file://$PROJECT_DIR$/deps/live_view_native_jetpack/lib" />

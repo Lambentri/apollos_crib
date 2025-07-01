@@ -88,7 +88,8 @@ defmodule RoomSanctum.MixProject do
 
       # hermes
       #      {:room_hermes, in_umbrella: true}
-      {:amqp, "~> 3.3"},
+      {:amqp, "~> 4.1"},
+      {:rabbit_common, "~> 4.0"},
       {:sentry, "~> 8.0"},
 
       # Q's and other misc

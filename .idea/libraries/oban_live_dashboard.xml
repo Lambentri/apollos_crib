@@ -1,7 +1,27 @@
 <component name="libraryTable">
   <library name="oban_live_dashboard" type="mix">
     <CLASSES>
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
+      <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
+      <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
       <root url="file://$PROJECT_DIR$/_build/dev/lib/oban_live_dashboard/ebin" />
       <root url="file://$PROJECT_DIR$/_build/dev/consolidated" />
@@ -10,6 +30,12 @@
     </CLASSES>
     <JAVADOC />
     <SOURCES>
+      <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
+      <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
+      <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
+      <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
+      <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
+      <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
       <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
       <root url="file://$PROJECT_DIR$/deps/oban_live_dashboard/lib" />
     </SOURCES>

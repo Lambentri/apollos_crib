@@ -40,5 +40,8 @@
     <orderEntry type="library" name="junit_formatter" level="project" />
     <orderEntry type="library" name="stream_data" level="project" />
     <orderEntry type="library" name="tiny" level="project" />
+    <orderEntry type="library" name="httpoison" level="project" />
+    <orderEntry type="library" name="poison" level="project" />
+    <orderEntry type="library" name="parent" level="project" />
   </component>
 </module>

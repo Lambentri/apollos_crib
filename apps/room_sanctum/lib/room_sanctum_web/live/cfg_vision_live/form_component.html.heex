@@ -15,7 +15,7 @@
             </div>
         </div>
     </div>
-    <%= for {fq, ctr} <- Enum.with_index(inputs_for(@form, :queries)) do %>
+    <%= for {fq, ctr} <- safe_inputs_with_index(@form, :queries) do %>
         <%= hidden_inputs_for(fq) %>
         <div class="flex">
             <div class="flex-none w-16 font-bold text-7xl py-6">
