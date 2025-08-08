@@ -27,6 +27,6 @@ services:
       - RABBITMQ_DEFAULT_PASS=hermes
     volumes:
       - ./rabbit/rabbit.conf:/etc/rabbitmq/rabbitmq.conf
-      - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
+#      - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
 volumes:
   pgdata: {}

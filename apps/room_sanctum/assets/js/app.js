@@ -294,6 +294,39 @@ topbar.config({barColors: {0: "#b57979"}, shadowColor: "rgba(0, 0, 0, .3)"})
 window.addEventListener("phx:page-loading-start", info => topbar.show())
 window.addEventListener("phx:page-loading-stop", info => topbar.hide())
 
+// Handle file downloads
+window.addEventListener("phx:download", (event) => {
+  const { data, filename, mime_type } = event.detail;
+  const blob = new Blob([data], { type: mime_type });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  window.URL.revokeObjectURL(url);
+  document.body.removeChild(a);
+});
+
+// Handle file uploads
+window.addEventListener("phx:upload_file", (event) => {
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const fileData = e.target.result;
+        liveSocket.pushEvent("process-import", { file_data: fileData });
+      };
+      reader.readAsText(file);
+    }
+  });
+  input.click();
+});
+
 // connect if there are any LiveViews on the page
 liveSocket.connect()
 

@@ -55,6 +55,7 @@ defmodule RoomSanctumWeb.Router do
 
     live "/cfg/offerings", SourceLive.Index, :index
     live "/cfg/offerings/new", SourceLive.Index, :new
+    live "/cfg/offerings/import", SourceLive.Index, :import
     live "/cfg/offerings/:id/edit", SourceLive.Index, :edit
     live "/cfg/offerings/:id", SourceLive.Show, :show
     live "/cfg/offerings/:id/show/edit", SourceLive.Show, :edit

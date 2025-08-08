@@ -2070,7 +2070,7 @@ defmodule RoomSanctum.Storage do
       from st in StationStatus,
         where: st.source_id == ^source_id and st.station_id == ^stringify(stop_id),
         left_join: si in StationInfo,
-        on: si.station_id == st.station_id,
+        on: si.station_id == st.station_id and si.source_id == ^source_id,
         left_join: eb in EbikesAtStations,
         on: eb.station_id == st.station_id,
         #        left_join: t in GBFSAlert,
