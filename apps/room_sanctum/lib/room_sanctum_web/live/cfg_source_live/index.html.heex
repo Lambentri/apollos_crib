@@ -1,5 +1,22 @@
 <.itb icon="fa-plus" to={Routes.source_index_path(@socket, :new)} what="Offering"></.itb>
-<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Offerings <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+<div class="flex items-center justify-between mx-4">
+  <h1 class="text-3xl font-bold text-accent bg-secondary-300 py-2">Available Offerings <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+  <div class="flex items-center gap-2">
+    <%= if MapSet.size(@selected_sources) > 0 do %>
+      <button 
+        class="btn btn-primary"
+        phx-click="export-sources"
+      >
+        <i class="fa-solid fa-download mr-2"></i>
+        Export Selected (<%= MapSet.size(@selected_sources) %>)
+      </button>
+    <% end %>
+    
+    <.itb icon="fa-upload" to={Routes.source_index_path(@socket, :import)} what="Import"></.itb>
+  </div>
+</div>
 
 <%= if @show_info do %>
 <div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
@@ -22,9 +39,53 @@
     />
 </.modal>
 
+<.modal :if={@live_action == :import} id="import-modal" show on_cancel={JS.patch(Routes.source_index_path(@socket, :index))}>
+    <.live_component
+        module={RoomSanctumWeb.SourceLive.ImportComponent}
+        id={:import}
+        title={@page_title}
+        current_user={@current_user}
+    />
+</.modal>
+
+<.modal :if={@show_export_modal} id="export-modal" show on_cancel={JS.push("close-export-modal")}>
+    <div class="p-4">
+        <h3 class="text-lg font-bold mb-4">Export Sources JSON</h3>
+        <div class="mb-4">
+            <p class="text-sm text-gray-600 mb-2">Copy the JSON below to save or share your source configurations:</p>
+        </div>
+        <div class="bg-gray-100 p-4 rounded-lg max-h-96 overflow-auto">
+            <pre class="text-sm whitespace-pre-wrap"><%= @export_json %></pre>
+        </div>
+        <div class="flex justify-end gap-2 mt-4">
+            <button 
+                class="btn btn-secondary"
+                phx-click="close-export-modal"
+            >
+                Close
+            </button>
+            <button 
+                class="btn btn-primary"
+                onclick="navigator.clipboard.writeText(this.previousElementSibling.previousElementSibling.querySelector('pre').textContent)"
+            >
+                Copy to Clipboard
+            </button>
+        </div>
+    </div>
+</.modal>
+
 <table class="table table-compact w-full mx-6">
     <thead>
     <tr>
+        <th>
+          <input 
+            type="checkbox" 
+            class="checkbox" 
+            id="select-all"
+            phx-click="toggle-all-selection"
+            checked={all_selected(@streams.cfg_sources, @selected_sources)}
+          />
+        </th>
         <th>Name</th>
         <th>Type</th>
         <th>Enabled</th>
@@ -40,9 +101,20 @@
         <th></th>
     </tr>
     </thead>
-    <tbody id="cfg_sources">
+    <tbody id="cfg_sources" phx-update="stream">
     <%= for {id, source} <- @streams.cfg_sources do %>
     <tr id={"source-#{source.id}"}>
+        <td>
+          <input 
+            type="checkbox"
+            class="checkbox source-checkbox checkbox-primary"
+            phx-click="toggle-source-selection"
+            phx-value-id={source.id}
+            name="source_selection"
+            value="on"
+            checked={MapSet.member?(@selected_sources, source.id)}
+          />
+        </td>
         <td><%= source.name %></td>
         <td>
             <span class="tooltip tooltip-primary" data-tip={source.type}>
