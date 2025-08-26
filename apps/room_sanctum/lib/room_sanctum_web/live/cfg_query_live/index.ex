@@ -6,10 +6,15 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
+    queries = list_cfg_queries(socket.assigns.current_user.id)
+    available_tints = get_available_tints(queries)
+
     {:ok,
      socket
      |> assign(:show_info, false)
-     |> stream(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id))}
+     |> assign(:tint, nil)
+     |> assign(:available_tints, available_tints)
+     |> stream(:cfg_queries, queries)}
   end
 
   @impl true
@@ -37,7 +42,13 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 
   @impl true
   def handle_info({RoomSanctumWeb.QueryLive.FormComponent, {:saved, query}}, socket) do
-    {:noreply, stream_insert(socket, :cfg_queries, query)}
+    queries = list_cfg_queries(socket.assigns.current_user.id)
+    available_tints = get_available_tints(queries)
+    
+    {:noreply, 
+     socket
+     |> assign(:available_tints, available_tints)
+     |> stream_insert(:cfg_queries, query)}
   end
 
   @impl true
@@ -52,8 +63,47 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
 
+  def handle_event("set-tint", %{"tint"=> tint}, socket) do
+    IO.inspect({"set-tint", tint, socket.assigns.tint})
+    case socket.assigns.tint == tint do
+      true -> {:noreply, socket |> assign(:tint, nil) |> stream(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id), reset: true)}
+      false -> {:noreply, socket |> assign(:tint, tint) |> stream(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id, tint), reset: true)}
+    end
+  end
+
   defp list_cfg_queries(uid) do
     Configuration.list_cfg_queries({:user, uid})
+  end
+
+  defp list_cfg_queries(uid, tint) do
+    Configuration.list_cfg_queries({:user, uid}) |> Enum.filter(fn q -> 
+      (q.meta && q.meta.tint == tint) || (q.source && q.source.meta && q.source.meta.tint == tint)
+    end)
+  end
+
+  defp get_available_tints(queries) do
+    queries
+    |> Enum.flat_map(fn query ->
+      tints = []
+      
+      # Add query tint if it exists
+      tints = if query.meta && query.meta.tint do
+        [query.meta.tint | tints]
+      else
+        tints
+      end
+      
+      # Add source tint if it exists  
+      tints = if query.source && query.source.meta && query.source.meta.tint do
+        [query.source.meta.tint | tints]
+      else
+        tints
+      end
+      
+      tints
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   def get_icon(type) do

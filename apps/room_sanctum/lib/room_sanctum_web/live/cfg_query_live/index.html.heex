@@ -27,8 +27,25 @@
     <tr>
       <th>Source</th>
       <th>Query</th>
-      <th></th>
-      <th></th>
+      <th>
+        <span class="text-amber-500"></span>
+        <span class="text-violet-500"></span>
+        <span class="text-rose-500"></span>
+        <span class="text-emerald-500"></span>
+        <span class="text-sky-500"></span>
+        <span class="text-stone-500"></span>
+        <span class="text-stone-950"></span>
+        
+        <!-- Available tints - clickable filters -->
+        <%= for tint <- @available_tints do %>
+          <span class="cursor-pointer mx-1" phx-click="set-tint" phx-value-tint={tint}>
+            <i class={"fa-solid fa-circle text-#{tint}-500 hover:text-#{tint}-700 #{if @tint == tint, do: "text-lg", else: ""}"}></i>
+          </span>
+        <% end %>
+      </th>
+      <th>
+
+      </th>
     </tr>
   </thead>
   <tbody id="cfg_queries">
@@ -45,17 +62,17 @@
           <%= cond do %>
             <% query.meta && query.meta.tint && query.source.meta.tint -> %>
               <!-- Both query and source tints - use fa-stack -->
-              <span class="fa-stack">
-                <i class={"fa-solid fa-circle fa-fw fa-stack-1x z-30 text-#{query.source.meta.tint}-500"}></i>
-                <i class={"fa-solid fa-circle-half-stroke fa-fw z-40 fa-spin fa-stack-1x text-#{query.meta.tint}-500"}></i>
+              <span class="fa-stack cursor-pointer" phx-click="set-tint" phx-value-tint={query.meta.tint}>
+                <i class={"fa-solid fa-circle fa-2x fa-fw fa-stack-1x z-30 text-#{query.source.meta.tint}-500"}></i>
+                <i class={"fa-solid fa-circle-half-stroke fa-2x fa-fw z-40 fa-stack-1x text-#{query.meta.tint}-500"}></i>
 
               </span>
             <% query.meta && query.meta.tint -> %>
               <!-- Query tint only -->
-              <i class={"fa-solid fa-circle-half-stroke fa-spin fa-fw text-#{query.meta.tint}-500"}></i>
+              <i class={"fa-solid fa-circle-half-stroke  fa-fw text-#{query.meta.tint}-500 cursor-pointer"} phx-click="set-tint" phx-value-tint={query.meta.tint}></i>
             <% query.source.meta.tint -> %>
               <!-- Source tint only -->
-              <i class={"fa-solid fa-circle text-#{query.source.meta.tint}-500"}></i>
+              <i class={"fa-solid fa-circle text-#{query.source.meta.tint}-500 cursor-pointer"} phx-click="set-tint" phx-value-tint={query.source.meta.tint}></i>
             <% true -> %>
               <!-- No tints -->
           <% end %>
