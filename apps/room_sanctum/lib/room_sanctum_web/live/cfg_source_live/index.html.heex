@@ -97,6 +97,13 @@
             <span class="text-sky-500"></span>
             <span class="text-stone-500"></span>
             <span class="text-stone-950"></span>
+            
+            <!-- Available tints - clickable filters -->
+            <%= for tint <- @available_tints do %>
+              <span class="cursor-pointer mx-1" phx-click="set-tint" phx-value-tint={tint}>
+                <i class={"fa-solid fa-circle text-#{tint}-500 hover:text-#{tint}-700 #{if @tint == tint, do: "text-lg", else: ""}"}></i>
+              </span>
+            <% end %>
         </th>
         <th></th>
     </tr>
@@ -133,7 +140,7 @@
         </td>
         <td>
             <%= if source.meta.tint do %>
-            <i class={"fa fa-circle text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
+            <i class={"fa fa-circle fa-fw fa-2x text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
             <% end %>
         </td>
         <td class={"bg-#{@tint}-500"}>

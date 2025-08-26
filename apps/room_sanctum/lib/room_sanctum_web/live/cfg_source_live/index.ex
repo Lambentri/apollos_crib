@@ -7,11 +7,13 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     sources = list_cfg_sources(socket.assigns.current_user.id)
+    available_tints = get_available_tints(sources)
 
     {:ok,
      socket
      |> assign(:show_info, false)
      |> assign(:tint, nil)
+     |> assign(:available_tints, available_tints)
      |> assign(:selected_sources, MapSet.new())
      |> assign(:export_json, nil)
      |> assign(:show_export_modal, false)
@@ -52,15 +54,25 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   @impl true
   def handle_info({RoomSanctumWeb.SourceLive.FormComponent, {:saved, source}}, socket) do
-    {:noreply, stream_insert(socket, :cfg_sources, source)}
+    sources = list_cfg_sources(socket.assigns.current_user.id)
+    available_tints = get_available_tints(sources)
+    
+    {:noreply, 
+     socket
+     |> assign(:available_tints, available_tints)
+     |> stream_insert(:cfg_sources, source)}
   end
 
   @impl true
   def handle_info({RoomSanctumWeb.SourceLive.ImportComponent, {:sources_imported, count}}, socket) do
+    sources = list_cfg_sources(socket.assigns.current_user.id)
+    available_tints = get_available_tints(sources)
+    
     {:noreply, 
      socket
      |> put_flash(:info, "Successfully imported #{count} sources")
-     |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id), reset: true)}
+     |> assign(:available_tints, available_tints)
+     |> stream(:cfg_sources, sources, reset: true)}
   end
 
   @impl true
@@ -182,7 +194,16 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   end
 
   defp list_cfg_sources(uid, tint) do
-    Configuration.list_cfg_sources({:user, uid}) |> Enum.filter(fn s -> s.meta.tint == tint end)
+    Configuration.list_cfg_sources({:user, uid}) |> Enum.filter(fn s -> 
+      s.meta && s.meta.tint == tint 
+    end)
+  end
+
+  defp get_available_tints(sources) do
+    sources
+    |> Enum.filter_map(&(&1.meta && &1.meta.tint), &(&1.meta.tint))
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   defp import_sources(sources_data, user_id) do
