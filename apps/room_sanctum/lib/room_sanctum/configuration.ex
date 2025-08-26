@@ -315,7 +315,7 @@ defmodule RoomSanctum.Configuration do
   end
 
   def get_visions_nv(:query, id) do
-    from(v in Vision, where: ^id not in v.query_ids) |> Repo.all()
+    from(v in Vision, where: ^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == []) |> Repo.all()
   end
 
   @doc """

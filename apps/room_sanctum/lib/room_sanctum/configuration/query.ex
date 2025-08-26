@@ -32,6 +32,10 @@ defmodule RoomSanctum.Configuration.Query do
     field :geom, Geo.PostGIS.Geometry
     field :public, :boolean, default: true
 
+    embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
+      field :tint, :string
+    end
+
     timestamps()
   end
 
@@ -39,9 +43,15 @@ defmodule RoomSanctum.Configuration.Query do
   def changeset(query, attrs) do
     query
     |> cast(attrs, [:name, :notes, :source_id, :user_id])
+    |> cast_embed(:meta, required: false, with: &meta_changeset/2)
     |> foreign_key_constraint(:source_id)
     |> foreign_key_constraint(:user_id)
     |> cast_polymorphic_embed(:query, required: true)
     |> validate_required([:name])
+  end
+
+  def meta_changeset(meta, attrs \\ %{}) do
+    meta
+    |> cast(attrs, [:tint])
   end
 end

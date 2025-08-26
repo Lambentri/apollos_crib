@@ -22,6 +22,24 @@
         <.input field={@form[:notes]} type="text" label="Notes"/>
       </div>
     </div>
+    <div class="w-1/4">
+      <.inputs_for :let={meta_nested} field={@form[:meta]}>
+      <div class="form-control m-10">
+          <span class="bg-amber-500"></span>
+          <span class="bg-lime-500"></span>
+          <span class="bg-emerald-500"></span>
+          <span class="bg-sky-500"></span>
+          <span class="bg-violet-500"></span>
+          <span class="bg-fuschia-500"></span>
+          <span class="bg-rose-500"></span>
+          <span class="bg-stone-500"></span>
+          <span class="bg-slate-500"></span>
+          <span class="bg-stone-950"></span>
+          <.input field={meta_nested[:tint]} type="hidden" label="Tint"/>
+          <.input field={meta_nested[:tint]} type="radio" label="Tint" options={@tint_opts} prompt="color this" checked_value={meta_nested.params["tint"]} />
+      </div>
+      </.inputs_for>
+    </div>
   </div>
   <div class="flex">
     <div class="w-full">

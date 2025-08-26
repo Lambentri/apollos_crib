@@ -34,7 +34,26 @@
     <% end %>
     <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
       <div class="card-body">
-        <h3 class="card-title">Query</h3>
+        <h3 class="card-title">
+            Query
+          <%= cond do %>
+            <% @query.meta && @query.meta.tint && @query.source.meta.tint -> %>
+              <!-- Both query and source tints - use fa-stack -->
+              <span class="fa-stack">
+                <i class={"fa-solid fa-circle fa-fw fa-stack-1x z-30 text-#{@query.source.meta.tint}-500"}></i>
+                <i class={"fa-solid fa-circle-half-stroke fa-fw z-40 fa-spin fa-stack-1x text-#{@query.meta.tint}-500"}></i>
+
+              </span>
+            <% @query.meta && @query.meta.tint -> %>
+              <!-- Query tint only -->
+              <i class={"fa-solid fa-circle-half-stroke fa-spin fa-fw text-#{@query.meta.tint}-500"}></i>
+            <% @query.source.meta.tint -> %>
+              <!-- Source tint only -->
+              <i class={"fa-solid fa-circle text-#{@query.source.meta.tint}-500"}></i>
+            <% true -> %>
+              <!-- No tints -->
+          <% end %>
+        </h3>
         <pre><%= @query.query |> Poison.encode!( pretty: true) %></pre>
       </div>
     </div>
