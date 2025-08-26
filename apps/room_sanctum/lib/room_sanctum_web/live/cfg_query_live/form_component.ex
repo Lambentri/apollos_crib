@@ -19,7 +19,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> assign(assigns)
       |> assign_form(changeset)
       |> assign(:changeset, changeset)
-      |> assign(:tint_opts, ["amber", "lime", "emerald", "sky", "violet", "fuschia", "rose", "stone", "slate"])
+      |> assign(:tint_opts, ["amber", "lime", "emerald", "sky", "violet", "fuchsia", "rose", "stone", "slate"])
       |> assign(:cfg_sources, list_cfg_sources(assigns.current_user.id))
       |> assign(:cfg_foci, list_cfg_foci(assigns.current_user.id))
       |> assign(:results, [])

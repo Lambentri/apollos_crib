@@ -98,6 +98,7 @@ defmodule RoomSanctumWeb.LiveHelpers do
   defp adj(what) do
     case what do
       "Edit" -> ""
+      "Import Offering" -> ""
       "Back" -> "Go"
       _ -> "New"
     end

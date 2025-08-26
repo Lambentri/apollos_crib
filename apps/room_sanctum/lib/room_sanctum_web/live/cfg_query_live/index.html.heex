@@ -31,11 +31,11 @@
         <span class="text-amber-500"></span>
         <span class="text-violet-500"></span>
         <span class="text-rose-500"></span>
+        <span class="text-fuchsia-500"></span>
         <span class="text-emerald-500"></span>
         <span class="text-sky-500"></span>
         <span class="text-stone-500"></span>
         <span class="text-stone-950"></span>
-        
         <!-- Available tints - clickable filters -->
         <%= for tint <- @available_tints do %>
           <span class="cursor-pointer mx-1" phx-click="set-tint" phx-value-tint={tint}>
@@ -63,8 +63,8 @@
             <% query.meta && query.meta.tint && query.source.meta.tint -> %>
               <!-- Both query and source tints - use fa-stack -->
               <span class="fa-stack cursor-pointer" phx-click="set-tint" phx-value-tint={query.meta.tint}>
-                <i class={"fa-solid fa-circle fa-2x fa-fw fa-stack-1x z-30 text-#{query.source.meta.tint}-500"}></i>
-                <i class={"fa-solid fa-circle-half-stroke fa-2x fa-fw z-40 fa-stack-1x text-#{query.meta.tint}-500"}></i>
+                <i class={"fa-solid fa-circle fa-2x fa-fw fa-stack-1x z-30 text-#{query.source.meta.tint}-500"} data-fa-transform="shrink-3"></i>
+                <i class={"fa-solid fa-circle fa-2x fa-fw z-40 fa-stack-1x text-#{query.meta.tint}-500"} data-fa-transform="shrink-4 right-4"></i>
 
               </span>
             <% query.meta && query.meta.tint -> %>

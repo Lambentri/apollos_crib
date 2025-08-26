@@ -1,0 +1,85 @@
+<div>
+  <h2 class="text-3xl font-bold text-accent"><%= @title %></h2>
+  
+  <div class="space-y-6">
+    <!-- JSON Input Form -->
+    <.simple_form
+      for={%{}}
+      id="import-form"
+      phx-target={@myself}
+      phx-change="validate_json">
+      
+      <div class="form-control">
+        <.input 
+          name="import[json_content]" 
+          type="textarea" 
+          label="Import JSON"
+          value={@import_data}
+          placeholder="Paste your exported source JSON here..."
+          rows="10" />
+      </div>
+    </.simple_form>
+
+    <!-- Validation Results -->
+    <%= if @validation_results != [] do %>
+      <div class="space-y-4">
+        <h3 class="text-xl font-semibold">Validation Results</h3>
+        
+        <%= for {{source_attrs, index}, changeset} <- @validation_results do %>
+          <div class={"card border-2 #{if changeset.valid?, do: "border-success", else: "border-error"}"}>
+            <div class="card-body p-4">
+              <div class="flex justify-between items-start">
+                <div>
+                  <h4 class="font-semibold">
+                    <%= source_attrs[:name] || "Unnamed Source" %> 
+                    <span class="text-sm text-gray-500">(#<%= index + 1 %>)</span>
+                  </h4>
+                  <p class="text-sm text-gray-600">
+                    Type: <%= source_attrs[:type] %>
+                  </p>
+                </div>
+                
+                <%= if changeset.valid? do %>
+                  <div class="badge badge-success">Valid</div>
+                <% else %>
+                  <div class="badge badge-error">Invalid</div>
+                <% end %>
+              </div>
+              
+              <!-- Show validation errors if any -->
+              <%= unless changeset.valid? do %>
+                <div class="mt-3 space-y-1">
+                  <%= for {field, errors} <- changeset.errors do %>
+                    <p class="text-sm text-error">
+                      <strong><%= field %>:</strong> <%= Enum.join(errors, ", ") %>
+                    </p>
+                  <% end %>
+                </div>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+        
+        <!-- Import Button -->
+        <%= if Enum.any?(@validation_results, fn {_source, changeset} -> changeset.valid? end) do %>
+          <div class="flex justify-end">
+            <button 
+              type="button"
+              phx-click="import_sources"
+              phx-target={@myself}
+              class="btn btn-primary">
+              Import Valid Sources
+              <span class="badge badge-ghost ml-2">
+                <%= Enum.count(@validation_results, fn {_source, changeset} -> changeset.valid? end) %>
+              </span>
+            </button>
+          </div>
+        <% else %>
+          <div class="alert alert-warning">
+            <span>No valid sources found to import. Please fix the validation errors above.</span>
+          </div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
+</div>

@@ -14,7 +14,7 @@
       </button>
     <% end %>
     
-    <.itb icon="fa-upload" to={Routes.source_index_path(@socket, :import)} what="Import"></.itb>
+    <.itb icon="fa-upload" to={Routes.source_index_path(@socket, :import)} what="Import Offering"></.itb>
   </div>
 </div>
 
@@ -140,7 +140,7 @@
         </td>
         <td>
             <%= if source.meta.tint do %>
-            <i class={"fa fa-circle fa-fw fa-2x text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
+            <i class={"fa fa-circle fa-fw text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
             <% end %>
         </td>
         <td class={"bg-#{@tint}-500"}>
