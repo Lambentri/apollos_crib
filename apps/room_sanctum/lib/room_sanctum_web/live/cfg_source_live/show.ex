@@ -16,6 +16,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:status_val, 0)
       |> assign(:stats, %{})
       |> assign(:queries, [])
+      |> assign(:tint, nil)
+      |> assign(:available_tints, [])
       |> assign(:tester, false)
       |> assign(:tester_query, nil)
       |> assign(:tester_results, [])
@@ -35,7 +37,11 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def handle_info(:update_sec, socket) do
     Process.send_after(self(), :update_sec, 10000)
     queries = Configuration.get_queries(:source, socket.assigns.source_id)
-    {:noreply, socket |> assign(:queries, queries)}
+    available_tints = get_available_tints(queries)
+    
+    {:noreply, socket 
+     |> assign(:queries, queries)
+     |> assign(:available_tints, available_tints)}
   end
 
   @impl true
@@ -219,6 +225,14 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     {:noreply, socket}
   end
 
+  def handle_event("set-tint", %{"tint"=> tint}, socket) do
+    IO.inspect({"set-tint", tint, socket.assigns.tint})
+    case socket.assigns.tint == tint do
+      true -> {:noreply, socket |> assign(:tint, nil)}
+      false -> {:noreply, socket |> assign(:tint, tint)}
+    end
+  end
+
   defp percent(num, denom) do
     (num / denom * 100)
     |> Float.floor()
@@ -365,6 +379,40 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   defp getlatlng(coords) do
     coords |> Tuple.to_list() |> Poison.encode!()
+  end
+
+  defp get_available_tints(queries) do
+    queries
+    |> Enum.flat_map(fn query ->
+      tints = []
+      
+      # Add query tint if it exists
+      tints = if query.meta && query.meta.tint do
+        [query.meta.tint | tints]
+      else
+        tints
+      end
+      
+      # Add source tint if it exists  
+      tints = if query.source && query.source.meta && query.source.meta.tint do
+        [query.source.meta.tint | tints]
+      else
+        tints
+      end
+      
+      tints
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp filter_queries_by_tint(queries, nil), do: queries
+  defp filter_queries_by_tint(queries, tint) do
+    queries
+    |> Enum.filter(fn query ->
+      (query.meta && query.meta.tint == tint) || 
+      (query.source && query.source.meta && query.source.meta.tint == tint)
+    end)
   end
 
   def get_icon_url(true) do

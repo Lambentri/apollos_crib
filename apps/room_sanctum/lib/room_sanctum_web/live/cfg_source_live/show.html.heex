@@ -222,7 +222,25 @@ current_user={@current_user}
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
             <div class="card-body">
                 <h3 class="card-title flex justify-between">
-                    Queries
+                    <div class="flex items-center gap-2">
+                        Queries
+                        
+                        <!-- Available tints - clickable filters -->
+                        <span class="text-amber-500"></span>
+                        <span class="text-violet-500"></span>
+                        <span class="text-rose-500"></span>
+                        <span class="text-emerald-500"></span>
+                        <span class="text-sky-500"></span>
+                        <span class="text-stone-500"></span>
+                        <span class="text-stone-950"></span>
+                        
+                        <%= for tint <- @available_tints do %>
+                          <span class="cursor-pointer mx-1" phx-click="set-tint" phx-value-tint={tint}>
+                            <i class={"fa-solid fa-circle text-#{tint}-500 hover:text-#{tint}-700 #{if @tint == tint, do: "text-lg", else: ""}"}></i>
+                          </span>
+                        <% end %>
+                    </div>
+                    
                     <%= case @source.type do %>
                     <% val when val in [:gtfs, :gbfs] -> %>
                     <span class="" phx-click="add-tester"><i class="fa-solid fa-plus"></i>Test</span>
@@ -230,7 +248,7 @@ current_user={@current_user}
                     <% end %>
                 </h3>
                 <div class="flex flex-wrap gap-2">
-                    <%= for q <- @queries do %>
+                    <%= for q <- filter_queries_by_tint(@queries, @tint) do %>
                     <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary float-left" do %>
                         <%= cond do %>
                         <% q.meta && q.meta.tint && q.source.meta.tint -> %>
