@@ -46,7 +46,7 @@ defmodule RoomSanctum.Worker.Vision do
   def get_state(name) do
     "vision#{name}"
     |> via_tuple
-    |> GenServer.call(:return_state)
+    |> GenServer.call(:return_state, 15_000)
   end
 
   #

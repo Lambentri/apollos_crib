@@ -187,7 +187,7 @@ defmodule RoomGtfs.Worker do
         GenServer.call(state.child_rt, {:query_realtime, trips, stop})
       catch
         :exit, _ ->
-          IO.puts("timeout? exit")
+          IO.puts("timeout? exit?")
           []
       after
         []
@@ -271,7 +271,12 @@ defmodule RoomGtfs.Worker.RT do
 
   def fetch_rt_url(url) do
     case HTTPoison.get(url, [], follow_redirect: true) do
-      {:ok, result} -> {:ok, result.body |> TransitRealtime.FeedMessage.decode()}
+      {:ok, result} -> {:ok, try do
+        result.body |> TransitRealtime.FeedMessage.decode()
+        rescue
+          e -> IO.inspect(e)
+          {:error, :risen}
+                       end}
       {:error, error} -> {:error, error}
     end
   end
@@ -798,6 +803,7 @@ end
               {:error, term} ->
                 Logger.error(term)
             end
+          {:error, error} -> Logger.error(error)
         end
     end
 
