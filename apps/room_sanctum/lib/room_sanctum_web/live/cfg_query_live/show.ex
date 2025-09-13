@@ -1,5 +1,6 @@
 defmodule RoomSanctumWeb.QueryLive.Show do
   use RoomSanctumWeb, :live_view_a
+  import RoomSanctumWeb.LivePreview
 
   alias RoomSanctum.Configuration
 
@@ -7,7 +8,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def mount(_params, _session, socket) do
     if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
     if connected?(socket), do: Process.send_after(self(), :update, 1000)
-    {:ok, socket |> assign(:preview, [])}
+    {:ok, socket |> assign(:preview, []) |> assign(:preview_mode, :basic)}
   end
 
   @impl true
@@ -110,8 +111,31 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
   end
 
+  def handle_event("toggle-preview-mode", _params, socket) do
+    {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
+  end
+
   defp page_title(:show), do: "Query Detail"
   defp page_title(:edit), do: "Modify Query"
+
+  defp do_toggle(state) do
+    case state do
+      :basic -> :raw
+      :raw -> :basic
+    end
+  end
+
+  defp condense(data, {id, type}) do
+    RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+  end
+
+  defp get_icon(type) do
+    RoomSanctumWeb.IconHelpers.icon(type)
+  end
+
+  def preview(condensed, {id, type}) do
+    %{data: condensed, id: id, type: type}
+  end
 
   defp package_icon(carrier) do
     case carrier do

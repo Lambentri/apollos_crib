@@ -61,47 +61,42 @@
   <div class="flex">
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
       <div class="card-body">
-        <h3 class="card-title">Quick Data Preview</h3>
-        <p>
-          <%= for x <- @preview do %>
+        <div class="flex">
+          <div class="flex-auto basis-4/5">
+            <h3 class="card-title w-full">Quick Data Preview</h3>
+          </div>
+          <div class="flex-1 w-3/4">
+            &nbsp;
+          </div>
+          <div class="flex-none w-20">
+            <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
+          </div>
+        </div>
+        <%= case @preview_mode do %>
+        <%= :basic -> %>
           <%= case @type do %>
-            <%= :gtfs -> %>
-            <%= x.trip.route_id %> <i class="fas fa-arrow-right"></i> <%= x.trip.trip_headsign %>  @ <%= x.arrival_time %>
-            <% :gbfs -> %>
-            <%= x.num_bikes_available %> /
-            <%= x.capacity %>
-            <% :tidal -> %>
-            @<%= x.t %> <%= x.type %> <%= x.v %> Meters
-            <% :weather -> %>
-            <%= x.main.temp %>&deg; &amp; <%= x.weather |> List.first |> Map.get(:main)%>
-            <% :aqi -> %>
-            <%= if x.pm25_measured do %> PM2.5@ <%= x.pm25_aqi %><br /> <% end %>
-            <%= if x.pm10_measured do %> PM10@ <%= x.pm10_aqi %> <br /> <% end %>
-            <%= if x.ozone_measured do %> O3@ <%= x.ozone_aqi %> <br /> <% end %>
-            <%= if x.no2_measured do %> NO2@ <%= x.no2_aqi %>    <br /> <% end %>
-            <% :ephem -> %>
-            <%= if x |> Map.has_key?(:period) do %>
-            <%= x.period %> @ <%= x.result %>
-            <%= else %>
-            <%= x.name %>
-            <% end %>
-            <% :calendar -> %>
-            <%= x.date_start %> <%= x.blob["description"] %>
-            <% :cronos -> %>
-            <%= x.name %> <strong><%= x.value %></strong>
-            <% :gitlab -> %>
-            <strong><%= x["commit"]["title"] %></strong> <%= x["duration"] %> seconds elapsed
-            <% :packages -> %>
-              <i class={package_icon(x.type)}></i> <%= x.number %>
-              <%= if x.entries != [] do %>
-                <%= x.entries |> List.last |> Map.get("activityStatus", %{}) |> Map.get("description")  %>
-              <% else %>
-                No Tracking Data, Yet
-              <% end %>
+            <%= :gtfs -> %> <.p_gtfs entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_gtfs>
+            <% :gbfs -> %> <.p_gbfs entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_gbfs>
+            <% :tidal -> %>  <.p_tidal entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_tidal>
+            <% :weather -> %> <.p_weather entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_weather>
+            <% :aqi -> %> <.p_aqi entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_aqi>
+            <% :ephem -> %> <.p_ephem entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_ephem>
+            <% :calendar -> %> <.p_calendar entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_calendar>
+            <% :cronos -> %> <.p_cronos entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_cronos>
+            <% :gitlab -> %> <.p_gitlab entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_gitlab>
+            <% :packages -> %> <.p_packages entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_packages>
           <% end %>
-          <br />
-          <% end %>
-        </p>
+        <% :raw -> %>
+          <div class="flex">
+            <div class="w-16">
+              <i class={"fas fa-fw fa-2xl #{get_icon(@type)}"}></i>
+            </div>
+            <div class="w-7/8">
+              <span class="text-secondary font-bold"><%= @query.name %></span>
+              <pre><%= condense(@preview, {@query.id, @type}) |> Poison.encode!(pretty: true)%></pre>
+            </div>
+          </div>
+        <% end %>
       </div>
     </div>
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
