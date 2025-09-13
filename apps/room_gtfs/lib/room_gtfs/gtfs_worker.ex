@@ -52,7 +52,7 @@ defmodule RoomGtfs.Worker do
   end
 
   def get_current_realtime(name, trips, stop) do
-    "gtfs#{name}"
+    "gtfs-rt#{name}"
     |> via_tuple
     |> GenServer.call({:query_realtime, trips, stop}, 30_000)
   end
@@ -838,6 +838,9 @@ end
                     |> Enum.map(&replace/1)
                     |> Enum.filter(fn x -> x != "" end)
                     |> XP.parse_stream
+
+                  Logger.info({"datum", as_csv})
+                  IO.inspect({"datum", as_csv})
 
                   case name do
                     'agency.txt' ->
