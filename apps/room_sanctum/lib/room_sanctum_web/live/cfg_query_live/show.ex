@@ -1,6 +1,7 @@
 defmodule RoomSanctumWeb.QueryLive.Show do
   use RoomSanctumWeb, :live_view_a
   import RoomSanctumWeb.LivePreview
+  import RoomSanctumWeb.Components.QueryGeospatialMap
 
   alias RoomSanctum.Configuration
 

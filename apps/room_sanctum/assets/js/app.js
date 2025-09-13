@@ -32,10 +32,14 @@ import topbar from "../vendor/topbar"
 
 import L from 'leaflet'
 import 'leaflet-centermarker'
+import LeafletMap from './hooks/leaflet_map.js'
 
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 
 let Hooks = {};
+
+// Add our new LeafletMap hook
+Hooks.LeafletMap = LeafletMap;
 Hooks.MapPush = {
     mounted() {
         window.addEventListener("focus", e => {

@@ -1,5 +1,6 @@
 defmodule RoomSanctumWeb.QueryLive.Index do
   use RoomSanctumWeb, :live_view_a
+  import RoomSanctumWeb.Components.QueryGeospatialMap
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Configuration.Query
@@ -13,7 +14,9 @@ defmodule RoomSanctumWeb.QueryLive.Index do
      socket
      |> assign(:show_info, false)
      |> assign(:tint, nil)
+     |> assign(:view_mode, :table)
      |> assign(:available_tints, available_tints)
+     |> assign(:queries, queries)
      |> stream(:cfg_queries, queries)}
   end
 
@@ -48,6 +51,7 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     {:noreply, 
      socket
      |> assign(:available_tints, available_tints)
+     |> assign(:queries, queries)
      |> stream_insert(:cfg_queries, query)}
   end
 
@@ -63,12 +67,30 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
 
+  def handle_event("toggle-view", _params, socket) do
+    new_mode = case socket.assigns.view_mode do
+      :table -> :map
+      :map -> :table
+    end
+    
+    {:noreply, socket |> assign(:view_mode, new_mode)}
+  end
+
   def handle_event("set-tint", %{"tint"=> tint}, socket) do
     IO.inspect({"set-tint", tint, socket.assigns.tint})
-    case socket.assigns.tint == tint do
-      true -> {:noreply, socket |> assign(:tint, nil) |> stream(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id), reset: true)}
-      false -> {:noreply, socket |> assign(:tint, tint) |> stream(:cfg_queries, list_cfg_queries(socket.assigns.current_user.id, tint), reset: true)}
+    queries = case socket.assigns.tint == tint do
+      true -> 
+        list_cfg_queries(socket.assigns.current_user.id)
+      false -> 
+        list_cfg_queries(socket.assigns.current_user.id, tint)
     end
+    
+    new_tint = if socket.assigns.tint == tint, do: nil, else: tint
+    
+    {:noreply, socket 
+     |> assign(:tint, new_tint) 
+     |> assign(:queries, queries)
+     |> stream(:cfg_queries, queries, reset: true)}
   end
 
   defp list_cfg_queries(uid) do

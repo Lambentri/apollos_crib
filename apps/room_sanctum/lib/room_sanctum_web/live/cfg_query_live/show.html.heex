@@ -1,3 +1,10 @@
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+      integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+      crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+        integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+        crossorigin=""></script>
+
 <.itb icon="fa-chevron-left" to={Routes.query_index_path(@socket, :index)} what="Back"></.itb>
 <.itb icon="fa-pencil" to={Routes.query_show_path(@socket, :edit, @query)} what="Edit"></.itb>
 
@@ -58,6 +65,7 @@
       </div>
     </div>
   </div>
+  <!-- Map and Data Preview Row -->
   <div class="flex">
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
       <div class="card-body">
@@ -99,7 +107,26 @@
         <% end %>
       </div>
     </div>
+    
+    <!-- Map Display -->
     <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">Location Map</h3>
+        <div style="width: 100%; max-width: 100%; overflow: hidden;">
+          <.query_geospatial_map 
+            queries={[@query]}
+            selected_tint={if @query.meta && @query.meta.tint, do: @query.meta.tint, else: nil}
+            class=""
+            height="350px"
+          />
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Visions Row -->
+  <div class="flex">
+    <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
       <div class="card-body">
         <h3 class="card-title flex justify-between">
           Visions

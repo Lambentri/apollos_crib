@@ -8,6 +8,7 @@ defmodule RoomSanctum.Storage do
   alias RoomSanctum.Repo
 
   alias RoomSanctum.Storage.GTFS.Agency
+  alias RoomSanctum.Storage.GBFS.V1.StationInfo
 
   @doc """
   Returns the list of agencies.
@@ -751,6 +752,26 @@ defmodule RoomSanctum.Storage do
     Stop.changeset(stop, attrs)
   end
 
+  def get_stop_by_id(source_id, stop_id) do
+    from(s in Stop,
+      where: s.source_id == ^source_id and s.stop_id == ^stop_id,
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  def get_gbfs_station_by_id(source_id, station_id) do
+    from(s in StationInfo,
+      where: s.source_id == ^source_id and s.station_id == ^stringify(station_id),
+      limit: 1
+    )
+    |> Repo.one()
+  end
+
+  def get_foci_by_id(foci_id) do
+    Configuration.get_foci!(foci_id)
+  end
+
   alias RoomSanctum.Storage.GTFS.Trip
 
   @doc """
@@ -1222,8 +1243,6 @@ defmodule RoomSanctum.Storage do
   def change_sys_info(%SysInfo{} = sys_info, attrs \\ %{}) do
     SysInfo.changeset(sys_info, attrs)
   end
-
-  alias RoomSanctum.Storage.GBFS.V1.StationInfo
 
   @doc """
   Returns the list of gbfs_station_information.
