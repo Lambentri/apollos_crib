@@ -891,6 +891,20 @@ defmodule RoomSanctum.Storage do
     Trip.changeset(trip, attrs)
   end
 
+  # Get trips that serve a specific stop
+  def get_trips_for_stop(source_id, stop_id) do
+    from(st in StopTime,
+      join: t in Trip,
+      on: st.trip_id == t.trip_id,
+      where: st.source_id == ^source_id and 
+             t.source_id == ^source_id and
+             st.stop_id == ^stop_id,
+      select: t,
+      distinct: true
+    )
+    |> Repo.all()
+  end
+
   alias RoomSanctum.Configuration, as: Cfg
 
   defp stringify(val) when is_integer(val) do
@@ -1257,6 +1271,13 @@ defmodule RoomSanctum.Storage do
     Repo.all(StationInfo)
   end
 
+  def list_gbfs_station_information(source_id) do
+    from(s in StationInfo,
+      where: s.source_id == ^source_id
+    )
+    |> Repo.all()
+  end
+
   def list_gbfs_station_information(source_id, search_term) do
     from(p in StationInfo,
       where:
@@ -1379,6 +1400,13 @@ defmodule RoomSanctum.Storage do
   """
   def list_gbfs_station_status do
     Repo.all(StationStatus)
+  end
+
+  def list_gbfs_station_status(source_id) do
+    from(s in StationStatus,
+      where: s.source_id == ^source_id
+    )
+    |> Repo.all()
   end
 
   @doc """

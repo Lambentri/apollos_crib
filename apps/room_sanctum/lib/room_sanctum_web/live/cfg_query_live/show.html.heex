@@ -115,6 +115,7 @@
         <div style="width: 100%; max-width: 100%; overflow: hidden;">
           <.query_geospatial_map 
             queries={[@query]}
+            vehicle_positions={@vehicle_positions}
             selected_tint={if @query.meta && @query.meta.tint, do: @query.meta.tint, else: nil}
             class=""
             height="350px"

@@ -224,6 +224,13 @@ current_user={@current_user}
                 <h3 class="card-title flex justify-between">
                     <div class="flex items-center gap-2">
                         Queries
+                        <button 
+                          class="btn btn-sm btn-outline ml-4 text-xs" 
+                          phx-click="toggle-view"
+                        >
+                          <i class={"fa-solid #{if @view_mode == :system, do: "fa-map", else: "fa-table"} mr-1"}></i>
+                          <%= if @view_mode == :system, do: "Map View", else: "System View" %>
+                        </button>
                         
                         <!-- Available tints - clickable filters -->
                         <span class="text-amber-500"></span>
@@ -250,7 +257,23 @@ current_user={@current_user}
                     <% _default -> %>
                     <% end %>
                 </h3>
-                <div class="flex flex-wrap gap-2">
+                
+                <%= if @view_mode == :detail do %>
+                  <div class="px-6">
+                    <.query_geospatial_map 
+                      queries={filter_queries_by_tint(@queries, @tint)}
+                      vehicle_positions={@vehicle_positions}
+                      free_bikes={@free_bikes}
+                      stations={@stations}
+                      station_statuses={@station_statuses}
+                      source_tint={@source_tint}
+                      selected_tint={@tint}
+                      class=""
+                      height="600px"
+                    />
+                  </div>
+                <% else %>
+                  <div class="flex flex-wrap gap-2">
                     <%= for q <- filter_queries_by_tint(@queries, @tint) do %>
                     <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary float-left" do %>
                         <%= cond do %>
@@ -273,7 +296,8 @@ current_user={@current_user}
                     <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
                   <% end %>
                 <% end %>
-                </div>
+                  </div>
+                <% end %>
             </div>
         </div>
     </div>

@@ -1,5 +1,6 @@
 defmodule RoomSanctumWeb.SourceLive.Show do
   use RoomSanctumWeb, :live_view_a
+  import RoomSanctumWeb.Components.QueryGeospatialMap
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
@@ -30,6 +31,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:tester_foci_coords_lon, -71.1097)
       |> assign(:tester_foci, {})
       |> assign(:tester_foci_vehicles, [])
+      |> assign(:vehicle_positions, [])
+      |> assign(:free_bikes, [])
+      |> assign(:stations, [])
+      |> assign(:view_mode, :system)
     }
   end
 
@@ -39,9 +44,39 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     queries = Configuration.get_queries(:source, socket.assigns.source_id)
     available_tints = get_available_tints(queries)
     
+    # Add free bikes for GBFS sources
+    free_bikes = case socket.assigns.source.type do
+      :gbfs -> Storage.list_gbfs_free_bike_status() 
+               |> Enum.filter(&(&1.source_id == socket.assigns.source_id))
+      _ -> []
+    end
+
+    # Add station information for GBFS sources
+    stations = case socket.assigns.source.type do
+      :gbfs -> Storage.list_gbfs_station_information(socket.assigns.source_id)
+      _ -> []
+    end
+
+    # Add station status for GBFS sources
+    station_statuses = case socket.assigns.source.type do
+      :gbfs -> Storage.list_gbfs_station_status(socket.assigns.source_id)
+      _ -> []
+    end
+
+    # Extract source tint for stations
+    source_tint = if socket.assigns.source.meta && socket.assigns.source.meta.tint do
+      socket.assigns.source.meta.tint
+    else
+      nil
+    end
+    
     {:noreply, socket 
      |> assign(:queries, queries)
-     |> assign(:available_tints, available_tints)}
+     |> assign(:available_tints, available_tints)
+     |> assign(:free_bikes, free_bikes)
+     |> assign(:stations, stations)
+     |> assign(:station_statuses, station_statuses)
+     |> assign(:source_tint, source_tint)}
   end
 
   @impl true
@@ -64,8 +99,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def handle_params(%{"id" => id}, _, socket) do
     source = Configuration.get_source!(id) |> IO.inspect
 
+    # Subscribe to relevant PubSub channels
     case source.type do
-      :gtfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs")
+      :gtfs -> 
+        Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs")
+        Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs_vehicle_positions:#{id}")
+        if connected?(socket), do: Process.send_after(self(), :update_vehicle_positions, 1000)
       :gbfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gbfs")
       :aqi -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "aqi")
       :calendar -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "ical")
@@ -233,6 +272,15 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     end
   end
 
+  @impl true
+  def handle_event("toggle-view", _params, socket) do
+    new_mode = case socket.assigns.view_mode do
+      :system -> :detail
+      :detail -> :system
+    end
+    {:noreply, socket |> assign(:view_mode, new_mode)}
+  end
+
   defp percent(num, denom) do
     (num / denom * 100)
     |> Float.floor()
@@ -267,6 +315,30 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def handle_info({type, id, :done} = info, socket) do
     source = Configuration.get_source!(socket.assigns.source_id)
     {:noreply, socket |> assign(:source, source) |> put_flash(:info, "Completed")}
+  end
+
+  # Handle vehicle position updates for source-specific display
+  @impl true
+  def handle_info({:vehicle_positions_updated, source_id, vehicles}, socket) do
+    if socket.assigns.source_id == source_id do
+      {:noreply, socket |> assign(:vehicle_positions, vehicles)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  # Fallback timer for vehicle position updates
+  @impl true
+  def handle_info(:update_vehicle_positions, socket) do
+    Process.send_after(self(), :update_vehicle_positions, 30000)
+    
+    case socket.assigns.source.type do
+      :gtfs ->
+        vehicles = RoomGtfs.Worker.get_current_vehicle_positions(socket.assigns.source_id)
+        {:noreply, socket |> assign(:vehicle_positions, vehicles)}
+      _ ->
+        {:noreply, socket}
+    end
   end
 
 

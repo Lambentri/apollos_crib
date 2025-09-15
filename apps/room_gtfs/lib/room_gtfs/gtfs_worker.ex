@@ -58,6 +58,18 @@ defmodule RoomGtfs.Worker do
     |> GenServer.call({:query_realtime, trips, stop}, 30_000)
   end
 
+  def get_current_vehicle_positions(name) do
+    "gtfs-rt#{name}"
+    |> via_tuple
+    |> GenServer.call(:query_vehicle_positions, 30_000)
+  end
+
+  def get_current_vehicle_positions(name, trips) do
+    "gtfs-rt#{name}"
+    |> via_tuple
+    |> GenServer.call({:query_vehicle_positions, trips}, 30_000)
+  end
+
   def query_stop(id, query) do
     inst = Configuration.get_source!(id)
     res = Storage.get_upcoming_arrivals_for_stop(id, query.stop) |> Storage.fix_arrival_times
@@ -197,8 +209,20 @@ defmodule RoomGtfs.Worker do
     {:reply, r, state}
   end
 
-  def handle_call(_msg, _from, state) do
-    {:reply, :ok, state}
+  def handle_call({:query_vehicle_positions, trips}, _from, state) do
+    # Return vehicle positions for specific trips
+    r =
+      try do
+        GenServer.call(state.child_rt, {:query_vehicle_positions, trips})
+      catch
+        :exit, _ ->
+          IO.puts("timeout? exit? (vehicle positions)")
+          []
+      after
+        []
+      end
+
+    {:reply, r, state}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -270,6 +294,32 @@ defmodule RoomGtfs.Worker.RT do
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
+  # Helper function to extract vehicle positions from protobuf data
+  defp extract_vehicle_positions(data_vp) do
+    case data_vp do
+      nil ->
+        []
+      
+      %{entity: entities} ->
+        entities
+        |> Enum.filter(fn entity -> entity.vehicle && entity.vehicle.position end)
+        |> Enum.map(fn entity ->
+          %{
+            vehicle_id: entity.vehicle.vehicle.id,
+            trip_id: if(entity.vehicle.trip, do: entity.vehicle.trip.trip_id, else: nil),
+            route_id: if(entity.vehicle.trip, do: entity.vehicle.trip.route_id, else: nil),
+            latitude: entity.vehicle.position.latitude,
+            longitude: entity.vehicle.position.longitude,
+            bearing: entity.vehicle.position.bearing,
+            timestamp: entity.vehicle.timestamp
+          }
+        end)
+        
+      _ ->
+        []
+    end
+  end
+
   def fetch_rt_url(url) do
     case HTTPoison.get(url, [], follow_redirect: true) do
       {:ok, result} -> {:ok, try do
@@ -337,7 +387,26 @@ defmodule RoomGtfs.Worker.RT do
               val ->
                 case fetch_rt_url(val) do
                   {:ok, data_vp} ->
-                    state |> Map.put(:rt_vp, data_vp)
+                    new_state = state |> Map.put(:rt_vp, data_vp)
+                    
+                    # Broadcast vehicle position updates
+                    vehicles = extract_vehicle_positions(data_vp)
+                    
+                    # Broadcast to specific source channel for source page
+                    Phoenix.PubSub.broadcast(
+                      RoomSanctum.PubSub, 
+                      "gtfs_vehicle_positions:#{state.id}", 
+                      {:vehicle_positions_updated, state.id, vehicles}
+                    )
+                    
+                    # Also broadcast to general channel for query pages
+                    Phoenix.PubSub.broadcast(
+                      RoomSanctum.PubSub, 
+                      "gtfs_vehicle_positions", 
+                      {:vehicle_positions_updated, vehicles}
+                    )
+                    
+                    new_state
 
                   {:error, error} ->
                     Logger.info(
@@ -379,6 +448,61 @@ defmodule RoomGtfs.Worker.RT do
           end)
 
         {:reply, relevant_trips, state}
+    end
+  end
+
+  def handle_call(:query_vehicle_positions, _from, state) do
+    # Return all vehicle positions
+    case state.rt_vp do
+      nil ->
+        {:reply, [], state}
+      
+      _otherwise ->
+        vehicles = state.rt_vp.entity
+        |> Enum.filter(fn entity -> entity.vehicle && entity.vehicle.position end)
+        |> Enum.map(fn entity ->
+          %{
+            vehicle_id: entity.vehicle.vehicle.id,
+            trip_id: if(entity.vehicle.trip, do: entity.vehicle.trip.trip_id, else: nil),
+            route_id: if(entity.vehicle.trip, do: entity.vehicle.trip.route_id, else: nil),
+            latitude: entity.vehicle.position.latitude,
+            longitude: entity.vehicle.position.longitude,
+            bearing: entity.vehicle.position.bearing,
+            timestamp: entity.vehicle.timestamp
+          }
+        end)
+        
+        {:reply, vehicles, state}
+    end
+  end
+
+  def handle_call({:query_vehicle_positions, trips}, _from, state) do
+    # Return vehicle positions for specific trips
+    case state.rt_vp do
+      nil ->
+        {:reply, [], state}
+      
+      _otherwise ->
+        vehicles = state.rt_vp.entity
+        |> Enum.filter(fn entity -> 
+          entity.vehicle && 
+          entity.vehicle.position &&
+          entity.vehicle.trip &&
+          Enum.member?(trips, entity.vehicle.trip.trip_id)
+        end)
+        |> Enum.map(fn entity ->
+          %{
+            vehicle_id: entity.vehicle.vehicle.id,
+            trip_id: entity.vehicle.trip.trip_id,
+            route_id: entity.vehicle.trip.route_id,
+            latitude: entity.vehicle.position.latitude,
+            longitude: entity.vehicle.position.longitude,
+            bearing: entity.vehicle.position.bearing,
+            timestamp: entity.vehicle.timestamp
+          }
+        end)
+        
+        {:reply, vehicles, state}
     end
   end
 end
