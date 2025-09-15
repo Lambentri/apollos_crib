@@ -236,6 +236,71 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
+  def handle_event("add-query-from-map", %{"station_id" => station_id, "name" => name, "type" => type}, socket) do
+    case {socket.assigns.source.type, type} do
+      {:gbfs, "station"} -> 
+        Configuration.create_query(
+          %{
+            user_id: socket.assigns.current_user.id,
+            source_id: socket.assigns.source.id,
+            name: "#{name} - Station Query",
+            query: %{"stop_id" => station_id, "__type__" => "gbfs"},
+            public: true
+          }) |> IO.inspect
+          
+      {:gbfs, "area"} ->
+        # For free bike area queries, create a radius-based query around the bike location
+        # We'll use a default 500m radius, but this could be made configurable
+        bike = Enum.find(socket.assigns.free_bikes, &(&1.bike_id == station_id))
+        if bike do
+          Configuration.create_query(
+            %{
+              user_id: socket.assigns.current_user.id,
+              source_id: socket.assigns.source.id,
+              name: "Free Bikes around #{bike.lat}, #{bike.lon}",
+              query: %{
+                "lat" => bike.lat,
+                "lng" => bike.lon,
+                "radius" => 500,  # 500 meter radius
+                "__type__" => "gbfs"
+              },
+              public: true
+            }) |> IO.inspect
+        end
+        
+      {:gtfs, "stop"} ->
+        Configuration.create_query(
+          %{
+            user_id: socket.assigns.current_user.id,
+            source_id: socket.assigns.source.id,
+            name: "#{name} - Stop Query",
+            query: %{"stop" => station_id, "__type__" => "gtfs"},
+            public: true
+          }) |> IO.inspect
+          
+      {_, "query"} ->
+        # For duplicating existing queries, find the original and copy it
+        original_query = Enum.find(socket.assigns.queries, &(&1.id == String.to_integer(station_id)))
+        if original_query do
+          Configuration.create_query(
+            %{
+              user_id: socket.assigns.current_user.id,
+              source_id: socket.assigns.source.id,
+              name: "Copy of #{original_query.name}",
+              query: original_query.query,
+              public: true
+            }) |> IO.inspect
+        end
+        
+      _ -> 
+        IO.inspect("Unhandled query creation for type: #{type}, source: #{socket.assigns.source.type}")
+    end
+    
+    # Show a temporary success message or update
+    {:noreply, socket |> put_flash(:info, "Query created successfully!")}
+  end
+
+  @impl true
   def handle_event("select-foci", %{"foci" => foci, "distance" => distance} = data, socket) do
     IO.inspect(data)
     [lat, lon] = foci |> String.split(",") |> Enum.map(&String.to_float/1)

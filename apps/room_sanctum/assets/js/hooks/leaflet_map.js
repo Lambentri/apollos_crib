@@ -405,6 +405,21 @@ const LeafletMap = {
     const popupContent = this.createFreeBikePopupContent(bike);
     marker.bindPopup(popupContent);
 
+    // Add event listener for the add query button after popup opens
+    marker.on('popupopen', (e) => {
+      const popup = e.popup;
+      const addQueryBtn = popup.getElement().querySelector('.add-area-query-btn');
+      if (addQueryBtn) {
+        addQueryBtn.addEventListener('click', () => {
+          this.pushEvent('add-query-from-map', {
+            station_id: bike.bike_id,
+            name: 'Free Bike Area Query',
+            type: 'area'
+          });
+        });
+      }
+    });
+
     return marker;
   },
   
@@ -418,6 +433,21 @@ const LeafletMap = {
     // Create popup content
     const popupContent = this.createStationPopupContent(station);
     marker.bindPopup(popupContent);
+
+    // Add event listener for the add query button after popup opens
+    marker.on('popupopen', (e) => {
+      const popup = e.popup;
+      const addQueryBtn = popup.getElement().querySelector('.add-query-btn');
+      if (addQueryBtn) {
+        addQueryBtn.addEventListener('click', () => {
+          this.pushEvent('add-query-from-map', {
+            station_id: station.station_id,
+            name: station.name || 'Station',
+            type: 'station'
+          });
+        });
+      }
+    });
 
     return marker;
   },
@@ -659,9 +689,21 @@ const LeafletMap = {
           </div>
         ` : ''}
         
-        <div class="text-xs text-gray-500">
+        <div class="text-xs text-gray-500 mb-2">
           <i class="fa-solid fa-location-dot mr-1"></i>
           ${bike.lat.toFixed(4)}, ${bike.lng.toFixed(4)}
+        </div>
+        
+        <div class="flex justify-center mt-2">
+          <button 
+            class="add-area-query-btn btn btn-sm btn-secondary text-xs px-3 py-1 rounded-md bg-green-600 hover:bg-green-700 text-white transition-colors"
+            data-bike-id="${bike.bike_id}"
+            data-query-type="area"
+            title="Create an area query around this bike location"
+          >
+            <i class="fa-solid fa-plus mr-1"></i>
+            Add Area Query
+          </button>
         </div>
       </div>
     `;
@@ -751,9 +793,21 @@ const LeafletMap = {
           </div>
         ` : ''}
         
-        <div class="text-xs text-gray-500">
+        <div class="text-xs text-gray-500 mb-2">
           <i class="fa-solid fa-location-dot mr-1"></i>
           ${station.lat.toFixed(4)}, ${station.lng.toFixed(4)}
+        </div>
+        
+        <div class="flex justify-center mt-2">
+          <button 
+            class="add-query-btn btn btn-sm btn-primary text-xs px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            data-station-id="${station.station_id}"
+            data-station-name="${(station.name || 'Station').replace(/"/g, '&quot;')}"
+            data-query-type="station"
+          >
+            <i class="fa-solid fa-plus mr-1"></i>
+            Add Query
+          </button>
         </div>
       </div>
     `;
@@ -789,9 +843,19 @@ const LeafletMap = {
           </div>
         ` : ''}
         
-        <div class="text-xs text-gray-500">
+        <div class="text-xs text-gray-500 mb-2">
           <i class="fa-solid fa-location-dot mr-1"></i>
           ${query.lat.toFixed(4)}, ${query.lng.toFixed(4)}
+        </div>
+        
+        <div class="flex justify-center mt-2">
+          <button 
+            class="btn btn-sm btn-primary text-xs px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            onclick="window.liveSocket.execJS(this, [['push', {event: 'add-query-from-map', value: {station_id: '${query.id}', name: '${query.name.replace(/'/g, "\\'")}', type: 'query'}}]])"
+          >
+            <i class="fa-solid fa-plus mr-1"></i>
+            Duplicate Query
+          </button>
         </div>
       </div>
     `;
