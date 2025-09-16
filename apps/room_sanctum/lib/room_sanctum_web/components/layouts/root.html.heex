@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="her">
+<html lang="en">
 <head>
   <meta charset="utf-8"/>
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
@@ -10,6 +10,47 @@
   "/assets/app.css")}/>
   <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn,
   "/assets/app.js")}></script>
+  <script>
+    (() => {
+      const setTheme = (theme) => {
+        if (theme === "system") {
+          localStorage.removeItem("apollos:theme");
+          // Remove theme attribute to let system preference take over
+          document.documentElement.removeAttribute("data-theme");
+          // Apply system theme based on media query
+          const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'lofi';
+          document.documentElement.setAttribute("data-theme", systemTheme);
+        } else {
+          localStorage.setItem("apollos:theme", theme);
+          document.documentElement.setAttribute("data-theme", theme);
+        }
+      };
+
+      // Apply saved theme or system preference on page load
+      if (!document.documentElement.hasAttribute("data-theme")) {
+        setTheme(localStorage.getItem("apollos:theme") || "system");
+      }
+
+      // Listen for cross-tab theme changes
+      window.addEventListener("storage", (e) => {
+        if (e.key === "apollos:theme") {
+          setTheme(e.newValue || "system");
+        }
+      });
+      
+      // Listen for theme change events from components
+      window.addEventListener("phx:set-theme", (e) => {
+        setTheme(e.target.dataset.phxTheme || e.detail.theme);
+      });
+
+      // Listen for system theme changes
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (!localStorage.getItem("apollos:theme")) {
+          setTheme("system");
+        }
+      });
+    })();
+  </script>
 </head>
 <body>
 <div class="p-2">

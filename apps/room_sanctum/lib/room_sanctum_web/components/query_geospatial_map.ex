@@ -115,7 +115,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       has_query_point = extract_from_query_data(query) != false
       
       result = has_geom || has_source_point || has_query_point
-      IO.inspect({query.id, query.name, has_geom, has_source_point, has_query_point, result}, label: "Query mappability check")
+#      IO.inspect({query.id, query.name, has_geom, has_source_point, has_query_point, result}, label: "Query mappability check")
       result
     end)
     
@@ -150,7 +150,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     {lat, lng} = extract_coordinates(query)
     
     # Debug log the coordinate extraction
-    IO.inspect({query.id, query.name, lat, lng}, label: "Map coordinates for query")
+#    IO.inspect({query.id, query.name, lat, lng}, label: "Map coordinates for query")
     
     tint = cond do
       query.meta && query.meta.tint -> query.meta.tint

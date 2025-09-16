@@ -12,7 +12,7 @@ defmodule RoomSanctum.UserLiveAuth do
       )
 
     if socket.assigns.current_user == nil do
-      {:halt, redirect(socket, to: "/users/login")}
+      {:halt, redirect(socket, to: "/users/log_in")}
     else
       {:cont, socket}
     end

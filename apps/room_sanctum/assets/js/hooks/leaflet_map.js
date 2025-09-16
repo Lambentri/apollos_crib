@@ -371,6 +371,21 @@ const LeafletMap = {
     const popupContent = this.createPopupContent(query);
     marker.bindPopup(popupContent);
 
+    // Add event listener for the duplicate query button after popup opens
+    marker.on('popupopen', (e) => {
+      const popup = e.popup;
+      const duplicateQueryBtn = popup.getElement().querySelector('.duplicate-query-btn');
+      if (duplicateQueryBtn) {
+        duplicateQueryBtn.addEventListener('click', () => {
+          this.pushEvent('add-query-from-map', {
+            station_id: query.id.toString(),
+            name: query.name,
+            type: 'query'
+          });
+        });
+      }
+    });
+
     // Add click handler for query navigation
     marker.on('click', () => {
       // You can emit events back to LiveView if needed
@@ -390,6 +405,21 @@ const LeafletMap = {
     // Create popup content
     const popupContent = this.createVehiclePopupContent(vehicle);
     marker.bindPopup(popupContent);
+
+    // Add event listener for vehicle query button after popup opens (if it's a GTFS vehicle)
+    marker.on('popupopen', (e) => {
+      const popup = e.popup;
+      const addVehicleQueryBtn = popup.getElement().querySelector('.add-vehicle-query-btn');
+      if (addVehicleQueryBtn) {
+        addVehicleQueryBtn.addEventListener('click', () => {
+          this.pushEvent('add-query-from-map', {
+            station_id: vehicle.vehicle_id,
+            name: `Vehicle ${vehicle.vehicle_id} Position Query`,
+            type: 'vehicle'
+          });
+        });
+      }
+    });
 
     return marker;
   },
@@ -535,9 +565,21 @@ const LeafletMap = {
           </div>
         ` : ''}
         
-        <div class="text-xs text-gray-500">
+        <div class="text-xs text-gray-500 mb-2">
           <i class="fa-solid fa-location-dot mr-1"></i>
           ${vehicle.lat.toFixed(4)}, ${vehicle.lng.toFixed(4)}
+        </div>
+        
+        <div class="flex justify-center mt-2">
+          <button 
+            class="add-vehicle-query-btn btn btn-sm btn-primary text-xs px-3 py-1 rounded-md bg-orange-600 hover:bg-orange-700 text-white transition-colors"
+            data-vehicle-id="${vehicle.vehicle_id}"
+            data-query-type="vehicle"
+            title="Create a vehicle position query for this vehicle"
+          >
+            <i class="fa-solid fa-plus mr-1"></i>
+            Add Vehicle Query
+          </button>
         </div>
       </div>
     `;
@@ -850,8 +892,10 @@ const LeafletMap = {
         
         <div class="flex justify-center mt-2">
           <button 
-            class="btn btn-sm btn-primary text-xs px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors"
-            onclick="window.liveSocket.execJS(this, [['push', {event: 'add-query-from-map', value: {station_id: '${query.id}', name: '${query.name.replace(/'/g, "\\'")}', type: 'query'}}]])"
+            class="duplicate-query-btn btn btn-sm btn-primary text-xs px-3 py-1 rounded-md bg-blue-600 hover:bg-blue-700 text-white transition-colors"
+            data-query-id="${query.id}"
+            data-query-name="${query.name.replace(/"/g, '&quot;')}"
+            data-query-type="query"
           >
             <i class="fa-solid fa-plus mr-1"></i>
             Duplicate Query

@@ -105,7 +105,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   end
 
   def handle_event("set-tint", %{"tint"=> tint}, socket) do
-    IO.inspect({"set-tint", tint, socket.assigns.tint})
+#    IO.inspect({"set-tint", tint, socket.assigns.tint})
     case socket.assigns.tint == tint do
       true -> {:noreply, socket |> assign(:tint, nil) |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id), reset: true)}
       false -> {:noreply, socket |> assign(:tint, tint) |> stream(:cfg_sources, list_cfg_sources(socket.assigns.current_user.id, tint), reset: true)}

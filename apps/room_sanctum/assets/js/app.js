@@ -38,6 +38,73 @@ let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("
 
 let Hooks = {};
 
+// Theme detection and UI updates
+Hooks.ThemeDetector = {
+  mounted() {
+    this.updateThemeIndicators();
+    
+    // Listen for theme changes
+    window.addEventListener("phx:set-theme", () => {
+      setTimeout(() => this.updateThemeIndicators(), 100);
+    });
+    
+    // Listen for storage changes (cross-tab)
+    window.addEventListener("storage", (e) => {
+      if (e.key === "apollos:theme") {
+        setTimeout(() => this.updateThemeIndicators(), 100);
+      }
+    });
+    
+    // Listen for system theme changes
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+      if (!localStorage.getItem("apollos:theme")) {
+        setTimeout(() => this.updateThemeIndicators(), 100);
+      }
+    });
+  },
+  
+  updateThemeIndicators() {
+    const currentTheme = this.getCurrentTheme();
+    const themeCards = this.el.querySelectorAll('.theme-card');
+    
+    themeCards.forEach(card => {
+      const themeName = card.getAttribute('data-theme-name');
+      const indicator = card.querySelector('.theme-indicator');
+      
+      if (themeName === currentTheme) {
+        // Show as current theme
+        card.classList.add('border-blue-500', 'ring-2', 'ring-blue-500');
+        card.classList.remove('border-gray-200', 'dark:border-gray-700');
+        indicator.classList.remove('hidden');
+      } else {
+        // Show as selectable theme
+        card.classList.remove('border-blue-500', 'ring-2', 'ring-blue-500');
+        card.classList.add('border-gray-200', 'dark:border-gray-700');
+        indicator.classList.add('hidden');
+      }
+    });
+  },
+  
+  getCurrentTheme() {
+    const savedTheme = localStorage.getItem("apollos:theme");
+    if (savedTheme) {
+      return savedTheme;
+    }
+    
+    // Check if system theme is being used
+    const currentDataTheme = document.documentElement.getAttribute("data-theme");
+    if (!savedTheme && currentDataTheme) {
+      // This means system theme is active, determine what it resolved to
+      const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      if (currentDataTheme === (isDark ? 'dark' : 'lofi')) {
+        return 'system';
+      }
+    }
+    
+    return currentDataTheme || 'system';
+  }
+};
+
 // Add our new LeafletMap hook
 Hooks.LeafletMap = LeafletMap;
 Hooks.MapPush = {

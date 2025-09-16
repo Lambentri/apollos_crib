@@ -167,7 +167,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
-    IO.inspect({type, id})
+#    IO.inspect({type, id})
 
     stats =
       case type do
@@ -278,6 +278,17 @@ defmodule RoomSanctumWeb.SourceLive.Show do
             public: true
           }) |> IO.inspect
           
+      {:gtfs, "vehicle"} ->
+        # For GTFS vehicle position queries, create a vehicle tracking query
+        Configuration.create_query(
+          %{
+            user_id: socket.assigns.current_user.id,
+            source_id: socket.assigns.source.id,
+            name: "#{name}",
+            query: %{"vehicle_id" => station_id, "__type__" => "gtfs_vehicle_positions"},
+            public: true
+          }) |> IO.inspect
+          
       {_, "query"} ->
         # For duplicating existing queries, find the original and copy it
         original_query = Enum.find(socket.assigns.queries, &(&1.id == String.to_integer(station_id)))
@@ -330,7 +341,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   def handle_event("set-tint", %{"tint"=> tint}, socket) do
-    IO.inspect({"set-tint", tint, socket.assigns.tint})
+#    IO.inspect({"set-tint", tint, socket.assigns.tint})
     case socket.assigns.tint == tint do
       true -> {:noreply, socket |> assign(:tint, nil)}
       false -> {:noreply, socket |> assign(:tint, tint)}
