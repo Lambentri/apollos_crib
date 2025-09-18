@@ -52,7 +52,7 @@ defmodule RoomGtfs.Worker do
   end
 
   def get_current_realtime(name, trips, stop) do
-    IO.inspect({name, trips, stop})
+#    IO.inspect({name, trips, stop})
     "gtfs-rt#{name}"
     |> via_tuple
     |> GenServer.call({:query_realtime, trips, stop}, 30_000)

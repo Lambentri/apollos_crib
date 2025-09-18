@@ -21,7 +21,7 @@ services:
       # HTTP management UI
       - '15672:15672'
       # MQTT
-      - '1883:1883'
+#      - '1883:1883'
     environment:
       - RABBITMQ_DEFAULT_USER=hermes
       - RABBITMQ_DEFAULT_PASS=hermes
