@@ -75,7 +75,9 @@ defmodule RoomSanctumWeb.Router do
 
     live "/cfg/focis", FociLive.Index, :index
     live "/cfg/focis/new", FociLive.Index, :new
+    live "/cfg/focis/new_coords", FociLive.Index, :new_coords
     live "/cfg/focis/:id/edit", FociLive.Index, :edit
+    live "/cfg/focis/:id/edit_coords", FociLive.Index, :edit_coords
     live "/cfg/focis/:id", FociLive.Show, :show
     live "/cfg/focis/:id/show/edit", FociLive.Show, :edit
 

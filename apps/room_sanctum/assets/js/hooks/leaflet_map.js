@@ -1,6 +1,7 @@
 /**
  * Leaflet Map Hook for Phoenix LiveView
  * Displays queries with geospatial data and real-time vehicle positions on an interactive map
+ * Optimized for handling thousands of markers with Canvas renderer and data compression
  */
 
 const LeafletMap = {
@@ -10,11 +11,17 @@ const LeafletMap = {
     this.isUpdating = false;
     this.vehicleMarkers = new Map(); // Track vehicle markers for smooth updates
     
+    // Initialize canvas renderer for performance
+    this.canvasRenderer = L.canvas({ padding: 0.5 });
+    
     // Ensure the container has proper dimensions before initializing
     setTimeout(() => {
       this.initializeMap();
       this.updateMarkers();
     }, 100);
+    
+    // Add event handlers for streaming data
+    this.setupStreamHandlers();
   },
 
   updated() {
@@ -50,12 +57,18 @@ const LeafletMap = {
   initializeMap() {
     // Only clear if we don't already have a map instance
     if (this.map) {
+      console.log('Map already exists, removing...');
       this.map.remove();
       this.map = null;
     }
     
-    // Create a dedicated map container div instead of clearing everything
+    // Clean up any existing map containers to prevent duplicates
+    const existingMapContainers = this.el.querySelectorAll('.leaflet-map-container');
+    existingMapContainers.forEach(container => container.remove());
+    
+    // Create a dedicated map container div  
     const mapContainer = document.createElement('div');
+    mapContainer.className = 'leaflet-map-container';
     mapContainer.style.cssText = 'width: 100%; height: 100%; position: absolute; top: 0; left: 0; z-index: 10;';
     
     // Hide the loading state by setting it behind the map
@@ -89,25 +102,37 @@ const LeafletMap = {
     
     // Mark as initialized
     this.isInitialized = true;
+    
+    console.log('Map initialized successfully');
   },
 
   updateMarkers() {
     // Skip if map isn't properly initialized
-    if (!this.map || !this.isInitialized || !this.queriesLayer || !this.vehiclesLayer || !this.freeBikesLayer) {
+    if (!this.map || !this.isInitialized || !this.queriesLayer || !this.vehiclesLayer || !this.freeBikesLayer || !this.stationsLayer) {
       console.log('Skipping updateMarkers - map not ready');
       return;
     }
 
+    // Prevent concurrent updates that can cause flashing
+    if (this.isUpdating) {
+      console.log('Already updating markers, skipping...');
+      return;
+    }
+
+    this.isUpdating = true;
+
     // Get data from data attributes with error handling
-    let queriesData, vehiclesData, freeBikesData, stationsData, selectedTint;
+    let queriesData, vehiclesData, freeBikesData, stationsData, selectedTint, useStreaming;
     try {
       queriesData = JSON.parse(this.el.dataset.queries || '[]');
       vehiclesData = JSON.parse(this.el.dataset.vehicles || '[]');
       freeBikesData = JSON.parse(this.el.dataset.freeBikes || '[]');
       stationsData = JSON.parse(this.el.dataset.stations || '[]');
       selectedTint = this.el.dataset.selectedTint;
+      useStreaming = this.el.dataset.useStreaming === "true";
     } catch (e) {
       console.error('Error parsing map data:', e);
+      this.isUpdating = false;
       return;
     }
 
@@ -116,30 +141,38 @@ const LeafletMap = {
       vehicles: vehiclesData.length,
       freeBikes: freeBikesData.length,
       stations: stationsData.length,
-      selectedTint
+      selectedTint,
+      useStreaming
     });
 
-    // Debug station data structure
-    if (stationsData.length > 0) {
-      console.log('First station data sample:', stationsData[0]);
+    // Only update query markers from data attributes if not using streaming
+    // When streaming is enabled, query markers are added via streaming events
+    if (!useStreaming && queriesData.length > 0) {
+      this.updateQueryMarkers(queriesData, selectedTint);
+    } else if (useStreaming) {
+      console.log('Query markers will be added via streaming events');
     }
-
-    // Update query markers
-    this.updateQueryMarkers(queriesData, selectedTint);
     
-    // Update vehicle markers with smooth transitions
+    // Always update vehicle markers (these aren't streamed)
     this.updateVehicleMarkers(vehiclesData);
     
-    // Update free bike markers
+    // Always update free bike markers (these aren't streamed)  
     this.updateFreeBikeMarkers(freeBikesData);
     
-    // Update station markers
+    // Always update station markers (these aren't streamed)
     this.updateStationMarkers(stationsData);
+
+    this.isUpdating = false;
   },
 
   updateQueryMarkers(queriesData, selectedTint) {
     // Clear existing query markers first
     if (this.queriesLayer) {
+      // Store current map state before clearing
+      const currentCenter = this.map.getCenter();
+      const currentZoom = this.map.getZoom();
+      
+      console.log('Clearing', this.queriesLayer.getLayers().length, 'query markers');
       this.queriesLayer.clearLayers();
     }
 
@@ -188,6 +221,11 @@ const LeafletMap = {
   updateVehicleMarkers(vehiclesData) {
     if (vehiclesData.length === 0) {
       // Clear all vehicle markers if no vehicles
+      // Store current map state before clearing
+      const currentCenter = this.map.getCenter();
+      const currentZoom = this.map.getZoom();
+      
+      console.log('Clearing', this.vehiclesLayer.getLayers().length, 'vehicle markers');
       this.vehiclesLayer.clearLayers();
       this.vehicleMarkers.clear();
       return;
@@ -248,6 +286,11 @@ const LeafletMap = {
   updateFreeBikeMarkers(freeBikesData) {
     // Clear existing free bike markers
     if (this.freeBikesLayer) {
+      // Store current map state before clearing  
+      const currentCenter = this.map.getCenter();
+      const currentZoom = this.map.getZoom();
+      
+      console.log('Clearing', this.freeBikesLayer.getLayers().length, 'free bike markers');
       this.freeBikesLayer.clearLayers();
     }
 
@@ -289,6 +332,11 @@ const LeafletMap = {
   updateStationMarkers(stationsData) {
     // Clear existing station markers
     if (this.stationsLayer) {
+      // Store current map state before clearing
+      const currentCenter = this.map.getCenter();
+      const currentZoom = this.map.getZoom();
+      
+      console.log('Clearing', this.stationsLayer.getLayers().length, 'station markers');
       this.stationsLayer.clearLayers();
     }
 
@@ -931,6 +979,153 @@ const LeafletMap = {
     };
     
     return colorMap[tint] || '#6B7280';
+  },
+
+  // High-performance streaming data handlers
+  setupStreamHandlers() {
+    // Handle streaming marker data from server
+    this.handleEvent("add_markers_batch", (data) => {
+      this.addMarkersBatch(this.decompressData(data.compressed_data));
+    });
+
+    this.handleEvent("add_project", (project) => {
+      this.addProjectMarker(project);
+    });
+
+    this.handleEvent("clear_markers", () => {
+      this.clearAllMarkers();
+    });
+  },
+
+  // Decompress zlib compressed + base64 encoded data from server
+  decompressData(compressedData) {
+    try {
+      if (typeof compressedData === 'string') {
+        // Import compression libraries dynamically
+        const pako = window.pako;
+        const Base64 = window.Base64;
+        
+        if (pako && Base64) {
+          // Full decompression with pako library
+          const base64Decoded = Base64.atob(compressedData);
+          const charCodes = [];
+          for (let i = 0; i < base64Decoded.length; i++) {
+            charCodes.push(base64Decoded.charCodeAt(i));
+          }
+          const inflatedData = pako.inflate(charCodes, { to: 'string' });
+          return JSON.parse(inflatedData);
+        } else {
+          // Fallback: assume it's plain JSON
+          return JSON.parse(compressedData);
+        }
+      }
+      
+      return compressedData;
+    } catch (error) {
+      console.error('Error decompressing data:', error);
+      return [];
+    }
+  },
+
+  // Optimized batch marker addition using canvas renderer
+  addMarkersBatch(projects) {
+    if (!this.map || !projects || projects.length === 0) {
+      return;
+    }
+
+    console.log(`Adding ${projects.length} markers in batch`);
+    
+    // Use requestAnimationFrame to prevent UI blocking
+    const addBatch = (startIndex) => {
+      const batchSize = 100; // Process 100 markers at a time
+      const endIndex = Math.min(startIndex + batchSize, projects.length);
+      
+      for (let i = startIndex; i < endIndex; i++) {
+        const project = projects[i];
+        if (project.lat && project.lng && project.lat !== 0 && project.lng !== 0) {
+          this.addOptimizedMarker(project);
+        }
+      }
+      
+      // Continue with next batch if there are more markers
+      if (endIndex < projects.length) {
+        requestAnimationFrame(() => addBatch(endIndex));
+      } else {
+        console.log(`Finished adding ${projects.length} markers`);
+      }
+    };
+    
+    // Start the batch processing
+    requestAnimationFrame(() => addBatch(0));
+  },
+
+  // Create high-performance marker using Canvas renderer
+  addOptimizedMarker(project) {
+    const marker = L.circleMarker(
+      [project.lat, project.lng],
+      {
+        renderer: this.canvasRenderer,
+        radius: 2,
+        weight: 0,
+        color: this.getTintColor(project.tint) || '#ef4444',
+        fillColor: this.getTintColor(project.tint) || '#ef4444',
+        fillOpacity: 0.8,
+        fill: true,
+      }
+    ).addTo(this.queriesLayer);
+    
+    // Add popup if needed (but keep it lightweight)
+    if (project.name) {
+      marker.bindPopup(`
+        <div class="p-2">
+          <h4 class="font-semibold">${project.name}</h4>
+          <p class="text-sm text-gray-600">${project.lat.toFixed(4)}, ${project.lng.toFixed(4)}</p>
+        </div>
+      `);
+    }
+    
+    return marker;
+  },
+
+  // Add single project marker (for real-time streaming)
+  addProjectMarker(project) {
+    if (!this.map || !project.lat || !project.lng) {
+      return;
+    }
+    
+    this.addOptimizedMarker(project);
+  },
+
+  // Clear all markers for performance
+  clearAllMarkers() {
+    if (this.queriesLayer) {
+      this.queriesLayer.clearLayers();
+    }
+    if (this.vehiclesLayer) {
+      this.vehiclesLayer.clearLayers();
+    }
+    if (this.freeBikesLayer) {
+      this.freeBikesLayer.clearLayers();
+    }
+    if (this.stationsLayer) {
+      this.stationsLayer.clearLayers();
+    }
+    
+    // Clear vehicle markers map
+    this.vehicleMarkers.clear();
+  },
+
+  // Utility method to convert array data to object (for compressed data)
+  objectifyProject(projectArray) {
+    // Convert [name, source, type, lat, lng] to object
+    // Adjust indices based on your data structure
+    return {
+      name: projectArray[0],
+      source_name: projectArray[1], 
+      type: projectArray[2],
+      lat: projectArray[3],
+      lng: projectArray[4]
+    };
   }
 };
 

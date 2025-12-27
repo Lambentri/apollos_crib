@@ -89,6 +89,7 @@ defmodule RoomSanctum.MixProject do
       # hermes
       #      {:room_hermes, in_umbrella: true}
       {:amqp, "~> 4.1"},
+      {:amqp_client, "~> 4.2"},
       {:rabbit_common, "~> 4.0"},
       {:sentry, "~> 8.0"},
 

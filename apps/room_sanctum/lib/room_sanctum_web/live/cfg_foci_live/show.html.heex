@@ -18,22 +18,69 @@
     <h2 class="text-2xl font-bold text-accent-300"><%= @foci.name %>
     </h2>
   </div>
-  <div class="flex">
-    <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
-      <div class="card-body">
-        <h3 class="card-title">Place</h3>
-        <div class="mt-4">
-          <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
-                integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
-                crossorigin=""/>
-          <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
-                  integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
-                  crossorigin=""></script>
-
-          <div id="show-map-container" phx-update="ignore">
-            <div id="show-map" style="height: 300px; width: 100%" phx-hook="mkShowMap" data-latlng={@foci |> getlatlng} class="rounded-sm"></div>
+  <div class="flex flex-col gap-4">
+    <!-- Coordinates Display Card -->
+    <%= if @foci.place do %>
+      <div class="card card-compact w-full bg-base-100 shadow-xl">
+        <div class="card-body">
+          <h3 class="card-title">Coordinates</h3>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <p class="text-sm font-semibold text-gray-600">Latitude</p>
+              <p class="text-lg font-mono"><%= elem(@foci.place.coordinates, 0) |> Float.round(6) %></p>
+            </div>
+            <div>
+              <p class="text-sm font-semibold text-gray-600">Longitude</p>
+              <p class="text-lg font-mono"><%= elem(@foci.place.coordinates, 1) |> Float.round(6) %></p>
+            </div>
+          </div>
+          <div class="mt-2">
+            <a 
+              href={"https://www.openstreetmap.org/?mlat=#{elem(@foci.place.coordinates, 0)}&mlon=#{elem(@foci.place.coordinates, 1)}#map=15/#{elem(@foci.place.coordinates, 0)}/#{elem(@foci.place.coordinates, 1)}"}
+              target="_blank"
+              class="link link-primary text-sm"
+            >
+              <i class="fa-solid fa-external-link"></i> View on OpenStreetMap
+            </a>
+            <span class="mx-2">•</span>
+            <a 
+              href={"https://www.google.com/maps?q=#{elem(@foci.place.coordinates, 0)},#{elem(@foci.place.coordinates, 1)}"}
+              target="_blank"
+              class="link link-primary text-sm"
+            >
+              <i class="fa-solid fa-external-link"></i> View on Google Maps
+            </a>
           </div>
         </div>
+      </div>
+    <% end %>
+    
+    <!-- Map Preview Card -->
+    <div class="card card-compact w-full bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h3 class="card-title">Location Preview</h3>
+        <%= if @foci.place do %>
+          <div class="mt-4">
+            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css"
+                  integrity="sha512-hoalWLoI8r4UszCkZ5kL8vayOGVae1oxXe/2A4AO6J9+580uKHDO3JdHb7NzwwzK5xr/Fs0W40kiNHxM9vyTtQ=="
+                  crossorigin=""/>
+            <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"
+                    integrity="sha512-BB3hKbKWOc9Ez/TAwyWxNXeoV9c1v6FIeYiBieIWkpLjauysF18NzgR1MBNBXf8/KABdlkX68nAhlwcDFLGPCQ=="
+                    crossorigin=""></script>
+
+            <div id="show-map-container" phx-update="ignore">
+              <div id="show-map" style="height: 400px; width: 100%" phx-hook="mkShowMap" data-latlng={@foci |> getlatlng} class="rounded-lg border-2 border-base-300"></div>
+            </div>
+            <p class="text-xs text-gray-500 mt-2 italic">
+              <i class="fa-solid fa-info-circle"></i> This is a static preview of the location. Click the links above to explore in a full map application.
+            </p>
+          </div>
+        <% else %>
+          <div class="alert alert-warning">
+            <svg xmlns="http://www.w3.org/2000/svg" class="stroke-current shrink-0 h-6 w-6" fill="none" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+            <span>No coordinates have been set for this foci.</span>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>

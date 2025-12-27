@@ -23,9 +23,21 @@ defmodule RoomSanctumWeb.FociLive.Index do
     |> assign(:foci, Configuration.get_foci!(id))
   end
 
+  defp apply_action(socket, :edit_coords, %{"id" => id}) do
+    socket
+    |> assign(:page_title, "Modify Foci (Coordinates)")
+    |> assign(:foci, Configuration.get_foci!(id))
+  end
+
   defp apply_action(socket, :new, _params) do
     socket
     |> assign(:page_title, "Register Foci")
+    |> assign(:foci, %Foci{})
+  end
+
+  defp apply_action(socket, :new_coords, _params) do
+    socket
+    |> assign(:page_title, "Register Foci (Coordinates)")
     |> assign(:foci, %Foci{})
   end
 
@@ -37,6 +49,11 @@ defmodule RoomSanctumWeb.FociLive.Index do
 
   @impl true
   def handle_info({RoomSanctumWeb.FociLive.FormComponent, {:saved, foci}}, socket) do
+    {:noreply, stream_insert(socket, :focis, foci)}
+  end
+
+  @impl true
+  def handle_info({RoomSanctumWeb.FociLive.FormComponentCoords, {:saved, foci}}, socket) do
     {:noreply, stream_insert(socket, :focis, foci)}
   end
 

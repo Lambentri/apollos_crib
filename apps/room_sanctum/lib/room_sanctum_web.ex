@@ -18,7 +18,7 @@ defmodule RoomSanctumWeb do
   """
 
   def static_paths do
-    ~w(assets fonts images favicon.ico robots.txt)
+    ~w(assets fonts images webfonts favicon.ico robots.txt)
   end
 
   def controller do

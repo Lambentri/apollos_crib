@@ -21,10 +21,24 @@
 // Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "phoenix_html"
 import "@fortawesome/fontawesome-free/js/all"
+
 // Establish Phoenix Socket and LiveView configuration.
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import topbar from "../vendor/topbar"
+
+// Import compression libraries for map data optimization
+import pako from 'pako'
+import { Base64 } from 'js-base64'
+
+// Import Web Components for Leaflet maps
+import './leaflet/leaflet-map'
+import './leaflet/leaflet-marker'
+import './leaflet/leaflet-icon'
+
+// Make compression libraries available globally for leaflet hook
+window.pako = pako;
+window.Base64 = Base64;
 
 // import './leaflet/leaflet-map'
 // import './leaflet/leaflet-marker'
@@ -121,11 +135,12 @@ Hooks.mkMap = {
         const markers = {}
         let searchMarker = null;
 
+        let coords;
         let latlng = document.getElementById('map').getAttribute('data-latlng')
         if (latlng != null) {
-            let coords = JSON.parse(latlng)
+            coords = JSON.parse(latlng)
         } else {
-            let coords = [42.3736, -71.1097]
+            coords = [42.3736, -71.1097]
         }
 
         var map = L.map('map', {keyboard: true}).setView(coords, 13);
@@ -358,7 +373,11 @@ Hooks.mkShowMap = {
     }
 }
 
-let liveSocket = new LiveSocket("/live", Socket, {params: {_csrf_token: csrfToken}, hooks: Hooks})
+let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+let liveSocket = new LiveSocket("/live", Socket, {
+  params: {_csrf_token: csrfToken},
+  hooks: {...Hooks, LeafletMap, LeafletMapBridge}
+})
 
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#b57979"}, shadowColor: "rgba(0, 0, 0, .3)"})

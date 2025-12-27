@@ -28,31 +28,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions))
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
-    
-    ~H"""
-    <div class={"query-geospatial-map w-full #{@class}"}>
-      <!-- Map container -->
-      <div 
-        id="leaflet-map" 
-        class="w-full border border-gray-300 rounded-lg shadow-sm overflow-hidden"
-        style={"height: #{@height}; width: 100%; max-width: 100%; position: relative; box-sizing: border-box;"}
-        phx-hook="LeafletMap"
-        data-queries={Jason.encode!(@map_queries)}
-        data-vehicles={Jason.encode!(@map_vehicles)}
-        data-free-bikes={Jason.encode!(@map_free_bikes)}
-        data-stations={Jason.encode!(@map_stations)}
-        data-selected-tint={@selected_tint}
-      >
-        <!-- Loading state -->
-        <div class="flex items-center justify-center h-full bg-base-200">
-          <div class="text-center">
-            <i class="fa-solid fa-map text-4xl text-base-content/60 mb-2"></i>
-            <p class="text-base-content/70">Loading map...</p>
-          </div>
-        </div>
-      </div>
-      
-      <!-- Map legend/info -->
+  ~H"""
+  <div class={"query-geospatial-map w-full #{@class}"}>
       <div class="mt-4 bg-base-100 border border-base-300 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-base-content">
