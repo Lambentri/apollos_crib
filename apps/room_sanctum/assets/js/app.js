@@ -48,6 +48,8 @@ import L from 'leaflet'
 import 'leaflet-centermarker'
 import LeafletMap from './hooks/leaflet_map.js'
 
+import LeafletMapBridge from './hooks/leaflet_map_bridge.js'
+
 let csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 
 let Hooks = {};
