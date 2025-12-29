@@ -1,6 +1,7 @@
 defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   use Phoenix.Component
   import RoomSanctumWeb.CoreComponents
+  alias RoomSanctum.Configuration
 
   @doc """
   Renders an interactive Leaflet map showing queries based on their geospatial point data.
@@ -29,7 +30,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
   ~H"""
-  <div class={"query-geospatial-map w-full #{@class}"}>
+    <div class={"query-geospatial-map w-full #{@class}"}>
       <div class="mt-4 bg-base-100 border border-base-300 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-base-content">

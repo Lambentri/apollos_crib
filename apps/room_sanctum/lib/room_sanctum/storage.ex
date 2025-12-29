@@ -6,6 +6,7 @@ defmodule RoomSanctum.Storage do
   import Ecto.Query, warn: false
   import Geo.PostGIS
   alias RoomSanctum.Repo
+  alias RoomSanctum.Configuration
 
   alias RoomSanctum.Storage.GTFS.Agency
   alias RoomSanctum.Storage.GBFS.V1.StationInfo

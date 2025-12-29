@@ -18,7 +18,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     
     {:ok, socket 
      |> assign(:preview, []) 
-     |> assign(:preview_mode, :basic)
+     |> assign(:preview_mode, :raw)
      |> assign(:vehicle_positions, [])}
   end
 
@@ -41,6 +41,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 5000)
+
 
     result =
       case socket.assigns.query.source.type do
@@ -155,8 +156,11 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   end
 
   defp condense(data, {id, type}) do
-    RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+    # For preview, use legacy format without query wrapping
+    RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
   end
+
+  defp page_title(:show), do: "Show Query"
 
   defp get_icon(type) do
     RoomSanctumWeb.IconHelpers.icon(type)

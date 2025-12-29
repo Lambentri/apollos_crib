@@ -338,11 +338,11 @@ use PhoenixHTMLHelpers
     <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
     <div class="card-body textd-left">
     <h2 class="card-title">
-      <p><i class="fa-solid fa-fw fa-cloud-sun"></i> <%= e.name %> </p>
+      <p><i class="fa-solid fa-fw fa-cloud-sun"></i> <%= e |> Map.get(:name) %> </p>
     </h2>
-    <p><%= moon_icon(e.phase) %> &emsp; <%= e.phase %></p>
-    <p><i class="fa-solid fa-fw fa-sun"></i><i class="fa-solid fa-arrows-up-to-line"></i> <%= e.sunrise %></p>
-    <p><i class="fa-solid fa-fw fa-sun"></i><i class="fa-solid fa-arrows-down-to-line"></i> <%= e.sunset %></p>
+    <p><%= moon_icon(e |> Map.get(:phase, :new_moon)) %> &emsp; <%= e |> Map.get(:phase, :new_moon) %></p>
+    <p><i class="fa-solid fa-fw fa-sun"></i><i class="fa-solid fa-arrows-up-to-line"></i> <%= e |> Map.get(:sunrise) %></p>
+    <p><i class="fa-solid fa-fw fa-sun"></i><i class="fa-solid fa-arrows-down-to-line"></i> <%= e |> Map.get(:sunset) %></p>
     </div>
     </div>
     <% end %>

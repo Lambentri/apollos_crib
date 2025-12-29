@@ -104,6 +104,9 @@ defmodule RoomSanctum.Storage.AirNow.HourlyObsData do
       :no2_measured
     ])
   end
+  def compile_pairs(entry) when is_nil(entry) do
+    %{combined: "Pending"}
+  end
 
   def compile_pairs(entry) do
     r = %{combined: ""}

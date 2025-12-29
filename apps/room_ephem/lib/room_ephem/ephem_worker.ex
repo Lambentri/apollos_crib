@@ -18,6 +18,7 @@ defmodule RoomEphem.Worker do
 
   @decorate cacheable(cache: RoomZeus.Cache, opts: [ttl: @ttl])
   def query_ephem(_name, query) do
+    IO.inspect("QEPH")
     foci = Configuration.get_foci!(query.foci_id)
     {lat, lon} = foci.place.coordinates
     lat = normalize_ll(lat)

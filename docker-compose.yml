@@ -21,12 +21,12 @@ services:
       # HTTP management UI
       - '15672:15672'
       # MQTT
-#      - '1883:1883'
+      - '1883:1883'
     environment:
       - RABBITMQ_DEFAULT_USER=hermes
       - RABBITMQ_DEFAULT_PASS=hermes
     volumes:
-      - ./rabbit/rabbit.conf:/etc/rabbitmq/rabbitmq.conf
-#      - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./rabbit/rabbit.conf:/etc/rabbitmq/rabbitmq.conf:Z
+      - ./rabbit/enabled_plugins:/etc/rabbitmq/enabled_plugins:Z
 volumes:
   pgdata: {}

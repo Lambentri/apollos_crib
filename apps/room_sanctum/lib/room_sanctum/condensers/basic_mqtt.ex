@@ -35,7 +35,11 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     unix |> DateTime.from_unix!() |> Timex.Timezone.convert(tz) |> DateTime.to_time()
   end
 
-  def condense({_id, type}, data) do
+  @doc """
+  Condenses data without wrapping (legacy format)
+  """
+  def condense_data({_id, type}, data) when data == [], do: %{}
+  def condense_data({_id, type}, data) do
     #    if type == :gtfs do
     #      IO.inspect({type, data})
     #    end
@@ -113,6 +117,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
 
       :tidal ->
         data
+        |> IO.inspect
         |> Enum.group_by(fn x -> x.type end)
         |> Enum.map(fn {extreme, data} ->
           case data do
@@ -187,5 +192,20 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       :const ->
         data
     end
+  end
+
+  @doc """
+  Condenses data and wraps it with query information
+  """
+  def condense({id, type}, data, query) do
+    condensed_data = condense_data({id, type}, data)
+    
+    %{
+      data: condensed_data,
+      query: %{
+        name: query.name,
+        meta: query.meta || %{}
+      }
+    }
   end
 end

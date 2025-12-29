@@ -82,7 +82,7 @@ defmodule RoomSanctum.Worker.Pythiae do
 #      IO.inspect({DateTime.utc_now(), comparison})
 
       for a <- state.pythiae.ankyra do
-        RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)
+        RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense(current.queries))
       end
 
       {:noreply, state |> Map.put(:vision, current) |> Map.put(:lastpub, DateTime.utc_now())}
@@ -95,7 +95,7 @@ defmodule RoomSanctum.Worker.Pythiae do
     current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
 
     for a <- state.pythiae.ankyra do
-      RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense)
+      RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense(current.queries))
     end
 
     {:noreply, state |> Map.put(:vision, current)}
@@ -105,17 +105,27 @@ defmodule RoomSanctum.Worker.Pythiae do
     current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
 
     for a <- state.pythiae.ankyra do
-      RoomSanctum.Worker.Ankyra.publish_img(a, current.data |> condense)
+      RoomSanctum.Worker.Ankyra.publish_img(a, current.data |> condense(current.queries))
     end
 
     {:noreply, state |> Map.put(:vision, current)}
   end
 
-  defp condense(data) do
+  defp condense(data, queries) do
+    # Create a map of query id to query info for quick lookup
+    query_map = queries |> Enum.map(fn q -> {q.id, q} end) |> Enum.into(%{})
+    
     data
     |> Enum.map(fn {{id, type}, datum} ->
-      #      IO.inspect({id, type, datum})
-      {"#{type}-#{id}", RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum)}
+      query = Map.get(query_map, id)
+      
+      condensed = if query do
+        RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum, query)
+      else
+        RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, datum)
+      end
+      
+      {"#{type}-#{id}", condensed}
     end)
     |> Enum.into(%{})
   end
