@@ -59,7 +59,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
   defp page_title(:edit), do: "Edit Pythiae"
 
   defp condense({id, type}, data) do
-    RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+    RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
   end
 
   defp get_icon(type) do
