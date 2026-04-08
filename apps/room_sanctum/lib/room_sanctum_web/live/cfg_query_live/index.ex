@@ -1,6 +1,7 @@
 defmodule RoomSanctumWeb.QueryLive.Index do
   use RoomSanctumWeb, :live_view_a
   import RoomSanctumWeb.Components.QueryGeospatialMap
+  alias RoomSanctumWeb.Live.Helpers.MapStreaming
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Configuration.Query
@@ -14,6 +15,11 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     if connected?(socket) do
       Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs_vehicle_positions")
       Process.send_after(self(), :update_vehicle_positions, 1000)
+      
+      # Always use high-performance streaming for all map data
+      Task.start_link(fn ->
+        stream_map_queries(self(), queries)
+      end)
     end
 
     {:ok,
@@ -80,6 +86,22 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     Process.send_after(self(), :update_vehicle_positions, 30_000) # Every 30 seconds
     
     {:noreply, socket |> assign(:vehicle_positions, vehicle_positions)}
+  end
+
+  # Handle streaming map data batches for high-performance rendering
+  def handle_info({:map_data_batch, compressed_data, batch_num}, socket) do
+    socket = push_event(socket, "add_markers_batch", %{
+      compressed_data: compressed_data,
+      batch: batch_num
+    })
+    
+    {:noreply, socket}
+  end
+
+  # Handle streaming completion
+  def handle_info({:map_streaming_complete}, socket) do
+    socket = push_event(socket, "map_streaming_complete", %{})
+    {:noreply, socket}
   end
 
   @impl true
@@ -255,5 +277,104 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 
   def get_icon(type) do
     RoomSanctumWeb.IconHelpers.icon(type)
+  end
+
+  # Stream map queries for high-performance rendering
+  defp stream_map_queries(pid, queries) do
+    # Convert queries to mappable format and stream them
+    mappable_queries = queries
+    |> Enum.map(&convert_query_to_map_format/1)
+    |> Enum.filter(fn query -> 
+      query.lat && query.lng && query.lat != 0 && query.lng != 0 
+    end)
+
+    total_queries = length(mappable_queries)
+    
+    # Always use streaming for consistent performance
+    if total_queries > 0 do
+      MapStreaming.stream_map_data(
+        pid, 
+        fn offset, limit ->
+          mappable_queries
+          |> Enum.drop(offset)
+          |> Enum.take(limit)
+        end,
+        batch_size: 500,
+        total_records: total_queries,
+        compress: true
+      )
+    end
+  end
+
+  # Convert query to map format for streaming
+  defp convert_query_to_map_format(query) do
+    {lat, lng} = extract_query_coordinates(query)
+    
+    tint = cond do
+      query.meta && query.meta.tint -> query.meta.tint
+      query.source && query.source.meta && query.source.meta.tint -> query.source.meta.tint
+      true -> nil
+    end
+
+    %{
+      id: query.id,
+      name: query.name,
+      source_name: query.source.name,
+      source_type: query.source.type,
+      lat: lat,
+      lng: lng,
+      tint: tint,
+      notes: query.notes
+    }
+  end
+
+  # Extract coordinates from query (simplified version of QueryGeospatialMap logic)
+  defp extract_query_coordinates(query) do
+    cond do
+      query.geom != nil ->
+        case query.geom do
+          %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
+          _ -> {0, 0}
+        end
+        
+      query.source && has_source_coordinates?(query.source) ->
+        extract_source_coordinates(query.source)
+
+      query.query && extract_from_query_data_simple(query) ->
+        extract_from_query_data_simple(query)
+        
+      true -> {0, 0}
+    end
+  end
+
+  defp has_source_coordinates?(source) do
+    geom = Map.get(source, :geom, nil)
+    lat = Map.get(source, :lat, nil)
+    lng = Map.get(source, :lng, nil)
+    
+    geom != nil || (lat != nil && lng != nil)
+  end
+
+  defp extract_source_coordinates(source) do
+    geom = Map.get(source, :geom, nil)
+    lat = Map.get(source, :lat, nil)
+    lng = Map.get(source, :lng, nil)
+    
+    cond do
+      geom != nil ->
+        case geom do
+          %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
+          _ -> {0, 0}
+        end
+      lat != nil && lng != nil ->
+        {lat, lng}
+      true -> {0, 0}
+    end
+  end
+
+  defp extract_from_query_data_simple(query) do
+    # Simplified version - just return false for now to avoid complexity
+    # The full QueryGeospatialMap component handles this better
+    false
   end
 end

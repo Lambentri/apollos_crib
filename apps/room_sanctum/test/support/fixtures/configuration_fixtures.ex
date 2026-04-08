@@ -130,4 +130,20 @@ defmodule RoomSanctum.ConfigurationFixtures do
 
     taxid
   end
+
+  @doc """
+  Generate a keryx.
+  """
+  def keryx_fixture(attrs \\ %{}) do
+    {:ok, keryx} =
+      attrs
+      |> Enum.into(%{
+        name: "some name",
+        queries: [1, 2],
+        ttl: 42
+      })
+      |> RoomSanctum.Configuration.create_keryx()
+
+    keryx
+  end
 end

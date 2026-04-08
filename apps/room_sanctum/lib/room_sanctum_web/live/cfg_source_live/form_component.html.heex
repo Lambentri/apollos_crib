@@ -79,8 +79,21 @@
     <div class="form-control">
         <.input field={gtfs_form[:url_rt_vp]} type="text" label="Realtime URL Vehicle Positions"/>
     </div>
-
     <% end %>
+    <div class="form-control mt-2">
+      <label class="label"><span class="label-text">Static refresh interval</span></label>
+      <input type="range"
+        name="source[meta][run_period]"
+        id="source_meta_run_period"
+        min="0" max="5" step="1"
+        value={@run_period_idx}
+        class="range range-sm" />
+      <div class="flex justify-between text-xs px-1 mt-1">
+        <%= for {days, _secs} <- RoomSanctumWeb.SourceLive.FormComponent.run_period_steps() do %>
+          <span><%= days %>d</span>
+        <% end %>
+      </div>
+    </div>
 
     <% :gbfs -> %>
     <%= polymorphic_embed_inputs_for @form, :config, :gbfs, fn gbfs_form -> %>

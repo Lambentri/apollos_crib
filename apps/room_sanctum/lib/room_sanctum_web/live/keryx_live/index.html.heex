@@ -1,0 +1,56 @@
+<.itb icon="fa-plus" to={Routes.keryx_index_path(@socket, :new)} what="Keryx"></.itb>
+<h1 class="text-3xl font-bold text-accent mx-4 bg-secondary-300 py-2">Available Keryxiae <i class="fa-regular fa-circle-question fa-xs" phx-click="info"></i></h1>
+
+<%= if @show_info do %>
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+  <div class="card-body">
+    <h3 class="card-title italic">Keryx:</h3>
+    <p>Configure query workers to publish data to MQTT topics.</p>
+  </div>
+</div>
+<% end %>
+
+<table class="table table-compact w-full mx-6">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Queries</th>
+      <th>TTL</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody id="keryxiae">
+    <%= for {id, keryx} <- @streams.keryxiae do %>
+      <tr id={"keryx-#{keryx.id}"}>
+        <td><%= keryx.name %></td>
+        <td><%= length(keryx.query_ids || []) %> queries</td>
+        <td><%= keryx.ttl %>s</td>
+        <td>
+          <span>
+            <.ib icon="fa-eye" to={Routes.keryx_show_path(@socket, :show, keryx)} function={:live_redirect}></.ib>
+          </span>
+          <span>
+            <.ib icon="fa-pencil" to={Routes.keryx_index_path(@socket, :edit, keryx)}></.ib>
+          </span>
+          <span>
+            <%= link to: "#", phx_click: "delete", phx_value_id: keryx.id, data: [confirm: "Are you sure?"], class: "btn btn-square btn-xs" do %>
+              <i class="fa-solid fa-trash"></i>
+             <% end %>
+          </span>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<.modal :if={@live_action in [:new, :edit]} id="keryx-modal" show on_cancel={JS.patch(~p"/cfg/keryxiae")}>
+  <.live_component
+    module={RoomSanctumWeb.KeryxLive.FormComponent}
+    id={@keryx.id || :new}
+    title={@page_title}
+    action={@live_action}
+    keryx={@keryx}
+    patch={~p"/cfg/keryxiae"}
+    current_user={@current_user}
+  />
+</.modal>

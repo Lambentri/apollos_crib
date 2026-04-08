@@ -212,5 +212,6 @@
     <orderEntry type="library" name="igniter" level="project" />
     <orderEntry type="library" name="live_view_native" level="project" />
     <orderEntry type="library" name="live_view_native_jetpack" level="project" />
+    <orderEntry type="library" name="makeup_json" level="project" />
   </component>
 </module>

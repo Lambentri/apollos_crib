@@ -3,7 +3,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
   use LiveViewNative.LiveView,
       formats: [:jetpack],
       layouts: [
-        jetpack: {RoomSanctumWeb.Layouts.JetPack, :app}
+        jetpack: {RoomSanctumWeb.Layouts.Jetpack, :app}
       ]
 
   alias RoomSanctum.Configuration

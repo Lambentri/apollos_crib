@@ -1,0 +1,274 @@
+<.itb icon="fa-chevron-left" to={Routes.keryx_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.keryx_show_path(@socket, :edit, @keryx)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Keryx Detail</h1>
+
+<.modal :if={@live_action == :edit} id="keryx-modal" show on_cancel={JS.patch(Routes.keryx_show_path(@socket, :show, @keryx))}>
+  <.live_component
+    module={RoomSanctumWeb.KeryxLive.FormComponent}
+    id={@keryx.id}
+    title={@page_title}
+    action={@live_action}
+    keryx={@keryx}
+    patch={Routes.keryx_show_path(@socket, :show, @keryx)}
+    current_user={@current_user}
+  />
+</.modal>
+
+<div class="mx-4 py-2">
+  <div class="flex">
+    <h2 class="text-2xl font-bold text-accent-300"><%= @keryx.name %></h2>
+  </div>
+  <div class="flex flex-col flex-col-reverse sm:flex-col-reverse md:flex-col">
+    <div class="flex flex-wrap md:flex-nowrap flex-col-reverse md:flex-row">
+      <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+        <div class="card-body text-left">
+          <h3 class="card-title">Configuration</h3>
+          <table class="table table-compact">
+            <tbody>
+              <tr>
+                <td class="font-bold">Name:</td>
+                <td><%= @keryx.name %></td>
+              </tr>
+              <tr>
+                <td class="font-bold">TTL:</td>
+                <td><%= @keryx.ttl %> seconds</td>
+              </tr>
+              <tr>
+                <td class="font-bold">Query Count:</td>
+                <td><%= length(@keryx.query_ids || []) %></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+        <div class="card-body text-left">
+          <h3 class="card-title">Control Topic</h3>
+          <p class="text-sm opacity-75 mb-2">Publish commands to this topic to control the Keryx worker</p>
+          <div class="flex items-center gap-2">
+            <code class="bg-base-300 px-3 py-2 rounded text-sm flex-grow">/apollos/keryx/<%= @keryx.name %>/control</code>
+            <button
+              class="btn btn-square btn-sm"
+              phx-click={JS.dispatch("phx:copy", to: "#control-topic")}
+              title="Copy control topic">
+              <i class="fas fa-copy"></i>
+            </button>
+            <input type="hidden" id="control-topic" value={"/apollos/keryx/#{@keryx.name}/control"} />
+          </div>
+          <div class="mt-3 text-xs">
+            <p class="font-bold mb-1">Commands:</p>
+            <code class="block bg-base-300 p-2 rounded mb-1">&left"action": "refresh"}</code>
+            <code class="block bg-base-300 p-2 rounded">"action": "refresh", "query_id": 123}</code>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="flex flex-wrap md:flex-nowrap flex-col-reverse md:flex-row">
+      <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+        <div class="card-body text-left">
+          <h3 class="card-title">Queries & Topics</h3>
+          <div class="space-y-4">
+            <%= for q <- @queries do %>
+              <div class="border border-base-300 rounded-lg p-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 items-center mb-2">
+                  <div>
+                    <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 w-full" do %>
+                      <i class={"fas #{get_icon(q.source.type)}"}></i>&emsp;<%= q.name %>
+                    <% end %>
+                  </div>
+                  <div class="flex items-center gap-2">
+                    <code class="bg-base-300 px-3 py-2 rounded text-sm flex-grow">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %></code>
+                    <button
+                      class="btn btn-square btn-sm"
+                      phx-click={JS.dispatch("phx:copy", to: "#topic-#{q.id}")}
+                      title="Copy topic">
+                      <i class="fas fa-copy"></i>
+                    </button>
+                    <input type="hidden" id={"topic-#{q.id}"} value={["/apollos/keryx/", @keryx.name, q.source.type, q.id] |> Enum.join("/")} />
+                  </div>
+                </div>
+                <div class="flex justify-between items-center">
+                  <%= if Map.has_key?(@cached_items, q.id) do %>
+                    <% cache = Map.get(@cached_items, q.id) %>
+                    <% grouped_items = group_items_by_route_destination(cache.items, q.source.type) %>
+                    <div class="flex flex gap-1">
+                        <h5 class="text text-primary-content">
+                          <i class="fas fa-list"></i>
+                          <%= if q.source.type == :gtfs do %>
+                            Routes & Destinations (<%= length(grouped_items) %> groups, <%= length(cache.items) %> items)
+                          <% else %>
+                            Seen Items (<%= length(cache.items) %>)
+                          <% end %>
+                        </h5>
+                      <%= if cache.last_updated do %>
+                        <span class="text-xs opacity-60">
+                          Last updated: <%= Calendar.strftime(cache.last_updated, "%H:%M:%S") %>
+                        </span>
+                      <% end %>
+                    </div>
+                  <% end %>
+
+                <details class="text-xs opacity-75 ml-2 mt-2">
+                  <summary class="cursor-pointer text-xs opacity-60 hover:opacity-100">
+                    <i class="fas fa-info-circle"></i> Topic structure info
+                  </summary>
+                  <div class="ml-4 mt-2">
+                    <p class="mb-2">
+                      <span class="font-semibold">Metadata:</span>
+                      <code class="bg-base-200 px-2 py-1 rounded ml-1">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/meta</code>
+                      <span class="block ml-2 mt-1 text-[10px] opacity-60">
+                        Contains condensed data summary and query information (name, metadata)
+                      </span>
+                    </p>
+                    <p class="mb-1">
+                      <span class="font-semibold">Individual items:</span>
+                      <code class="bg-base-200 px-2 py-1 rounded ml-1">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/[item-id]</code>
+                    </p>
+                    <p class="text-xs opacity-60">
+                      <%= case q.source.type do %>
+                        <% :gtfs -> %>
+                          GTFS items are organized hierarchically:
+                          <span class="block ml-2 mt-1"><code class="text-xs bg-base-200 px-1 rounded">.../<%= q.id %>/&lt;route&gt;</code> - All items for a route</span>
+                          <span class="block ml-2"><code class="text-xs bg-base-200 px-1 rounded">.../<%= q.id %>/&lt;route&gt;/&lt;destination&gt;</code> - Items for route+destination</span>
+                          <span class="block ml-2"><code class="text-xs bg-base-200 px-1 rounded">.../<%= q.id %>/&lt;route&gt;/&lt;destination&gt;/&lt;trip_id&gt;</code> - Individual items</span>
+                        <% :gbfs -> %> Each item published with <code class="text-xs">station_id</code>
+                        <% :weather -> %> Each item published with <code class="text-xs">time</code> or <code class="text-xs">dt</code>
+                        <% :tidal -> %> Each item published with <code class="text-xs">t</code> or <code class="text-xs">time</code>
+                        <% :aqi -> %> Each item published with <code class="text-xs">parameter</code>
+                        <% :calendar -> %> Each item published with <code class="text-xs">uid</code>
+                        <% :ephem -> %> Each item published with <code class="text-xs">name</code>
+                        <% :cronos -> %> Each item published with <code class="text-xs">id</code> or <code class="text-xs">name</code>
+                        <% :gitlab -> %> Each item published with <code class="text-xs">id</code>
+                        <% :packages -> %> Each item published with <code class="text-xs">tracking_number</code>
+                        <% _ -> %> IDs are automatically extracted from item data
+                      <% end %>
+                    </p>
+                  </div>
+                </details>
+                </div>
+
+                <%= if Map.has_key?(@cached_items, q.id) do %>
+                  <% cache = Map.get(@cached_items, q.id) %>
+                  <% grouped_items = group_items_by_route_destination(cache.items, q.source.type) %>
+
+                  <%= if q.source.type == :gtfs do %>
+                    <% routes = grouped_items |> Enum.map(& &1.route) |> Enum.uniq() %>
+                    <div class="space-y-1 mt-3">
+                      <%= for route <- routes do %>
+                        <% route_groups = Enum.filter(grouped_items, fn g -> g.route == route end) %>
+
+                        <div class="grid grid-cols-2 gap-2 mb-1">
+                          <div class="bg-base-300 rounded px-2 py-1.5 text-xs opacity-60 hover:opacity-80 transition-opacity flex items-center gap-1">
+                            <span class="badge badge-xs badge-primary font-bold"><%= route %></span>
+                            <span class="text-[10px] font-semibold">All items for route</span>
+                          </div>
+                          <div class="flex items-center gap-2 opacity-60">
+                            <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/<%= route %></code>
+                            <input type="hidden" id={"route-topic-#{q.id}-#{route}"} value={"/apollos/keryx/#{@keryx.name}/#{q.source.type}/#{q.id}/#{route}"} />
+                            <div class="flex gap-0.5 flex-shrink-0">
+                              <button
+                                class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
+                                phx-click={JS.dispatch("phx:copy", to: "#route-topic-#{q.id}-#{route}")}
+                                title="Copy route topic">
+                                <i class="fas fa-copy text-[8px]"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <%= for {group, idx} <- Enum.take(route_groups, 6) |> Enum.with_index() do %>
+                          <div class="grid grid-cols-2 gap-2">
+                            <div class="bg-base-200 rounded px-2 py-1.5 text-xs opacity-75 hover:opacity-100 transition-opacity flex justify-between">
+                              <div class="flex items-center gap-1 mb-1">
+                                <span class="badge badge-xs badge-ghost font-bold"><%= group.route %></span>
+                                <i class="fas fa-arrow-right text-[6px]"></i>
+                                <span class="truncate text-[10px]"><%= group.destination %></span>
+                              </div>
+                              <div class="text-[9px] opacity-50">
+                                Last seen: <%= Calendar.strftime(group.last_seen, "%H:%M:%S") %>
+                              </div>
+                            </div>
+                            <div class="flex items-center gap-2 opacity-75">
+                              <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/<%= group.route %>/<%= group.destination %></code>
+                              <input type="hidden" id={"mini-topic-#{q.id}-#{route}-#{idx}"} value={"/apollos/keryx/#{@keryx.name}/#{q.source.type}/#{q.id}/#{group.route}/#{group.destination}"} />
+                              <div class="flex gap-0.5 flex-shrink-0">
+                                <button
+                                  class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
+                                  phx-click={JS.dispatch("phx:copy", to: "#mini-topic-#{q.id}-#{route}-#{idx}")}
+                                  title="Copy topic">
+                                  <i class="fas fa-copy text-[8px]"></i>
+                                </button>
+                                <button
+                                  class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
+                                  phx-click={show_modal("data-modal-#{q.id}-#{route}-#{idx}")}
+                                  title="View data">
+                                  <i class="fas fa-eye text-[8px]"></i>
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <.modal id={"data-modal-#{q.id}-#{route}-#{idx}"}>
+                            <div class="mb-4">
+                              <h3 class="text-lg font-bold mb-2">
+                                Route <%= group.route %> → <%= group.destination %>
+                              </h3>
+                              <p class="text-sm opacity-75">Latest data (last seen: <%= Calendar.strftime(group.last_seen, "%H:%M:%S") %>)</p>
+                            </div>
+                            <pre class="text-xs overflow-x-auto overflow-y-auto max-h-96 bg-base-200 p-4 rounded"><%= format_item_preview(group.data) %></pre>
+                          </.modal>
+                        <% end %>
+                      <% end %>
+                    </div>
+                  <% else %>
+                    <div class="space-y-1 mt-3">
+                      <%= for {group, idx} <- Enum.take(grouped_items, 6) |> Enum.with_index() do %>
+                        <div class="grid grid-cols-2 gap-2">
+                          <div class="bg-base-200 rounded px-2 py-1.5 text-xs opacity-75 hover:opacity-100 transition-opacity flex justify-between">
+                            <code class="font-mono text-[10px] truncate block mb-1"><%= group.id %></code>
+                            <div class="text-[9px] opacity-50">
+                              Last seen: <%= Calendar.strftime(group.last_seen, "%H:%M:%S") %>
+                            </div>
+                          </div>
+                          <div class="flex items-center gap-2 opacity-75">
+                            <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/<%= group.id %></code>
+                            <input type="hidden" id={"mini-topic-#{q.id}-#{idx}"} value={"/apollos/keryx/#{@keryx.name}/#{q.source.type}/#{q.id}/#{group.id}"} />
+                            <div class="flex gap-0.5 flex-shrink-0">
+                              <button
+                                class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
+                                phx-click={JS.dispatch("phx:copy", to: "#mini-topic-#{q.id}-#{idx}")}
+                                title="Copy topic">
+                                <i class="fas fa-copy text-[8px]"></i>
+                              </button>
+                              <button
+                                class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
+                                phx-click={show_modal("data-modal-#{q.id}-#{idx}")}
+                                title="View data">
+                                <i class="fas fa-eye text-[8px]"></i>
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+
+                        <.modal id={"data-modal-#{q.id}-#{idx}"}>
+                          <div class="mb-4">
+                            <h3 class="text-lg font-bold mb-2"><%= group.id %></h3>
+                            <p class="text-sm opacity-75">Latest data (last seen: <%= Calendar.strftime(group.last_seen, "%H:%M:%S") %>)</p>
+                          </div>
+                          <pre class="text-xs overflow-x-auto overflow-y-auto max-h-96 bg-base-200 p-4 rounded"><%= format_item_preview(group.data) %></pre>
+                        </.modal>
+                      <% end %>
+                    </div>
+                  <% end %>
+                <% end %>
+
+
+              </div>
+            <% end %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
