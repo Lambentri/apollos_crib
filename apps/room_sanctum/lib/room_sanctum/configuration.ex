@@ -906,4 +906,104 @@ defmodule RoomSanctum.Configuration do
   def change_taxid(%Taxid{} = taxid, attrs \\ %{}) do
     Taxid.changeset(taxid, attrs)
   end
+
+  alias RoomSanctum.Configuration.Keryx
+
+  @doc """
+  Returns the list of keryxiae.
+
+  ## Examples
+
+      iex> list_keryxiae()
+      [%Keryx{}, ...]
+
+  """
+  def list_keryxiae do
+    Repo.all(Keryx)
+  end
+
+  def list_keryxiae({:user, uid}) do
+    Repo.all(from k in Keryx, where: k.user_id == ^uid)
+  end
+
+  @doc """
+  Gets a single keryx.
+
+  Raises `Ecto.NoResultsError` if the Keryx does not exist.
+
+  ## Examples
+
+      iex> get_keryx!(123)
+      %Keryx{}
+
+      iex> get_keryx!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_keryx!(id), do: Repo.get!(Keryx, id)
+
+  @doc """
+  Creates a keryx.
+
+  ## Examples
+
+      iex> create_keryx(%{field: value})
+      {:ok, %Keryx{}}
+
+      iex> create_keryx(%{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def create_keryx(attrs \\ %{}) do
+    %Keryx{}
+    |> Keryx.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc """
+  Updates a keryx.
+
+  ## Examples
+
+      iex> update_keryx(keryx, %{field: new_value})
+      {:ok, %Keryx{}}
+
+      iex> update_keryx(keryx, %{field: bad_value})
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def update_keryx(%Keryx{} = keryx, attrs) do
+    keryx
+    |> Keryx.changeset(attrs)
+    |> Repo.update()
+  end
+
+  @doc """
+  Deletes a keryx.
+
+  ## Examples
+
+      iex> delete_keryx(keryx)
+      {:ok, %Keryx{}}
+
+      iex> delete_keryx(keryx)
+      {:error, %Ecto.Changeset{}}
+
+  """
+  def delete_keryx(%Keryx{} = keryx) do
+    Repo.delete(keryx)
+  end
+
+  @doc """
+  Returns an `%Ecto.Changeset{}` for tracking keryx changes.
+
+  ## Examples
+
+      iex> change_keryx(keryx)
+      %Ecto.Changeset{data: %Keryx{}}
+
+  """
+  def change_keryx(%Keryx{} = keryx, attrs \\ %{}) do
+    Keryx.changeset(keryx, attrs)
+  end
 end

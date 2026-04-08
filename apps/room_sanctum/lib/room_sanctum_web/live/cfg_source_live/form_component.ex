@@ -4,6 +4,38 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
   alias RoomSanctum.Configuration
 
+  @run_period_steps [
+    {1,  86_400},
+    {3,  259_200},
+    {7,  604_800},
+    {14, 1_209_600},
+    {21, 1_814_400},
+    {28, 2_419_200},
+  ]
+
+  def run_period_steps, do: @run_period_steps
+
+  defp seconds_to_idx(nil), do: 2
+  defp seconds_to_idx(secs) do
+    @run_period_steps
+    |> Enum.with_index()
+    |> Enum.min_by(fn {{_, s}, _} -> abs(s - secs) end)
+    |> elem(1)
+  end
+
+  defp idx_to_seconds(idx) when is_binary(idx), do: idx_to_seconds(String.to_integer(idx))
+  defp idx_to_seconds(idx) do
+    {_, secs} = Enum.at(@run_period_steps, idx, {7, 604_800})
+    secs
+  end
+
+  defp convert_run_period_params(source_params) do
+    case get_in(source_params, ["meta", "run_period"]) do
+      nil -> source_params
+      idx -> put_in(source_params, ["meta", "run_period"], idx_to_seconds(idx))
+    end
+  end
+
   defp inj_uid(params, socket) do
     params = params |> Map.put("user_id", socket.assigns.current_user.id)
 
@@ -17,32 +49,33 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   @impl true
   def update(%{source: source} = assigns, socket) do
     changeset = Configuration.change_source(source)
+    run_period_idx = seconds_to_idx(source.meta && source.meta.run_period)
 
     {:ok,
      socket
      |> assign(assigns)
      |> assign(:tint_opts, ["red", "amber", "lime", "emerald", "sky", "violet", "fuchsia", "rose", "stone", "slate", "zinc"])
+     |> assign(:run_period_idx, run_period_idx)
      |> assign_form(changeset)}
   end
 
   @impl true
   def handle_event("validate", %{"source" => source_params}, socket) do
-    source_params = inj_uid(source_params, socket)
-    IO.inspect({"params", source_params})
+    source_params = source_params |> inj_uid(socket) |> convert_run_period_params()
+    run_period_idx = get_in(source_params, ["meta", "run_period"])
+      |> then(fn s -> if is_binary(s), do: String.to_integer(s), else: s end)
+      |> seconds_to_idx()
 
     changeset =
       socket.assigns.source
       |> Configuration.change_source(source_params)
       |> Map.put(:action, :validate)
 
-    IO.inspect(changeset.data)
-    IO.inspect(changeset)
-
-    {:noreply, assign_form(socket, changeset)}
+    {:noreply, socket |> assign(:run_period_idx, run_period_idx) |> assign_form(changeset)}
   end
 
   def handle_event("save", %{"source" => source_params}, socket) do
-    source_params = inj_uid(source_params, socket)
+    source_params = source_params |> inj_uid(socket) |> convert_run_period_params()
     save_source(socket, socket.assigns.action, source_params)
   end
 

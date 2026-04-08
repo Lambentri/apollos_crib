@@ -18,8 +18,7 @@ defmodule RoomSanctumWeb.Router do
 
     plug :put_root_layout,
       html: {RoomSanctumWeb.Layouts, :root},
-      jetpack: {MyAppWeb.Layouts.Jetpack, :root},
-      swiftui: {MyAppWeb.Layouts.SwiftUI, :root}
+      jetpack: {RoomSanctumWeb.Layouts.Jetpack, :root}
 
     plug :protect_from_forgery
     plug :put_secure_browser_headers
@@ -99,6 +98,14 @@ defmodule RoomSanctumWeb.Router do
 
     live "/cfg/scribus/:id", ScribusLive.Show, :show
     live "/cfg/scribus/:id/show/edit", ScribusLive.Show, :edit
+
+    live "/cfg/keryxiae", KeryxLive.Index, :index
+    live "/cfg/keryxiae/new", KeryxLive.Index, :new
+    live "/cfg/keryxiae/:id/edit", KeryxLive.Index, :edit
+
+    live "/cfg/keryxiae/:id", KeryxLive.Show, :show
+    live "/cfg/keryxiae/:id/show/edit", KeryxLive.Show, :edit
+
 
     if Mix.env() == :dev do
       live "/storage/gtfs/agencies", AgencyLive.Index, :index

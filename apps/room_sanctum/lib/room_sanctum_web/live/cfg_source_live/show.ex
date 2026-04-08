@@ -171,7 +171,17 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
     stats =
       case type do
-        "gtfs" -> %{gtfs: RoomGtfs.Worker.source_stats(id), rt: %{}}
+        "gtfs" ->
+          stats = RoomGtfs.Worker.source_stats(id)
+          rt_flat = stats.rt
+            |> Enum.flat_map(fn {feed, info} ->
+              case info do
+                m when is_map(m) -> Enum.map(m, fn {k, v} -> {:"#{feed}_#{k}", v} end)
+                other            -> [{feed, other}]
+              end
+            end)
+            |> Map.new()
+          %{gtfs: Map.delete(stats, :rt), rt: rt_flat}
         "gbfs" -> %{gbfs: RoomGbfs.Worker.source_stats(id), system: RoomGbfs.Worker.sys_info_as_stats(id), free: RoomGbfs.Worker.free_stats(id)}
         _otherwise -> %{}
       end

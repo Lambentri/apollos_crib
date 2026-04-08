@@ -97,6 +97,10 @@ defmodule RoomSanctum.MixProject do
       {:oban, "~> 2.17"},
       {:iconv, "~> 1.0"},
       {:oban_live_dashboard, "~> 0.1.0"},
+
+      # ui random
+      {:makeup, "1.2.1"},
+      {:makeup_json, "1.0.0"}
     ]
   end
 

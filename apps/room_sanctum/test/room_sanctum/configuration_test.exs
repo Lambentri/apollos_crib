@@ -482,4 +482,62 @@ defmodule RoomSanctum.ConfigurationTest do
       assert %Ecto.Changeset{} = Configuration.change_taxid(taxid)
     end
   end
+
+  describe "keryxiae" do
+    alias RoomSanctum.Configuration.Keryx
+
+    import RoomSanctum.ConfigurationFixtures
+
+    @invalid_attrs %{name: nil, ttl: nil, queries: nil}
+
+    test "list_keryxiae/0 returns all keryxiae" do
+      keryx = keryx_fixture()
+      assert Configuration.list_keryxiae() == [keryx]
+    end
+
+    test "get_keryx!/1 returns the keryx with given id" do
+      keryx = keryx_fixture()
+      assert Configuration.get_keryx!(keryx.id) == keryx
+    end
+
+    test "create_keryx/1 with valid data creates a keryx" do
+      valid_attrs = %{name: "some name", ttl: 42, queries: [1, 2]}
+
+      assert {:ok, %Keryx{} = keryx} = Configuration.create_keryx(valid_attrs)
+      assert keryx.name == "some name"
+      assert keryx.ttl == 42
+      assert keryx.queries == [1, 2]
+    end
+
+    test "create_keryx/1 with invalid data returns error changeset" do
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_keryx(@invalid_attrs)
+    end
+
+    test "update_keryx/2 with valid data updates the keryx" do
+      keryx = keryx_fixture()
+      update_attrs = %{name: "some updated name", ttl: 43, queries: [1]}
+
+      assert {:ok, %Keryx{} = keryx} = Configuration.update_keryx(keryx, update_attrs)
+      assert keryx.name == "some updated name"
+      assert keryx.ttl == 43
+      assert keryx.queries == [1]
+    end
+
+    test "update_keryx/2 with invalid data returns error changeset" do
+      keryx = keryx_fixture()
+      assert {:error, %Ecto.Changeset{}} = Configuration.update_keryx(keryx, @invalid_attrs)
+      assert keryx == Configuration.get_keryx!(keryx.id)
+    end
+
+    test "delete_keryx/1 deletes the keryx" do
+      keryx = keryx_fixture()
+      assert {:ok, %Keryx{}} = Configuration.delete_keryx(keryx)
+      assert_raise Ecto.NoResultsError, fn -> Configuration.get_keryx!(keryx.id) end
+    end
+
+    test "change_keryx/1 returns a keryx changeset" do
+      keryx = keryx_fixture()
+      assert %Ecto.Changeset{} = Configuration.change_keryx(keryx)
+    end
+  end
 end
