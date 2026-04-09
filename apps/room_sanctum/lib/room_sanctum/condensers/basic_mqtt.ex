@@ -200,7 +200,8 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   def condense({id, :gtfs}, data, query) do
     condensed = condense_data({id, :gtfs}, data)
     route_ids = condensed |> Enum.map(& &1.route) |> Enum.uniq()
-    alerts    = RoomGtfs.Worker.query_alerts(id, query.stop, route_ids)
+    stop      = query.query.stop
+    alerts    = RoomGtfs.Worker.query_alerts(id, stop, route_ids)
 
     condensed_with_alerts = condensed |> Enum.map(fn route ->
       route_alerts = Enum.filter(alerts, fn a ->
