@@ -56,6 +56,16 @@ defmodule RoomGtfs.Worker do
     |> GenServer.call({:query_realtime, trips, stop}, 30_000)
   end
 
+  def query_alerts(name, stop, route_ids) do
+    try do
+      "gtfs-rt#{name}"
+      |> via_tuple()
+      |> GenServer.call({:query_alerts, stop, route_ids}, 10_000)
+    catch
+      :exit, _ -> []
+    end
+  end
+
   def get_current_vehicle_positions(name) do
     "gtfs-rt#{name}"
     |> via_tuple
@@ -284,6 +294,53 @@ defmodule RoomGtfs.Worker.RT do
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
+
+  def handle_call({:query_alerts, stop, route_ids}, _from, state) do
+    now = System.os_time(:second)
+
+    alerts = case state.rt_sa do
+      nil -> []
+      feed ->
+        feed.entity
+        |> Enum.filter(& &1.alert)
+        |> Enum.map(& &1.alert)
+        |> Enum.filter(fn alert ->
+          active = case alert.active_period do
+            [] -> true
+            periods -> Enum.any?(periods, fn p ->
+              (p.start == nil || p.start <= now) &&
+              (Map.get(p, :end) == nil || Map.get(p, :end) >= now)
+            end)
+          end
+          relevant = Enum.any?(alert.informed_entity, fn e ->
+            (e.stop_id != nil && e.stop_id == stop) ||
+            (e.route_id != nil && e.route_id in route_ids) ||
+            (e.agency_id != nil && e.stop_id == nil && e.route_id == nil) ||
+            (e.stop_id == nil && e.route_id == nil && e.trip == nil && e.agency_id == nil)
+          end)
+          active && relevant
+        end)
+        |> Enum.map(fn alert ->
+          route_id = Enum.find_value(alert.informed_entity, fn e -> e.route_id end)
+          %{
+            effect:      alert.effect |> to_string(),
+            cause:       alert.cause |> to_string(),
+            header:      get_translation(alert.header_text),
+            description: get_translation(alert.description_text),
+            route_id:    route_id,
+          }
+        end)
+    end
+
+    {:reply, alerts, state}
+  end
+
+  defp get_translation(nil), do: nil
+  defp get_translation(%{translation: []}), do: nil
+  defp get_translation(%{translation: translations}) do
+    t = Enum.find(translations, fn t -> t.language in ["en", "en-US", nil] end) || List.first(translations)
+    t && t.text
+  end
 
   def handle_call(:stats, _from, state) do
     {:reply, %{

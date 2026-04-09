@@ -197,9 +197,30 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   @doc """
   Condenses data and wraps it with query information
   """
+  def condense({id, :gtfs}, data, query) do
+    condensed = condense_data({id, :gtfs}, data)
+    route_ids = condensed |> Enum.map(& &1.route) |> Enum.uniq()
+    alerts    = RoomGtfs.Worker.query_alerts(id, query.stop, route_ids)
+
+    condensed_with_alerts = condensed |> Enum.map(fn route ->
+      route_alerts = Enum.filter(alerts, fn a ->
+        a.route_id == nil || a.route_id == route.route
+      end)
+      case route_alerts do
+        [] -> route
+        _  -> Map.put(route, :alerts, route_alerts)
+      end
+    end)
+
+    %{
+      data: condensed_with_alerts,
+      query: %{name: query.name, meta: query.meta || %{}}
+    }
+  end
+
   def condense({id, type}, data, query) do
     condensed_data = condense_data({id, type}, data)
-    
+
     %{
       data: condensed_data,
       query: %{
