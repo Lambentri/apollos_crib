@@ -13,6 +13,11 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
   def update(%{query: query} = assigns, socket) do
     changeset = Configuration.change_query(query)
 
+    sources = Configuration.list_cfg_sources({:user, assigns.current_user.id})
+    focis = Configuration.list_focis({:user, assigns.current_user.id})
+
+    current_type = type_for_source_id(sources, Map.get(query, :source_id))
+
     {
       :ok,
       socket
@@ -20,21 +25,12 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> assign_form(changeset)
       |> assign(:changeset, changeset)
       |> assign(:tint_opts, ["amber", "lime", "emerald", "sky", "violet", "fuchsia", "rose", "stone", "slate"])
-      |> assign(:cfg_sources, list_cfg_sources(assigns.current_user.id))
-      |> assign(:cfg_foci, list_cfg_foci(assigns.current_user.id))
+      |> assign(:cfg_sources, sources)
+      |> assign(:cfg_foci, focis)
+      |> assign(:current_type, current_type)
       |> assign(:results, [])
-      |> assign(
-        :cfg_sources_sel,
-        list_cfg_sources(assigns.current_user.id)
-        |> Enum.map(fn x -> {x.name, x.id} end)
-        |> Enum.into(%{})
-      )
-      |> assign(
-        :cfg_foci_sel,
-        list_cfg_foci(assigns.current_user.id)
-        |> Enum.map(fn x -> {x.name, x.id} end)
-        |> Enum.into(%{})
-      )
+      |> assign(:cfg_sources_sel, Enum.into(sources, %{}, fn x -> {x.name, x.id} end))
+      |> assign(:cfg_foci_sel, Enum.into(focis, %{}, fn x -> {x.name, x.id} end))
     }
   end
 
@@ -47,7 +43,13 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> Configuration.change_query(query_params)
       |> Map.put(:action, :validate)
 
-    {:noreply, assign_form(socket, changeset)}
+    current_type =
+      type_for_source_id(socket.assigns.cfg_sources, parse_id(query_params["source_id"]))
+
+    {:noreply,
+     socket
+     |> assign(:current_type, current_type)
+     |> assign_form(changeset)}
   end
 
   def handle_event("save", %{"query" => query_params}, socket) do
@@ -57,38 +59,53 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
 
   def handle_event("do-gtfs-search", %{"value" => value}, socket) do
     case value do
-      nil -> {:noreply, socket}
-      _otherwise -> {:noreply, socket |> assign(:results, Storage.list_stops(get_source_id(socket.assigns.form), value))}
+      nil ->
+        {:noreply, socket}
+
+      _ ->
+        {:noreply,
+         socket
+         |> assign(:results, Storage.list_stops(get_source_id(socket.assigns.form), value))}
     end
   end
 
-    def handle_event("do-gbfs-search", %{"value" => value}, socket) do
+  def handle_event("do-gbfs-search", %{"value" => value}, socket) do
     case value do
-      nil -> {:noreply, socket}
-      _otherwise -> {:noreply, socket |> assign(:results, Storage.list_gbfs_station_information(get_source_id(socket.assigns.form), value))}
+      nil ->
+        {:noreply, socket}
+
+      _ ->
+        {:noreply,
+         socket
+         |> assign(
+           :results,
+           Storage.list_gbfs_station_information(get_source_id(socket.assigns.form), value)
+         )}
     end
   end
 
   def handle_event("set-gtfs", %{"val" => stop, "type" => type}, socket) do
-      IO.inspect(socket.assigns.query)
-      changeset =
+    changeset =
       socket.assigns.query
-      |> Configuration.change_query(%{"query" => %{"stop" => stop, "__type__" => type}, "__type__" => type})
+      |> Configuration.change_query(%{
+        "query" => %{"stop" => stop, "__type__" => type},
+        "__type__" => type
+      })
       |> Map.put(:action, :validate)
-      |> IO.inspect
-    IO.inspect(changeset.data)
-    {:noreply, socket |> assign(:results, []) |>  assign_form(changeset)}
+
+    {:noreply, socket |> assign(:results, []) |> assign_form(changeset)}
   end
 
   def handle_event("set-gbfs", %{"val" => stop, "type" => type}, socket) do
-    IO.inspect(socket.assigns.query)
     changeset =
       socket.assigns.query
-      |> Configuration.change_query(%{"query" => %{"stop_id" => stop, "__type__" => type}, "__type__" => type})
+      |> Configuration.change_query(%{
+        "query" => %{"stop_id" => stop, "__type__" => type},
+        "__type__" => type
+      })
       |> Map.put(:action, :validate)
-      |> IO.inspect
-    IO.inspect(changeset.data)
-    {:noreply, socket |> assign(:results, []) |>  assign_form(changeset)}
+
+    {:noreply, socket |> assign(:results, []) |> assign_form(changeset)}
   end
 
   defp save_query(socket, :edit, query_params) do
@@ -100,7 +117,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Query updated successfully")
-          |> push_redirect(to: socket.assigns.patch)
+          |> push_patch(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -117,7 +134,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
           :noreply,
           socket
           |> put_flash(:info, "Query created successfully")
-          |> push_redirect(to: socket.assigns.patch)
+          |> push_patch(to: socket.assigns.patch)
         }
 
       {:error, %Ecto.Changeset{} = changeset} ->
@@ -131,31 +148,31 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
 
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 
-  defp list_cfg_sources(uid) do
-    Configuration.list_cfg_sources({:user, uid})
-  end
+  defp type_for_source_id(_sources, nil), do: nil
 
-  defp list_cfg_foci(uid) do
-    Configuration.list_focis({:user, uid})
-  end
-
-  defp  get_source_id(form) do
-      form.source
-      |> Map.get(:changes)
-      |> Map.get(:source_id) ||
-        form.data
-        |> Map.get(:source_id)
-  end
-  defp get_current_type(form) do
-    id = get_source_id(form)
-
-    case id do
-      nil ->
-        :ok
-
-      _ ->
-        s = Configuration.get_source!(id)
-        s.type
+  defp type_for_source_id(sources, id) do
+    case Enum.find(sources, &(&1.id == id)) do
+      nil -> nil
+      s -> s.type
     end
+  end
+
+  defp parse_id(nil), do: nil
+  defp parse_id(""), do: nil
+  defp parse_id(id) when is_integer(id), do: id
+
+  defp parse_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {n, _} -> n
+      :error -> nil
+    end
+  end
+
+  defp get_source_id(form) do
+    form.source
+    |> Map.get(:changes)
+    |> Map.get(:source_id) ||
+      form.data
+      |> Map.get(:source_id)
   end
 end
