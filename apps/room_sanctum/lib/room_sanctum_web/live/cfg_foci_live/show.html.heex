@@ -55,6 +55,69 @@
       </div>
     <% end %>
     
+    <!-- Quick-add Queries Card -->
+    <div class="card card-compact w-full bg-base-100 shadow-xl">
+      <div class="card-body">
+        <h3 class="card-title">Quick-add Queries</h3>
+        <p class="text-sm text-gray-500">
+          Create queries for sources that need a foci. New queries will be named "<%= @foci.name %>".
+        </p>
+
+        <%= if Enum.empty?(@foci_sources) do %>
+          <div class="alert alert-info mt-2">
+            <span>No foci-requiring sources available.</span>
+          </div>
+        <% else %>
+          <form phx-submit="create-queries-for-sources">
+            <div class="overflow-x-auto">
+              <table class="table table-compact w-full">
+                <thead>
+                  <tr>
+                    <th></th>
+                    <th>Source</th>
+                    <th>Type</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <%= for source <- @foci_sources do %>
+                    <% existing = Map.get(@existing_queries_by_source, source.id) %>
+                    <tr>
+                      <td>
+                        <input
+                          type="checkbox"
+                          name="source_ids[]"
+                          value={source.id}
+                          class="checkbox"
+                          disabled={!!existing}
+                          checked={!!existing}
+                        />
+                      </td>
+                      <td><%= source.name %></td>
+                      <td><span class="badge"><%= source.type %></span></td>
+                      <td>
+                        <%= if existing do %>
+                          <.link
+                            navigate={Routes.query_show_path(@socket, :show, existing.id)}
+                            class="link link-primary text-sm"
+                          >
+                            <i class="fa-solid fa-arrow-up-right-from-square"></i> <%= existing.name %>
+                          </.link>
+                        <% end %>
+                      </td>
+                    </tr>
+                  <% end %>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-actions justify-end mt-2">
+              <button type="submit" class="btn btn-primary btn-sm">Create Queries</button>
+            </div>
+          </form>
+        <% end %>
+      </div>
+    </div>
+
     <!-- Map Preview Card -->
     <div class="card card-compact w-full bg-base-100 shadow-xl">
       <div class="card-body">

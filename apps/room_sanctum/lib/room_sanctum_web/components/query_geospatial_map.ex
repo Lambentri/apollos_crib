@@ -83,7 +83,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Helper function to get queries that have geospatial data
   defp get_mappable_queries(queries) do
     # Debug log all incoming queries
-    IO.inspect(length(queries), label: "Total queries received")
+#    IO.inspect(length(queries), label: "Total queries received")
     
     filtered = queries
     |> Enum.filter(fn query ->
@@ -97,11 +97,11 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       result
     end)
     
-    IO.inspect(length(filtered), label: "Filtered mappable queries")
+#    IO.inspect(length(filtered), label: "Filtered mappable queries")
     
     mapped = filtered |> Enum.map(&format_query_for_map/1)
     
-    IO.inspect(length(mapped), label: "Final mapped queries")
+#    IO.inspect(length(mapped), label: "Final mapped queries")
     
     mapped
   end

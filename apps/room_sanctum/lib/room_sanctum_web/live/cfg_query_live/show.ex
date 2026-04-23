@@ -111,7 +111,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_info({:vehicle_positions_updated, vehicles}, socket) do
     # Filter vehicles to only show those relevant to current query
     filtered_vehicles = filter_vehicles_for_single_query(vehicles, socket.assigns.query)
-    IO.inspect("Query Show: Filtered #{length(vehicles)} to #{length(filtered_vehicles)} vehicles for stop")
+#    IO.inspect("Query Show: Filtered #{length(vehicles)} to #{length(filtered_vehicles)} vehicles for stop")
     {:noreply, socket |> assign(:vehicle_positions, filtered_vehicles)}
   end
 
@@ -181,58 +181,58 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   # Helper function to filter vehicles for a single query
   defp filter_vehicles_for_single_query(vehicles, query) do
-    IO.inspect("=== SINGLE QUERY FILTERING DEBUG ===")
-    IO.inspect("Input vehicles count: #{length(vehicles)}")
-    IO.inspect("Query: #{query.name} (#{query.source.type})")
-    IO.inspect("Query data: #{inspect(query.query)}")
+#    IO.inspect("=== SINGLE QUERY FILTERING DEBUG ===")
+#    IO.inspect("Input vehicles count: #{length(vehicles)}")
+#    IO.inspect("Query: #{query.name} (#{query.source.type})")
+#    IO.inspect("Query data: #{inspect(query.query)}")
     
     result = case query.query do
       %{stop: stop_id} when is_binary(stop_id) ->
-        IO.inspect("Processing stop query for stop_id: #{stop_id}")
+#        IO.inspect("Processing stop query for stop_id: #{stop_id}")
         # Get trips that serve this stop
         try do
           stop_trips = RoomSanctum.Storage.get_trips_for_stop(query.source.id, stop_id)
           trip_ids = Enum.map(stop_trips, & &1.trip_id)
-          IO.inspect("Found #{length(trip_ids)} trips serving stop #{stop_id}: #{Enum.take(trip_ids, 10)}")
+#          IO.inspect("Found #{length(trip_ids)} trips serving stop #{stop_id}: #{Enum.take(trip_ids, 10)}")
           
           # Sample some vehicles
           sample_vehicles = Enum.take(vehicles, 5)
-          IO.inspect("Sample vehicle trip_ids: #{Enum.map(sample_vehicles, & &1.trip_id)}")
+#          IO.inspect("Sample vehicle trip_ids: #{Enum.map(sample_vehicles, & &1.trip_id)}")
           
           filtered = vehicles
           |> Enum.filter(fn vehicle ->
             match = vehicle.trip_id && Enum.member?(trip_ids, vehicle.trip_id)
             if match do
-              IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on trip #{vehicle.trip_id}")
+#              IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on trip #{vehicle.trip_id}")
             end
             match
           end)
           
-          IO.inspect("Stop filtering result: #{length(filtered)} vehicles matched")
+#          IO.inspect("Stop filtering result: #{length(filtered)} vehicles matched")
           filtered
         rescue
           e -> 
-            IO.inspect("Error getting trips for stop #{stop_id}: #{inspect(e)}")
+#            IO.inspect("Error getting trips for stop #{stop_id}: #{inspect(e)}")
             []
         end
       %{routes: route_ids} when is_list(route_ids) ->
-        IO.inspect("Processing route query for route_ids: #{inspect(route_ids)}")
+#        IO.inspect("Processing route query for route_ids: #{inspect(route_ids)}")
         filtered = vehicles
         |> Enum.filter(fn vehicle ->
           match = vehicle.route_id && vehicle.route_id in route_ids
           if match do
-            IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on route #{vehicle.route_id}")
+#            IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on route #{vehicle.route_id}")
           end
           match
         end)
-        IO.inspect("Route filtering result: #{length(filtered)} vehicles matched")
+#        IO.inspect("Route filtering result: #{length(filtered)} vehicles matched")
         filtered
       _ ->
-        IO.inspect("Unhandled query type: #{inspect(query.query)}")
+#        IO.inspect("Unhandled query type: #{inspect(query.query)}")
         []
     end
     
-    IO.inspect("=== SINGLE QUERY FILTERING COMPLETE: #{length(result)} vehicles ===")
+#    IO.inspect("=== SINGLE QUERY FILTERING COMPLETE: #{length(result)} vehicles ===")
     result
   end
 
