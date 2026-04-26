@@ -36,6 +36,8 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     %{data: data, queries: queries} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
 
+    data = if is_map(data), do: data, else: Map.new(data)
+
     shuffled_consts = socket.assigns.pythiae.consts |> Enum.shuffle |> Enum.with_index |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end) |> Map.new
 
     data = Map.merge(data, shuffled_consts) |> Enum.shuffle

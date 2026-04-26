@@ -13,6 +13,8 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   def init(opts) do
+    Process.flag(:trap_exit, true)
+
     Periodic.start_link(
       every: :timer.seconds(4),
       run: fn -> RoomSanctum.Worker.Vision.refresh_db_cfg(opts[:id]) end,
@@ -25,7 +27,7 @@ defmodule RoomSanctum.Worker.Vision do
       initial_delay: 100
     )
 
-    {:ok, %{id: opts[:id], vision: nil, vision_q: [], data: [], query_task: nil}}
+    {:ok, %{id: opts[:id], vision: nil, vision_q: [], data: %{}, query_task: nil}}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -85,6 +87,14 @@ defmodule RoomSanctum.Worker.Vision do
     {:noreply, state}
   end
 
+  def handle_info({:EXIT, pid, reason}, state) do
+    if state.query_task && state.query_task.pid == pid and reason != :normal do
+      Logger.warning("Vision query task crashed: #{inspect(reason)}; keeping previous data")
+    end
+
+    {:noreply, state}
+  end
+
   def handle_info(_msg, state) do
     {:noreply, state}
   end
@@ -111,56 +121,67 @@ defmodule RoomSanctum.Worker.Vision do
     vision_q
     |> Enum.map(fn q ->
       r =
-        case q.source.type do
-          :gtfs ->
-            RoomGtfs.Worker.query_stop(q.source.id, q.query)
-
-          :gbfs ->
-            RoomGbfs.Worker.query_stop(q.source.id, q.query)
-
-          :tidal ->
-            RoomTidal.Worker.query_tides(q.source.id, q.query)
-
-          :weather ->
-            RoomWeather.Worker.query_weather(
-              q.source.id,
-              q.query
+        try do
+          query_one(q)
+        rescue
+          e ->
+            Logger.warning(
+              "Query failed for #{inspect(q.source.type)} (#{q.source.id}): #{Exception.message(e)}"
             )
 
-          :aqi ->
-            RoomAirQuality.Worker.query_place(
-              q.source.id,
-              q.query
+            []
+        catch
+          kind, reason ->
+            Logger.warning(
+              "Query #{kind} for #{inspect(q.source.type)} (#{q.source.id}): #{inspect(reason)}"
             )
 
-          :ephem ->
-            RoomEphem.Worker.query_ephem(
-              q.source.id,
-              q.query
-            )
-
-          :calendar ->
-            RoomCalendar.Worker.query_calendar(
-              q.source.id,
-              q.query
-            )
-
-          :cronos ->
-            RoomCronos.Worker.query_cronos(q.id, q.query)
-
-          :gitlab ->
-            case RoomGitlab.Worker.pid(q.source.id) do
-              nil -> []
-              _val -> (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
-                         RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
-            end
-
-          :packages ->
-            RoomPackages.Worker.read(q.source.id, q.query)
+            []
         end
 
       {{q.id, q.source.type}, r}
     end)
     |> Enum.into(%{})
+  end
+
+  defp query_one(q) do
+    case q.source.type do
+      :gtfs ->
+        RoomGtfs.Worker.query_stop(q.source.id, q.query)
+
+      :gbfs ->
+        RoomGbfs.Worker.query_stop(q.source.id, q.query)
+
+      :tidal ->
+        RoomTidal.Worker.query_tides(q.source.id, q.query)
+
+      :weather ->
+        RoomWeather.Worker.query_weather(q.source.id, q.query)
+
+      :aqi ->
+        RoomAirQuality.Worker.query_place(q.source.id, q.query)
+
+      :ephem ->
+        RoomEphem.Worker.query_ephem(q.source.id, q.query)
+
+      :calendar ->
+        RoomCalendar.Worker.query_calendar(q.source.id, q.query)
+
+      :cronos ->
+        RoomCronos.Worker.query_cronos(q.id, q.query)
+
+      :gitlab ->
+        case RoomGitlab.Worker.pid(q.source.id) do
+          nil ->
+            []
+
+          _val ->
+            (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
+               RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
+        end
+
+      :packages ->
+        RoomPackages.Worker.read(q.source.id, q.query)
+    end
   end
 end
