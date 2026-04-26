@@ -15,9 +15,23 @@
     />
 </.modal>
 <div class="mx-4 py-2">
-  <div class="flex">
+  <div class="flex items-center gap-3">
     <h2 class="text-2xl font-bold text-accent-300"><%= @ankyra.topic %>
     </h2>
+    <%= case @consumer_count do %>
+      <% nil -> %>
+        <span class="badge badge-ghost gap-2">
+          <i class="fas fa-fw fa-circle-notch fa-spin"></i> checking
+        </span>
+      <% 0 -> %>
+        <span class="badge badge-error gap-2">
+          <i class="fas fa-fw fa-plug-circle-xmark"></i> no subscribers
+        </span>
+      <% n -> %>
+        <span class="badge badge-success gap-2">
+          <i class="fas fa-fw fa-plug"></i> <%= n %> subscriber<%= if n == 1, do: "", else: "s" %>
+        </span>
+    <% end %>
   </div>
   <div class="flex">
     <div class="card card-compact w-2/4 bg-base-100 shadow-xl m-2">
@@ -36,6 +50,57 @@
         <pre class="whitespace-pre-line">mosquitto_sub -h $HOSTNAME -u <%= @ankyra.username %> -P <%= @ankyra.password %> -t <%= @ankyra.topic %></pre>
         <pre class="whitespace-pre-line">mosquitto_pub -h $HOSTNAME -u <%= @ankyra.username %> -P <%= @ankyra.password %> -t <%= @ankyra.topic %> -m "$message"</pre>
       </div>
+    </div>
+  </div>
+  <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+    <div class="card-body">
+      <div class="flex items-center justify-between">
+        <h3 class="card-title">Allowed Client IDs</h3>
+        <label class="label cursor-pointer gap-2">
+          <span class="label-text">Auto-register new client IDs</span>
+          <input
+            type="checkbox"
+            class="toggle toggle-accent"
+            checked={@ankyra.auto_register_clients}
+            phx-click="toggle-auto-register"
+          />
+        </label>
+      </div>
+
+      <div class="flex flex-wrap gap-2 my-2">
+        <%= if @ankyra.client_ids == [] do %>
+          <span class="text-sm opacity-60">
+            <%= if @ankyra.auto_register_clients, do: "No client IDs yet — first connection will be auto-registered.", else: "No client IDs registered. Add one below or enable auto-register; otherwise all connections will be denied." %>
+          </span>
+        <% else %>
+          <%= for cid <- @ankyra.client_ids do %>
+            <div class="badge badge-secondary gap-2 p-3">
+              <span class="font-mono"><%= cid %></span>
+              <button
+                phx-click="remove-client-id"
+                phx-value-client_id={cid}
+                title="Remove client ID"
+                class="hover:text-error"
+              >
+                <i class="fas fa-fw fa-xmark"></i>
+              </button>
+            </div>
+          <% end %>
+        <% end %>
+      </div>
+
+      <form phx-submit="add-client-id" class="flex gap-2">
+        <input
+          type="text"
+          name="client_id"
+          placeholder="new-client-id"
+          class="input input-bordered input-sm flex-1 font-mono"
+          autocomplete="off"
+        />
+        <button type="submit" class="btn btn-sm btn-secondary">
+          <i class="fas fa-fw fa-plus"></i> Add
+        </button>
+      </form>
     </div>
   </div>
 </div>

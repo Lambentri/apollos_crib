@@ -27,9 +27,20 @@
           <h3 class="card-title">Visions</h3>
           <p>
               <%= for v <- @pythiae.visions do %>
-                <a href={Routes.vision_show_path(@socket, :show, v)} class="text-sm hover:underline btn btn-secondary">
-                  <%= get_by_id(v, @visions).name %>
-                </a>
+                <div class="btn-group">
+                  <button
+                    class="btn btn-sm btn-ghost"
+                    phx-click="set-current-vision"
+                    phx-value-id={v}
+                    disabled={v == @pythiae.curr_vision}
+                    title={if v == @pythiae.curr_vision, do: "Current vision", else: "Set as current vision"}
+                  >
+                    <i class={"fas fa-fw fa-star #{if v == @pythiae.curr_vision, do: "text-accent"}"}></i>
+                  </button>
+                  <a href={Routes.vision_show_path(@socket, :show, v)} class="text-sm hover:underline btn btn-sm btn-secondary">
+                    <%= get_by_id(v, @visions).name %>
+                  </a>
+                </div>
               <% end%>
           </p>
         </div>
@@ -48,11 +59,24 @@
       </div>
       <div class="card card-compact w-full md:w-1/5 bg-base-100 shadow-xl m-2">
         <div class="card-body">
-          <h3 class="card-title">Current Foci</h3>
+          <h3 class="card-title">Foci</h3>
           <p>
-            <a href={Routes.foci_show_path(@socket, :show, @pythiae.curr_foci)} class="text-sm hover:underline btn btn-secondary">
-            <%= get_by_id(@pythiae.curr_foci, @foci).name %>
-            </a>
+            <%= for f <- @foci do %>
+              <div class="btn-group">
+                <button
+                  class="btn btn-sm btn-ghost"
+                  phx-click="set-current-foci"
+                  phx-value-id={f.id}
+                  disabled={f.id == @pythiae.curr_foci}
+                  title={if f.id == @pythiae.curr_foci, do: "Current foci", else: "Set as current foci"}
+                >
+                  <i class={"fas fa-fw fa-star #{if f.id == @pythiae.curr_foci, do: "text-accent"}"}></i>
+                </button>
+                <a href={Routes.foci_show_path(@socket, :show, f)} class="text-sm hover:underline btn btn-sm btn-secondary">
+                  <%= f.name %>
+                </a>
+              </div>
+            <% end %>
           </p>
         </div>
       </div>

@@ -124,4 +124,16 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     RoomSanctum.Worker.Pythiae.publish_img(id)
     {:noreply, socket}
   end
+
+  def handle_event("set-current-vision", %{"id" => vision_id}, socket) do
+    pythiae = socket.assigns.pythiae
+    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_vision: vision_id})
+    {:noreply, socket |> assign(:pythiae, updated)}
+  end
+
+  def handle_event("set-current-foci", %{"id" => foci_id}, socket) do
+    pythiae = socket.assigns.pythiae
+    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_foci: foci_id})
+    {:noreply, socket |> assign(:pythiae, updated)}
+  end
 end

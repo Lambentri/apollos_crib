@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.ScribusLive.FormComponent do
         phx-submit="save"
       >
         <.input field={@form[:name]} type="text" label="Name" />
-        <.input field={@form[:resolution]} type="select" label="Resolution" options={["180x180", "450x600", "540x960", "800x1280", "1404x1872"]} />
+        <.input field={@form[:resolution]} type="select" label="Resolution" options={@resolution_options} prompt={if @resolution_options == [], do: "No resolutions yet — add one on the index page", else: nil} />
         <.input
           field={@form[:configuration]}
           type="select"
@@ -74,12 +74,17 @@ defmodule RoomSanctumWeb.ScribusLive.FormComponent do
   end
 
   @impl true
-  def update(%{scribus: scribus} = assigns, socket) do
+  def update(%{scribus: scribus, current_user: current_user} = assigns, socket) do
     changeset = Configuration.change_scribus(scribus)
+
+    resolution_options =
+      Configuration.list_scribus_resolutions({:user, current_user.id})
+      |> Enum.map(fn r -> {RoomSanctum.Configuration.ScribusResolution.display(r), "#{r.width}x#{r.height}"} end)
 
     {:ok,
      socket
      |> assign(assigns)
+     |> assign(:resolution_options, resolution_options)
      |> assign_form(changeset)}
   end
 

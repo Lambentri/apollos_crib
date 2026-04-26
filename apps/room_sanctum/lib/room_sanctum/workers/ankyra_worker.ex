@@ -54,32 +54,27 @@ defmodule RoomSanctum.Worker.Ankyra do
     |> GenServer.cast(:meta_check)
   end
 
-  defp queue_from_user(username) do
-    "mqtt-subscription-#{username}qos0"
+  defp queue_from_client_id(client_id) do
+    "mqtt-subscription-#{client_id}qos0"
   end
 
-  #
+  def topic(id), do: "ankyra:#{id}"
+
+  def handle_cast(:meta_check, %{ankyra: nil} = state), do: {:noreply, state}
+
   def handle_cast(:meta_check, state) do
-    #    IO.inspect("meta")
-    # TODO, use the http api
-    #    case state.ankyra do
-    #      nil -> {:noreply, state}
-    #      _ ->
-    #        case AMQP.Application.get_channel(:default) do
-    #          {:ok, chan} ->
-    #            try do
-    #              status = AMQP.Queue.status(chan, queue_from_user(state.ankyra.username))
-    ##              IO.inspect(status)
-    #            catch
-    #              {_, _} -> Logger.debug("Can't query size of queue, caught")
-    #            rescue
-    #              e ->
-    #                Logger.debug("Can't query size of queue, ")
-    #            end
-    #          {:error, error} -> IO.inspect(error)
-    #        end
-    #        {:noreply, state}
-    #    end
+    parent = self()
+    client_ids = state.ankyra.client_ids || []
+
+    spawn(fn ->
+      count =
+        client_ids
+        |> Enum.map(&check_consumer_count(queue_from_client_id(&1)))
+        |> Enum.sum()
+
+      send(parent, {:status_result, count})
+    end)
+
     {:noreply, state}
   end
 
@@ -89,8 +84,6 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   def handle_cast({:publish, data}, state) do
-    #    IO.puts("gottem here")
-
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
         AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!())
@@ -114,5 +107,44 @@ defmodule RoomSanctum.Worker.Ankyra do
     end
 
     {:noreply, state}
+  end
+
+  def handle_info({:status_result, count}, state) do
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      topic(state.id),
+      {:ankyra_status, count}
+    )
+
+    {:noreply, state}
+  end
+
+  defp check_consumer_count(queue) do
+    with {:ok, conn} <- AMQP.Application.get_connection(:default),
+         {:ok, chan} <- AMQP.Channel.open(conn) do
+      Process.unlink(chan.pid)
+
+      result =
+        try do
+          case AMQP.Queue.declare(chan, queue, passive: true) do
+            {:ok, %{consumer_count: n}} -> n
+            _ -> 0
+          end
+        catch
+          _, _ -> 0
+        end
+
+      if Process.alive?(chan.pid) do
+        try do
+          AMQP.Channel.close(chan)
+        catch
+          _, _ -> :ok
+        end
+      end
+
+      result
+    else
+      _ -> 0
+    end
   end
 end

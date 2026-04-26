@@ -708,6 +708,33 @@ defmodule RoomSanctum.Configuration do
     Scribus.changeset(scribus, attrs)
   end
 
+  alias RoomSanctum.Configuration.ScribusResolution
+
+  def list_scribus_resolutions({:user, uid}) do
+    from(r in ScribusResolution, where: r.user_id == ^uid, order_by: [asc: r.name])
+    |> Repo.all()
+  end
+
+  def get_scribus_resolution!(id), do: Repo.get!(ScribusResolution, id)
+
+  def create_scribus_resolution(attrs \\ %{}) do
+    %ScribusResolution{}
+    |> ScribusResolution.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  def update_scribus_resolution(%ScribusResolution{} = res, attrs) do
+    res
+    |> ScribusResolution.changeset(attrs)
+    |> Repo.update()
+  end
+
+  def delete_scribus_resolution(%ScribusResolution{} = res), do: Repo.delete(res)
+
+  def change_scribus_resolution(%ScribusResolution{} = res, attrs \\ %{}) do
+    ScribusResolution.changeset(res, attrs)
+  end
+
   alias RoomSanctum.Configuration.Agyr
 
   @doc """

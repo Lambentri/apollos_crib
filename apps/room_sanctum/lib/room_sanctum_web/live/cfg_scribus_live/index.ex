@@ -1,13 +1,20 @@
 defmodule RoomSanctumWeb.ScribusLive.Index do
-  use RoomSanctumWeb, :live_view
+  use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Configuration.Scribus
+  alias RoomSanctum.Configuration.ScribusResolution
 
   @impl true
   def mount(_params, _session, socket) do
+    uid = socket.assigns.current_user.id
+
     {:ok,
-     socket |> stream(:cfg_scribus, Configuration.list_cfg_scribus()) |> assign(:show_info, false)
+     socket
+     |> stream(:cfg_scribus, Configuration.list_cfg_scribus())
+     |> stream(:resolutions, Configuration.list_scribus_resolutions({:user, uid}))
+     |> assign(:show_info, false)
+     |> assign(:resolution_form, to_form(Configuration.change_scribus_resolution(%ScribusResolution{})))
     }
   end
 
@@ -48,5 +55,31 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
   end
   def handle_event("info", _params, socket) do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
+  end
+
+  def handle_event("add-resolution", %{"scribus_resolution" => params}, socket) do
+    params = Map.put(params, "user_id", socket.assigns.current_user.id)
+
+    case Configuration.create_scribus_resolution(params) do
+      {:ok, resolution} ->
+        {:noreply,
+         socket
+         |> stream_insert(:resolutions, resolution)
+         |> assign(:resolution_form, to_form(Configuration.change_scribus_resolution(%ScribusResolution{})))}
+
+      {:error, %Ecto.Changeset{} = cs} ->
+        {:noreply, assign(socket, :resolution_form, to_form(cs))}
+    end
+  end
+
+  def handle_event("delete-resolution", %{"id" => id}, socket) do
+    resolution = Configuration.get_scribus_resolution!(id)
+
+    if resolution.user_id == socket.assigns.current_user.id do
+      {:ok, _} = Configuration.delete_scribus_resolution(resolution)
+      {:noreply, stream_delete(socket, :resolutions, resolution)}
+    else
+      {:noreply, socket}
+    end
   end
 end

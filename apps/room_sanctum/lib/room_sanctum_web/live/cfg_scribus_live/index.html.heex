@@ -43,5 +43,49 @@
     action={@live_action}
     scribus={@scribus}
     patch={~p"/cfg/scribus"}
+    current_user={@current_user}
   />
 </.modal>
+
+<div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-4">
+  <div class="card-body">
+    <h3 class="card-title">Resolutions</h3>
+    <p class="text-sm opacity-70">Resolutions available when configuring a Scribus.</p>
+
+    <table class="table table-compact w-full">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Width</th>
+          <th>Height</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="resolutions" phx-update="stream">
+        <tr :for={{id, r} <- @streams.resolutions} id={id}>
+          <td><%= r.name %></td>
+          <td><%= r.width %></td>
+          <td><%= r.height %></td>
+          <td>
+            <.link
+              phx-click={JS.push("delete-resolution", value: %{id: r.id}) |> hide("##{id}")}
+              data-confirm="Delete this resolution?"
+              class="text-error"
+            >
+              <i class="fas fa-fw fa-trash"></i>
+            </.link>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+
+    <.form for={@resolution_form} phx-submit="add-resolution" class="flex gap-2 items-end mt-2">
+      <.input field={@resolution_form[:name]} type="text" label="Name" placeholder="InkPad 5" />
+      <.input field={@resolution_form[:width]} type="number" label="Width" />
+      <.input field={@resolution_form[:height]} type="number" label="Height" />
+      <button type="submit" class="btn btn-secondary btn-sm">
+        <i class="fas fa-fw fa-plus"></i> Add
+      </button>
+    </.form>
+  </div>
+</div>
