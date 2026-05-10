@@ -22,6 +22,7 @@ defmodule RoomSanctum.Configuration.Query do
         email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
         cronos: RoomSanctum.Configuration.Queries.Cronos,
         gitlab: RoomSanctum.Configuration.Queries.Gitlab,
+        github: RoomSanctum.Configuration.Queries.Github,
         packages: RoomSanctum.Configuration.Queries.Packages,
       ],
       on_type_not_found: :raise,

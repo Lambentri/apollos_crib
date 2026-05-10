@@ -20,6 +20,8 @@ action={@live_action}
 source={@source}
 patch={Routes.source_show_path(@socket, :show, @source)}
 current_user={@current_user}
+gh_available_repos={@github_available_repos}
+gl_available_projects={@gitlab_available_projects}
 />
 </.modal>
 <div class="mx-4 py-2">
@@ -127,18 +129,21 @@ current_user={@current_user}
                     Update
                 </button>
                 <% :gitlab -> %>
-                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-projects"
-                        phx-value-id={@source.id}>
-                    Projects
+                <button class="btn btn-secondary" phx-click="gitlab-open-config">
+                    <i class="fa-solid fa-fw fa-sliders mr-1"></i>Configure Watched
                 </button>
-                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-commits"
-                        phx-value-id={@source.id}>
-                    Commits
+                <div class="text-xs mt-2 text-base-content/70">
+                    <%= length(@source.config.projects || []) %> projects,
+                    <%= length(Map.get(@source.config, :namespaces) || []) %> namespaces watched
+                </div>
+                <% :github -> %>
+                <button class="btn btn-secondary" phx-click="github-open-config">
+                    <i class="fa-solid fa-fw fa-sliders mr-1"></i>Configure Watched
                 </button>
-                <button class="btn btn-secondary" phx-click="do-update" phx-value-type="gitlab-jobs"
-                        phx-value-id={@source.id}>
-                    Jobs
-                </button>
+                <div class="text-xs mt-2 text-base-content/70">
+                    <%= length(Map.get(@source.config, :repos) || []) %> repos,
+                    <%= length(Map.get(@source.config, :owners) || []) %> owners watched
+                </div>
                 <% :packages -> %>
                     <form action="" novalidate="" role="submit" phx-submit="submit-pkg">
                         <input
@@ -452,6 +457,198 @@ current_user={@current_user}
                 <% _default -> %>
                     <% end %>
                 </p>
+            </div>
+        </div>
+    </div>
+    <% end %>
+
+    <%= if @source.type == :gitlab and @gitlab_config_open do %>
+    <% watched_projects = (@source.config.projects || []) |> Enum.map(&to_string/1) |> MapSet.new() %>
+    <% watched_namespaces = (Map.get(@source.config, :namespaces) || []) |> MapSet.new() %>
+    <% grouped =
+         @gitlab_available_projects
+         |> Enum.group_by(fn p -> get_in(p, ["namespace", "full_path"]) || "(unknown)" end)
+         |> Enum.sort_by(fn {ns, _} -> ns end) %>
+    <div class="modal modal-open">
+        <div class="modal-box max-w-4xl">
+            <h3 class="font-bold text-lg flex justify-between items-center">
+                Watched Projects &amp; Namespaces
+                <span class="cursor-pointer" phx-click="gitlab-close-config">
+                    <i class="fa-solid fa-close"></i>
+                </span>
+            </h3>
+            <div class="py-2 flex gap-2 items-center">
+                <button class="btn btn-sm btn-secondary" phx-click="gitlab-refresh-projects">
+                    <i class="fa-solid fa-rotate mr-1"></i>Refresh from GitLab
+                </button>
+                <span class="text-xs text-base-content/70">
+                    <%= length(@gitlab_available_projects) %> available -
+                    check a namespace to watch all of its projects, or pick projects individually.
+                    Empty selection = watch everything.
+                </span>
+            </div>
+            <div class="max-h-[60vh] overflow-y-auto">
+                <%= for {ns, projects} <- grouped do %>
+                <% ns_watched = MapSet.member?(watched_namespaces, ns) %>
+                <div class="border border-base-300 rounded my-2 p-2">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 font-semibold cursor-pointer">
+                            <input type="checkbox" class="checkbox checkbox-sm"
+                                   checked={ns_watched}
+                                   phx-click="gitlab-toggle-namespace"
+                                   phx-value-path={ns} />
+                            <i class="fa-solid fa-folder"></i>
+                            <%= ns %>
+                            <span class="text-xs text-base-content/60">(<%= length(projects) %>)</span>
+                        </label>
+                        <button class="btn btn-xs btn-outline btn-success"
+                                phx-click="gitlab-query-namespace"
+                                phx-value-path={ns}
+                                title={"Create query for namespace #{ns} (auto-watches)"}>
+                            <i class="fa-solid fa-plus"></i>query namespace
+                        </button>
+                    </div>
+                    <div class={"pl-6 mt-1 #{if ns_watched, do: "opacity-50", else: ""}"}>
+                        <%= for p <- Enum.sort_by(projects, & &1["name"]) do %>
+                        <% pid = p["id"] |> to_string() %>
+                        <div class="flex items-center justify-between py-0.5">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" class="checkbox checkbox-xs"
+                                       checked={ns_watched or MapSet.member?(watched_projects, pid)}
+                                       disabled={ns_watched}
+                                       phx-click="gitlab-toggle-project"
+                                       phx-value-id={pid} />
+                                <span class="text-sm"><%= p["name"] %></span>
+                                <span class="badge badge-ghost badge-sm"><%= pid %></span>
+                            </label>
+                            <button class="btn btn-xs btn-ghost btn-success opacity-70 hover:opacity-100"
+                                    phx-click="gitlab-query-project"
+                                    phx-value-id={pid}
+                                    phx-value-name={p["name"]}
+                                    title={"Create query for #{p["name"]} (auto-watches)"}>
+                                <i class="fa-solid fa-plus"></i>query
+                            </button>
+                        </div>
+                        <% end %>
+                    </div>
+                </div>
+                <% end %>
+                <%= if @gitlab_available_projects == [] do %>
+                <div class="text-center py-8 text-base-content/60">
+                    No projects loaded yet. Click "Refresh from GitLab" to fetch.
+                </div>
+                <% end %>
+            </div>
+            <div class="modal-action">
+                <button class="btn btn-primary" phx-click="gitlab-close-config">Done</button>
+            </div>
+        </div>
+    </div>
+    <% end %>
+
+    <%= if @source.type == :github and @github_config_open do %>
+    <% watched_repos = (Map.get(@source.config, :repos) || []) |> MapSet.new() %>
+    <% watched_owners = (Map.get(@source.config, :owners) || []) |> MapSet.new() %>
+    <% gh_grouped =
+         @github_available_repos
+         |> Enum.group_by(fn r -> get_in(r, ["owner", "login"]) || "(unknown)" end)
+         |> Enum.sort_by(fn {o, _} -> o end) %>
+    <div class="modal modal-open">
+        <div class="modal-box max-w-4xl">
+            <h3 class="font-bold text-lg flex justify-between items-center">
+                Watched Repos &amp; Owners
+                <span class="cursor-pointer" phx-click="github-close-config">
+                    <i class="fa-solid fa-close"></i>
+                </span>
+            </h3>
+            <div class="py-2 flex gap-2 items-center">
+                <button class="btn btn-sm btn-secondary" phx-click="github-refresh-repos">
+                    <i class="fa-solid fa-rotate mr-1"></i>Refresh from GitHub
+                </button>
+                <span class="text-xs text-base-content/70">
+                    <%= length(@github_available_repos) %> available -
+                    check an owner to watch all their repos, or pick repos individually.
+                    Empty selection = watch everything reachable by the PAT.
+                </span>
+            </div>
+            <div class="max-h-[60vh] overflow-y-auto">
+                <%= for {owner, repos} <- gh_grouped do %>
+                <% own_watched = MapSet.member?(watched_owners, owner) %>
+                <div class="border border-base-300 rounded my-2 p-2">
+                    <div class="flex items-center justify-between">
+                        <label class="flex items-center gap-2 font-semibold cursor-pointer">
+                            <input type="checkbox" class="checkbox checkbox-sm"
+                                   checked={own_watched}
+                                   phx-click="github-toggle-owner"
+                                   phx-value-owner={owner} />
+                            <i class="fa-brands fa-github"></i>
+                            <%= owner %>
+                            <span class="text-xs text-base-content/60">(<%= length(repos) %>)</span>
+                        </label>
+                        <div class="flex gap-1">
+                            <button class="btn btn-xs btn-outline btn-success"
+                                    phx-click="github-query-owner"
+                                    phx-value-owner={owner}
+                                    phx-value-level="runs"
+                                    title={"Create runs query for owner #{owner} (auto-watches)"}>
+                                <i class="fa-solid fa-plus"></i>runs
+                            </button>
+                            <button class="btn btn-xs btn-outline btn-success"
+                                    phx-click="github-query-owner"
+                                    phx-value-owner={owner}
+                                    phx-value-level="jobs"
+                                    title={"Create jobs query for owner #{owner} (auto-watches)"}>
+                                <i class="fa-solid fa-plus"></i>jobs
+                            </button>
+                        </div>
+                    </div>
+                    <div class={"pl-6 mt-1 #{if own_watched, do: "opacity-50", else: ""}"}>
+                        <%= for r <- Enum.sort_by(repos, & &1["name"]) do %>
+                        <% full = r["full_name"] %>
+                        <div class="flex items-center justify-between py-0.5">
+                            <label class="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" class="checkbox checkbox-xs"
+                                       checked={own_watched or MapSet.member?(watched_repos, full)}
+                                       disabled={own_watched}
+                                       phx-click="github-toggle-repo"
+                                       phx-value-full_name={full} />
+                                <span class="text-sm"><%= r["name"] %></span>
+                                <%= if r["private"] do %>
+                                  <span class="badge badge-warning badge-xs">private</span>
+                                <% end %>
+                                <%= if r["archived"] do %>
+                                  <span class="badge badge-ghost badge-xs">archived</span>
+                                <% end %>
+                            </label>
+                            <div class="flex gap-1">
+                                <button class="btn btn-xs btn-ghost btn-success opacity-70 hover:opacity-100"
+                                        phx-click="github-query-repo"
+                                        phx-value-full_name={full}
+                                        phx-value-level="runs"
+                                        title={"Create runs query for #{full} (auto-watches)"}>
+                                    <i class="fa-solid fa-plus"></i>runs
+                                </button>
+                                <button class="btn btn-xs btn-ghost btn-success opacity-70 hover:opacity-100"
+                                        phx-click="github-query-repo"
+                                        phx-value-full_name={full}
+                                        phx-value-level="jobs"
+                                        title={"Create jobs query for #{full} (auto-watches)"}>
+                                    <i class="fa-solid fa-plus"></i>jobs
+                                </button>
+                            </div>
+                        </div>
+                        <% end %>
+                    </div>
+                </div>
+                <% end %>
+                <%= if @github_available_repos == [] do %>
+                <div class="text-center py-8 text-base-content/60">
+                    No repos loaded yet. Click "Refresh from GitHub" to fetch.
+                </div>
+                <% end %>
+            </div>
+            <div class="modal-action">
+                <button class="btn btn-primary" phx-click="github-close-config">Done</button>
             </div>
         </div>
     </div>

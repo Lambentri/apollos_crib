@@ -35,6 +35,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:free_bikes, [])
       |> assign(:stations, [])
       |> assign(:view_mode, :system)
+      |> assign(:gitlab_config_open, false)
+      |> assign(:gitlab_available_projects, [])
+      |> assign(:github_config_open, false)
+      |> assign(:github_available_repos, [])
     }
   end
 
@@ -149,9 +153,287 @@ defmodule RoomSanctumWeb.SourceLive.Show do
         RoomGitlab.Worker.query_projects(id)
       "gitlab-commits" ->
         RoomGitlab.Worker.query_commits(id)
+      "gitlab-jobs" ->
+        RoomGitlab.Worker.query_jobs(id, %{})
     end
 
     {:noreply, socket}
+  end
+
+  @impl true
+  def handle_event("gitlab-open-config", _params, socket) do
+    id = socket.assigns.source_id
+    available =
+      case RoomGitlab.Worker.pid(id) do
+        nil -> []
+        _pid -> RoomGitlab.Worker.read_available_projects(id) || []
+      end
+
+    {:noreply,
+     socket
+     |> assign(:gitlab_config_open, true)
+     |> assign(:gitlab_available_projects, available)}
+  end
+
+  @impl true
+  def handle_event("gitlab-close-config", _params, socket) do
+    {:noreply, socket |> assign(:gitlab_config_open, false)}
+  end
+
+  @impl true
+  def handle_event("gitlab-refresh-projects", _params, socket) do
+    id = socket.assigns.source_id
+    RoomGitlab.Worker.query_projects(id)
+    Process.send_after(self(), :gitlab_reload_available, 1500)
+    {:noreply, socket |> put_flash(:info, "Refreshing projects from GitLab...")}
+  end
+
+  @impl true
+  def handle_event("gitlab-toggle-project", %{"id" => project_id}, socket) do
+    {:noreply, socket |> toggle_watched(:projects, to_string(project_id))}
+  end
+
+  @impl true
+  def handle_event("gitlab-toggle-namespace", %{"path" => path}, socket) do
+    {:noreply, socket |> toggle_watched(:namespaces, path)}
+  end
+
+  defp toggle_watched(socket, key, value) do
+    source = socket.assigns.source
+    current = (Map.get(source.config, key) || []) |> Enum.map(&to_string/1)
+
+    new_list =
+      if value in current do
+        List.delete(current, value)
+      else
+        [value | current]
+      end
+
+    case RoomSanctum.Configuration.update_source_config(source, %{key => new_list}) do
+      {:ok, updated} -> socket |> assign(:source, updated)
+      {:error, _changeset} -> socket |> put_flash(:error, "Failed to update watched #{key}")
+    end
+  end
+
+  defp ensure_watched(socket, key, value) do
+    source = socket.assigns.source
+    current = (Map.get(source.config, key) || []) |> Enum.map(&to_string/1)
+
+    if value in current do
+      socket
+    else
+      case RoomSanctum.Configuration.update_source_config(source, %{key => [value | current]}) do
+        {:ok, updated} ->
+          kick_gitlab_worker(updated.id)
+          socket |> assign(:source, updated)
+
+        {:error, _changeset} ->
+          socket
+      end
+    end
+  end
+
+  defp kick_gitlab_worker(source_id) do
+    case RoomGitlab.Worker.pid(source_id) do
+      nil ->
+        :ok
+
+      _pid ->
+        RoomGitlab.Worker.refresh_db_cfg(source_id)
+        RoomGitlab.Worker.query_jobs(source_id, %{})
+    end
+  end
+
+  defp kick_github_worker(source_id) do
+    case RoomGithub.Worker.pid(source_id) do
+      nil ->
+        :ok
+
+      _pid ->
+        RoomGithub.Worker.refresh_db_cfg(source_id)
+        RoomGithub.Worker.query_runs(source_id)
+        RoomGithub.Worker.query_jobs(source_id)
+    end
+  end
+
+  defp ensure_watched_github(socket, key, value) do
+    source = socket.assigns.source
+    current = (Map.get(source.config, key) || []) |> Enum.map(&to_string/1)
+
+    if value in current do
+      socket
+    else
+      case RoomSanctum.Configuration.update_source_config(source, %{key => [value | current]}) do
+        {:ok, updated} ->
+          kick_github_worker(updated.id)
+          socket |> assign(:source, updated)
+
+        {:error, _changeset} ->
+          socket
+      end
+    end
+  end
+
+  defp toggle_watched_github(socket, key, value) do
+    source = socket.assigns.source
+    current = (Map.get(source.config, key) || []) |> Enum.map(&to_string/1)
+
+    new_list =
+      if value in current do
+        List.delete(current, value)
+      else
+        [value | current]
+      end
+
+    case RoomSanctum.Configuration.update_source_config(source, %{key => new_list}) do
+      {:ok, updated} ->
+        kick_github_worker(updated.id)
+        socket |> assign(:source, updated)
+
+      {:error, _changeset} ->
+        socket |> put_flash(:error, "Failed to update watched #{key}")
+    end
+  end
+
+  @impl true
+  def handle_event("github-open-config", _params, socket) do
+    id = socket.assigns.source_id
+
+    available =
+      case RoomGithub.Worker.pid(id) do
+        nil -> []
+        _pid -> RoomGithub.Worker.read_available_repos(id) || []
+      end
+
+    {:noreply,
+     socket
+     |> assign(:github_config_open, true)
+     |> assign(:github_available_repos, available)}
+  end
+
+  @impl true
+  def handle_event("github-close-config", _params, socket) do
+    {:noreply, socket |> assign(:github_config_open, false)}
+  end
+
+  @impl true
+  def handle_event("github-refresh-repos", _params, socket) do
+    id = socket.assigns.source_id
+    RoomGithub.Worker.query_repos(id)
+    Process.send_after(self(), :github_reload_available, 1500)
+    {:noreply, socket |> put_flash(:info, "Refreshing repos from GitHub...")}
+  end
+
+  @impl true
+  def handle_event("github-toggle-repo", %{"full_name" => full}, socket) do
+    {:noreply, socket |> toggle_watched_github(:repos, full)}
+  end
+
+  @impl true
+  def handle_event("github-toggle-owner", %{"owner" => owner}, socket) do
+    {:noreply, socket |> toggle_watched_github(:owners, owner)}
+  end
+
+  @impl true
+  def handle_event("github-query-repo", %{"full_name" => full} = params, socket) do
+    socket = socket |> ensure_watched_github(:repos, full)
+    kick_github_worker(socket.assigns.source.id)
+
+    level = Map.get(params, "level", "runs")
+
+    case RoomSanctum.Configuration.create_query(%{
+           user_id: socket.assigns.current_user.id,
+           source_id: socket.assigns.source.id,
+           name: full,
+           query: %{
+             "__type__" => "github",
+             "repo" => full,
+             "level" => level,
+             "status" => "in_progress,queued"
+           },
+           public: true
+         }) do
+      {:ok, _query} ->
+        {:noreply, socket |> put_flash(:info, "Query created for #{full}")}
+
+      {:error, _cs} ->
+        {:noreply, socket |> put_flash(:error, "Failed to create query for #{full}")}
+    end
+  end
+
+  @impl true
+  def handle_event("github-query-owner", %{"owner" => owner} = params, socket) do
+    socket = socket |> ensure_watched_github(:owners, owner)
+    kick_github_worker(socket.assigns.source.id)
+
+    level = Map.get(params, "level", "runs")
+
+    case RoomSanctum.Configuration.create_query(%{
+           user_id: socket.assigns.current_user.id,
+           source_id: socket.assigns.source.id,
+           name: owner,
+           query: %{
+             "__type__" => "github",
+             "owner" => owner,
+             "level" => level,
+             "status" => "in_progress,queued"
+           },
+           public: true
+         }) do
+      {:ok, _query} ->
+        {:noreply, socket |> put_flash(:info, "Query created for owner #{owner}")}
+
+      {:error, _cs} ->
+        {:noreply, socket |> put_flash(:error, "Failed to create query for #{owner}")}
+    end
+  end
+
+  @impl true
+  def handle_event("gitlab-query-project", %{"id" => id, "name" => name} = params, socket) do
+    socket = socket |> ensure_watched(:projects, to_string(id))
+    kick_gitlab_worker(socket.assigns.source.id)
+
+    case RoomSanctum.Configuration.create_query(%{
+           user_id: socket.assigns.current_user.id,
+           source_id: socket.assigns.source.id,
+           name: name,
+           query: %{
+             "__type__" => "gitlab",
+             "id" => String.to_integer(to_string(id)),
+             "statuses" => Map.get(params, "statuses", "running")
+           },
+           public: true
+         }) do
+      {:ok, _query} ->
+        {:noreply, socket |> put_flash(:info, "Query created for project #{name}")}
+
+      {:error, _changeset} ->
+        {:noreply, socket |> put_flash(:error, "Failed to create query for #{name}")}
+    end
+  end
+
+  @impl true
+  def handle_event("gitlab-query-namespace", %{"path" => path} = params, socket) do
+    socket = socket |> ensure_watched(:namespaces, path)
+    kick_gitlab_worker(socket.assigns.source.id)
+
+    case RoomSanctum.Configuration.create_query(%{
+           user_id: socket.assigns.current_user.id,
+           source_id: socket.assigns.source.id,
+           name: path,
+           query: %{
+             "__type__" => "gitlab",
+             "namespace" => path,
+             "statuses" => Map.get(params, "statuses", "running")
+           },
+           public: true
+         }) do
+      {:ok, _query} ->
+        {:noreply, socket |> put_flash(:info, "Query created for namespace #{path}")}
+
+      {:error, _changeset} ->
+        {:noreply, socket |> put_flash(:error, "Failed to create query for #{path}")}
+    end
   end
 
   @impl true
@@ -408,6 +690,40 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def handle_info({:vehicle_positions_updated, source_id, vehicles}, socket) do
     if socket.assigns.source_id == source_id do
       {:noreply, socket |> assign(:vehicle_positions, vehicles)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info(:gitlab_reload_available, socket) do
+    if socket.assigns.gitlab_config_open and socket.assigns.source.type == :gitlab do
+      id = socket.assigns.source_id
+
+      available =
+        case RoomGitlab.Worker.pid(id) do
+          nil -> []
+          _pid -> RoomGitlab.Worker.read_available_projects(id) || []
+        end
+
+      {:noreply, socket |> assign(:gitlab_available_projects, available)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info(:github_reload_available, socket) do
+    if socket.assigns.github_config_open and socket.assigns.source.type == :github do
+      id = socket.assigns.source_id
+
+      available =
+        case RoomGithub.Worker.pid(id) do
+          nil -> []
+          _pid -> RoomGithub.Worker.read_available_repos(id) || []
+        end
+
+      {:noreply, socket |> assign(:github_available_repos, available)}
     else
       {:noreply, socket}
     end

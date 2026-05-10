@@ -180,6 +180,24 @@ defmodule RoomSanctum.Worker.Vision do
                RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
         end
 
+      :github ->
+        case RoomGithub.Worker.pid(q.source.id) do
+          nil ->
+            []
+
+          _val ->
+            level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+
+            if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
+              case level do
+                "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
+                _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
+              end
+            else
+              []
+            end
+        end
+
       :packages ->
         RoomPackages.Worker.read(q.source.id, q.query)
     end

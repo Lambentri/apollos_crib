@@ -253,43 +253,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   end
 
   defp get_icon(source_type) do
-    case source_type do
-      :calendar ->
-        "fa-calendar-alt"
-
-      :rideshare ->
-        "fa-taxi"
-
-      :hass ->
-        "fa-home"
-
-      :gtfs ->
-        "fa-bus-alt"
-
-      :gbfs ->
-        "fa-bicycle"
-
-      :tidal ->
-        "fa-water"
-
-      :ephem ->
-        "fa-moon"
-
-      :weather ->
-        "fa-cloud-sun"
-
-      :aqi ->
-        "fa-lungs"
-
-      :cronos ->
-        "fa-clock"
-
-      :gitlab ->
-        "fa-code-branch"
-
-      :packages ->
-        "fa-envelopes-bulk"
-    end
+    RoomSanctumWeb.IconHelpers.icon(source_type)
   end
 
   def all_selected(list, selected) do

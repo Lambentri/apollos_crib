@@ -458,19 +458,238 @@ use PhoenixHTMLHelpers
 
   def p_gitlab(assigns) do
     ~H"""
+    <div class="flex flex-col gap-2">
     <%= for e <- @entries.data do %>
     <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
-    <div class="card-body textd-left">
-    <h2 class="card-title">
-      <p><i class="fa-solid fa-fw fa-clock"></i> <%= e["commit"]["message"] %> </p>
-    </h2>
-    <p><%= e["duration"] %> Seconds Elapsed
-    </p>
-    </div>
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class={"badge #{gitlab_status_class(e["status"])} gap-1"}>
+              <i class={"fa-solid fa-fw #{gitlab_status_icon(e["status"])}"}></i>
+              <%= e["status"] %>
+            </span>
+            <span class="font-bold truncate"><%= e["name"] %></span>
+            <%= if e["stage"] do %>
+              <span class="badge badge-ghost"><%= e["stage"] %></span>
+            <% end %>
+            <%= if e["allow_failure"] do %>
+              <span class="badge badge-warning badge-xs">allow-fail</span>
+            <% end %>
+          </div>
+          <%= if e["web_url"] do %>
+            <a href={e["web_url"]} target="_blank" rel="noopener" class="link link-hover text-xs whitespace-nowrap">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> open
+            </a>
+          <% end %>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs opacity-90">
+          <%= if e["ref"] do %>
+            <span><i class="fa-solid fa-fw fa-code-branch"></i> <%= e["ref"] %></span>
+          <% end %>
+          <%= if get_in(e, ["commit", "short_id"]) do %>
+            <span>
+              <i class="fa-solid fa-fw fa-code-commit"></i>
+              <code><%= get_in(e, ["commit", "short_id"]) %></code>
+              <%= get_in(e, ["commit", "title"]) || get_in(e, ["commit", "message"]) %>
+            </span>
+          <% end %>
+          <%= if get_in(e, ["commit", "author_name"]) do %>
+            <span><i class="fa-solid fa-fw fa-user"></i> <%= get_in(e, ["commit", "author_name"]) %></span>
+          <% end %>
+          <span><i class="fa-solid fa-fw fa-stopwatch"></i> <%= gitlab_format_duration(e["duration"]) %></span>
+          <%= if e["coverage"] do %>
+            <span><i class="fa-solid fa-fw fa-percent"></i> <%= e["coverage"] %>%</span>
+          <% end %>
+          <%= if e["started_at"] do %>
+            <span><i class="fa-solid fa-fw fa-clock"></i> <%= gitlab_format_time(e["started_at"]) %></span>
+          <% end %>
+          <%= if e["failure_reason"] do %>
+            <span class="text-warning"><i class="fa-solid fa-fw fa-triangle-exclamation"></i> <%= e["failure_reason"] %></span>
+          <% end %>
+        </div>
+      </div>
     </div>
     <% end %>
+    </div>
     """
   end
+
+  defp gitlab_status_class("success"), do: "badge-success"
+  defp gitlab_status_class("failed"), do: "badge-error"
+  defp gitlab_status_class("running"), do: "badge-info"
+  defp gitlab_status_class("canceled"), do: "badge-ghost"
+  defp gitlab_status_class("skipped"), do: "badge-ghost"
+  defp gitlab_status_class("manual"), do: "badge-ghost"
+  defp gitlab_status_class(_), do: "badge-warning"
+
+  defp gitlab_status_icon("success"), do: "fa-check"
+  defp gitlab_status_icon("failed"), do: "fa-xmark"
+  defp gitlab_status_icon("running"), do: "fa-spinner fa-spin"
+  defp gitlab_status_icon("pending"), do: "fa-hourglass-half"
+  defp gitlab_status_icon("created"), do: "fa-circle-dot"
+  defp gitlab_status_icon("waiting_for_resource"), do: "fa-pause"
+  defp gitlab_status_icon("canceled"), do: "fa-ban"
+  defp gitlab_status_icon("skipped"), do: "fa-forward"
+  defp gitlab_status_icon("manual"), do: "fa-hand-pointer"
+  defp gitlab_status_icon(_), do: "fa-circle-question"
+
+  defp gitlab_format_duration(nil), do: "—"
+  defp gitlab_format_duration(secs) when is_number(secs) do
+    total = round(secs)
+    cond do
+      total < 60 -> "#{total}s"
+      total < 3600 -> "#{div(total, 60)}m #{rem(total, 60)}s"
+      true -> "#{div(total, 3600)}h #{div(rem(total, 3600), 60)}m"
+    end
+  end
+  defp gitlab_format_duration(_), do: "—"
+
+  defp gitlab_format_time(iso) when is_binary(iso) do
+    case DateTime.from_iso8601(iso) do
+      {:ok, dt, _} ->
+        secs = DateTime.diff(DateTime.utc_now(), dt)
+        cond do
+          secs < 60 -> "#{secs}s ago"
+          secs < 3600 -> "#{div(secs, 60)}m ago"
+          secs < 86_400 -> "#{div(secs, 3600)}h ago"
+          true -> "#{div(secs, 86_400)}d ago"
+        end
+
+      _ -> iso
+    end
+  end
+  defp gitlab_format_time(_), do: "—"
+
+  def p_github(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-2">
+    <%= for e <- @entries.data do %>
+    <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
+      <div class="card-body">
+        <div class="flex items-start justify-between gap-2">
+          <div class="flex items-center gap-2 min-w-0">
+            <span class={"badge #{github_status_class(e["status"], e["conclusion"])} gap-1"}>
+              <i class={"fa-solid fa-fw #{github_status_icon(e["status"], e["conclusion"])}"}></i>
+              <%= github_status_label(e["status"], e["conclusion"]) %>
+            </span>
+            <span class="font-bold truncate">
+              <%= e["display_title"] || e["name"] %>
+            </span>
+            <%= if e["name"] && e["display_title"] && e["name"] != e["display_title"] do %>
+              <span class="badge badge-ghost"><%= e["name"] %></span>
+            <% end %>
+            <%= if e["event"] do %>
+              <span class="badge badge-ghost badge-sm"><%= e["event"] %></span>
+            <% end %>
+            <%= if e["run_attempt"] && e["run_attempt"] > 1 do %>
+              <span class="badge badge-warning badge-xs">retry #<%= e["run_attempt"] %></span>
+            <% end %>
+          </div>
+          <%= if e["html_url"] do %>
+            <a href={e["html_url"]} target="_blank" rel="noopener" class="link link-hover text-xs whitespace-nowrap">
+              <i class="fa-solid fa-arrow-up-right-from-square"></i> open
+            </a>
+          <% end %>
+        </div>
+
+        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs opacity-90">
+          <%= if get_in(e, ["repository", "full_name"]) do %>
+            <span><i class="fa-brands fa-fw fa-github"></i> <%= get_in(e, ["repository", "full_name"]) %></span>
+          <% end %>
+          <%= if e["head_branch"] do %>
+            <span><i class="fa-solid fa-fw fa-code-branch"></i> <%= e["head_branch"] %></span>
+          <% end %>
+          <%= if e["head_sha"] do %>
+            <span>
+              <i class="fa-solid fa-fw fa-code-commit"></i>
+              <code><%= String.slice(e["head_sha"], 0, 7) %></code>
+              <%= get_in(e, ["head_commit", "message"]) |> github_first_line() %>
+            </span>
+          <% end %>
+          <%= if get_in(e, ["head_commit", "author", "name"]) || get_in(e, ["actor", "login"]) do %>
+            <span><i class="fa-solid fa-fw fa-user"></i>
+              <%= get_in(e, ["head_commit", "author", "name"]) || get_in(e, ["actor", "login"]) %>
+            </span>
+          <% end %>
+          <span><i class="fa-solid fa-fw fa-stopwatch"></i> <%= github_duration(e) %></span>
+          <%= if e["run_started_at"] || e["started_at"] || e["created_at"] do %>
+            <span><i class="fa-solid fa-fw fa-clock"></i>
+              <%= gitlab_format_time(e["run_started_at"] || e["started_at"] || e["created_at"]) %>
+            </span>
+          <% end %>
+        </div>
+      </div>
+    </div>
+    <% end %>
+    </div>
+    """
+  end
+
+  defp github_first_line(nil), do: ""
+  defp github_first_line(s) when is_binary(s), do: s |> String.split("\n", parts: 2) |> List.first()
+  defp github_first_line(_), do: ""
+
+  defp github_status_class(_status, "success"), do: "badge-success"
+  defp github_status_class(_status, "failure"), do: "badge-error"
+  defp github_status_class(_status, "timed_out"), do: "badge-error"
+  defp github_status_class(_status, "cancelled"), do: "badge-ghost"
+  defp github_status_class(_status, "skipped"), do: "badge-ghost"
+  defp github_status_class(_status, "neutral"), do: "badge-ghost"
+  defp github_status_class(_status, "action_required"), do: "badge-warning"
+  defp github_status_class("in_progress", _), do: "badge-info"
+  defp github_status_class("queued", _), do: "badge-warning"
+  defp github_status_class("waiting", _), do: "badge-warning"
+  defp github_status_class("requested", _), do: "badge-warning"
+  defp github_status_class("pending", _), do: "badge-warning"
+  defp github_status_class(_, _), do: "badge-ghost"
+
+  defp github_status_icon(_status, "success"), do: "fa-check"
+  defp github_status_icon(_status, "failure"), do: "fa-xmark"
+  defp github_status_icon(_status, "timed_out"), do: "fa-clock"
+  defp github_status_icon(_status, "cancelled"), do: "fa-ban"
+  defp github_status_icon(_status, "skipped"), do: "fa-forward"
+  defp github_status_icon(_status, "neutral"), do: "fa-circle-minus"
+  defp github_status_icon(_status, "action_required"), do: "fa-triangle-exclamation"
+  defp github_status_icon("in_progress", _), do: "fa-spinner fa-spin"
+  defp github_status_icon("queued", _), do: "fa-hourglass-half"
+  defp github_status_icon("waiting", _), do: "fa-pause"
+  defp github_status_icon("requested", _), do: "fa-hand-pointer"
+  defp github_status_icon("pending", _), do: "fa-hourglass-half"
+  defp github_status_icon(_, _), do: "fa-circle-question"
+
+  defp github_status_label(status, nil), do: status || "?"
+  defp github_status_label("completed", conclusion) when is_binary(conclusion), do: conclusion
+  defp github_status_label(status, _), do: status || "?"
+
+  defp github_duration(%{"started_at" => start, "completed_at" => done})
+       when is_binary(start) and is_binary(done) do
+    with {:ok, s, _} <- DateTime.from_iso8601(start),
+         {:ok, e, _} <- DateTime.from_iso8601(done) do
+      gitlab_format_duration(DateTime.diff(e, s))
+    else
+      _ -> "—"
+    end
+  end
+
+  defp github_duration(%{"run_started_at" => start, "updated_at" => done})
+       when is_binary(start) and is_binary(done) do
+    with {:ok, s, _} <- DateTime.from_iso8601(start),
+         {:ok, e, _} <- DateTime.from_iso8601(done) do
+      gitlab_format_duration(DateTime.diff(e, s))
+    else
+      _ -> "—"
+    end
+  end
+
+  defp github_duration(%{"run_started_at" => start}) when is_binary(start) do
+    case DateTime.from_iso8601(start) do
+      {:ok, s, _} -> gitlab_format_duration(DateTime.diff(DateTime.utc_now(), s))
+      _ -> "—"
+    end
+  end
+
+  defp github_duration(_), do: "—"
 
   def p_packages(assigns) do
     ~H"""

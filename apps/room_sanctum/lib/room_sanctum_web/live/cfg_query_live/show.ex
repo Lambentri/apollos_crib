@@ -91,6 +91,14 @@ defmodule RoomSanctumWeb.QueryLive.Show do
             socket.assigns.query.query
           )
 
+        :github ->
+          level = Map.get(socket.assigns.query.query, :level) || "runs"
+
+          case level do
+            "jobs" -> RoomGithub.Worker.read_jobs(socket.assigns.query.source.id, socket.assigns.query.query)
+            _ -> RoomGithub.Worker.read_runs(socket.assigns.query.source.id, socket.assigns.query.query)
+          end
+
         :packages ->
           RoomPackages.Worker.read(
             socket.assigns.query.source.id,

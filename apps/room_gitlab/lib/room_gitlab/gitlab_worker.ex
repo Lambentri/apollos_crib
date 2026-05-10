@@ -10,6 +10,7 @@ defmodule RoomGitlab.Worker do
   @ttl :timer.minutes(5)
 
   @registry :zeus
+  @gitlab_config_module RoomSanctum.Configuration.Configs.Gitlab
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gitlab" <> opts[:name]))
@@ -34,23 +35,41 @@ defmodule RoomGitlab.Worker do
       initial_delay: 8
     )
 
-    Periodic.start_link(
-      every: :timer.seconds(10),
-      run: fn -> RoomGitlab.Worker.query_jobs(opts[:name], %{}) end,
-      initial_delay: 6
-    )
+    # Jobs cadence is configurable per source via config.poll_seconds; self-reschedules.
+    Process.send_after(self(), :tick_jobs, :timer.seconds(6))
 
     {:ok,
      %{
        id: opts[:name],
        inst: %{},
        projects: [],
+       available_projects: [],
        commits: %{},
        jobs: %{},
        refs: %{},
        refs_t: %{},
        refs_i: %{}
      }}
+  end
+
+  def handle_info(:tick_jobs, state) do
+    GenServer.cast(self(), {:query_jobs, %{}})
+    Process.send_after(self(), :tick_jobs, current_poll_ms(state))
+    {:noreply, state}
+  end
+
+  defp current_poll_ms(state) do
+    secs =
+      case state.inst do
+        %{config: %{__struct__: @gitlab_config_module, poll_seconds: s}}
+        when is_integer(s) and s > 0 ->
+          s
+
+        _ ->
+          10
+      end
+
+    :timer.seconds(secs)
   end
 
   def pid(name) do
@@ -90,6 +109,12 @@ defmodule RoomGitlab.Worker do
     |> GenServer.call({:read_projects, query})
   end
 
+  def read_available_projects(name) do
+    "gitlab#{name}"
+    |> via_tuple()
+    |> GenServer.call(:read_available_projects)
+  end
+
   def read_commits(name, query) do
     "gitlab#{name}"
     |> via_tuple()
@@ -104,8 +129,39 @@ defmodule RoomGitlab.Worker do
 
   def handle_cast(:refresh_db_cfg, state) do
     inst = Configuration.get_source!(state.id)
-    {:noreply, state |> Map.put(:inst, inst)}
+    state = state |> Map.put(:inst, inst)
+    filtered = filter_watched(state.available_projects, inst)
+    watched_ids = filtered |> Enum.map(& &1["id"])
+
+    commits = state.commits |> Map.take(watched_ids)
+    jobs = state.jobs |> Map.take(watched_ids)
+
+    {:noreply,
+     state
+     |> Map.put(:projects, filtered)
+     |> Map.put(:commits, commits)
+     |> Map.put(:jobs, jobs)}
   end
+
+  defp filter_watched(projects, inst) when is_list(projects) do
+    config = inst |> Map.get(:config) || %{}
+    watched_projects = (Map.get(config, :projects) || []) |> Enum.map(&to_string/1)
+    watched_namespaces = Map.get(config, :namespaces) || []
+
+    case {watched_projects, watched_namespaces} do
+      {[], []} ->
+        projects
+
+      _ ->
+        Enum.filter(projects, fn p ->
+          pid = p |> Map.get("id") |> to_string()
+          ns = get_in(p, ["namespace", "full_path"]) || ""
+          pid in watched_projects or ns in watched_namespaces
+        end)
+    end
+  end
+
+  defp filter_watched(_projects, _inst), do: []
 
   defp do_gitlab_req(uri, token, lookup, id \\ nil) do
     {path, params} =
@@ -176,47 +232,55 @@ defmodule RoomGitlab.Worker do
   def handle_cast(:query_projects, state) do
     Logger.info("GLab::#{state.inst.id} Querying Projects")
 
-    case state |> Map.get(:inst, %{}) |> Map.get(:enabled) do
-      true ->
-        {:ok, ref} = do_gitlab_reqa(state.inst.config.url, state.inst.config.pat, :projects)
-        {:ok, fd} = StringIO.open("")
-        refs = state |> Map.get(:refs)
-        refs = refs |> Map.put(ref.id, %{fd: fd, type: :projects})
+    with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
+         {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
+      {:ok, ref} = do_gitlab_reqa(url, pat, :projects)
+      {:ok, fd} = StringIO.open("")
+      refs = state |> Map.get(:refs)
+      refs = refs |> Map.put(ref.id, %{fd: fd, type: :projects})
 
-        {:noreply, state |> Map.put(:refs, refs)}
+      {:noreply, state |> Map.put(:refs, refs)}
+    else
+      :no_creds ->
+        Logger.warning("GLab::#{state.inst.id} skipping query_projects - config missing url/pat (type/config mismatch?)")
+        {:noreply, state}
 
-      x when x in [false, nil] ->
+      _ ->
         {:noreply, state}
     end
   end
+
+  defp gitlab_creds(%{config: %{__struct__: @gitlab_config_module, url: url, pat: pat}})
+       when is_binary(url) and is_binary(pat),
+       do: {url, pat}
+
+  defp gitlab_creds(_), do: :no_creds
 
   def handle_call({:read_projects, query}, _from, state) do
     {:reply, state[:projects], state}
   end
 
+  def handle_call(:read_available_projects, _from, state) do
+    {:reply, state[:available_projects], state}
+  end
+
   def handle_cast(:query_commits, state) do
-    if state |> Map.get(:inst, %{}) |> Map.get(:enabled) do
-      IO.inspect(state.projects)
+    with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
+         {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
       all =
         state.projects
-        |> Enum.map(
-          fn p ->
-            Logger.info("GLab::#{state.inst.id} Querying Commits for #{p["name"]}")
-            {:ok, ref} =
-              do_gitlab_reqa(state.inst.config.url, state.inst.config.pat, :commits, p["id"])
-
-            {:ok, fd} = StringIO.open("")
-            {ref.id, %{fd: fd, type: :commits, id: p["id"]}}
-          end
-        )
+        |> Enum.map(fn p ->
+          Logger.info("GLab::#{state.inst.id} Querying Commits for #{p["name"]}")
+          {:ok, ref} = do_gitlab_reqa(url, pat, :commits, p["id"])
+          {:ok, fd} = StringIO.open("")
+          {ref.id, %{fd: fd, type: :commits, id: p["id"]}}
+        end)
         |> Map.new()
 
-      refs = state |> Map.get(:refs)
-      refs = refs |> Map.merge(all)
-
+      refs = state |> Map.get(:refs) |> Map.merge(all)
       {:noreply, state |> Map.put(:refs, refs)}
     else
-      {:noreply, state}
+      _ -> {:noreply, state}
     end
   end
 
@@ -224,69 +288,73 @@ defmodule RoomGitlab.Worker do
     {:reply, state[:commits], state}
   end
 
-  def handle_cast({:query_jobs, query}, state) do
-    case state |> Map.get(:inst, %{}) |> Map.get(:enabled) do
-      x when x in [false, nil] ->
-        Logger.info("Instance not populated")
+  def handle_cast({:query_jobs, _query}, state) do
+    with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
+         {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
+      Logger.info("GLab::#{state.inst.id} Querying Jobs for #{length(state.projects)} watched projects")
+
+      all =
+        state.projects
+        |> Enum.map(fn p ->
+          id = p["id"]
+          Logger.debug("GLab::#{state.inst.id} Querying Jobs for #{id}")
+          {:ok, ref} = do_gitlab_reqa(url, pat, :jobs, id)
+          {:ok, fd} = StringIO.open("")
+          {ref.id, %{fd: fd, type: :jobs, id: id}}
+        end)
+        |> Map.new()
+
+      refs = state |> Map.get(:refs) |> Map.merge(all)
+      {:noreply, state |> Map.put(:refs, refs)}
+    else
+      _ ->
         {:noreply, state}
-
-      true ->
-        Logger.info("GLab::#{state.inst.id} Querying Jobs")
-        all =
-          state.commits
-          |> Enum.filter(fn {k, v} -> v end)
-          |> Enum.map(fn {id, enabled} ->
-            Logger.debug("GLab::#{state.inst.id} Querying Jobs for #{id}")
-            {:ok, ref} = do_gitlab_reqa(state.inst.config.url, state.inst.config.pat, :jobs, id)
-
-            {:ok, fd} = StringIO.open("")
-            {ref.id, %{fd: fd, type: :jobs, id: id}}
-          end)
-          |> Map.new()
-
-        refs = state |> Map.get(:refs)
-        refs = refs |> Map.merge(all)
-
-        {:noreply, state |> Map.put(:refs, refs)}
     end
   end
 
-  def handle_call({:read_jobs, %{statuses: statuses, id: id}}, _from, state)
-      when is_list(statuses) do
-    {:reply,
-     state[:jobs] |> Map.get(id) |> Enum.filter(fn e -> Enum.member?(statuses, e["status"]) end),
-     state}
+  def handle_call({:read_jobs, query}, _from, state) do
+    project_ids = jobs_target_ids(query, state)
+    statuses = parse_statuses(Map.get(query, :statuses) || Map.get(query, "statuses"))
+
+    jobs =
+      project_ids
+      |> Enum.flat_map(fn id -> state[:jobs] |> Map.get(id) || [] end)
+      |> filter_by_statuses(statuses)
+
+    {:reply, jobs, state}
   end
 
-  def handle_call({:read_jobs, %{statuses: statuses, id: id}}, _from, state)
-      when is_binary(statuses) do
-    {:reply, state[:jobs] |> Map.get(id) |> Enum.filter(fn e -> e["status"] == statuses end),
-     state}
+  defp jobs_target_ids(query, state) do
+    id = Map.get(query, :id) || Map.get(query, "id")
+    ns = Map.get(query, :namespace) || Map.get(query, "namespace")
+
+    cond do
+      not is_nil(id) ->
+        [id]
+
+      is_binary(ns) and ns != "" ->
+        state.available_projects
+        |> Enum.filter(fn p -> get_in(p, ["namespace", "full_path"]) == ns end)
+        |> Enum.map(& &1["id"])
+
+      true ->
+        Map.keys(state[:jobs] || %{})
+    end
   end
 
-  def handle_call({:read_jobs, %{statuses: statuses}}, _from, state) when is_list(statuses) do
-    {:reply,
-     state[:jobs]
-     |> Enum.map(fn {k, j} ->
-       j |> Enum.filter(fn e -> Enum.member?(statuses, e["status"]) end)
-     end)
-     |> List.flatten(), state}
+  defp parse_statuses(nil), do: :all
+  defp parse_statuses(s) when is_list(s), do: s
+  defp parse_statuses(s) when is_binary(s) do
+    case String.trim(s) do
+      "" -> :all
+      trimmed -> trimmed |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+    end
   end
 
-  def handle_call({:read_jobs, %{statuses: statuses}}, _from, state) when is_binary(statuses) do
-    {:reply,
-     state[:jobs]
-     |> Enum.map(fn {k, j} -> j |> Enum.filter(fn e -> e["status"] == statuses end) end)
-     |> List.flatten(), state}
-  end
-
-  def handle_call({:read_jobs, %{id: id}}, _from, state) do
-    {:reply, state[:jobs] |> Map.get(id), state}
-  end
-
-  def handle_call({:read_jobs, %{}}, _from, state) do
-    {:reply, state[:jobs], state}
-  end
+  defp filter_by_statuses(jobs, :all), do: jobs
+  defp filter_by_statuses(jobs, [single]), do: Enum.filter(jobs, &(&1["status"] == single))
+  defp filter_by_statuses(jobs, statuses) when is_list(statuses),
+    do: Enum.filter(jobs, &Enum.member?(statuses, &1["status"]))
 
   def handle_call(_msg, _from, state) do
     {:reply, [:ok], state}
@@ -333,7 +401,12 @@ defmodule RoomGitlab.Worker do
               nil ->
                 case t do
                   :projects ->
-                    {:noreply, state |> Map.put(t, decoded)}
+                    filtered = filter_watched(decoded, state.inst)
+
+                    {:noreply,
+                     state
+                     |> Map.put(:available_projects, decoded)
+                     |> Map.put(:projects, filtered)}
 
                   x when x in [:commits, :jobs] ->
                     c = state |> Map.get(t)

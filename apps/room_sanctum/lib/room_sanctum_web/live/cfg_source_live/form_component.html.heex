@@ -156,6 +156,110 @@
         <.input field={gitlab_form[:pat]} type="text" label="PAT"/>
     </div>
     <% end %>
+    <div class="form-control mt-2">
+        <label class="label">
+            <span class="label-text">
+                Poll interval —
+                <%
+                  {gl_label, _} = Enum.at(RoomSanctumWeb.SourceLive.FormComponent.gitlab_poll_steps(), @gitlab_poll_idx, {"10s", 10})
+                %>
+                <span class="font-bold"><%= gl_label %></span>
+            </span>
+        </label>
+        <input type="range"
+            name="source[config][gitlab_poll_idx]"
+            id="source_config_gitlab_poll_idx"
+            min="0"
+            max={length(RoomSanctumWeb.SourceLive.FormComponent.gitlab_poll_steps()) - 1}
+            step="1"
+            value={@gitlab_poll_idx}
+            class="range range-sm range-secondary" />
+        <div class="flex justify-between text-xs px-1 mt-1">
+            <%= for {label, _secs} <- RoomSanctumWeb.SourceLive.FormComponent.gitlab_poll_steps() do %>
+                <span><%= label %></span>
+            <% end %>
+        </div>
+        <p class="text-xs text-base-content/60 mt-1">
+            How often the worker polls GitLab jobs for status changes.
+            Lower values = fresher data, more API calls (typical GitLab limit: 18000/hr authenticated).
+        </p>
+        <div class={"text-xs mt-2 #{RoomSanctumWeb.SourceLive.FormComponent.gitlab_estimate_class(@gitlab_estimate.calls)}"}>
+            <i class="fa-solid fa-fw fa-gauge-high"></i>
+            <%= case @gitlab_estimate.source do %>
+            <% :unknown -> %>
+                Estimated API calls: <span class="font-bold">unknown</span>
+                — open Configure → Refresh from GitLab to populate the picker.
+            <% :exact -> %>
+                <%= if @gitlab_estimate.watched == 0 do %>
+                  No projects watched. Worker will poll every accessible project on each cycle.
+                <% else %>
+                  Estimate: <span class="font-bold">~<%= @gitlab_estimate.calls %> API calls/hr</span>
+                  (<%= @gitlab_estimate.watched %> projects × <%= @gitlab_estimate.cycles %> cycles).
+                <% end %>
+            <% :partial -> %>
+                Estimate: <span class="font-bold">~<%= @gitlab_estimate.calls %>+ API calls/hr</span>
+                (<%= @gitlab_estimate.watched %> known watched projects; some namespaces may add more — refresh in Configure for an accurate count).
+            <% end %>
+        </div>
+    </div>
+
+    <% :github -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :github, fn gh_form -> %>
+    <div class="form-control">
+        <.input field={gh_form[:api_url]} type="text" label="API URL (https://api.github.com or your GHE base)"/>
+    </div>
+
+    <div class="form-control">
+        <.input field={gh_form[:pat]} type="text" label="Personal Access Token"/>
+    </div>
+    <% end %>
+    <div class="form-control mt-2">
+        <label class="label">
+            <span class="label-text">
+                Poll interval —
+                <%
+                  {label, _} = Enum.at(RoomSanctumWeb.SourceLive.FormComponent.github_poll_steps(), @github_poll_idx, {"1m", 60})
+                %>
+                <span class="font-bold"><%= label %></span>
+            </span>
+        </label>
+        <input type="range"
+            name="source[config][poll_idx]"
+            id="source_config_poll_idx"
+            min="0"
+            max={length(RoomSanctumWeb.SourceLive.FormComponent.github_poll_steps()) - 1}
+            step="1"
+            value={@github_poll_idx}
+            class="range range-sm range-secondary" />
+        <div class="flex justify-between text-xs px-1 mt-1">
+            <%= for {label, _secs} <- RoomSanctumWeb.SourceLive.FormComponent.github_poll_steps() do %>
+                <span><%= label %></span>
+            <% end %>
+        </div>
+        <p class="text-xs text-base-content/60 mt-1">
+            How often the worker polls GitHub for workflow run/job status changes.
+            Lower values = fresher data, more API calls (limit: 5000/hr authenticated).
+        </p>
+        <div class={"text-xs mt-2 #{RoomSanctumWeb.SourceLive.FormComponent.github_estimate_class(@github_estimate.calls)}"}>
+            <i class="fa-solid fa-fw fa-gauge-high"></i>
+            <%= case @github_estimate.source do %>
+            <% :unknown -> %>
+                Estimated API calls: <span class="font-bold">unknown</span>
+                — open Configure → Refresh from GitHub to populate the picker.
+            <% :exact -> %>
+                <%= if @github_estimate.watched == 0 do %>
+                  No repos watched. Worker will fall back to polling every accessible repo on each cycle.
+                <% else %>
+                  Estimate: <span class="font-bold">~<%= @github_estimate.calls %> API calls/hr</span>
+                  (<%= @github_estimate.watched %> repos × 2 calls × <%= @github_estimate.cycles %> cycles).
+                  GitHub limit: 5000/hr.
+                <% end %>
+            <% :partial -> %>
+                Estimate: <span class="font-bold">~<%= @github_estimate.calls %>+ API calls/hr</span>
+                (<%= @github_estimate.watched %> known watched repos; some owners may add more — refresh in Configure for an accurate count). GitHub limit: 5000/hr.
+            <% end %>
+        </div>
+    </div>
 
     <% :packages -> %>
     <%= polymorphic_embed_inputs_for @form, :config, :packages, fn packages_form -> %>

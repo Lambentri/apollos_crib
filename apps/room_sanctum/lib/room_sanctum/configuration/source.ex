@@ -25,6 +25,7 @@ defmodule RoomSanctum.Configuration.Source do
         :weather,
         :cronos,
         :gitlab,
+        :github,
         :packages,
       ]
 
@@ -42,6 +43,7 @@ defmodule RoomSanctum.Configuration.Source do
         email: [module: MyApp.Channel.Email, identify_by_fields: [:address, :confirmed]],
         cronos: RoomSanctum.Configuration.Configs.Cronos,
         gitlab: RoomSanctum.Configuration.Configs.Gitlab,
+        github: RoomSanctum.Configuration.Configs.Github,
         packages: RoomSanctum.Configuration.Configs.Packages,
       ],
       on_type_not_found: :raise,

@@ -145,10 +145,32 @@
   <% :gitlab -> %>
       <%= polymorphic_embed_inputs_for @form, :query, :gitlab, fn gitlab_form -> %>
       <div class="form-control">
-        <.input field={gitlab_form[:id]} type="number" label="ID" />
+        <.input field={gitlab_form[:id]} type="number" label="Project ID (leave blank if using Namespace)" />
       </div>
       <div class="form-control">
-        <.input field={gitlab_form[:statuses]} type="text" label="Statuses" />
+        <.input field={gitlab_form[:namespace]} type="text" label="Namespace full_path (leave blank if using Project ID)" />
+      </div>
+      <div class="form-control">
+        <.input field={gitlab_form[:statuses]} type="text" label="Statuses (comma list, e.g. running,pending; blank = all)" />
+      </div>
+      <% end %>
+
+  <% :github -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :github, fn gh_form -> %>
+      <div class="form-control">
+        <.input field={gh_form[:repo]} type="text" label="Repo (owner/name) - leave blank if using Owner" />
+      </div>
+      <div class="form-control">
+        <.input field={gh_form[:owner]} type="text" label="Owner (org/user) - leave blank if using Repo" />
+      </div>
+      <div class="form-control">
+        <.input field={gh_form[:level]} type="select" label="Level" options={["runs", "jobs"]} />
+      </div>
+      <div class="form-control">
+        <.input field={gh_form[:status]} type="text" label="Status (comma list: queued,in_progress,completed; blank = all)" />
+      </div>
+      <div class="form-control">
+        <.input field={gh_form[:conclusion]} type="text" label="Conclusion (comma list: success,failure,cancelled,skipped; blank = all)" />
       </div>
       <% end %>
     <% :packages -> %>

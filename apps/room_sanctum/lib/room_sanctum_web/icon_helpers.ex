@@ -34,6 +34,9 @@ defmodule RoomSanctumWeb.IconHelpers do
       :gitlab ->
         "fa-code-branch"
 
+      :github ->
+        "fa-github"
+
       :packages ->
         "fa-envelopes-bulk"
 
@@ -77,6 +80,9 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :gitlab ->
         "f126"
+
+      :github ->
+        "f09b"
 
       :const ->
         "f071"

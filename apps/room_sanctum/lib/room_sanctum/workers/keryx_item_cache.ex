@@ -116,6 +116,8 @@ defmodule RoomSanctum.Worker.KeryxItemCache do
         Map.get(item, :id) || Map.get(item, "id") || Map.get(item, :name) || Map.get(item, "name")
       :gitlab ->
         Map.get(item, :id) || Map.get(item, "id")
+      :github ->
+        Map.get(item, :id) || Map.get(item, "id")
       :packages ->
         Map.get(item, :tracking_number) || Map.get(item, "tracking_number") || Map.get(item, :id) || Map.get(item, "id")
       _ ->
