@@ -173,7 +173,30 @@
         <.input field={gh_form[:conclusion]} type="text" label="Conclusion (comma list: success,failure,cancelled,skipped; blank = all)" />
       </div>
       <% end %>
-    <% :packages -> %>
+    <% :pollen -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :pollen, fn pollen_form -> %>
+      <div class="form-control">
+        <.input field={pollen_form[:foci_id]} type="select" label="Foci" options={@cfg_foci_sel} />
+      </div>
+      <div class="form-control">
+        <.input field={pollen_form[:days]} type="number" label="Forecast days (1–5)" />
+      </div>
+      <% end %>
+
+  <% :drought -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :drought, fn drought_form -> %>
+      <div class="form-control">
+        <.input field={drought_form[:product]} type="select" label="Product" options={[{"USDM (US Drought Monitor)", "usdm"}, {"CSI (not implemented)", "csi"}, {"CPC outlooks (not implemented)", "cpc"}, {"GPCC (not implemented)", "gpcc"}]} />
+      </div>
+      <div class="form-control">
+        <.input field={drought_form[:fips]} type="text" label="FIPS county code (5 digits, e.g. 25025) — leave blank if using State" />
+      </div>
+      <div class="form-control">
+        <.input field={drought_form[:state]} type="text" label="State (2-letter, e.g. MA) — leave blank if using FIPS" />
+      </div>
+      <% end %>
+
+  <% :packages -> %>
       <%= polymorphic_embed_inputs_for @form, :query, :packages, fn packages_form -> %>
       <div class="form-control">
         <.input field={packages_form[:show_delivered_for]} type="number" label="Show delivered packages for X days" />

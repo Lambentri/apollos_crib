@@ -200,6 +200,18 @@ defmodule RoomSanctum.Worker.Vision do
 
       :packages ->
         RoomPackages.Worker.read(q.source.id, q.query)
+
+      :drought ->
+        case RoomDrought.Worker.pid(q.source.id) do
+          nil -> []
+          _pid -> RoomDrought.Worker.read(q.source.id, q.query) || []
+        end
+
+      :pollen ->
+        case RoomPollen.Worker.pid(q.source.id) do
+          nil -> []
+          _pid -> RoomPollen.Worker.read(q.source.id, q.query) || []
+        end
     end
   end
 end

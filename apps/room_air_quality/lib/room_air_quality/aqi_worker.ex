@@ -12,12 +12,6 @@ defmodule RoomAirQuality.Worker do
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("aqi" <> opts[:name]))
-
-    Periodic.start_link(
-      every: :timer.seconds(60 * 60),
-      run: fn -> RoomGitlab.Worker.query_projects(opts[:name]) end,
-      initial_delay: :timer.seconds(60 * 30),
-    )
   end
 
   # Public
@@ -38,6 +32,12 @@ defmodule RoomAirQuality.Worker do
   end
 
   def init(opts) do
+    Periodic.start_link(
+      every: :timer.seconds(60 * 60),
+      run: fn -> RoomAirQuality.Worker.update_static_data(opts[:name]) end,
+      initial_delay: :timer.seconds(30)
+    )
+
     {:ok, %{id: opts[:name]}}
   end
 
@@ -54,6 +54,28 @@ defmodule RoomAirQuality.Worker do
   defp intify(val) when is_float(val), do: val |> Kernel.trunc()
   defp intify(val), do: val
 
+  defp parse_float(""), do: nil
+  defp parse_float(nil), do: nil
+
+  defp parse_float(s) when is_binary(s) do
+    case Float.parse(s) do
+      {f, _} -> f
+      :error -> nil
+    end
+  end
+
+  defp parse_float(f) when is_float(f), do: f
+  defp parse_float(_), do: nil
+
+  # AirNow leaves unmeasured pollutant fields as empty strings ("").
+  # Ecto's :float cast rejects "" (changeset becomes invalid → row silently dropped).
+  # Normalize all blanks to nil before building the changeset.
+  defp normalize_blanks(data) do
+    data
+    |> Enum.map(fn {k, v} -> {k, if(v == "", do: nil, else: v)} end)
+    |> Map.new()
+  end
+
   defp write_data(result, type, id) do
     datetime = NaiveDateTime.local_now()
     Logger.info("AQI::#{id} writing bundle #{type}")
@@ -61,8 +83,9 @@ defmodule RoomAirQuality.Worker do
     case type do
       :hourly ->
         result.body
-        |> String.split("\r\n")
+        |> String.split(~r/\r?\n/)
         |> Enum.filter(fn x -> x != "" end)
+        |> Enum.map(&(&1 <> "\n"))
         |> CSV.decode(
           headers: [
             :valid_date,
@@ -98,9 +121,13 @@ defmodule RoomAirQuality.Worker do
 
       :sites ->
         result.body
-        |> String.split("\r\n")
+        |> String.split(~r/\r?\n/)
         |> List.delete_at(0)
         |> Enum.filter(fn x -> x != "" end)
+        # The :csv library expects each stream element to end with a newline;
+        # without it, consecutive lines are interpreted as quote-escaped
+        # continuations and the entire file collapses into a single row.
+        |> Enum.map(&(&1 <> "\n"))
         |> CSV.decode(
           headers: [
             :station_id,
@@ -162,11 +189,16 @@ defmodule RoomAirQuality.Worker do
         end)
 
       :hourly_obs ->
+        # Column order matches AirNow's current HourlyAQObs CSV header (verified live).
+        # Positions 23-34 reorder: PM25, OZONE, NO2, CO, SO2, PM10 (each followed by its _Unit).
         result.body
-        |> String.split("\r\n")
+        |> String.split(~r/\r?\n/)
         |> List.delete_at(0)
-        |> IO.inspect
         |> Enum.filter(fn x -> x != "" end)
+        # The :csv library expects each stream element to end with a newline;
+        # without it, consecutive lines are interpreted as quote-escaped
+        # continuations and the entire file collapses into a single row.
+        |> Enum.map(&(&1 <> "\n"))
         |> CSV.decode(
           headers: [
             :aqsid,
@@ -191,40 +223,44 @@ defmodule RoomAirQuality.Worker do
             :pm10_measured,
             :pm25_measured,
             :no2_measured,
+            :pm25,
+            :pm25_unit,
+            :ozone,
+            :ozone_unit,
             :no2,
             :no2_unit,
             :co,
             :co_unit,
-            :pm25,
-            :pm25_unit,
             :so2,
             :so2_unit,
-            :ozone,
-            :ozone_unit,
             :pm10,
             :pm10_unit
           ]
         )
         |> Enum.to_list()
-        |> IO.inspect
         |> Enum.map(fn {:ok, x} -> x end)
+        |> Enum.map(&normalize_blanks/1)
         |> Enum.map(fn data ->
-          point = %Geo.Point{
-            coordinates: {data.lat |> String.to_float(), data.lon |> String.to_float()},
-            srid: 4326
-          }
+          lat = parse_float(data.lat)
+          lon = parse_float(data.lon)
 
-          {offset, _} = data.gmt_offset |> Float.parse()
+          point =
+            if lat && lon do
+              %Geo.Point{coordinates: {lat, lon}, srid: 4326}
+            end
 
           RoomSanctum.Storage.change_hourly_obs_data(
             %RoomSanctum.Storage.AirNow.HourlyObsData{},
             data
             |> Map.put(:source_id, id)
             |> Map.put(:point, point)
-            |> Map.put(:gmt_offset, offset)
+            |> Map.put(:lat, lat)
+            |> Map.put(:lon, lon)
+            |> Map.put(:elevation, parse_float(data[:elevation]))
+            |> Map.put(:gmt_offset, parse_float(data[:gmt_offset]))
             |> Map.put(
               :reporting_areas,
-              data |> Map.get(:reporting_areas, "") |> String.split("|")
+              (data[:reporting_areas] || "") |> String.split("|")
             )
             |> Map.put(
               :valid_date,
@@ -235,7 +271,6 @@ defmodule RoomAirQuality.Worker do
               data.valid_time |> Timex.parse!("%H:%M", :strftime) |> NaiveDateTime.to_time()
             )
           )
-          |> IO.inspect
           |> Map.put(:inserted_at, datetime)
           |> Map.put(:updated_at, datetime)
           |> Map.put(:ozone_aqi, data.ozone_aqi |> intify)
@@ -243,14 +278,34 @@ defmodule RoomAirQuality.Worker do
           |> Map.put(:pm25_aqi, data.pm25_aqi |> intify)
           |> Map.put(:no2_aqi, data.no2_aqi |> intify)
         end)
-        |> IO.inspect
-        |> Enum.map(fn x ->
-          Repo.insert(
-            x,
-            on_conflict: {:replace_all_except, [:id]},
-            conflict_target: [:source_id, :aqsid]
-          )
+        |> Enum.reduce({0, 0, []}, fn cs, {ok, fail, sample_errs} ->
+          case Repo.insert(cs,
+                 on_conflict: {:replace_all_except, [:id]},
+                 conflict_target: [:source_id, :aqsid]
+               ) do
+            {:ok, _} ->
+              {ok + 1, fail, sample_errs}
+
+            {:error, bad} ->
+              new_sample =
+                if length(sample_errs) < 3 do
+                  [{cs.changes[:aqsid] || cs.data.aqsid, bad.errors} | sample_errs]
+                else
+                  sample_errs
+                end
+
+              {ok, fail + 1, new_sample}
+          end
         end)
+        |> case do
+          {ok, 0, _} ->
+            Logger.info("AQI::#{id} inserted #{ok} rows")
+
+          {ok, fail, sample} ->
+            Logger.warning(
+              "AQI::#{id} inserted #{ok} rows, #{fail} failed. First failures: #{inspect(sample)}"
+            )
+        end
     end
 
     Logger.info("AQI::#{id} completed writing bundle")
@@ -266,14 +321,41 @@ defmodule RoomAirQuality.Worker do
   #    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/today/HourlyData_#{file_str}.dat"
   #  end
 
-  defp build_obs_url(ts \\ DateTime.utc_now()) do
-    sh = ts |> DateTime.add(-1 * 60 * 60, :second)
+  defp build_obs_url(hours_ago, ts \\ DateTime.utc_now()) do
+    sh = ts |> DateTime.add(-hours_ago * 60 * 60, :second)
     file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
     date_str = sh |> Timex.format!("%Y%m%d", :strftime)
-    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/2024/20240418/HourlyAQObs_2024041817.dat"
-#    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/2024/20240418/HourlyAQObs_2024041816.dat"
-#    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
-#    |> IO.inspect()
+    "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
+  end
+
+  # AirNow publishes HourlyAQObs files with variable lag (typically ~1-3h).
+  # Walk back from 1h to 6h and use the first 200 we find.
+  defp fetch_latest_obs(id) do
+    Enum.reduce_while(1..6, nil, fn hours_ago, _acc ->
+      url = build_obs_url(hours_ago)
+
+      case HTTPoison.get(url) do
+        {:ok, %{status_code: 200} = result} ->
+          Logger.info("AQI::#{id} fetched #{url}")
+          {:halt, {:ok, result}}
+
+        {:ok, %{status_code: code}} ->
+          Logger.debug("AQI::#{id} #{code} on #{url}, trying older hour")
+          {:cont, nil}
+
+        {:error, info} ->
+          Logger.warning("AQI::#{id} HTTP error on #{url}: #{inspect(info.reason)}")
+          {:cont, nil}
+      end
+    end)
+    |> case do
+      {:ok, _} = ok ->
+        ok
+
+      _ ->
+        Logger.warning("AQI::#{id} no AirNow file available in last 6 hours")
+        :error
+    end
   end
 
   def handle_cast(:refresh_db_cfg, state) do
@@ -283,37 +365,14 @@ defmodule RoomAirQuality.Worker do
 
   def handle_cast(:update_static, state) do
     Logger.info("AQI::#{state.id} updating data")
-
     bcast(state.id, :downloading, 1, 10)
-    #    case HTTPoison.get(build_todays_url()) do
-    #      {:ok, result} ->
-    #        write_data(result, :hourly, state.id)
-    #        {:noreply, state}rec
-    #
-    #      {:error, info} ->
-    #        Logger.info(info.reason)
-    #        {:noreply, state}
-    #    end
 
-    case HTTPoison.get(build_obs_url()) do
-      {:ok, result} ->
-        write_data(result, :hourly_obs, state.id)
-        {:noreply, state}
-
-      {:error, info} ->
-        Logger.info(info.reason)
-        {:noreply, state}
+    case fetch_latest_obs(state.id) do
+      {:ok, result} -> write_data(result, :hourly_obs, state.id)
+      :error -> :ok
     end
 
-    #    case HTTPoison.get(@monitoring_site_url) do
-    #      {:ok, result} ->
-    #        write_data(result, :sites, state.id)
-    #        {:noreply, state}
-    #
-    #      {:error, info} ->
-    #        Logger.info(info.reason)
-    #        {:noreply, state}
-    #    end
+    {:noreply, state}
   end
 
   def handle_cast(_msg, state) do

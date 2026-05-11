@@ -37,6 +37,12 @@ defmodule RoomSanctumWeb.IconHelpers do
       :github ->
         "fa-github"
 
+      :drought ->
+        "fa-sun-plant-wilt"
+
+      :pollen ->
+        "fa-seedling"
+
       :packages ->
         "fa-envelopes-bulk"
 
@@ -83,6 +89,12 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :github ->
         "f09b"
+
+      :drought ->
+        "e5c8"
+
+      :pollen ->
+        "f4d8"
 
       :const ->
         "f071"

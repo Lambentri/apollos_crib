@@ -27,6 +27,8 @@ defmodule RoomSanctum.Configuration.Source do
         :gitlab,
         :github,
         :packages,
+        :drought,
+        :pollen,
       ]
 
     polymorphic_embeds_one :config,
@@ -45,6 +47,8 @@ defmodule RoomSanctum.Configuration.Source do
         gitlab: RoomSanctum.Configuration.Configs.Gitlab,
         github: RoomSanctum.Configuration.Configs.Github,
         packages: RoomSanctum.Configuration.Configs.Packages,
+        drought: RoomSanctum.Configuration.Configs.Drought,
+        pollen: RoomSanctum.Configuration.Configs.Pollen,
       ],
       on_type_not_found: :raise,
       on_replace: :update

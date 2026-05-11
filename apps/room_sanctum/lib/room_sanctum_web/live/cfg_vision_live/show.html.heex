@@ -136,6 +136,8 @@
                       <% {_, :cronos} -> %> <.p_cronos entries={condense(k, p) |> preview(k)}> </.p_cronos>
                       <% {_, :gitlab} -> %> <.p_gitlab entries={condense(k, p) |> preview(k)}> </.p_gitlab>
                       <% {_, :github} -> %> <.p_github entries={condense(k, p) |> preview(k)}> </.p_github>
+                      <% {_, :drought} -> %> <.p_drought entries={condense(k, p) |> preview(k)}> </.p_drought>
+                      <% {_, :pollen} -> %> <.p_pollen entries={condense(k, p) |> preview(k)}> </.p_pollen>
                       <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
                     <% end %>
                   <% end %>

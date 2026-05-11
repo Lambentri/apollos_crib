@@ -17,6 +17,8 @@ defmodule RoomZeus.DynSupervisor do
         :gitlab -> {RoomGitlab.Worker, [name: instance_id]}
         :github -> {RoomGithub.Worker, [name: instance_id]}
         :packages -> {RoomPackages.Worker, [name: instance_id]}
+        :drought -> {RoomDrought.Worker, [name: instance_id]}
+        :pollen -> {RoomPollen.Worker, [name: instance_id]}
         _ -> nil
       end
 

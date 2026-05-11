@@ -691,6 +691,257 @@ use PhoenixHTMLHelpers
 
   defp github_duration(_), do: "—"
 
+  def p_drought(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-2">
+    <%= for e <- @entries.data do %>
+      <%= cond do %>
+      <% e["status"] == "not_yet_implemented" -> %>
+        <div class="card card-compact w-full bg-base-200 shadow">
+          <div class="card-body">
+            <p class="text-sm">
+              <i class="fa-solid fa-fw fa-hourglass-half"></i>
+              Product <span class="font-bold"><%= e["product"] %></span> is reserved but not yet implemented.
+            </p>
+          </div>
+        </div>
+      <% true -> %>
+        <% top = drought_top_category(e) %>
+        <div class={"card card-compact w-full shadow-xl #{drought_card_class(top)}"}>
+          <div class="card-body">
+            <div class="flex items-start justify-between gap-2">
+              <div class="flex items-center gap-2 min-w-0">
+                <span class={"badge gap-1 #{drought_badge_class(top)}"}>
+                  <i class="fa-solid fa-fw fa-sun-plant-wilt"></i>
+                  <%= drought_top_label(top) %>
+                </span>
+                <span class="font-bold truncate">
+                  <%= e["county"] || e["state"] %>
+                </span>
+                <%= if e["state"] && e["county"] do %>
+                  <span class="badge badge-ghost badge-sm"><%= e["state"] %></span>
+                <% end %>
+                <%= if e["fips"] do %>
+                  <span class="badge badge-ghost badge-xs">FIPS <%= e["fips"] %></span>
+                <% end %>
+              </div>
+              <span class="text-xs opacity-90"><%= drought_format_date(e["mapDate"]) %></span>
+            </div>
+            <div class="grid grid-cols-6 gap-1 mt-2 text-xs">
+              <%= for {label, key, color} <- drought_categories() do %>
+                <div class={"px-1 py-0.5 rounded text-center #{color}"} title={label}>
+                  <div class="font-mono font-bold"><%= drought_pct(e[key]) %>%</div>
+                  <div class="opacity-75"><%= drought_short(key) %></div>
+                </div>
+              <% end %>
+            </div>
+            <%= if e["validStart"] && e["validEnd"] do %>
+              <p class="text-xs opacity-70 mt-1">
+                Valid <%= drought_format_date(e["validStart"]) %> &mdash; <%= drought_format_date(e["validEnd"]) %>
+              </p>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+    <% end %>
+    </div>
+    """
+  end
+
+  defp drought_categories do
+    [
+      {"None", "none", "bg-emerald-500/30"},
+      {"D0 — Abnormally Dry", "d0", "bg-yellow-300/40"},
+      {"D1 — Moderate Drought", "d1", "bg-amber-400/40"},
+      {"D2 — Severe Drought", "d2", "bg-orange-500/50"},
+      {"D3 — Extreme Drought", "d3", "bg-red-500/50"},
+      {"D4 — Exceptional Drought", "d4", "bg-red-800/60 text-white"}
+    ]
+  end
+
+  defp drought_short("none"), do: "none"
+  defp drought_short("d0"), do: "D0"
+  defp drought_short("d1"), do: "D1"
+  defp drought_short("d2"), do: "D2"
+  defp drought_short("d3"), do: "D3"
+  defp drought_short("d4"), do: "D4"
+  defp drought_short(other), do: to_string(other)
+
+  defp drought_pct(nil), do: "—"
+  defp drought_pct(v) when is_number(v), do: :erlang.float_to_binary(v * 1.0, decimals: 0)
+  defp drought_pct(v) when is_binary(v), do: v
+  defp drought_pct(_), do: "—"
+
+  # Returns the worst category with a non-zero percentage.
+  defp drought_top_category(e) do
+    cond do
+      drought_nonzero?(e["d4"]) -> :d4
+      drought_nonzero?(e["d3"]) -> :d3
+      drought_nonzero?(e["d2"]) -> :d2
+      drought_nonzero?(e["d1"]) -> :d1
+      drought_nonzero?(e["d0"]) -> :d0
+      true -> :none
+    end
+  end
+
+  defp drought_nonzero?(v) when is_number(v) and v > 0, do: true
+  defp drought_nonzero?(v) when is_binary(v) do
+    case Float.parse(v) do
+      {f, _} when f > 0 -> true
+      _ -> false
+    end
+  end
+  defp drought_nonzero?(_), do: false
+
+  defp drought_top_label(:none), do: "no drought"
+  defp drought_top_label(:d0), do: "D0 abnormally dry"
+  defp drought_top_label(:d1), do: "D1 moderate"
+  defp drought_top_label(:d2), do: "D2 severe"
+  defp drought_top_label(:d3), do: "D3 extreme"
+  defp drought_top_label(:d4), do: "D4 exceptional"
+
+  defp drought_badge_class(:none), do: "badge-success"
+  defp drought_badge_class(:d0), do: "badge-warning"
+  defp drought_badge_class(:d1), do: "badge-warning"
+  defp drought_badge_class(:d2), do: "badge-error"
+  defp drought_badge_class(:d3), do: "badge-error"
+  defp drought_badge_class(:d4), do: "badge-error"
+
+  defp drought_card_class(:none), do: "bg-success text-success-content"
+  defp drought_card_class(:d0), do: "bg-warning text-warning-content"
+  defp drought_card_class(:d1), do: "bg-warning text-warning-content"
+  defp drought_card_class(:d2), do: "bg-error text-error-content"
+  defp drought_card_class(:d3), do: "bg-error text-error-content"
+  defp drought_card_class(:d4), do: "bg-error text-error-content"
+
+  defp drought_format_date(nil), do: "—"
+  defp drought_format_date(s) when is_binary(s) do
+    case DateTime.from_iso8601(s) do
+      {:ok, dt, _} -> dt |> DateTime.to_date() |> Date.to_string()
+      _ ->
+        case NaiveDateTime.from_iso8601(s) do
+          {:ok, dt} -> dt |> NaiveDateTime.to_date() |> Date.to_string()
+          _ -> s
+        end
+    end
+  end
+  defp drought_format_date(_), do: "—"
+
+  def p_pollen(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-2">
+    <%= for day <- @entries.data do %>
+      <% top = pollen_top_category(day) %>
+      <div class={"card card-compact w-full shadow-xl #{pollen_card_class(top)}"}>
+        <div class="card-body">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class={"badge gap-1 #{pollen_badge_class(top)}"}>
+                <i class="fa-solid fa-fw fa-seedling"></i>
+                <%= pollen_top_label(top) %>
+              </span>
+              <span class="font-bold"><%= pollen_format_date(day["date"]) %></span>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-2 text-sm">
+            <%= for type <- (day["pollenTypeInfo"] || []) do %>
+              <% upi = get_in(type, ["indexInfo", "value"]) %>
+              <% cat = get_in(type, ["indexInfo", "category"]) %>
+              <div class={"px-2 py-1 rounded text-center #{pollen_type_class(upi)}"}>
+                <div class="font-bold uppercase"><%= type["displayName"] %></div>
+                <div class="text-2xl font-mono"><%= upi || "—" %></div>
+                <div class="text-xs opacity-90"><%= cat || "—" %></div>
+                <%= if type["inSeason"] == false do %>
+                  <div class="text-xs opacity-60">off-season</div>
+                <% end %>
+              </div>
+            <% end %>
+          </div>
+
+          <% plants = day["plantInfo"] || [] %>
+          <% in_season = Enum.filter(plants, &(&1["inSeason"] == true and pollen_nonzero?(&1))) %>
+          <%= if in_season != [] do %>
+            <details class="text-xs mt-1">
+              <summary class="cursor-pointer opacity-90">
+                Active species (<%= length(in_season) %>)
+              </summary>
+              <div class="flex flex-wrap gap-1 mt-1">
+                <%= for p <- in_season do %>
+                  <% upi = get_in(p, ["indexInfo", "value"]) %>
+                  <span class={"badge badge-sm #{pollen_species_class(upi)}"}>
+                    <%= p["displayName"] %> (<%= upi || "?" %>)
+                  </span>
+                <% end %>
+              </div>
+            </details>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    </div>
+    """
+  end
+
+  defp pollen_format_date(%{"year" => y, "month" => m, "day" => d}),
+    do: "#{y}-#{pad2(m)}-#{pad2(d)}"
+
+  defp pollen_format_date(_), do: "—"
+
+  defp pad2(n) when is_integer(n) and n < 10, do: "0#{n}"
+  defp pad2(n), do: "#{n}"
+
+  defp pollen_nonzero?(plant) do
+    case get_in(plant, ["indexInfo", "value"]) do
+      n when is_number(n) and n > 0 -> true
+      _ -> false
+    end
+  end
+
+  defp pollen_top_category(day) do
+    (day["pollenTypeInfo"] || [])
+    |> Enum.map(fn t -> get_in(t, ["indexInfo", "value"]) || 0 end)
+    |> Enum.max(fn -> 0 end)
+  end
+
+  defp pollen_top_label(0), do: "no pollen"
+  defp pollen_top_label(1), do: "very low"
+  defp pollen_top_label(2), do: "low"
+  defp pollen_top_label(3), do: "moderate"
+  defp pollen_top_label(4), do: "high"
+  defp pollen_top_label(5), do: "very high"
+  defp pollen_top_label(_), do: "?"
+
+  defp pollen_badge_class(0), do: "badge-success"
+  defp pollen_badge_class(1), do: "badge-success"
+  defp pollen_badge_class(2), do: "badge-info"
+  defp pollen_badge_class(3), do: "badge-warning"
+  defp pollen_badge_class(4), do: "badge-error"
+  defp pollen_badge_class(5), do: "badge-error"
+  defp pollen_badge_class(_), do: "badge-ghost"
+
+  defp pollen_card_class(0), do: "bg-base-100"
+  defp pollen_card_class(1), do: "bg-success/20"
+  defp pollen_card_class(2), do: "bg-info/20"
+  defp pollen_card_class(3), do: "bg-warning/30"
+  defp pollen_card_class(4), do: "bg-error/30"
+  defp pollen_card_class(5), do: "bg-error/40"
+  defp pollen_card_class(_), do: "bg-base-100"
+
+  defp pollen_type_class(nil), do: "bg-base-300/40"
+  defp pollen_type_class(0), do: "bg-base-300/40"
+  defp pollen_type_class(1), do: "bg-success/30"
+  defp pollen_type_class(2), do: "bg-info/30"
+  defp pollen_type_class(3), do: "bg-warning/40"
+  defp pollen_type_class(4), do: "bg-error/40"
+  defp pollen_type_class(5), do: "bg-error/50"
+  defp pollen_type_class(_), do: "bg-base-300/40"
+
+  defp pollen_species_class(n) when is_number(n) and n >= 4, do: "badge-error"
+  defp pollen_species_class(n) when is_number(n) and n >= 3, do: "badge-warning"
+  defp pollen_species_class(n) when is_number(n) and n >= 2, do: "badge-info"
+  defp pollen_species_class(_), do: "badge-success"
+
   def p_packages(assigns) do
     ~H"""
     <%= for x <- @entries.data do %>

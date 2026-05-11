@@ -189,6 +189,12 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       :github ->
         data
 
+      :drought ->
+        data
+
+      :pollen ->
+        data
+
       :packages ->
         data
 

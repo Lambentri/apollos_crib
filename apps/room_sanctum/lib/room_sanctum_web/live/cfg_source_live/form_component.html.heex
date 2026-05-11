@@ -261,6 +261,38 @@
         </div>
     </div>
 
+    <% :pollen -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :pollen, fn pollen_form -> %>
+    <div class="form-control">
+        <.input field={pollen_form[:api_key]} type="text" label="Google Pollen API Key" />
+        <p class="text-xs text-base-content/60 mt-1">
+            Generate a key in Google Cloud Console → enable Pollen API. Free tier: 10K requests/month.
+        </p>
+    </div>
+    <% end %>
+
+    <% :drought -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :drought, fn drought_form -> %>
+    <div class="form-control">
+        <.input
+          field={drought_form[:products]}
+          type="select"
+          label="Products"
+          multiple={true}
+          options={[
+            {"US Drought Monitor (USDM)", "usdm"},
+            {"Coastal Salinity Index — not implemented yet", "csi"},
+            {"CPC Outlooks — not implemented yet", "cpc"},
+            {"GPCC Drought Index — not implemented yet", "gpcc"}
+          ]}
+        />
+        <p class="text-xs text-base-content/60 mt-1">
+            USDM is the only product with live data today. Others are reserved for future implementation.
+            Source needs no API key (USDM is a public service).
+        </p>
+    </div>
+    <% end %>
+
     <% :packages -> %>
     <%= polymorphic_embed_inputs_for @form, :config, :packages, fn packages_form -> %>
     <div class="form-control">

@@ -24,6 +24,8 @@ defmodule RoomSanctum.Configuration.Query do
         gitlab: RoomSanctum.Configuration.Queries.Gitlab,
         github: RoomSanctum.Configuration.Queries.Github,
         packages: RoomSanctum.Configuration.Queries.Packages,
+        drought: RoomSanctum.Configuration.Queries.Drought,
+        pollen: RoomSanctum.Configuration.Queries.Pollen,
       ],
       on_type_not_found: :raise,
       on_replace: :update

@@ -104,6 +104,18 @@ defmodule RoomSanctumWeb.QueryLive.Show do
             socket.assigns.query.source.id,
             socket.assigns.query.query
           )
+
+        :drought ->
+          RoomDrought.Worker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
+
+        :pollen ->
+          RoomPollen.Worker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
       end
 
     {:noreply, assign(socket, :preview, result)}

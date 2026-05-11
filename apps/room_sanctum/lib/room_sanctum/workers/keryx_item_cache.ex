@@ -118,6 +118,14 @@ defmodule RoomSanctum.Worker.KeryxItemCache do
         Map.get(item, :id) || Map.get(item, "id")
       :github ->
         Map.get(item, :id) || Map.get(item, "id")
+      :drought ->
+        Map.get(item, "fips") || Map.get(item, "state") || Map.get(item, "mapDate") || Map.get(item, :mapDate)
+      :pollen ->
+        case Map.get(item, "date") || Map.get(item, :date) do
+          %{"year" => y, "month" => m, "day" => d} -> "#{y}-#{m}-#{d}"
+          %{year: y, month: m, day: d} -> "#{y}-#{m}-#{d}"
+          other -> inspect(other)
+        end
       :packages ->
         Map.get(item, :tracking_number) || Map.get(item, "tracking_number") || Map.get(item, :id) || Map.get(item, "id")
       _ ->

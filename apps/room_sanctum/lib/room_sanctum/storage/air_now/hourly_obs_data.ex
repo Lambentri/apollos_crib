@@ -87,21 +87,11 @@ defmodule RoomSanctum.Storage.AirNow.HourlyObsData do
     |> foreign_key_constraint(:source_id)
     |> validate_required([
       :aqsid,
-      :site_name,
-      :status,
       :lat,
       :lon,
       :point,
-      :elevation,
-      :state_name,
       :valid_date,
-      :valid_time,
-      :data_source,
-      :reporting_areas,
-      :ozone_measured,
-      :pm10_measured,
-      :pm25_measured,
-      :no2_measured
+      :valid_time
     ])
   end
   def compile_pairs(entry) when is_nil(entry) do
