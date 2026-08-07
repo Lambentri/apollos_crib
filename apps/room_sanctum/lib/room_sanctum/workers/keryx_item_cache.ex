@@ -126,6 +126,23 @@ defmodule RoomSanctum.Worker.KeryxItemCache do
           %{year: y, month: m, day: d} -> "#{y}-#{m}-#{d}"
           other -> inspect(other)
         end
+      :bourse ->
+        Map.get(item, :symbol) || Map.get(item, "symbol")
+      :treasury ->
+        Map.get(item, :pair) || Map.get(item, "pair")
+      :mailbox ->
+        Map.get(item, :uid) || Map.get(item, "uid")
+      :icarus ->
+        # Area mode keys on the airframe; a flight watch keys on the instance,
+        # so a notification does not re-fire when the hex is latched or the
+        # aircraft briefly drops out of coverage.
+        case Map.get(item, "kind") do
+          "flight" ->
+            "#{Map.get(item, "callsign")}/#{Map.get(item, "sched_arrival")}"
+
+          _ ->
+            Map.get(item, "hex") || Map.get(item, :hex)
+        end
       :packages ->
         Map.get(item, :tracking_number) || Map.get(item, "tracking_number") || Map.get(item, :id) || Map.get(item, "id")
       _ ->

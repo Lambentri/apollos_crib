@@ -29,6 +29,10 @@ defmodule RoomSanctum.Configuration.Source do
         :packages,
         :drought,
         :pollen,
+        :icarus,
+        :mailbox,
+        :treasury,
+        :bourse,
       ]
 
     polymorphic_embeds_one :config,
@@ -49,6 +53,10 @@ defmodule RoomSanctum.Configuration.Source do
         packages: RoomSanctum.Configuration.Configs.Packages,
         drought: RoomSanctum.Configuration.Configs.Drought,
         pollen: RoomSanctum.Configuration.Configs.Pollen,
+        icarus: RoomSanctum.Configuration.Configs.Icarus,
+        mailbox: RoomSanctum.Configuration.Configs.Mailbox,
+        treasury: RoomSanctum.Configuration.Configs.Treasury,
+        bourse: RoomSanctum.Configuration.Configs.Bourse,
       ],
       on_type_not_found: :raise,
       on_replace: :update

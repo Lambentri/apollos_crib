@@ -28,6 +28,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> assign(:cfg_sources, sources)
       |> assign(:cfg_foci, focis)
       |> assign(:current_type, current_type)
+      |> assign(:treasury_groups, treasury_groups(sources, Map.get(query, :source_id)))
       |> assign(:results, [])
       |> assign(:cfg_sources_sel, Enum.into(sources, %{}, fn x -> {x.name, x.id} end))
       |> assign(:cfg_foci_sel, Enum.into(focis, %{}, fn x -> {x.name, x.id} end))
@@ -49,7 +50,41 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
     {:noreply,
      socket
      |> assign(:current_type, current_type)
+     |> assign(
+       :treasury_groups,
+       treasury_groups(socket.assigns.cfg_sources, parse_id(query_params["source_id"]))
+     )
      |> assign_form(changeset)}
+  end
+
+  # Swapping is a one-click fix for a pair entered the wrong way round -- a rate
+  # of 0.0000116 usually means you wanted the reciprocal.
+  def handle_event("treasury-swap", _params, socket) do
+    applied = Ecto.Changeset.apply_changes(socket.assigns.form.source)
+    q = applied.query
+
+    # Rebuilt from the applied changeset rather than the stored record, so an
+    # unsaved name or notes edit is not thrown away by the swap.
+    params =
+      %{
+        "name" => applied.name,
+        "notes" => applied.notes,
+        "source_id" => applied.source_id,
+        "query" => %{
+          "__type__" => "treasury",
+          "from" => query_field(q, :to),
+          "to" => query_field(q, :from),
+          "precision" => query_field(q, :precision)
+        }
+      }
+      |> inj_uid(socket)
+
+    changeset =
+      socket.assigns.query
+      |> Configuration.change_query(params)
+      |> Map.put(:action, :validate)
+
+    {:noreply, assign_form(socket, changeset)}
   end
 
   def handle_event("save", %{"query" => query_params}, socket) do
@@ -147,6 +182,26 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
   end
 
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
+
+  # apply_changes/1 leaves an *invalid* embed as a Changeset rather than a
+  # struct, so a half-filled pair -- exactly when someone reaches for swap --
+  # needs reading through get_field rather than Map.get.
+  defp query_field(%Ecto.Changeset{} = cs, key), do: Ecto.Changeset.get_field(cs, key)
+  defp query_field(%_{} = struct, key), do: Map.get(struct, key)
+  defp query_field(_, _), do: nil
+
+  # Which groups the selected offering wants shown; anything else gets them all.
+  defp treasury_groups(sources, source_id) do
+    case Enum.find(List.wrap(sources), &(&1.id == source_id)) do
+      %{type: :treasury, config: %RoomSanctum.Configuration.Configs.Treasury{} = cfg} ->
+        RoomTreasury.Currencies.grouped(
+          RoomSanctum.Configuration.Configs.Treasury.enabled_categories(cfg)
+        )
+
+      _ ->
+        RoomTreasury.Currencies.grouped()
+    end
+  end
 
   defp type_for_source_id(_sources, nil), do: nil
 

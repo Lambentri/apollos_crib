@@ -28,6 +28,9 @@ defmodule ApollosCrib.MixProject do
             room_gitlab: :permanent,
             room_github: :permanent,
             room_packages: :permanent,
+            room_icarus: :permanent,
+            room_treasury: :permanent,
+            room_bourse: :permanent,
             room_scribes: :permanent,
             runtime_tools: :permanent
           ]

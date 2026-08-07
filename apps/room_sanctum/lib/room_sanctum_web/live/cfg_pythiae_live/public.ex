@@ -43,7 +43,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
   end
 
   defp condense({id, type}, data) do
-    RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+    RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
   end
 
   defp get_icon(type) do

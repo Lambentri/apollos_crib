@@ -32,10 +32,18 @@ defmodule RoomSanctumWeb.DataController do
 
   def create(conn, data) do
     {path, data} = data |> Map.pop("path")
+
+    # USPS signs its notifications; the header has to reach the queue for the
+    # signature to be checkable there.
+    hmac =
+      case Plug.Conn.get_req_header(conn, "x-hmac") do
+        [value | _] -> value
+        [] -> List.first(Plug.Conn.get_req_header(conn, "hmac-header"))
+      end
 #    IO.inspect(data)
 #    {:ok, datas, _conn_details} = Plug.Conn.read_body(conn)
 #    IO.inspect(datas)
-    %{path: path, data: data}
+    %{path: path, data: data, hmac: hmac}
     |> RoomSanctum.Queues.Webhooks.new()
     |> Oban.insert()
 

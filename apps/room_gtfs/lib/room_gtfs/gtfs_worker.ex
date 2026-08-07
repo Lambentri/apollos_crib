@@ -648,11 +648,20 @@ defmodule RoomGtfs.Worker.Static do
     end
   end
 
+  # Feeds in the wild put whitespace-only values in optional numeric columns
+  # (SFMTA's trips.txt ships ", , " for wheelchair_accessible/bikes_allowed).
+  # COPY only nulls *empty* unquoted fields, so " " survives into the temp table
+  # and blows up the cast with `invalid input syntax for type integer: " "`,
+  # which aborts the whole file. Blank out whitespace-only values for every
+  # non-text target; varchar is left alone so real values keep their spacing.
+  defp cast_col(k, "varchar"), do: "#{k}::varchar"
+  defp cast_col(k, type), do: "NULLIF(BTRIM(#{k}), '')::#{type}"
+
   def get_cols_pgtypes(schema) do
     schema.__schema__(:fields)
     |> List.delete(:id)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k,v} -> "#{k}::#{v}" end)
+    |> Enum.map(fn {k,v} -> cast_col(k, v) end)
     |> Enum.join(", ")
   end
 
@@ -661,7 +670,7 @@ defmodule RoomGtfs.Worker.Static do
     |> List.delete(:id)
     |> Enum.filter(fn f -> Enum.member?(cols |> Enum.map(&String.to_atom/1), f) end)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k,v} -> "#{k}::#{v}" end)
+    |> Enum.map(fn {k,v} -> cast_col(k, v) end)
     |> Enum.join(", ")
   end
 
@@ -678,6 +687,20 @@ defmodule RoomGtfs.Worker.Static do
     |> Enum.join(", ")
 end
 
+  # CSV headers are matched by name against schema fields, so any decoration on
+  # the header cell silently drops that column from the import. BART quotes its
+  # stops.txt header (`"stop_id","stop_code",...`), which still produces a valid
+  # quoted identifier for CREATE TABLE/COPY -- so the load "succeeds" and just
+  # writes rows with every field NULL. Strip quotes, surrounding whitespace, and
+  # a leading BOM so the names line up with the schema.
+  defp normalize_header(col) do
+    col
+    |> String.trim()
+    |> String.trim_leading("﻿")
+    |> String.trim("\"")
+    |> String.trim()
+  end
+
   defp write_file(contents, type, id, pid) do
     datetime = NaiveDateTime.local_now()
     Logger.info("GTFS::#{id} writing #{type} (c)")
@@ -692,6 +715,7 @@ end
       |> List.first()
       |> String.strip
       |> String.split(",")
+      |> Enum.map(&normalize_header/1)
 
 #    cols_j = ["source_id" |cols_j]
       cols_j_plus = cols_j ++ ["inserted_at", "updated_at", "source_id"]

@@ -39,6 +39,11 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:gitlab_available_projects, [])
       |> assign(:github_config_open, false)
       |> assign(:github_available_repos, [])
+      |> assign(:treasury_from, nil)
+      |> assign(:treasury_to, nil)
+      |> assign(:treasury_preview, nil)
+      |> assign(:bourse_symbol, nil)
+      |> assign(:bourse_preview, nil)
     }
   end
 
@@ -130,6 +135,124 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   defp page_title(:show), do: "Offering Detail"
   defp page_title(:edit), do: "Modify Offering"
+
+
+
+  # --- bourse symbol builder -------------------------------------------
+
+  @impl true
+  def handle_event("bourse-look", %{"sym" => %{"symbol" => symbol}}, socket) do
+    symbol = symbol |> to_string() |> String.trim() |> String.upcase()
+
+    preview =
+      case {symbol, RoomBourse.Worker.pid(socket.assigns.source_id)} do
+        {"", _} -> nil
+        {_, nil} -> nil
+        {sym, _pid} -> RoomBourse.Worker.read(socket.assigns.source_id, %{symbol: sym}) |> List.first()
+      end
+
+    {:noreply,
+     socket
+     |> assign(:bourse_symbol, if(symbol == "", do: nil, else: symbol))
+     |> assign(:bourse_preview, preview)}
+  end
+
+  def handle_event("bourse-add", _params, socket) do
+    case socket.assigns.bourse_symbol do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Enter a symbol first.")}
+
+      symbol ->
+        # Prefer the name Yahoo returned, so the query reads "Apple Inc."
+        name =
+          case socket.assigns.bourse_preview do
+            %{name: n} when is_binary(n) and n != "" -> n
+            _ -> symbol
+          end
+
+        case Configuration.create_query(%{
+               user_id: socket.assigns.current_user.id,
+               source_id: socket.assigns.source.id,
+               name: name,
+               query: %{"__type__" => "bourse", "symbol" => symbol},
+               public: true
+             }) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> assign(:queries, Configuration.get_queries(:source, socket.assigns.source_id))
+             |> put_flash(:info, "Added query #{name}")}
+
+          {:error, _} ->
+            {:noreply, put_flash(socket, :error, "Could not add #{symbol}")}
+        end
+    end
+  end
+
+  # --- treasury pair builder -------------------------------------------
+  # Same shape as the transit stop tester: choose, see the live number, then
+  # keep it as a query if it reads right.
+
+  @impl true
+  def handle_event("treasury-pick", %{"pair" => %{"from" => from, "to" => to}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:treasury_from, blank_to_nil(from))
+     |> assign(:treasury_to, blank_to_nil(to))
+     |> preview_treasury()}
+  end
+
+  def handle_event("treasury-swap", _params, socket) do
+    {:noreply,
+     socket
+     |> assign(:treasury_from, socket.assigns.treasury_to)
+     |> assign(:treasury_to, socket.assigns.treasury_from)
+     |> preview_treasury()}
+  end
+
+  def handle_event("treasury-add", _params, socket) do
+    from = socket.assigns.treasury_from
+    to = socket.assigns.treasury_to
+
+    if is_nil(from) or is_nil(to) do
+      {:noreply, put_flash(socket, :error, "Pick both sides first.")}
+    else
+      name = "#{String.upcase(from)}/#{String.upcase(to)}"
+
+      case Configuration.create_query(%{
+             user_id: socket.assigns.current_user.id,
+             source_id: socket.assigns.source.id,
+             name: name,
+             query: %{"__type__" => "treasury", "from" => from, "to" => to},
+             public: true
+           }) do
+        {:ok, _q} ->
+          {:noreply,
+           socket
+           |> assign(:queries, Configuration.get_queries(:source, socket.assigns.source_id))
+           |> put_flash(:info, "Added query #{name}")}
+
+        {:error, _cs} ->
+          {:noreply, put_flash(socket, :error, "Could not add #{name}")}
+      end
+    end
+  end
+
+  defp blank_to_nil(""), do: nil
+  defp blank_to_nil(v), do: v
+
+  defp preview_treasury(%{assigns: %{treasury_from: f, treasury_to: t}} = socket)
+       when is_binary(f) and is_binary(t) do
+    result =
+      case RoomTreasury.Worker.pid(socket.assigns.source_id) do
+        nil -> nil
+        _pid -> RoomTreasury.Worker.read(socket.assigns.source_id, %{from: f, to: t}) |> List.first()
+      end
+
+    assign(socket, :treasury_preview, result)
+  end
+
+  defp preview_treasury(socket), do: assign(socket, :treasury_preview, nil)
 
   @impl true
   def handle_event("do-update", %{"type" => type, "id" => id}, socket) do
@@ -618,18 +741,47 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     }
   end
 
-  def handle_event("submit-pkg", %{"submit" =>%{"query" => query}} = data, socket) do
-    q = RoomSanctum.Queues.Mail.extract_tracking(query)
-    {typ, number} = Enum.at(q, 0)
+  # Paste a tracking number, or the text of a shipping email, to register it by
+  # hand -- the same extraction the mail queue runs, without waiting for a poll.
+  def handle_event("submit-pkg", %{"submit" => %{"query" => query}}, socket) do
+    source_id = socket.assigns.source_id
 
-    case typ do
-      :ups ->
-         ag = RoomSanctum.Configuration.get_agyr!(:src, socket.assigns.source_id, "ups_webhook")
-         RoomSanctum.Queues.Mail.register_ups(number, ag)
-      typp -> IO.inspect("unhandled typ, #{typp}")
-    end
-    #IO.inspect(query)
-    {:noreply, socket}
+    flash =
+      case RoomSanctum.Queues.Mail.extract_tracking(query) |> Enum.at(0) do
+        nil ->
+          {:error, "No tracking number recognised in that text."}
+
+        {:ups, numbers} ->
+          ag = RoomSanctum.Configuration.get_agyr!(:src, source_id, "ups_webhook")
+          RoomSanctum.Queues.Mail.register_ups(numbers, ag)
+          {:info, "Registered #{count(numbers)} with UPS."}
+
+        {:usps, numbers} ->
+          source = Configuration.get_source!(source_id)
+
+          if RoomPackages.USPS.configured?(source) do
+            RoomSanctum.Queues.Mail.register_usps(numbers, source_id)
+            {:info, "Tracking #{count(numbers)} with USPS. Status appears within a minute."}
+          else
+            {:error, "Add USPS API credentials to this offering first."}
+          end
+
+        {carrier, _numbers} ->
+          {:error, "Detected #{carrier}, but that carrier is not implemented yet."}
+      end
+
+    socket =
+      case flash do
+        {:info, msg} -> put_flash(socket, :info, msg)
+        {:error, msg} -> put_flash(socket, :error, msg)
+      end
+
+    {:noreply, socket |> assign(:source, Configuration.get_source!(source_id))}
+  end
+
+  defp count(numbers) do
+    n = length(List.wrap(numbers))
+    "#{n} number#{if n == 1, do: "", else: "s"}"
   end
 
   def handle_event("set-tint", %{"tint"=> tint}, socket) do
@@ -841,7 +993,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   defp condense({id, type}, data) do
-    RoomSanctum.Condenser.BasicMQTT.condense({id, type}, data)
+    RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
   end
   def preview(condensed, {id, type}) do
     %{data: condensed, id: id, type: type}

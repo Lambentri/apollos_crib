@@ -24,11 +24,10 @@ defmodule RoomSanctum.Queues.Mail do
           } = args
       }) do
     IO.inspect({"mmmm", from, subject, to})
-    to_addr = String.split(List.first(to), "@") |> List.first()
 
-    case RoomSanctum.Configuration.get_taxid(:user, to_addr) do
+    case resolve_taxid(args) do
       nil ->
-        IO.inspect({"Mailer: Unhandled email found", to_addr})
+        IO.inspect({"Mailer: Unhandled email found", to})
 
       taxid ->
         # get adjacent webhook urls
@@ -58,7 +57,7 @@ defmodule RoomSanctum.Queues.Mail do
                     register_fedex(v)
 
                   :usps ->
-                    register_usps(v)
+                    register_usps(v, taxid.source_id)
 
                   :uniuni ->
                     register_uniuni(v)
@@ -81,14 +80,63 @@ defmodule RoomSanctum.Queues.Mail do
     :ok
   end
 
-  def extract_tracking(body) do
-    cond do
-      String.match?(body, @usps_regex) -> %{usps: Regex.run(@usps_regex, body)}
-      String.match?(body, @ups_regex) -> %{ups: Regex.run(@ups_regex, body)}
-      String.match?(body, @fedex_regex) -> %{fedex: Regex.run(@fedex_regex, body)}
-      String.match?(body, @uniuni_regex) -> %{uniuni: Regex.run(@uniuni_regex, body)}
-      true -> %{nothing: []}
+  # SMTP has only the envelope to route on, so it matches the local part of the
+  # To address against a mailbox's user. IMAP already knows which mailbox the
+  # message came out of and passes it directly, which also means IMAP works for
+  # mail addressed to anything at all.
+  @doc false
+  def resolve_taxid_for_test(args), do: resolve_taxid(args)
+
+  defp resolve_taxid(%{"taxid_id" => id}) when not is_nil(id) do
+    RoomSanctum.Configuration.get_taxid(:id, id)
+  end
+
+  defp resolve_taxid(%{"to" => to}) do
+    case List.first(List.wrap(to)) do
+      nil ->
+        nil
+
+      addr ->
+        addr
+        |> to_string()
+        |> String.split("@")
+        |> List.first()
+        |> then(&RoomSanctum.Configuration.get_taxid(:user, &1))
     end
+  end
+
+  defp resolve_taxid(_), do: nil
+
+  # Precedence order is preserved from the original cond: the first carrier whose
+  # pattern matches claims the email. One shipping notice is not expected to span
+  # carriers, and the FedEx/USPS patterns are loose enough that scanning all four
+  # would turn order numbers into junk registrations.
+  @carriers [usps: @usps_regex, ups: @ups_regex, fedex: @fedex_regex, uniuni: @uniuni_regex]
+
+  @doc """
+  Every tracking number for the first carrier that matches.
+
+  Uses `Regex.scan/3` rather than `Regex.run/3`: a dispatch email listing three
+  parcels should register three, not just the first one it happens to mention.
+  """
+  def extract_tracking(body) when is_binary(body) do
+    Enum.find_value(@carriers, %{}, fn {carrier, regex} ->
+      case scan_all(regex, body) do
+        [] -> nil
+        numbers -> %{carrier => numbers}
+      end
+    end)
+  end
+
+  def extract_tracking(_), do: %{}
+
+  # capture: :first keeps the whole match and discards the inner groups, which
+  # would otherwise come back as duplicates of the number itself.
+  defp scan_all(regex, body) do
+    regex
+    |> Regex.scan(body, capture: :first)
+    |> List.flatten()
+    |> Enum.uniq()
   end
 
   def build_webhookurl(scheme, host, agyr) do
@@ -177,9 +225,13 @@ defmodule RoomSanctum.Queues.Mail do
             false -> {:ok, source.config.token_ups}
           end
 
-        trackings
-        |> Enum.map(fn t ->
-          RoomSanctum.Configuration.create_source_meta_tracking(source, t, :ups)
+        # Re-read between numbers: create_source_meta_tracking/3 builds the new
+        # list from the struct it is given, so reusing a stale one makes each
+        # number overwrite the last. Harmless while only one number ever came
+        # through; not once a single email can carry several.
+        Enum.reduce(trackings, source, fn t, src ->
+          RoomSanctum.Configuration.create_source_meta_tracking(src, t, :ups)
+          RoomSanctum.Configuration.get_source!(src.id)
         end)
 
         our_scheme =
@@ -235,7 +287,24 @@ defmodule RoomSanctum.Queues.Mail do
   def register_fedex(tracking) do
   end
 
-  def register_usps(tracking) do
+  @doc """
+  Record USPS numbers for polling.
+
+  USPS has no subscription endpoint, so unlike UPS there is nothing to register
+  with them -- the numbers are stored on the source and `RoomPackages.Worker`
+  asks for their status on its refresh cycle.
+  """
+  def register_usps(trackings, source_id) do
+    source = RoomSanctum.Configuration.get_source!(source_id)
+
+    if RoomPackages.USPS.configured?(source) do
+      Enum.reduce(trackings, source, fn number, src ->
+        RoomSanctum.Configuration.create_source_meta_tracking(src, number, :usps)
+        RoomSanctum.Configuration.get_source!(src.id)
+      end)
+    else
+      Logger.info("Source #{source_id} missing API keys for USPS")
+    end
   end
 
   def register_uniuni(tracking) do

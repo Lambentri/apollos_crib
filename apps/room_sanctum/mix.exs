@@ -43,7 +43,11 @@ defmodule RoomSanctum.MixProject do
       {:ecto_sql, "~> 3.10"},
       {:ecto_interval, git: "https://github.com/gmorell/ecto_interval.git"},
 #      {:ecto_interval, "~> 0.2"},
-      {:postgrex, ">= 0.0.0"},
+      # ecto_interval caps postgrex at ~> 0.19.0, but only touches the
+      # %Postgrex.Interval{months:, days:, secs:} struct, which is unchanged in 0.22.
+      # Overridden to keep postgrex >= 0.20 (CVE-2026-32687, SQL injection in
+      # Postgrex.Notifications.listen/3).
+      {:postgrex, ">= 0.0.0", override: true},
       {:phoenix_html, "~> 4.0", override: true},
       {:phoenix_live_reload, "~> 1.4", only: :dev},
       {:phoenix_live_view, "~> 1.0.0-rc.6", override: true},
@@ -81,7 +85,6 @@ defmodule RoomSanctum.MixProject do
       # UI
       {:tailwind, "~> 0.2", runtime: Mix.env() == :dev},
       {:mdex, "~> 0.1"},
-      {:doggo, "~> 0.8.2"},
 
       # kube
       {:healthchex, "~> 0.2"},

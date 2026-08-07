@@ -43,6 +43,18 @@ defmodule RoomSanctumWeb.IconHelpers do
       :pollen ->
         "fa-seedling"
 
+      :icarus ->
+        "fa-plane-up"
+
+      :mailbox ->
+        "fa-inbox"
+
+      :treasury ->
+        "fa-money-bill-transfer"
+
+      :bourse ->
+        "fa-chart-line"
+
       :packages ->
         "fa-envelopes-bulk"
 
@@ -95,6 +107,18 @@ defmodule RoomSanctumWeb.IconHelpers do
 
       :pollen ->
         "f4d8"
+
+      :icarus ->
+        "e22d"
+
+      :mailbox ->
+        "f01c"
+
+      :treasury ->
+        "e528"
+
+      :bourse ->
+        "f201"
 
       :const ->
         "f071"

@@ -195,6 +195,18 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       :pollen ->
         data
 
+      :icarus ->
+        data
+
+      :mailbox ->
+        data
+
+      :treasury ->
+        data
+
+      :bourse ->
+        data
+
       :packages ->
         data
 

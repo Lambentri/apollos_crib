@@ -129,6 +129,26 @@
   <% :cronos -> %>
     <%= polymorphic_embed_inputs_for @form, :query, :cronos, fn cronos_form -> %>
     <div class="form-control">
+      <.input field={cronos_form[:mode]} type="select" label="Mode"
+              options={[{"Modulo - is now an even multiple of a period", "modulo"},
+                        {"Countdown - time until or since a date", "countdown"}]} />
+    </div>
+
+    <div class="divider">Countdown mode</div>
+    <div class="form-control">
+      <.input field={cronos_form[:target]} type="datetime-local" label="Target date and time (local to the Foci)" />
+    </div>
+    <div class="form-control">
+      <.input field={cronos_form[:annual]} type="checkbox" label="Repeats yearly - roll to next year once it passes" />
+      <p class="text-xs text-base-content/60 mt-1">
+        Without this, the query counts up once the date is behind you. With it, the moment the date
+        passes it re-targets the same day next year and starts counting down again.
+        A 29 February target falls back to the 28th in non-leap years.
+      </p>
+    </div>
+
+    <div class="divider">Modulo mode</div>
+    <div class="form-control">
       <.input field={cronos_form[:modulo]} type="number" label="Modulo" />
     </div>
       <div class="form-control">
@@ -173,6 +193,121 @@
         <.input field={gh_form[:conclusion]} type="text" label="Conclusion (comma list: success,failure,cancelled,skipped; blank = all)" />
       </div>
       <% end %>
+    <% :bourse -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :bourse, fn b_form -> %>
+      <div class="form-control">
+        <.input field={b_form[:symbol]} type="text" label="Ticker symbol" />
+        <p class="text-xs text-base-content/60 mt-1">
+          Yahoo notation: <code>AAPL</code>, <code>VOO</code>, <code>^GSPC</code> for an index,
+          <code>BTC-USD</code> for crypto, <code>TSCO.L</code> for a London listing.
+        </p>
+      </div>
+      <% end %>
+
+    <% :treasury -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :treasury, fn t_form -> %>
+      <div class="form-control">
+        <.input field={t_form[:from]} type="select" label="From (base)"
+                prompt="Pick a currency" options={@treasury_groups} />
+      </div>
+      <div class="flex justify-center -my-1">
+        <button type="button" class="btn btn-sm btn-circle btn-ghost"
+                phx-click="treasury-swap" phx-target={@myself} title="Swap base and quote">
+          <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i>
+        </button>
+      </div>
+      <div class="form-control">
+        <.input field={t_form[:to]} type="select" label="To (quote)"
+                prompt="Pick a currency" options={@treasury_groups} />
+      </div>
+      <div class="form-control">
+        <.input field={t_form[:precision]} type="number" label="Decimal places (0-10)" />
+        <p class="text-xs text-base-content/60 mt-1">
+          Swap if the number reads the wrong way round &mdash; 0.0000116 usually means you
+          wanted the reciprocal. Rates below 1 keep this many significant digits rather than
+          decimals, so a BTC pair stays readable.
+        </p>
+      </div>
+      <% end %>
+
+    <% :mailbox -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :mailbox, fn mb_form -> %>
+      <div class="form-control">
+        <.input field={mb_form[:count]} type="number" label="How many messages (1-100)" />
+      </div>
+      <div class="form-control">
+        <.input field={mb_form[:unread_only]} type="checkbox" label="Unread only" />
+      </div>
+      <p class="text-xs text-base-content/60">
+        Read-only - listing a mailbox never marks anything as read.
+      </p>
+      <% end %>
+
+    <% :icarus -> %>
+      <%= polymorphic_embed_inputs_for @form, :query, :icarus, fn icarus_form -> %>
+      <div class="form-control">
+        <.input field={icarus_form[:mode]} type="select" label="Mode"
+                options={[{"Area - everything overhead a Foci", "area"}, {"Flight - track one arrival until it lands", "flight"}]} />
+      </div>
+
+      <div class="divider">Area mode</div>
+      <div class="form-control">
+        <.input field={icarus_form[:foci_id]} type="select" label="Foci" options={@cfg_foci_sel} />
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:dist]} type="number" label="Radius (nautical miles, 1-250)" />
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:alt_min]} type="number" label="Altitude floor (ft, blank for none - a floor also hides aircraft on the ground)" />
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:alt_max]} type="number" label="Altitude ceiling (ft, blank for none)" />
+      </div>
+      <div class="form-control">
+        <.input
+          field={icarus_form[:classes]}
+          type="select"
+          label="Show which traffic"
+          multiple={true}
+          options={[
+            {"Commercial - scheduled passenger airlines", "commercial"},
+            {"Cargo - dedicated freight operators", "cargo"},
+            {"Military", "military"},
+            {"General - private, business, everything else", "general"}
+          ]}
+        />
+        <p class="text-xs text-base-content/60 mt-1">
+          Select none to show everything. Military comes from the feed's own flag; cargo and
+          commercial are inferred from the operator callsign, so belly freight on a passenger
+          flight counts as commercial and an unlisted carrier falls under general.
+        </p>
+      </div>
+
+      <div class="divider">Flight mode</div>
+      <div class="form-control">
+        <.input field={icarus_form[:flight_number]} type="text" label="Flight number (e.g. UA 558)" />
+        <p class="text-xs text-base-content/60 mt-1">
+          Aircraft transmit the ICAO callsign, so UA 558 is matched as UAL558. If your airline
+          is not recognised, enter the ICAO callsign directly.
+        </p>
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:dest]} type="text" label="Destination airport (IATA or ICAO, e.g. BOS)" />
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:sched_arrival]} type="datetime-local" label="Scheduled arrival (from the ticket, in your local time)" />
+        <p class="text-xs text-base-content/60 mt-1">
+          This is what early / on time / delayed is measured against - adsb.fi has no schedule data.
+        </p>
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:sched_departure]} type="datetime-local" label="Scheduled departure (optional)" />
+      </div>
+      <div class="form-control">
+        <.input field={icarus_form[:curb_minutes]} type="number" label="Taxi + bags padding (minutes after touchdown)" />
+      </div>
+      <% end %>
+
     <% :pollen -> %>
       <%= polymorphic_embed_inputs_for @form, :query, :pollen, fn pollen_form -> %>
       <div class="form-control">

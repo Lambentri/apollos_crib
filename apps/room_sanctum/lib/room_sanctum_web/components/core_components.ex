@@ -14,7 +14,6 @@ defmodule RoomSanctumWeb.CoreComponents do
 
   Icons are provided by [heroicons](https://heroicons.com). See `icon/1` for usage.
   """
-  use Doggo.Components
   use Phoenix.Component
 
   alias Phoenix.LiveView.JS
@@ -40,6 +39,11 @@ defmodule RoomSanctumWeb.CoreComponents do
   attr :id, :string, required: true
   attr :show, :boolean, default: false
   attr :on_cancel, JS, default: %JS{}
+
+  attr :max_width, :string,
+    default: "max-w-3xl",
+    doc: "Tailwind max-width class for the dialog. Forms with dense inputs want more room."
+
   slot :inner_block, required: true
 
   def modal(assigns) do
@@ -61,7 +65,7 @@ defmodule RoomSanctumWeb.CoreComponents do
         tabindex="0"
       >
         <div class="flex min-h-full items-center justify-center">
-          <div class="w-full max-w-3xl p-4 sm:p-6 lg:py-8">
+          <div class={["w-full p-4 sm:p-6 lg:py-8", @max_width]}>
             <.focus_wrap
               id={"#{@id}-container"}
               phx-window-keydown={JS.exec("data-cancel", to: "##{@id}")}
@@ -265,7 +269,7 @@ defmodule RoomSanctumWeb.CoreComponents do
   attr :type, :string,
     default: "text",
     values: ~w(checkbox color date datetime-local email file hidden month number password
-               range radio search select tel text textarea time url week)
+               range radio radio_grid search select tel text textarea time url week)
 
   attr :field, Phoenix.HTML.FormField,
     doc: "a form field struct retrieved from the form, for example: @form[:email]"
@@ -357,6 +361,51 @@ defmodule RoomSanctumWeb.CoreComponents do
 
   # checked={(@checked_value == opt) || (@field.value == String.to_atom(opt))}
 
+
+  # A card grid instead of a <select>: same single form field, but every choice
+  # is visible at once with room for a line explaining what it pulls in.
+  # Options are {value, label, description} tuples; the icon is looked up from
+  # the value so it stays in step with the rest of the UI.
+  def input(%{type: "radio_grid"} = assigns) do
+    ~H"""
+    <div phx-feedback-for={@name}>
+      <.label for={@id}><%= @label %></.label>
+      <fieldset class="mt-2">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <%= for {value, opt_label, description} <- @options do %>
+            <% checked = to_string(@value) == to_string(value) %>
+            <label
+              for={"#{@id}-#{value}"}
+              class={[
+                "flex gap-3 items-start cursor-pointer rounded-lg p-3 border transition",
+                checked && "border-accent bg-base-100 ring-1 ring-accent",
+                !checked && "border-base-300 bg-base-200/40 hover:bg-base-200"
+              ]}
+            >
+              <input
+                type="radio"
+                id={"#{@id}-#{value}"}
+                name={@name}
+                value={value}
+                checked={checked}
+                class="radio radio-sm mt-1 shrink-0"
+                {@rest}
+              />
+              <span class="min-w-0">
+                <span class="flex items-center gap-2 font-semibold">
+                  <i class={"fa-solid fa-fw #{RoomSanctumWeb.IconHelpers.icon(value)}"}></i>
+                  <%= opt_label %>
+                </span>
+                <span class="block text-xs opacity-70 leading-snug"><%= description %></span>
+              </span>
+            </label>
+          <% end %>
+        </div>
+      </fieldset>
+      <.error :for={msg <- @errors}><%= msg %></.error>
+    </div>
+    """
+  end
 
   def input(%{type: "radio"} = assigns) do
     ~H"""

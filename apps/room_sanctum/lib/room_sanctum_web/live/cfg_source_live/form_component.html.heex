@@ -19,7 +19,7 @@
             </div>
 
             <div class="form-control">
-                <.input field={@form[:type]} type="select" label="Type" options={Ecto.Enum.values(RoomSanctum.Configuration.Source, :type)} />
+                <.input field={@form[:type]} type="radio_grid" label="Type" options={RoomSanctumWeb.SourceTypeInfo.all()} />
             </div>
         </div>
         <div class="w-1/4">
@@ -261,6 +261,18 @@
         </div>
     </div>
 
+    <% :icarus -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :icarus, fn icarus_form -> %>
+    <div class="form-control">
+        <.input field={icarus_form[:endpoint]} type="text" label="adsb.fi API base" />
+        <p class="text-xs text-base-content/60 mt-1">
+            No API key needed &mdash; adsb.fi's open data endpoints are public, rate limited to
+            1 request/second. Leave the default unless you feed adsb.fi and have your own instance.
+            Open data is for personal, non-commercial use; previews link back to adsb.fi as required.
+        </p>
+    </div>
+    <% end %>
+
     <% :pollen -> %>
     <%= polymorphic_embed_inputs_for @form, :config, :pollen, fn pollen_form -> %>
     <div class="form-control">
@@ -293,8 +305,99 @@
     </div>
     <% end %>
 
+    <% :bourse -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :bourse, fn _b_form -> %>
+    <div class="form-control">
+        <p class="text-sm text-base-content/70">
+            Nothing to configure &mdash; quotes come from Yahoo Finance's public chart endpoint,
+            unauthenticated. Add a query per symbol you want to follow.
+        </p>
+        <p class="text-xs text-base-content/60 mt-1">
+            Yahoo publish no official API, so this can change or throttle without notice.
+            Quotes refresh every 5 minutes.
+        </p>
+    </div>
+    <% end %>
+
+    <% :treasury -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :treasury, fn t_form -> %>
+    <div class="form-control">
+        <span class="label-text">Show these groups in query dropdowns</span>
+        <%!-- Blank entry so unticking everything still submits the key --%>
+        <input type="hidden" name={t_form[:categories].name <> "[]"} value="" />
+        <div class="flex flex-col gap-1 mt-1">
+            <%= for {value, label} <- [{"currency", "Currencies"}, {"metal", "Metals"}, {"crypto", "Crypto"}] do %>
+            <label class="label cursor-pointer justify-start gap-3 py-1">
+                <input
+                    type="checkbox"
+                    class="checkbox checkbox-sm"
+                    name={t_form[:categories].name <> "[]"}
+                    value={value}
+                    checked={value in ((t_form[:categories].value || []) |> List.wrap() |> Enum.map(&to_string/1))}
+                />
+                <span class="label-text"><%= label %></span>
+            </label>
+            <% end %>
+        </div>
+        <p class="text-xs text-base-content/60 mt-1">
+            The API carries 186 currencies, 4 metals and 148 crypto tokens. Untick what you
+            will not use to keep the query pickers short &mdash; leaving all unticked shows everything.
+            Existing queries keep working either way.
+        </p>
+        <p class="text-xs text-base-content/60 mt-1">
+            Data from
+            <a href="https://github.com/fawazahmed0/exchange-api" class="link" target="_blank">fawazahmed0/exchange-api</a>,
+            updated daily. No key required.
+        </p>
+    </div>
+    <% end %>
+
+    <% :mailbox -> %>
+    <%= polymorphic_embed_inputs_for @form, :config, :mailbox, fn mb_form -> %>
+    <div class="form-control">
+        <.input field={mb_form[:host]} type="text" label="IMAP host (e.g. imap.fastmail.com)"/>
+    </div>
+    <div class="form-control">
+        <.input field={mb_form[:port]} type="number" label="Port"/>
+    </div>
+    <div class="form-control">
+        <.input field={mb_form[:username]} type="text" label="Username"/>
+    </div>
+    <div class="form-control">
+        <.input field={mb_form[:password]} type="password" label="Password" value=""
+                placeholder={if @action == :edit, do: "unchanged", else: nil}/>
+    </div>
+    <div class="form-control">
+        <.input field={mb_form[:folder]} type="text" label="Folder"/>
+    </div>
+    <div class="form-control">
+        <.input field={mb_form[:tls]} type="checkbox" label="Use TLS (off means plaintext on 143; STARTTLS is not supported)"/>
+    </div>
+    <div class="form-control mt-2">
+        <button type="button" class="btn btn-sm" phx-click="test-mailbox" phx-target={@myself}>
+            <i class="fa-solid fa-plug mr-1"></i> Test connection
+        </button>
+        <%= if assigns[:mailbox_test] do %>
+        <div class={"alert mt-2 py-2 text-sm #{if elem(@mailbox_test, 0) == :ok, do: "alert-success", else: "alert-error"}"}>
+            <%= elem(@mailbox_test, 1) %>
+        </div>
+        <% end %>
+        <p class="text-xs text-base-content/60 mt-1">
+            Most providers require an app-specific password rather than your account password.
+            Point a Packages offering at this mailbox to do something with the mail.
+        </p>
+    </div>
+    <% end %>
+
     <% :packages -> %>
     <%= polymorphic_embed_inputs_for @form, :config, :packages, fn packages_form -> %>
+    <div class="form-control">
+        <.input field={packages_form[:mailbox_source_id]} type="select" label="Mailbox"
+                options={[{"None - SMTP delivery only", nil} | @mailbox_sel]} />
+        <p class="text-xs text-base-content/60 mt-1">
+            Which Mailbox offering to pull parcel mail from. Create one of type Mailbox first.
+        </p>
+    </div>
     <div class="form-control">
         <.input field={packages_form[:apikey_ups_id]} type="text" label="UPS OAuth ID"/>
     </div>
@@ -306,6 +409,16 @@
     </div>
     <div class="form-control">
         <.input field={packages_form[:apikey_fedex_secret]} type="text" label="Fedex OAuth Secret"/>
+    </div>
+    <div class="form-control">
+        <.input field={packages_form[:apikey_usps_id]} type="text" label="USPS Consumer Key"/>
+    </div>
+    <div class="form-control">
+        <.input field={packages_form[:apikey_usps_secret]} type="text" label="USPS Consumer Secret"/>
+        <p class="text-xs text-base-content/60 mt-1">
+            USPS grants the <code>tracking</code> scope separately from app creation - a key that
+            mints a token fine can still 401 on every lookup until that is approved.
+        </p>
     </div>
     <div class="form-control">
         <.input field={packages_form[:apikey_dhl_id]} type="text" label="DHL OAuth ID"/>

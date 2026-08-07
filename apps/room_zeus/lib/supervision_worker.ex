@@ -19,6 +19,10 @@ defmodule RoomZeus.DynSupervisor do
         :packages -> {RoomPackages.Worker, [name: instance_id]}
         :drought -> {RoomDrought.Worker, [name: instance_id]}
         :pollen -> {RoomPollen.Worker, [name: instance_id]}
+        :icarus -> {RoomIcarus.Worker, [name: instance_id]}
+        :mailbox -> {RoomHermes.Mail.ImapWorker, [name: instance_id]}
+        :treasury -> {RoomTreasury.Worker, [name: instance_id]}
+        :bourse -> {RoomBourse.Worker, [name: instance_id]}
         _ -> nil
       end
 

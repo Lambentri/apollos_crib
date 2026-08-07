@@ -11,7 +11,7 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2">Offering Detail</h1>
 
-<.modal :if={@live_action == :edit} id="source-modal" show on_cancel={JS.patch(Routes.source_show_path(@socket, :show, @source))}>
+<.modal :if={@live_action == :edit} id="source-modal" show max_width="max-w-[67.2rem]" on_cancel={JS.patch(Routes.source_show_path(@socket, :show, @source))}>
 <.live_component
 module={RoomSanctumWeb.SourceLive.FormComponent}
 id={@source.id}
@@ -161,6 +161,95 @@ gl_available_projects={@gitlab_available_projects}
                         tabindex="0"
                         />
                     </form>
+                <% :bourse -> %>
+                    <form phx-change="bourse-look" phx-submit="bourse-look">
+                        <div class="form-control">
+                            <label class="label label-text py-1">Ticker symbol</label>
+                            <input type="text" name="sym[symbol]" value={@bourse_symbol}
+                                   placeholder="AAPL, ^GSPC, BTC-USD"
+                                   phx-debounce="500"
+                                   class="input input-bordered input-sm" />
+                        </div>
+                    </form>
+
+                    <%= if @bourse_preview do %>
+                    <div class="mt-2 p-2 rounded bg-base-200">
+                        <div class="text-xs opacity-70">
+                            <%= @bourse_preview.symbol %><%= if @bourse_preview[:name], do: " · #{@bourse_preview.name}" %>
+                        </div>
+                        <%= if @bourse_preview[:price] do %>
+                        <div class="text-2xl font-mono font-bold">
+                            <%= RoomBourse.Worker.format_price(@bourse_preview.price) %>
+                        </div>
+                        <div class="text-xs font-mono">
+                            <%= RoomBourse.Worker.format_change(@bourse_preview[:change]) %>
+                            <%= RoomBourse.Worker.format_pct(@bourse_preview[:change_pct]) %>
+                            <%= if @bourse_preview[:currency], do: " #{@bourse_preview.currency}" %>
+                        </div>
+                        <% else %>
+                        <div class="text-sm opacity-70"><%= @bourse_preview[:error] || "unavailable" %></div>
+                        <% end %>
+                    </div>
+                    <% end %>
+
+                    <button class="btn btn-secondary btn-sm mt-2" phx-click="bourse-add"
+                            disabled={is_nil(@bourse_symbol)}>
+                        <i class="fa-solid fa-plus mr-1"></i>Add as query
+                    </button>
+
+                <% :treasury -> %>
+                    <form phx-change="treasury-pick">
+                        <div class="form-control">
+                            <label class="label label-text py-1">From</label>
+                            <select name="pair[from]" class="select select-bordered select-sm">
+                                <option value="">Pick a currency</option>
+                                <%= for {group, opts} <- RoomTreasury.Currencies.grouped(RoomSanctum.Configuration.Configs.Treasury.enabled_categories(@source.config)) do %>
+                                <optgroup label={group}>
+                                    <%= for {label, value} <- opts do %>
+                                    <option value={value} selected={value == @treasury_from}><%= label %></option>
+                                    <% end %>
+                                </optgroup>
+                                <% end %>
+                            </select>
+                        </div>
+                        <div class="flex justify-center -my-1">
+                            <button type="button" class="btn btn-xs btn-circle btn-ghost"
+                                    phx-click="treasury-swap" title="Swap">
+                                <i class="fa-solid fa-arrow-right-arrow-left fa-rotate-90"></i>
+                            </button>
+                        </div>
+                        <div class="form-control">
+                            <label class="label label-text py-1">To</label>
+                            <select name="pair[to]" class="select select-bordered select-sm">
+                                <option value="">Pick a currency</option>
+                                <%= for {group, opts} <- RoomTreasury.Currencies.grouped(RoomSanctum.Configuration.Configs.Treasury.enabled_categories(@source.config)) do %>
+                                <optgroup label={group}>
+                                    <%= for {label, value} <- opts do %>
+                                    <option value={value} selected={value == @treasury_to}><%= label %></option>
+                                    <% end %>
+                                </optgroup>
+                                <% end %>
+                            </select>
+                        </div>
+                    </form>
+
+                    <%= if @treasury_preview do %>
+                    <div class="mt-2 p-2 rounded bg-base-200">
+                        <div class="text-xs opacity-70"><%= @treasury_preview.pair %></div>
+                        <%= if @treasury_preview[:rate] do %>
+                        <div class="text-2xl font-mono font-bold"><%= @treasury_preview.display %></div>
+                        <div class="text-xs opacity-60"><%= @treasury_preview[:date] %></div>
+                        <% else %>
+                        <div class="text-sm opacity-70"><%= @treasury_preview[:error] || "unavailable" %></div>
+                        <% end %>
+                    </div>
+                    <% end %>
+
+                    <button class="btn btn-secondary btn-sm mt-2" phx-click="treasury-add"
+                            disabled={is_nil(@treasury_from) or is_nil(@treasury_to)}>
+                        <i class="fa-solid fa-plus mr-1"></i>Add as query
+                    </button>
+
                 <% _default -> %>
 
                 <% end %>

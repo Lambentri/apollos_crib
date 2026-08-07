@@ -212,6 +212,30 @@ defmodule RoomSanctum.Worker.Vision do
           nil -> []
           _pid -> RoomPollen.Worker.read(q.source.id, q.query) || []
         end
+
+      :icarus ->
+        case RoomIcarus.Worker.pid(q.source.id) do
+          nil -> []
+          _pid -> RoomIcarus.Worker.read(q.source.id, q.query) || []
+        end
+
+      :mailbox ->
+        case RoomHermes.Mail.ImapWorker.pid(q.source.id) do
+          nil -> []
+          _pid -> RoomHermes.Mail.ImapWorker.read(q.source.id, q.query) || []
+        end
+
+      :treasury ->
+        case RoomTreasury.Worker.pid(q.source.id) do
+          nil -> []
+          _pid -> RoomTreasury.Worker.read(q.source.id, q.query) || []
+        end
+
+      :bourse ->
+        case RoomBourse.Worker.pid(q.source.id) do
+          nil -> []
+          _pid -> RoomBourse.Worker.read(q.source.id, q.query) || []
+        end
     end
   end
 end

@@ -32,7 +32,7 @@ defmodule RoomGtfs.MixProject do
 #      {:ecto_interval, "~> 0.2.5"},
 #      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
       {:httpoison, "~> 1.8"},
-      {:protobuf, "~> 0.8.0"},
+      {:protobuf, "~> 0.17.0"},
       {:parent, "~> 0.12.1"},
       {:unzip, "~> 0.8"},
       {:room_sanctum, in_umbrella: true}

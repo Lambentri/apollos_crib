@@ -27,7 +27,7 @@
 </div>
 <% end %>
 
-<.modal :if={@live_action in [:new, :edit]} id="source-modal" show on_cancel={JS.patch(Routes.source_index_path(@socket, :index))}>
+<.modal :if={@live_action in [:new, :edit]} id="source-modal" show max_width="max-w-[67.2rem]" on_cancel={JS.patch(Routes.source_index_path(@socket, :index))}>
     <.live_component
         module={RoomSanctumWeb.SourceLive.FormComponent}
         id={@source.id || :new}

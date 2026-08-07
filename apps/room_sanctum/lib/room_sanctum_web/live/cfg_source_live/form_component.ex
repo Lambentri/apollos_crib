@@ -242,6 +242,11 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   @impl true
   def update(%{source: source} = assigns, socket) do
     changeset = Configuration.change_source(source)
+
+    # Consumers reference a mailbox by id, so the form needs the list of them.
+    mailbox_sel =
+      Configuration.list_cfg_sources({:type, :mailbox})
+      |> Enum.map(&{&1.name, &1.id})
     run_period_idx = seconds_to_idx(source.meta && source.meta.run_period)
 
     gh_secs =
@@ -273,6 +278,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     {:ok,
      socket
      |> assign(assigns)
+     |> assign(:mailbox_sel, mailbox_sel)
      |> assign(:tint_opts, ["red", "amber", "lime", "emerald", "sky", "violet", "fuchsia", "rose", "stone", "slate", "zinc"])
      |> assign(:run_period_idx, run_period_idx)
      |> assign(:github_poll_idx, github_secs_to_idx(gh_secs))
@@ -283,6 +289,36 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   end
 
   @impl true
+  # Tests what is currently typed rather than what is stored, so credentials can
+  # be checked before the source is ever saved.
+  def handle_event("test-mailbox", _params, socket) do
+    config =
+      socket.assigns.form.source
+      |> Ecto.Changeset.apply_changes()
+      |> Map.get(:config)
+
+    result =
+      case RoomSanctum.Configuration.Configs.Mailbox.connection(config) do
+        nil ->
+          {:error, "Fill in host, username and password first."}
+
+        conn ->
+          if conn.host in [nil, ""] or conn.username in [nil, ""] or conn.password in [nil, ""] do
+            {:error, "Fill in host, username and password first."}
+          else
+            case RoomHermes.Mail.IMAP.test_connection(conn) do
+              {:ok, %{unseen: n}} ->
+                {:ok, "Connected. #{n} unread message#{if n == 1, do: "", else: "s"} waiting."}
+
+              {:error, message} ->
+                {:error, message}
+            end
+          end
+      end
+
+    {:noreply, assign(socket, :mailbox_test, result)}
+  end
+
   def handle_event("validate", %{"source" => source_params}, socket) do
     source_params =
       source_params

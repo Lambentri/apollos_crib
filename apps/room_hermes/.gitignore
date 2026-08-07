@@ -32,3 +32,8 @@ room_hermes-*.tar
 npm-debug.log
 /assets/node_modules/
 
+
+# mix phx.digest output; the undigested originals are tracked
+/priv/static/*-*.*
+/priv/static/**/*-*.*
+/priv/static/*.gz

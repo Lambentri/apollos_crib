@@ -410,6 +410,36 @@ use PhoenixHTMLHelpers
     """
   end
 
+  # Countdown entries carry a :mode key; the original modulo entries only have
+  # :name and :value, so the two shapes are told apart by that.
+  def p_cronos(%{entries: %{data: [%{mode: :countdown} | _]}} = assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+      <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
+        <div class="card-body text-left">
+          <h2 class="card-title">
+            <p>
+              <i class={"fa-solid fa-fw #{if e.direction == :until, do: "fa-hourglass-half", else: "fa-hourglass-end"}"}></i>
+              <%= e.name %>
+            </p>
+          </h2>
+          <div class="flex items-end gap-3">
+            <span class="text-5xl font-mono font-bold"><%= e.days %></span>
+            <span class="text-lg pb-1"><%= if e.days == 1, do: "day", else: "days" %></span>
+            <span class="text-2xl font-mono pb-1 opacity-80">
+              <%= cronos_pad(e.hours) %>:<%= cronos_pad(e.minutes) %>
+            </span>
+          </div>
+          <p class="text-sm opacity-90">
+            <%= if e.direction == :until, do: "until", else: "since" %>
+            <%= cronos_date(e.target) %><%= if e.rolled, do: " (next occurrence)" %>
+          </p>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+
   def p_cronos(assigns) do
     ~H"""
     <%= for e <- @entries.data do %>
@@ -425,6 +455,30 @@ use PhoenixHTMLHelpers
     </p>
     </div>
     </div>
+    <% end %>
+    """
+  end
+
+  def i_cronos(%{entries: %{data: [%{mode: :countdown} | _]}} = assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+      <div class="flex items-center">
+        <div class="w-1/4 lg:w-1/12">
+          <i class={"fa-solid fa-3x fa-fw #{if e.direction == :until, do: "fa-hourglass-half", else: "fa-hourglass-end"}"}></i>
+        </div>
+        <div class="w-3/4 lg:w-11/12 mr-4">
+          <div class="flex flex-col lg:flex-row justify-between">
+            <div class="text-lg text-accent lg:text-4xl lg:font-bold"><%= e.name %></div>
+            <div class="flex items-baseline gap-2 lg:text-4xl">
+              <span class="font-mono font-bold text-accent"><%= e.days %></span>
+              <span class="text-sm lg:text-2xl"><%= if e.days == 1, do: "day", else: "days" %></span>
+              <span class="font-mono text-sm lg:text-2xl opacity-80">
+                <%= cronos_pad(e.hours) %>:<%= cronos_pad(e.minutes) %>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     <% end %>
     """
   end
@@ -997,6 +1051,127 @@ use PhoenixHTMLHelpers
       """
   end
 
+  defp cronos_pad(n) when is_integer(n), do: n |> Integer.to_string() |> String.pad_leading(2, "0")
+  defp cronos_pad(n), do: to_string(n)
+
+  defp cronos_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%-d %b %Y")
+  defp cronos_date(%DateTime{} = dt), do: Calendar.strftime(dt, "%-d %b %Y")
+  defp cronos_date(other), do: to_string(other)
+
+  def p_mailbox(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-1">
+      <%= if @entries.data == [] do %>
+        <div class="text-sm opacity-60">-no messages-</div>
+      <% end %>
+      <%= for e <- @entries.data do %>
+        <div class={"card card-compact w-full shadow-xl #{if e.seen, do: "bg-base-200", else: "bg-primary text-primary-content"}"}>
+          <div class="card-body">
+            <div class="flex items-start justify-between gap-2">
+              <div class="min-w-0">
+                <div class="font-bold truncate">
+                  <i class={"fa-solid fa-fw #{if e.seen, do: "fa-envelope-open", else: "fa-envelope"}"}></i>
+                  <%= e.subject %>
+                </div>
+                <div class="text-xs opacity-80 truncate"><%= e.from %></div>
+                <%= if e[:snippet] do %>
+                  <div class="text-xs opacity-60 truncate italic"><%= e.snippet %></div>
+                <% end %>
+              </div>
+              <div class="text-xs opacity-70 shrink-0"><%= e.date %></div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  def p_treasury(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-1">
+      <%= if @entries.data == [] do %>
+        <div class="text-sm opacity-60">-no pairs-</div>
+      <% end %>
+      <%= for e <- @entries.data do %>
+        <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
+          <div class="card-body">
+            <div class="flex items-center justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-bold">
+                  <i class="fa-solid fa-fw fa-money-bill-transfer"></i> <%= e.pair %>
+                </div>
+                <%= if e[:from_name] do %>
+                  <div class="text-xs opacity-70 truncate"><%= e.from_name %> &rarr; <%= e.to_name %></div>
+                <% end %>
+              </div>
+              <div class="text-right shrink-0">
+                <%= if e[:rate] do %>
+                  <div class="text-2xl font-mono font-bold"><%= e.display %></div>
+                  <%= if e[:date] do %><div class="text-xs opacity-60"><%= e.date %></div><% end %>
+                <% else %>
+                  <div class="text-sm opacity-70"><%= e[:error] || "unavailable" %></div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  def p_bourse(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-1">
+      <%= if @entries.data == [] do %>
+        <div class="text-sm opacity-60">-no quote-</div>
+      <% end %>
+      <%= for e <- @entries.data do %>
+        <div class={"card card-compact w-full shadow-xl #{bourse_card(e[:direction])}"}>
+          <div class="card-body">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0">
+                <div class="font-bold">
+                  <i class="fa-solid fa-fw fa-chart-line"></i> <%= e.symbol %>
+                </div>
+                <%= if e[:name] do %>
+                  <div class="text-xs opacity-70 truncate"><%= e.name %></div>
+                <% end %>
+                <%= if e[:exchange] do %>
+                  <div class="text-xs opacity-60"><%= e.exchange %><%= if e[:currency], do: " · #{e.currency}" %></div>
+                <% end %>
+              </div>
+              <div class="text-right shrink-0">
+                <%= if e[:price] do %>
+                  <div class="text-2xl font-mono font-bold"><%= RoomBourse.Worker.format_price(e.price) %></div>
+                  <div class="text-xs font-mono">
+                    <i class={"fa-solid fa-fw #{bourse_arrow(e[:direction])}"}></i>
+                    <%= RoomBourse.Worker.format_change(e[:change]) %>
+                    <%= RoomBourse.Worker.format_pct(e[:change_pct]) %>
+                  </div>
+                <% else %>
+                  <div class="text-sm opacity-70"><%= e[:error] || "unavailable" %></div>
+                <% end %>
+              </div>
+            </div>
+          </div>
+        </div>
+      <% end %>
+    </div>
+    """
+  end
+
+  # Colour follows the day's move; unknown or flat stays neutral rather than
+  # implying a direction.
+  defp bourse_card(:up), do: "bg-success text-success-content"
+  defp bourse_card(:down), do: "bg-error text-error-content"
+  defp bourse_card(_), do: "bg-base-200"
+
+  defp bourse_arrow(:up), do: "fa-arrow-trend-up"
+  defp bourse_arrow(:down), do: "fa-arrow-trend-down"
+  defp bourse_arrow(_), do: "fa-minus"
+
   defp package_icon(carrier) do
     case carrier do
       :ups -> "fa-brands fa-ups fa-fw"
@@ -1005,4 +1180,225 @@ use PhoenixHTMLHelpers
       _otherwise -> "fa-solid fa-box fa-fw"
     end
   end
+
+  # One component serves both query modes, since dispatch keys on the source
+  # type: a flight watch arrives as a single entry tagged kind=flight.
+  def p_icarus(%{entries: %{data: [%{"kind" => "flight"} | _]}} = assigns) do
+    ~H"""
+    <% w = hd(@entries.data) %>
+    <div class="flex flex-col gap-2">
+      <div class={"card card-compact w-full shadow-xl #{icarus_status_card(w["status"])}"}>
+        <div class="card-body">
+          <div class="flex items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+              <span class="badge badge-neutral gap-1">
+                <i class="fa-solid fa-fw fa-plane-up"></i>
+                <%= w["flight_number"] || w["callsign"] %>
+              </span>
+              <span class="font-bold text-lg"><%= icarus_status_text(w) %></span>
+            </div>
+            <span class="text-xs opacity-70">to <%= w["dest"] %></span>
+          </div>
+
+          <div class="grid grid-cols-3 gap-2 mt-2 text-center">
+            <div>
+              <div class="text-xs opacity-60 uppercase">scheduled</div>
+              <div class="text-lg font-mono"><%= icarus_clock(w["sched_arrival"], w["tz"]) %></div>
+            </div>
+            <div>
+              <div class="text-xs opacity-60 uppercase">
+                <%= if w["state"] == "landed", do: "landed", else: "est. landing" %>
+              </div>
+              <div class="text-lg font-mono">
+                <%= icarus_clock(w["landed_at"] || w["eta"], w["tz"]) %>
+              </div>
+            </div>
+            <div>
+              <div class="text-xs opacity-60 uppercase">at the curb</div>
+              <div class="text-lg font-mono"><%= icarus_clock(w["curb_eta"], w["tz"]) %></div>
+            </div>
+          </div>
+
+          <%= if w["state"] == "pending" do %>
+            <div class="text-xs opacity-70 mt-1">
+              Not airborne yet - nothing transmits until it takes off.
+            </div>
+          <% end %>
+          <%= if w["state"] == "expired" do %>
+            <div class="text-xs opacity-70 mt-1">
+              Never seen inside the tracking window. Check the flight number and date.
+            </div>
+          <% end %>
+
+          <%= if w["registration"] do %>
+            <div class="text-xs opacity-60 mt-1">
+              <%= w["registration"] %><%= if w["aircraft_type"], do: " · #{w["aircraft_type"]}" %>
+              <%= if w["position"]["dst"], do: " · #{icarus_distance(w["position"]["dst"])} out" %>
+            </div>
+          <% end %>
+        </div>
+      </div>
+      <div class="text-xs opacity-50">
+        data from <a href="https://adsb.fi/" class="link" target="_blank">adsb.fi</a>
+      </div>
+    </div>
+    """
+  end
+
+  def p_icarus(assigns) do
+    ~H"""
+    <div class="flex flex-col gap-2">
+      <%= if @entries.data == [] do %>
+        <div class="text-sm opacity-60">-no aircraft in range-</div>
+      <% end %>
+      <%= for ac <- @entries.data do %>
+        <div class="card card-compact w-full shadow-xl bg-base-200">
+          <div class="card-body">
+            <div class="flex items-center justify-between gap-2">
+              <div class="flex items-center gap-2">
+                <span class="badge badge-primary gap-1">
+                  <i class="fa-solid fa-fw fa-plane-up" style={icarus_rotate(ac["track"])}></i>
+                  <%= ac["flight"] || ac["registration"] || ac["hex"] %>
+                </span>
+                <%= if ac["military"] do %>
+                  <span class="badge badge-warning gap-1">
+                    <i class="fa-solid fa-fw fa-shield"></i>mil
+                  </span>
+                <% end %>
+                <%= if ac["class"] == "cargo" do %>
+                  <span class="badge badge-accent gap-1">
+                    <i class="fa-solid fa-fw fa-box"></i>cargo
+                  </span>
+                <% end %>
+                <%= if ac["emergency"] not in [nil, "none"] do %>
+                  <span class="badge badge-error"><%= ac["emergency"] %></span>
+                <% end %>
+              </div>
+              <span class="text-xs opacity-70">
+                <%= icarus_distance(ac["dst"]) %> <%= icarus_cardinal(ac["dir"]) %>
+              </span>
+            </div>
+
+            <div class="grid grid-cols-4 gap-2 mt-2 text-center">
+              <div>
+                <div class="text-xs opacity-60 uppercase">alt</div>
+                <div class="text-lg font-mono"><%= icarus_altitude(ac["alt_baro"]) %></div>
+              </div>
+              <div>
+                <div class="text-xs opacity-60 uppercase">speed</div>
+                <div class="text-lg font-mono"><%= icarus_speed(ac["gs"]) %></div>
+              </div>
+              <div>
+                <div class="text-xs opacity-60 uppercase">track</div>
+                <div class="text-lg font-mono"><%= icarus_track(ac["track"]) %></div>
+              </div>
+              <div>
+                <div class="text-xs opacity-60 uppercase">v/s</div>
+                <div class={"text-lg font-mono #{icarus_vs_class(ac["vert_rate"])}"}>
+                  <%= icarus_vert_rate(ac["vert_rate"]) %>
+                </div>
+              </div>
+            </div>
+
+            <%= if ac["desc"] || ac["operator"] do %>
+              <div class="text-xs opacity-70 mt-1">
+                <%= [ac["desc"], ac["operator"]] |> Enum.reject(&is_nil/1) |> Enum.join(" — ") %>
+              </div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+      <div class="text-xs opacity-50">
+        data from <a href="https://adsb.fi/" class="link" target="_blank">adsb.fi</a>
+      </div>
+    </div>
+    """
+  end
+
+  # alt_baro is the string "ground" when the aircraft is on the surface.
+  defp icarus_altitude(nil), do: "—"
+  defp icarus_altitude("ground"), do: "GND"
+  defp icarus_altitude(alt) when is_number(alt), do: "#{round(alt)}'"
+  defp icarus_altitude(alt), do: to_string(alt)
+
+  defp icarus_speed(nil), do: "—"
+  defp icarus_speed(gs) when is_number(gs), do: "#{round(gs)}kt"
+  defp icarus_speed(gs), do: to_string(gs)
+
+  defp icarus_track(nil), do: "—"
+  defp icarus_track(track) when is_number(track), do: "#{round(track)}°"
+  defp icarus_track(track), do: to_string(track)
+
+  defp icarus_distance(nil), do: "—"
+  defp icarus_distance(dst) when is_number(dst), do: "#{:erlang.float_to_binary(dst / 1, decimals: 1)}nm"
+  defp icarus_distance(dst), do: to_string(dst)
+
+  defp icarus_vert_rate(nil), do: "—"
+  defp icarus_vert_rate(0), do: "level"
+
+  defp icarus_vert_rate(rate) when is_number(rate) do
+    sign = if rate > 0, do: "+", else: ""
+    "#{sign}#{round(rate)}"
+  end
+
+  defp icarus_vert_rate(rate), do: to_string(rate)
+
+  defp icarus_vs_class(rate) when is_number(rate) and rate > 0, do: "text-success"
+  defp icarus_vs_class(rate) when is_number(rate) and rate < 0, do: "text-warning"
+  defp icarus_vs_class(_), do: ""
+
+  # The plane glyph points north, so rotating by track makes the row read as a
+  # compass at a glance -- the whole point of a flight wall.
+  defp icarus_rotate(track) when is_number(track), do: "transform: rotate(#{round(track)}deg)"
+  defp icarus_rotate(_), do: nil
+
+  defp icarus_cardinal(nil), do: ""
+
+  defp icarus_cardinal(dir) when is_number(dir) do
+    ~w(N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW)
+    |> Enum.at(dir |> Kernel./(22.5) |> round() |> rem(16))
+  end
+
+  defp icarus_cardinal(_), do: ""
+
+  defp icarus_status_card("landed"), do: "bg-success text-success-content"
+  defp icarus_status_card("early"), do: "bg-success text-success-content"
+  defp icarus_status_card("on time"), do: "bg-base-200"
+  defp icarus_status_card("delayed"), do: "bg-warning text-warning-content"
+  defp icarus_status_card("no sighting"), do: "bg-error text-error-content"
+  defp icarus_status_card(_), do: "bg-base-200"
+
+  # Say how early or late, not just that it is -- "delayed 40m" is actionable in
+  # a way that "delayed" is not.
+  defp icarus_status_text(%{"status" => "landed"}), do: "Landed"
+  defp icarus_status_text(%{"status" => "not airborne"}), do: "Not airborne"
+  defp icarus_status_text(%{"status" => "no sighting"}), do: "No sighting"
+  defp icarus_status_text(%{"status" => "tracking"}), do: "Tracking"
+
+  defp icarus_status_text(%{"status" => status, "delay_minutes" => delay})
+       when is_integer(delay) do
+    case status do
+      "early" -> "Early #{abs(delay)}m"
+      "delayed" -> "Delayed #{delay}m"
+      _ -> "On time"
+    end
+  end
+
+  defp icarus_status_text(_), do: "Tracking"
+
+  # Everything on the card reads in the destination airport's local time, which
+  # is the clock the ticket is printed in and the one the person waiting at
+  # arrivals is looking at.
+  defp icarus_clock(nil, _tz), do: "—"
+
+  defp icarus_clock(%DateTime{} = dt, tz) when is_binary(tz) do
+    case DateTime.shift_zone(dt, tz, Tzdata.TimeZoneDatabase) do
+      {:ok, local} -> Calendar.strftime(local, "%H:%M")
+      _ -> Calendar.strftime(dt, "%H:%M") <> "Z"
+    end
+  end
+
+  defp icarus_clock(%DateTime{} = dt, _tz), do: Calendar.strftime(dt, "%H:%M") <> "Z"
+  defp icarus_clock(%NaiveDateTime{} = dt, _tz), do: Calendar.strftime(dt, "%H:%M")
+  defp icarus_clock(other, _tz), do: to_string(other)
 end

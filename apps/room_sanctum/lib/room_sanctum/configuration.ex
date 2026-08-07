@@ -119,16 +119,27 @@ defmodule RoomSanctum.Configuration do
     end
   end
 
-  def update_source_meta_tracking(%Source{} = source, number, payload) do
-    s = source.meta
-    original_tracking = source.meta.tracking
-    {extant_id, idx} = original_tracking |> Enum.with_index |> Enum.filter(fn {t, _i} -> t.number == number end) |> List.first
-    entries = extant_id |> Map.get(:entries)
-    new_entries = entries |> List.insert_at(-1, payload)
-    updated_id = extant_id |> Map.put(:entries, new_entries) |> Map.from_struct
+  @doc """
+  Append a status entry to one tracked number.
 
-    updated_tracking = original_tracking |> List.replace_at(idx, updated_id)
-    RoomSanctum.Configuration.update_source_meta(source, %{tracking: updated_tracking})
+  Every entry is converted to a plain map first. Replacing a single struct with a
+  map left the rest as structs, which the embed cast rejects -- so this only ever
+  worked while a source tracked exactly one parcel.
+  """
+  def update_source_meta_tracking(%Source{} = source, number, payload) do
+    tracking = source.meta.tracking |> Enum.map(&Map.from_struct/1)
+
+    case Enum.find_index(tracking, fn t -> t.number == number end) do
+      nil ->
+        {:error, :not_tracked}
+
+      idx ->
+        existing = Enum.at(tracking, idx)
+        entries = (existing[:entries] || []) ++ [payload]
+        updated = Map.put(existing, :entries, entries)
+
+        update_source_meta(source, %{tracking: List.replace_at(tracking, idx, updated)})
+    end
   end
 
   @doc """

@@ -30,6 +30,10 @@
             <% {_, :github} -> %> <.p_github entries={condense(k, p) |> preview(k)}> </.p_github>
             <% {_, :drought} -> %> <.p_drought entries={condense(k, p) |> preview(k)}> </.p_drought>
             <% {_, :pollen} -> %> <.p_pollen entries={condense(k, p) |> preview(k)}> </.p_pollen>
+            <% {_, :icarus} -> %> <.p_icarus entries={condense(k, p) |> preview(k)}> </.p_icarus>
+            <% {_, :mailbox} -> %> <.p_mailbox entries={condense(k, p) |> preview(k)}> </.p_mailbox>
+            <% {_, :treasury} -> %> <.p_treasury entries={condense(k, p) |> preview(k)}> </.p_treasury>
+            <% {_, :bourse} -> %> <.p_bourse entries={condense(k, p) |> preview(k)}> </.p_bourse>
             <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
             <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
             <% end %>

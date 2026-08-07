@@ -116,6 +116,30 @@ defmodule RoomSanctumWeb.QueryLive.Show do
             socket.assigns.query.source.id,
             socket.assigns.query.query
           )
+
+        :icarus ->
+          RoomIcarus.Worker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
+
+        :mailbox ->
+          RoomHermes.Mail.ImapWorker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
+
+        :treasury ->
+          RoomTreasury.Worker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
+
+        :bourse ->
+          RoomBourse.Worker.read(
+            socket.assigns.query.source.id,
+            socket.assigns.query.query
+          )
       end
 
     {:noreply, assign(socket, :preview, result)}

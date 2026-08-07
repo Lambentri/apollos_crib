@@ -26,6 +26,10 @@ defmodule RoomSanctum.Configuration.Query do
         packages: RoomSanctum.Configuration.Queries.Packages,
         drought: RoomSanctum.Configuration.Queries.Drought,
         pollen: RoomSanctum.Configuration.Queries.Pollen,
+        icarus: RoomSanctum.Configuration.Queries.Icarus,
+        mailbox: RoomSanctum.Configuration.Queries.Mailbox,
+        treasury: RoomSanctum.Configuration.Queries.Treasury,
+        bourse: RoomSanctum.Configuration.Queries.Bourse,
       ],
       on_type_not_found: :raise,
       on_replace: :update
