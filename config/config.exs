@@ -62,7 +62,7 @@ config :esbuild,
   version: "0.14.0",
   default: [
     args:
-      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/*),
+      ~w(js/app.js --bundle --target=es2017 --outdir=../priv/static/assets --external:/fonts/* --external:/images/* --loader:.css=text),
     cd: Path.expand("../apps/room_sanctum/assets", __DIR__),
     env: %{
       "NODE_PATH" => Path.expand("../deps", __DIR__)

@@ -364,6 +364,8 @@ gl_available_projects={@gitlab_available_projects}
                       selected_tint={@tint}
                       class=""
                       height="600px"
+                      add_query_event="map-add-query"
+                      queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
                     />
                   </div>
                 <% else %>
@@ -438,7 +440,7 @@ gl_available_projects={@gitlab_available_projects}
                             </ul>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2">
+                    <div class="flex flex-col gap-2 w-full xl:w-1/2 min-w-0">
                         <div class="text-xl">Selected: <%= @tester_selected_name %></div>
                         <div class="text-xs">id: <%= @tester_selected %></div>
                         <div class="">
@@ -455,8 +457,10 @@ gl_available_projects={@gitlab_available_projects}
                     </div>
                 </div>
                 <% :gbfs -> %>
-                <div class="flex justify-between gap-4">
-                    <div class="flex flex-col gap-2">
+                <%!-- min-w-0 so these can shrink; flex items default to min-width:auto
+                      and otherwise refuse to go below their content width. --%>
+                <div class="flex flex-col xl:flex-row justify-between gap-4">
+                    <div class="flex flex-col gap-2 w-full xl:w-1/2 min-w-0">
                         <div class="">
                             <div class="flex flex-col w-full border-opacity-50">
                                 <div class="grid h-20 card bg-base-300 rounded-box place-items-center">
@@ -470,21 +474,6 @@ gl_available_projects={@gitlab_available_projects}
                                                    class="input input-bordered input-info w-full max-w-xs"
                                             />
                                         </fieldset>
-                                    </form>
-                                </div>
-                                <div class="divider">OR</div>
-                                <div class="grid h-20 card bg-base-300 rounded-box place-items-center">
-                                    <form phx-change="select-foci">
-                                        <label for="foci">Select Foci:</label>
-                                        <select name="foci" id="foci">
-                                            <%= for option <- @tester_foci do %>
-                                            <option value={ option.place.coordinates |> pt_for_form
-                                                }><%= option.name %></option>
-                                            <% end %>
-                                        </select>
-                                        <label for="distance">Distance <%= @tester_foci_distance %></label>
-                                        <input type="range" min="0" max="250" value="100" class="range"
-                                               name="distance"/>
                                     </form>
                                 </div>
                             </div>
@@ -506,25 +495,6 @@ gl_available_projects={@gitlab_available_projects}
                             </ul>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2 h-full" id="foci_map" phx-update="replace">
-                        <leaflet-map style="height: 400px; width: 600px" lat={@tester_foci_coords_lat}
-                                     lng={@tester_foci_coords_lon} zoom="13" class="h-full">
-                            <%= for marker <- @tester_foci_vehicles do %>
-                            <leaflet-marker
-                                    lat={ marker.point.coordinates |> get_second }
-                                lng={ marker.point.coordinates |> get_first }
-                                selected={false}
-                                phx-click="toggle_marker"
-                                phx-value-id={ marker.id }>
-                                <leaflet-icon
-                                        icon-url={ get_icon_url(false) }
-                                        width="64"
-                                        height="64">
-                                </leaflet-icon>
-                            </leaflet-marker>
-                            <% end %>
-                        </leaflet-map>
-                    </div>
                     <div class="flex flex-col gap-2">
                         <div class="text-xl">Selected: <%= @tester_selected_name %></div>
                         <div class="text-xs">id: <%= @tester_selected %></div>
@@ -536,10 +506,6 @@ gl_available_projects={@gitlab_available_projects}
                             <% else %>
                             -waiting on data-
                             <% end %>
-                        </div>
-                        <div class="">
-                            brrr <br/>
-                            brrr <br/>brrr <br/>brrr <br/>brrr <br/>brrr <br/>brrr <br/>
                         </div>
                     </div>
                 </div>

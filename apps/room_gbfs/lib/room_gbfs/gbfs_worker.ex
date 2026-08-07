@@ -96,7 +96,10 @@ defmodule RoomGbfs.Worker do
     dt = NaiveDateTime.local_now()
     Logger.info("GBFS::#{id} retrieving #{url}")
 
-    case HTTPoison.get(url) do
+    # Operators move hosts and publish 301s from the old address -- Baywheels
+    # now redirects to gbfs.lyftbikes.com -- so redirects have to be followed or
+    # the body is an empty redirect page.
+    case HTTPoison.get(url, [], follow_redirect: true) do
       {:ok, result} ->
         case result.body
              |> Poison.decode(keys: :atoms) do
@@ -325,14 +328,26 @@ defmodule RoomGbfs.Worker do
         Logger.info("GBFS::#{state.id} updating static info ")
         bcast(state.id, :downloading, 1, @tfh)
 
-        case HTTPoison.get(cfg.config.url) do
+        case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
           {:ok, result} ->
+            # decode! here took the whole worker down when the body was not JSON,
+            # which is exactly what an unfollowed redirect hands you.
             json_body =
-              result.body
-              |> Poison.decode!()
+              case Poison.decode(result.body) do
+                {:ok, decoded} ->
+                  decoded
 
-            if json_body["data"]
-               |> Map.has_key?(cfg.config.lang) do
+                {:error, _} ->
+                  Logger.error(
+                    "GBFS::#{state.id} discovery returned non-JSON (HTTP #{result.status_code}) from #{cfg.config.url}"
+                  )
+
+                  %{}
+              end
+
+            if json_body["data"] != nil and
+                 json_body["data"]
+                 |> Map.has_key?(cfg.config.lang) do
               bcast(state.id, :parsing, 2, @tfh)
 
               json_body["data"][cfg.config.lang]["feeds"]
@@ -422,7 +437,7 @@ defmodule RoomGbfs.Worker do
         Logger.info("GBFS::#{state.id} updating realtime info ")
         bcast(state.id, :downloading, 1, 5)
 
-        case HTTPoison.get(cfg.config.url) do
+        case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
           {:ok, result} ->
             case result.body |> Poison.decode() do
               {:ok, json_body} ->

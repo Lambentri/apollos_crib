@@ -25,12 +25,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:tester_selected, nil)
       |> assign(:tester_selected_name, nil)
       |> assign(:tester_selected_data, %{})
-      |> assign(:tester_foci_distance, 100)
-      |> assign(:tester_foci_coords, {42.3736, -71.1097})
-      |> assign(:tester_foci_coords_lat, 42.3736)
-      |> assign(:tester_foci_coords_lon, -71.1097)
-      |> assign(:tester_foci, {})
-      |> assign(:tester_foci_vehicles, [])
       |> assign(:vehicle_positions, [])
       |> assign(:free_bikes, [])
       |> assign(:stations, [])
@@ -60,9 +54,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _ -> []
     end
 
-    # Add station information for GBFS sources
+    # Stations for the map. GTFS stops carry stop_lat/stop_lon/stop_name where
+    # GBFS uses lat/lon/name, so they are normalised to one shape rather than
+    # teaching the map component two vocabularies.
     stations = case socket.assigns.source.type do
       :gbfs -> Storage.list_gbfs_station_information(socket.assigns.source_id)
+      :gtfs -> socket.assigns.source_id |> Storage.list_stops() |> Enum.map(&stop_as_station/1)
       _ -> []
     end
 
@@ -133,10 +130,76 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     }
   end
 
+  # format_stations/3 reaches for :place directly, so every key it touches has
+  # to be present -- a plain map without :place raises rather than falling
+  # through to the lat/lon branch.
+  defp stop_as_station(stop) do
+    %{
+      place: nil,
+      station_id: stop.stop_id,
+      name: stop.stop_name,
+      short_name: stop.stop_code,
+      capacity: 0,
+      address: stop.stop_address,
+      lat: stop.stop_lat,
+      lon: stop.stop_lon
+    }
+  end
+
+  # GTFS queries key on :stop, GBFS on :stop_id.
+  defp station_id_of(%{query: nil}), do: nil
+  defp station_id_of(%{query: q}), do: Map.get(q, :stop_id) || Map.get(q, :stop)
+  defp station_id_of(_), do: nil
+
   defp page_title(:show), do: "Offering Detail"
   defp page_title(:edit), do: "Modify Offering"
 
 
+
+  # Create a query straight from a station marker's popup. Named after the
+  # station so the query is recognisable without opening it.
+  @impl true
+  def handle_event("map-add-query", %{"station-id" => station_id} = params, socket) do
+    name = Map.get(params, "name") || "Station #{station_id}"
+
+    if station_id in queried_station_ids(socket) do
+      {:noreply, put_flash(socket, :error, "#{name} already has a query")}
+    else
+      add_station_query(socket, station_id, name)
+    end
+  end
+
+  # The station ids this source already has queries for, so the map can grey
+  # them out and a second click cannot stack a duplicate.
+  defp queried_station_ids(socket) do
+    socket.assigns.queries
+    |> Enum.map(&station_id_of/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(&to_string/1)
+  end
+
+  # GTFS names the field :stop, GBFS :stop_id.
+  defp station_query_for(:gtfs, id), do: %{"__type__" => "gtfs", "stop" => id}
+  defp station_query_for(type, id), do: %{"__type__" => to_string(type), "stop_id" => id}
+
+  defp add_station_query(socket, station_id, name) do
+    case Configuration.create_query(%{
+           user_id: socket.assigns.current_user.id,
+           source_id: socket.assigns.source.id,
+           name: name,
+           query: station_query_for(socket.assigns.source.type, station_id),
+           public: true
+         }) do
+      {:ok, _} ->
+        {:noreply,
+         socket
+         |> assign(:queries, Configuration.get_queries(:source, socket.assigns.source_id))
+         |> put_flash(:info, "Added query #{name}")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Could not add a query for #{name}")}
+    end
+  end
 
   # --- bourse symbol builder -------------------------------------------
 
@@ -606,8 +669,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("add-tester", _params, socket) do
-    foci = Configuration.list_focis({:user,socket.assigns.current_user.id})
-    {:noreply, socket |> assign(:tester, !socket.assigns.tester) |> assign(:tester_foci, foci)}
+    {:noreply, socket |> assign(:tester, !socket.assigns.tester)}
   end
 
   @impl true
@@ -727,20 +789,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
-  def handle_event("select-foci", %{"foci" => foci, "distance" => distance} = data, socket) do
-    IO.inspect(data)
-    [lat, lon] = foci |> String.split(",") |> Enum.map(&String.to_float/1)
-    point = %Geo.Point{coordinates: {lat, lon}, srid: 4326}
-    vehicles = Storage.find_free_bikes_around_point(socket.assigns.source_id, point, distance |> String.to_integer) |> IO.inspect
-    {:noreply, socket
-               |> assign(:tester_foci_distance, distance)
-               |> assign(:tester_foci_coords, {lat, lon})
-               |> assign(:tester_foci_coords_lat, lat)
-               |> assign(:tester_foci_coords_lon, lon)
-               |> assign(:tester_foci_vehicles, vehicles)
-    }
-  end
-
   # Paste a tracking number, or the text of a shipping email, to register it by
   # hand -- the same extraction the mail queue runs, without waiting for a poll.
   def handle_event("submit-pkg", %{"submit" => %{"query" => query}}, socket) do
@@ -999,10 +1047,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     %{data: condensed, id: id, type: type}
   end
 
-  defp pt_for_form({lat, lon}) do
-      "#{lat},#{lon}"
-  end
-
   defp getlatlng(coords) do
     coords |> Tuple.to_list() |> Poison.encode!()
   end
@@ -1049,6 +1093,4 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     "/assets/img/marker.png"
   end
 
-  def get_first({a, _b}), do: a
-  def get_second({_a, b}), do: b
 end

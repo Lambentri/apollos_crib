@@ -1,8 +1,14 @@
 import L from 'leaflet'
+// Loaded as text (see --loader:.css=text) so it can be injected into the shadow
+// root. The map renders inside a shadow DOM, which stylesheets in the main
+// document cannot reach -- without this Leaflet's tiles have no positioning
+// rules and lay themselves out as a grid of loose images.
+import leafletCss from 'leaflet/dist/leaflet.css'
 
 const template = document.createElement('template');
 template.innerHTML = `
     <style>
+      ${leafletCss}
       :host {
         display: block;
         width: 100%;
@@ -78,6 +84,17 @@ class LeafletMap extends HTMLElement {
             this.setupStreamingHandlers();
         }
 
+        // Leaflet measures its container once, at init. Inside a flex column
+        // that width is not final yet, so without this the panes keep the
+        // stale size and spill outside the element's box.
+        this.resizeObserver = new ResizeObserver(() => {
+            if (this.map) this.map.invalidateSize({ animate: false });
+        });
+        this.resizeObserver.observe(this.mapElement);
+
+        // One more pass after layout settles, for the first paint.
+        requestAnimationFrame(() => this.map && this.map.invalidateSize({ animate: false }));
+
         console.log('Leaflet map initialized with Web Components');
     }
 
@@ -112,6 +129,9 @@ class LeafletMap extends HTMLElement {
     disconnectedCallback() {
         if (this.observer) {
             this.observer.disconnect();
+        }
+        if (this.resizeObserver) {
+            this.resizeObserver.disconnect();
         }
         if (this.map) {
             this.map.remove();
@@ -148,6 +168,7 @@ class LeafletMap extends HTMLElement {
                 layer = this.vehiclesLayer;
                 break;
             case 'free-bike':
+            case 'free_bike':
                 leafletMarker = this.createFreeBikeMarker(lat, lng, markerEl);
                 layer = this.freeBikesLayer;
                 break;
@@ -171,6 +192,21 @@ class LeafletMap extends HTMLElement {
             // Set up click forwarding from Leaflet marker to DOM element
             leafletMarker.on('click', () => {
                 markerEl.click();
+            });
+
+            // The popup's DOM only exists once opened, so bind the action then.
+            leafletMarker.on('popupopen', (e) => {
+                const btn = e.popup.getElement()?.querySelector('[data-add-query-btn]');
+                if (!btn || btn.dataset.bound) return;
+                btn.dataset.bound = '1';
+                btn.addEventListener('click', (ev) => {
+                    ev.stopPropagation();
+                    // Target the hidden child, not the marker itself -- the map
+                    // forwards marker clicks, which would fire this on any click.
+                    const target = markerEl.querySelector('[data-add-query-target]');
+                    if (target) target.click();
+                    leafletMarker.closePopup();
+                });
             });
 
             // Watch for icon updates
@@ -198,17 +234,11 @@ class LeafletMap extends HTMLElement {
     }
 
     createOptimizedQueryMarker(lat, lng, markerEl) {
-        // High-performance canvas-based circle marker for queries
-        const color = this.getMarkerColor(markerEl);
-        
-        return L.circleMarker([lat, lng], {
-            renderer: this.canvasRenderer,
-            radius: 4,
-            weight: 1,
-            color: '#ffffff',
-            fillColor: color,
-            fillOpacity: 0.8,
-            fill: true,
+        // A star, not a circle: unmistakable against the docks and bikes, and
+        // there are few enough queries that a DOM icon costs nothing.
+        return L.marker([lat, lng], {
+            icon: this.createStarIcon(this.getMarkerColor(markerEl), this.getStrokeColor(markerEl), 22),
+            keyboard: false,
         }).bindPopup(() => this.createPopupContent(markerEl));
     }
 
@@ -237,9 +267,9 @@ class LeafletMap extends HTMLElement {
         
         return L.circleMarker([lat, lng], {
             renderer: this.canvasRenderer,
-            radius: 6,
-            weight: 2,
-            color: '#ffffff',
+            radius: 4,
+            weight: this.hasTint(markerEl) ? 2 : 1,
+            color: this.getStrokeColor(markerEl),
             fillColor: color,
             fillOpacity: 0.9,
             fill: true,
@@ -247,16 +277,23 @@ class LeafletMap extends HTMLElement {
     }
 
     createStationMarker(lat, lng, markerEl) {
-        // Medium markers for stations
         const color = this.getMarkerColor(markerEl);
-        
+
+        // Already queried -> star, so it matches the query markers it is one of.
+        if (this.markerHasQuery(markerEl)) {
+            return L.marker([lat, lng], {
+                icon: this.createStarIcon(color, this.getStrokeColor(markerEl), 20),
+                keyboard: false,
+            }).bindPopup(() => this.createPopupContent(markerEl));
+        }
+
         return L.circleMarker([lat, lng], {
             renderer: this.canvasRenderer,
-            radius: 8,
-            weight: 2,
-            color: '#ffffff',
+            radius: 7,
+            weight: this.hasTint(markerEl) ? 3 : 2,
+            color: this.getStrokeColor(markerEl),
             fillColor: color,
-            fillOpacity: 0.8,
+            fillOpacity: 0.85,
             fill: true,
         }).bindPopup(() => this.createPopupContent(markerEl));
     }
@@ -277,8 +314,57 @@ class LeafletMap extends HTMLElement {
         leafletMarker.setIcon(newIcon);
     }
 
+    // Fill says *what* the marker is; the outline says which tint it belongs to.
+    // Previously tint won outright, so a source with a tint painted its queries
+    // and its stations the same colour and the type was invisible.
     getMarkerColor(markerEl) {
-        const tint = markerEl.getAttribute('tint');
+        // A dock that already has a query reads as a query, not a dock.
+        if (this.markerHasQuery(markerEl)) return '#f59e0b'; // amber
+
+        // Indigo vs sky was indistinguishable; these are far apart.
+        const byType = {
+            'query': '#f59e0b',      // amber
+            'station': '#2563eb',    // blue
+            'free_bike': '#16a34a',  // green
+            'free-bike': '#16a34a',
+            'vehicle': '#dc2626',    // red
+        };
+
+        return byType[markerEl.getAttribute('type') || 'query'] || '#6b7280';
+    }
+
+    // Outline: the tint if one is set, otherwise white so the marker still
+    // reads against the map.
+    getStrokeColor(markerEl) {
+        return this.tintColor(markerEl.getAttribute('tint')) || '#ffffff';
+    }
+
+    markerHasQuery(markerEl) {
+        return markerEl.hasAttribute('data-has-query');
+    }
+
+    // Inline SVG rather than a Font Awesome glyph: the map lives in a shadow
+    // root, which stylesheets in the main document cannot reach.
+    createStarIcon(fill, stroke, size) {
+        const points = '12,2 15.09,8.26 22,9.27 17,14.14 18.18,21.02 12,17.77 5.82,21.02 7,14.14 2,9.27 8.91,8.26';
+
+        return L.divIcon({
+            className: 'leaflet-star-icon',
+            html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                     <polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="1.5"
+                              stroke-linejoin="round" />
+                   </svg>`,
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+            popupAnchor: [0, -size / 2],
+        });
+    }
+
+    hasTint(markerEl) {
+        return this.tintColor(markerEl.getAttribute('tint')) !== null;
+    }
+
+    tintColor(tint) {
         const colorMap = {
             'red': '#ef4444',
             'orange': '#f97316',
@@ -297,9 +383,11 @@ class LeafletMap extends HTMLElement {
             'fuchsia': '#d946ef',
             'pink': '#ec4899',
             'rose': '#f43f5e',
+            'stone': '#78716c',
+            'slate': '#64748b',
         };
-        
-        return colorMap[tint] || '#6b7280';
+
+        return colorMap[tint] || null;
     }
 
     createPopupContent(markerEl) {
@@ -332,6 +420,18 @@ class LeafletMap extends HTMLElement {
         }
 
         content += `</div>`;
+        // Opt-in: the marker element carries phx-click, so routing the button
+        // through markerEl.click() reuses the forwarding that already exists
+        // rather than reaching into LiveView from here.
+        if (markerEl.hasAttribute('data-add-query')) {
+            content += `
+                <button type="button" data-add-query-btn
+                        class="mt-2 w-full text-xs font-semibold rounded px-2 py-1 bg-indigo-600 text-white hover:bg-indigo-700">
+                    + query
+                </button>
+            `;
+        }
+
         return content;
     }
 

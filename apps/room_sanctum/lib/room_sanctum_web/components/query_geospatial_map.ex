@@ -16,6 +16,19 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   attr :selected_tint, :string, default: nil
   attr :class, :string, default: ""
   attr :height, :string, default: "500px"
+
+  attr :max_markers, :integer,
+    default: nil,
+    doc: "Optional cap on rendered markers. Nil shows everything, which is the default."
+
+  attr :queried_station_ids, :list,
+    default: [],
+    doc: "Station ids that already have a query; those markers render as queries and lose the add action."
+
+  attr :add_query_event, :string,
+    default: nil,
+    doc: "When set, station markers get a '+ query' action in their popup that pushes this event."
+
   attr :vehicle_positions, :list, default: []
   attr :free_bikes, :list, default: []
   attr :stations, :list, default: []
@@ -29,14 +42,94 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions))
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
+    groups = [assigns.map_queries, assigns.map_vehicles, assigns.map_free_bikes, assigns.map_stations]
+    all_points = Enum.concat(groups)
+    # Centre on everything, even any points a cap would drop.
+    {centre_lat, centre_lng, zoom} = view_for(all_points)
+
+    # Every marker type is a canvas circleMarker sharing one renderer, so the
+    # whole system draws without trouble; the cap is opt-in rather than default.
+    queried = MapSet.new(Map.get(assigns, :queried_station_ids) || [], &to_string/1)
+    limit = Map.get(assigns, :max_markers)
+    shown_points = if is_nil(limit), do: all_points, else: balanced_take(groups, limit)
+
+    assigns =
+      assigns
+      |> assign(:all_points, shown_points)
+      |> assign(:queried, queried)
+      # Counts as assigns: inside ~H, @foo means assigns.foo, so a module
+      # attribute referenced in the template reads as nil.
+      |> assign(:shown, length(shown_points))
+      |> assign(:total, length(all_points))
+      |> assign(:centre_lat, centre_lat)
+      |> assign(:centre_lng, centre_lng)
+      |> assign(:zoom, zoom)
+      |> assign(:truncated, length(all_points) - length(shown_points))
+
   ~H"""
     <div class={"query-geospatial-map w-full #{@class}"}>
+      <%!-- No phx-update here on purpose: the element patches lat/lng/zoom through
+            attributeChangedCallback and markers through a MutationObserver, so
+            LiveView should morph it in place rather than replace it. --%>
+      <div class="mt-4" id="geospatial-map-wrap">
+        <leaflet-map
+          id="geospatial-map"
+          class="w-full block rounded-lg overflow-hidden"
+          style={"height: #{@height}"}
+          lat={@centre_lat}
+          lng={@centre_lng}
+          zoom={@zoom}
+        >
+          <%= for p <- @all_points do %>
+            <%!-- Prefixed: LiveView rejects a numeric DOM id, and queries carry a
+                  bare integer id while the other formatters emit strings. --%>
+            <leaflet-marker
+              lat={p.lat}
+              lng={p.lng}
+              name={Map.get(p, :name)}
+              type={Map.get(p, :type)}
+              tint={Map.get(p, :tint)}
+              id={"map-marker-#{p.id}"}
+              data-has-query={
+                if Map.get(p, :type) == "station" &&
+                     MapSet.member?(@queried, to_string(Map.get(p, :station_id))),
+                   do: "1"
+              }
+              data-add-query={
+                if @add_query_event && Map.get(p, :type) == "station" &&
+                     !MapSet.member?(@queried, to_string(Map.get(p, :station_id))),
+                   do: "1"
+              }
+            >
+              <%!-- The map forwards every marker click to the marker element, so
+                    a phx-click there fired on any click. This hidden child is
+                    activated only by the popup's "+ query" button. --%>
+              <span
+                :if={
+                  @add_query_event && Map.get(p, :type) == "station" &&
+                    !MapSet.member?(@queried, to_string(Map.get(p, :station_id)))
+                }
+                data-add-query-target
+                hidden
+                phx-click={@add_query_event}
+                phx-value-station-id={Map.get(p, :station_id)}
+                phx-value-name={Map.get(p, :name)}
+              ></span>
+            </leaflet-marker>
+          <% end %>
+        </leaflet-map>
+        <%= if @truncated > 0 do %>
+          <p class="text-xs text-base-content/60 mt-1">
+            Showing <%= @shown %> of <%= @total %> points.
+          </p>
+        <% end %>
+      </div>
       <div class="mt-4 bg-base-100 border border-base-300 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-base-content">
             Map Legend
             <span class="ml-2 text-xs text-base-content/60">
-              (<%= length(@map_queries) %> queries with location data<%= if length(@map_free_bikes) > 0, do: ", #{length(@map_free_bikes)} free bikes", else: "" %>)
+              (<%= length(@map_queries) %> queries with location data<%= if length(@map_stations) > 0, do: ", #{length(@map_stations)} stations", else: "" %><%= if length(@map_free_bikes) > 0, do: ", #{length(@map_free_bikes)} free bikes", else: "" %>)
             </span>
           </h3>
           
@@ -78,6 +171,57 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       </div>
     </div>
     """
+  end
+
+  @doc false
+  # Straight concatenation plus Enum.take drops whole categories: with 570 free
+  # bikes ahead of 635 stations, a 400 cap kept zero stations. Round-robin so
+  # every kind is represented, and a short list (queries) is never crowded out.
+  def balanced_take(groups, limit) do
+    groups
+    |> Enum.reject(&(&1 == []))
+    |> interleave()
+    |> Enum.take(limit)
+  end
+
+  defp interleave([]), do: []
+
+  defp interleave(lists) do
+    {heads, rests} =
+      Enum.reduce(lists, {[], []}, fn
+        [h | t], {hs, rs} -> {[h | hs], if(t == [], do: rs, else: [t | rs])}
+        [], acc -> acc
+      end)
+
+    Enum.reverse(heads) ++ interleave(Enum.reverse(rests))
+  end
+
+  # Mean of the points, with the zoom backed off as their spread grows. Falls
+  # back to a continental view when there is nothing to show yet.
+  defp view_for([]), do: {39.8283, -98.5795, 4}
+
+  defp view_for(points) do
+    lats = points |> Enum.map(& &1.lat) |> Enum.filter(&is_number/1)
+    lngs = points |> Enum.map(& &1.lng) |> Enum.filter(&is_number/1)
+
+    if lats == [] or lngs == [] do
+      {39.8283, -98.5795, 4}
+    else
+      n = length(lats)
+      spread = max(Enum.max(lats) - Enum.min(lats), Enum.max(lngs) - Enum.min(lngs))
+
+      zoom =
+        cond do
+          spread > 5.0 -> 6
+          spread > 1.0 -> 9
+          spread > 0.5 -> 10
+          spread > 0.25 -> 11
+          spread > 0.1 -> 12
+          true -> 13
+        end
+
+      {Enum.sum(lats) / n, Enum.sum(lngs) / n, zoom}
+    end
   end
 
   # Helper function to get queries that have geospatial data
@@ -138,6 +282,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
     %{
       id: query.id,
+      # Explicit, so the marker carries a type attribute. Without it the colour
+      # lookup fell through to the neutral grey rather than the query colour.
+      type: "query",
       name: query.name,
       source_name: query.source.name,
       source_type: query.source.type,
@@ -382,6 +529,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       %{
         id: "bike_#{bike.bike_id}",
         type: "free_bike",
+        # Without a name the popup falls back to the literal word "Marker".
+        # Bikes have no name upstream, so build a readable one from the id.
+        name: "Bike #{String.slice(to_string(bike.bike_id), 0, 8)}",
         bike_id: bike.bike_id,
         lat: lat,
         lng: lng,
