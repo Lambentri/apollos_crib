@@ -4,6 +4,10 @@
  * Optimized for handling thousands of markers with Canvas renderer and data compression
  */
 
+// L itself comes from the global the Leaflet UMD bundle installs; this one is
+// ours, so it has to be imported.
+import { addBasemap } from '../leaflet/basemap'
+
 const LeafletMap = {
   mounted() {
     this.isInitialized = false;
@@ -49,8 +53,18 @@ const LeafletMap = {
   },
 
   destroyed() {
+    this.releaseBasemap();
     if (this.map) {
       this.map.remove();
+    }
+  },
+
+  // The tint holds a module-level theme-change callback, so it has to be
+  // released explicitly on every path that drops the map.
+  releaseBasemap() {
+    if (this.basemap) {
+      this.basemap.remove();
+      this.basemap = null;
     }
   },
 
@@ -58,6 +72,7 @@ const LeafletMap = {
     // Only clear if we don't already have a map instance
     if (this.map) {
       console.log('Map already exists, removing...');
+      this.releaseBasemap();
       this.map.remove();
       this.map = null;
     }
@@ -88,11 +103,8 @@ const LeafletMap = {
       scrollWheelZoom: true
     });
 
-    // Add OpenStreetMap tiles
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '© OpenStreetMap contributors',
-      maxZoom: 18
-    }).addTo(this.map);
+    // Monochrome tiles, washed in the active theme colour.
+    this.basemap = addBasemap(this.map, { maxZoom: 18 });
 
     // Initialize separate layer groups for queries, vehicles, free bikes, and stations
     this.queriesLayer = L.layerGroup().addTo(this.map);

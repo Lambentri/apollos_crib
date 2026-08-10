@@ -12,6 +12,15 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       
       <.query_geospatial_map queries={@queries} selected_tint={@tint} />
   """
+  attr :id, :string,
+    default: "geospatial-map",
+    doc: """
+    DOM id for the map and the prefix for its marker ids. Needs to differ when
+    two maps can be on screen together -- the tester map and the offering's
+    map view can both be open, and duplicate ids let LiveView's patching move
+    markers between them.
+    """
+
   attr :queries, :list, required: true
   attr :selected_tint, :string, default: nil
   attr :class, :string, default: ""
@@ -35,17 +44,72 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   attr :station_statuses, :list, default: []
   attr :source_tint, :string, default: nil
 
+  attr :focus, :map,
+    default: nil,
+    doc: """
+    %{lat:, lng:} to centre on, instead of the centroid of the markers. Needed
+    to look at one place: the computed view fits everything on screen and
+    bottoms out at zoom 13, which is too far back to read a single stop.
+    """
+
+  attr :focus_zoom, :integer,
+    default: 15,
+    doc: "Zoom used with :focus. Only consulted when :focus is set."
+
+  attr :route_types, :map,
+    default: %{},
+    doc: """
+    route_id => GTFS route_type, used to pick the glyph a vehicle is drawn
+    with. Vehicle positions only carry a route_id, and the type lives on the
+    route, so the caller resolves it once rather than per marker.
+    """
+
+  attr :route_lines, :list,
+    default: [],
+    doc: """
+    Muted polylines under the markers: [%{id:, points: [[lat, lng], ...],
+    color:}]. Empty by default -- on a full feed this is hundreds of lines.
+    """
+
+  attr :route_lines_event, :string,
+    default: nil,
+    doc: """
+    When set, the map carries its own route-lines toggle pushing this event.
+    Left nil the control is not rendered, which is what a map whose owner
+    cannot supply route geometry should do.
+    """
+
+  attr :show_route_lines, :boolean,
+    default: false,
+    doc: "Whether the toggle reads as on. The state lives with the caller."
+
+  attr :legend, :boolean,
+    default: true,
+    doc: """
+    The legend counts marker types and explains itself when there is nothing to
+    show. Turn it off where the map is deliberately narrow -- a single place --
+    and its "no queries found" empty state would only be noise.
+    """
+
   def query_geospatial_map(assigns) do
     assigns = 
       assigns 
       |> assign(:map_queries, get_mappable_queries(assigns.queries))
-      |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions))
+      |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions, assigns.route_types))
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
     groups = [assigns.map_queries, assigns.map_vehicles, assigns.map_free_bikes, assigns.map_stations]
     all_points = Enum.concat(groups)
-    # Centre on everything, even any points a cap would drop.
-    {centre_lat, centre_lng, zoom} = view_for(all_points)
+    # Centre on everything, even any points a cap would drop -- unless the
+    # caller named a place to look at.
+    {centre_lat, centre_lng, zoom} =
+      case assigns.focus do
+        %{lat: lat, lng: lng} when is_number(lat) and is_number(lng) ->
+          {lat, lng, assigns.focus_zoom}
+
+        _ ->
+          view_for(all_points)
+      end
 
     # Every marker type is a canvas circleMarker sharing one renderer, so the
     # whole system draws without trouble; the cap is opt-in rather than default.
@@ -71,15 +135,38 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       <%!-- No phx-update here on purpose: the element patches lat/lng/zoom through
             attributeChangedCallback and markers through a MutationObserver, so
             LiveView should morph it in place rather than replace it. --%>
-      <div class="mt-4" id="geospatial-map-wrap">
+      <div class="mt-4 relative" id={"#{@id}-wrap"}>
+        <%!-- Above Leaflet's own controls, which top out at z-index 1000
+              inside the map's shadow root. --%>
+        <div :if={@route_lines_event} class="absolute top-2 right-2 z-[1100]">
+          <button
+            type="button"
+            class={"btn btn-xs gap-1 shadow #{if @show_route_lines, do: "btn-primary", else: "btn-neutral"}"}
+            phx-click={@route_lines_event}
+            title={if @show_route_lines, do: "Hide route lines", else: "Show route lines"}
+          >
+            <i class="fa-solid fa-route"></i>
+            Routes
+          </button>
+        </div>
+
         <leaflet-map
-          id="geospatial-map"
+          id={@id}
           class="w-full block rounded-lg overflow-hidden"
           style={"height: #{@height}"}
           lat={@centre_lat}
           lng={@centre_lng}
           zoom={@zoom}
         >
+          <leaflet-line
+            :for={line <- @route_lines}
+            id={"#{@id}-line-#{line.id}"}
+            points={Jason.encode!(line.points)}
+            color={Map.get(line, :color) || "#94a3b8"}
+            weight="2"
+            opacity="0.3"
+          ></leaflet-line>
+
           <%= for p <- @all_points do %>
             <%!-- Prefixed: LiveView rejects a numeric DOM id, and queries carry a
                   bare integer id while the other formatters emit strings. --%>
@@ -89,7 +176,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               name={Map.get(p, :name)}
               type={Map.get(p, :type)}
               tint={Map.get(p, :tint)}
-              id={"map-marker-#{p.id}"}
+              bearing={Map.get(p, :bearing)}
+              route-type={Map.get(p, :route_type)}
+              id={"#{@id}-marker-#{p.id}"}
               data-has-query={
                 if Map.get(p, :type) == "station" &&
                      MapSet.member?(@queried, to_string(Map.get(p, :station_id))),
@@ -124,7 +213,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
           </p>
         <% end %>
       </div>
-      <div class="mt-4 bg-base-100 border border-base-300 rounded-lg p-4">
+      <div :if={@legend} class="mt-4 bg-base-100 border border-base-300 rounded-lg p-4">
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-base-content">
             Map Legend
@@ -478,7 +567,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   end
 
   # Format vehicle positions for map display
-  defp format_vehicle_positions(vehicle_positions) do
+  defp format_vehicle_positions(vehicle_positions, route_types \\ %{}) do
     vehicle_positions
     |> Enum.filter(fn vehicle -> 
       vehicle.latitude != nil && vehicle.longitude != nil 
@@ -493,6 +582,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         lat: vehicle.latitude,
         lng: vehicle.longitude,
         bearing: vehicle.bearing,
+        route_type: Map.get(route_types, vehicle.route_id),
         timestamp: vehicle.timestamp,
         icon: "fa-bus" # or different icon based on vehicle type
       }

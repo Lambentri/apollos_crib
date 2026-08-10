@@ -4,6 +4,7 @@ import L from 'leaflet'
 // document cannot reach -- without this Leaflet's tiles have no positioning
 // rules and lay themselves out as a grid of loose images.
 import leafletCss from 'leaflet/dist/leaflet.css'
+import { addBasemap } from './basemap'
 
 const template = document.createElement('template');
 template.innerHTML = `
@@ -69,9 +70,28 @@ class LeafletMap extends HTMLElement {
 
         this.map = L.map(this.mapElement).setView([lat, lng], zoom);
         
-        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        }).addTo(this.map);
+        // Resolve theme variables against the host rather than <html>: custom
+        // properties inherit through the shadow boundary, so this picks up any
+        // data-theme set closer to the element.
+        this.basemap = addBasemap(this.map, {
+            styleFrom: this,
+            variant: this.getAttribute('basemap') || 'auto',
+            tint: this.getAttribute('tint') || undefined,
+            strength: this.getAttribute('tint-strength') || undefined,
+            // labels="false" trades readable type for one tile request per
+            // tile instead of two.
+            labels: this.getAttribute('labels') !== 'false'
+        });
+
+        // Route lines sit above the theme wash but below the basemap labels and
+        // every marker pane, so they read as part of the map rather than as
+        // something drawn over it.
+        const linePane = this.map.createPane('routeLines');
+        linePane.style.zIndex = '260';
+        linePane.style.pointerEvents = 'none';
+        this.lineRenderer = L.canvas({ pane: 'routeLines', padding: 0.5 });
+        this.linesLayer = L.layerGroup().addTo(this.map);
+        this.lines = new Map();
 
         // Initialize layer groups for different marker types
         this.queriesLayer = L.layerGroup().addTo(this.map);
@@ -103,25 +123,63 @@ class LeafletMap extends HTMLElement {
         this.observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
                 mutation.addedNodes.forEach(node => {
-                    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'LEAFLET-MARKER') {
-                        this.addMarkerElement(node);
-                    }
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+                    if (node.tagName === 'LEAFLET-MARKER') this.addMarkerElement(node);
+                    if (node.tagName === 'LEAFLET-LINE') this.addLineElement(node);
                 });
-                
+
                 mutation.removedNodes.forEach(node => {
-                    if (node.nodeType === Node.ELEMENT_NODE && node.tagName === 'LEAFLET-MARKER') {
-                        this.removeMarkerElement(node);
-                    }
+                    if (node.nodeType !== Node.ELEMENT_NODE) return;
+                    if (node.tagName === 'LEAFLET-MARKER') this.removeMarkerElement(node);
+                    if (node.tagName === 'LEAFLET-LINE') this.removeLineElement(node);
                 });
             });
         });
 
         this.observer.observe(this, { childList: true, subtree: true });
 
-        // Process existing markers
+        // leaflet-marker has always announced attribute changes, but nothing
+        // listened, and the MutationObserver above only watches childList. A
+        // marker that moved therefore kept the position it was created at for
+        // the life of the element -- which is every GTFS vehicle and every
+        // free bike, since LiveView patches their lat/lng in place and their
+        // ids are stable.
+        this.pendingMarkerUpdates = new Map();
+        this.addEventListener('marker-updated', (event) => {
+            const markerEl = event.target;
+            if (!markerEl || markerEl.tagName !== 'LEAFLET-MARKER') return;
+
+            const changed = this.pendingMarkerUpdates.get(markerEl) || new Set();
+            changed.add(event.detail && event.detail.attribute);
+            this.pendingMarkerUpdates.set(markerEl, changed);
+
+            // lat and lng arrive as two separate events; coalesce so a move is
+            // one update rather than two. A microtask rather than a frame:
+            // LiveView patches every attribute in a single task, so this still
+            // batches the whole update, and unlike requestAnimationFrame it is
+            // not suspended while the tab is in the background.
+            if (this.markerUpdateQueued) return;
+            this.markerUpdateQueued = true;
+            queueMicrotask(() => {
+                this.markerUpdateQueued = false;
+                const batch = this.pendingMarkerUpdates;
+                this.pendingMarkerUpdates = new Map();
+                batch.forEach((attrs, el) => this.applyMarkerUpdate(el, attrs));
+            });
+        });
+
+        this.addEventListener('line-updated', (event) => {
+            const lineEl = event.target;
+            if (lineEl && lineEl.tagName === 'LEAFLET-LINE') this.addLineElement(lineEl);
+        });
+
+        // Process existing markers and lines
         setTimeout(() => {
             this.querySelectorAll('leaflet-marker').forEach(markerEl => {
                 this.addMarkerElement(markerEl);
+            });
+            this.querySelectorAll('leaflet-line').forEach(lineEl => {
+                this.addLineElement(lineEl);
             });
         }, 200);
     }
@@ -133,9 +191,74 @@ class LeafletMap extends HTMLElement {
         if (this.resizeObserver) {
             this.resizeObserver.disconnect();
         }
+        // Before map.remove(), and unconditionally: the tint registers a
+        // theme-change callback module-side, which would otherwise outlive
+        // every map torn down by a LiveView navigation.
+        if (this.basemap) {
+            this.basemap.remove();
+            this.basemap = null;
+        }
         if (this.map) {
             this.map.remove();
         }
+    }
+
+    addLineElement(lineEl) {
+        if (!this.map) {
+            setTimeout(() => this.addLineElement(lineEl), 100);
+            return;
+        }
+
+        const lineId = lineEl.getAttribute('id');
+        const points = lineEl.getPoints ? lineEl.getPoints() : [];
+
+        this.removeLineById(lineId);
+        if (points.length < 2) return;
+
+        const style = lineEl.getStyle();
+        const polyline = L.polyline(points, {
+            renderer: this.lineRenderer,
+            pane: 'routeLines',
+            interactive: false,
+            ...style
+        });
+
+        this.linesLayer.addLayer(polyline);
+        this.lines.set(lineId, polyline);
+    }
+
+    removeLineElement(lineEl) {
+        this.removeLineById(lineEl.getAttribute('id'));
+    }
+
+    removeLineById(lineId) {
+        const existing = this.lines.get(lineId);
+        if (!existing) return;
+        this.linesLayer.removeLayer(existing);
+        this.lines.delete(lineId);
+    }
+
+    // A pure move slides the existing layer, which is far cheaper than
+    // rebuilding it and leaves an open popup open -- worth having when a whole
+    // fleet shifts every refresh. Anything that changes how the marker looks
+    // has to go through addMarkerElement, which recreates it.
+    applyMarkerUpdate(markerEl, changedAttributes) {
+        if (!this.map || !markerEl.isConnected) return;
+
+        const markerId = markerEl.getAttribute('id');
+        const existing = markerId && this.markers.get(markerId);
+        const positionOnly = [...changedAttributes].every((name) => name === 'lat' || name === 'lng');
+
+        if (existing && existing.setLatLng && positionOnly) {
+            const lat = parseFloat(markerEl.getAttribute('lat'));
+            const lng = parseFloat(markerEl.getAttribute('lng'));
+            if (!isNaN(lat) && !isNaN(lng)) {
+                existing.setLatLng([lat, lng]);
+                return;
+            }
+        }
+
+        this.addMarkerElement(markerEl);
     }
 
     addMarkerElement(markerEl) {
@@ -243,22 +366,114 @@ class LeafletMap extends HTMLElement {
     }
 
     createVehicleMarker(lat, lng, markerEl) {
-        // Custom icon for vehicles
+        // An explicit <leaflet-icon icon-url> still wins, but the default is
+        // drawn rather than fetched. It used to fall back to
+        // /images/vehicle-icon.png, which is not in priv/static -- so every
+        // transit vehicle rendered a broken image, and since Leaflet's marker
+        // alt defaults to "Marker" what you actually saw was clipped alt text
+        // where the vehicle should be.
         const iconEl = markerEl.querySelector('leaflet-icon');
-        const iconUrl = iconEl?.getAttribute('icon-url') || '/images/vehicle-icon.png';
-        const iconSize = [
-            parseInt(iconEl?.getAttribute('width')) || 32,
-            parseInt(iconEl?.getAttribute('height')) || 32
-        ];
+        const iconUrl = iconEl?.getAttribute('icon-url');
 
-        const icon = L.icon({
-            iconUrl: iconUrl,
-            iconSize: iconSize,
-            iconAnchor: [iconSize[0]/2, iconSize[1]/2],
-            popupAnchor: [0, -iconSize[1]/2]
+        if (iconUrl) {
+            const iconSize = [
+                parseInt(iconEl.getAttribute('width')) || 32,
+                parseInt(iconEl.getAttribute('height')) || 32
+            ];
+
+            const icon = L.icon({
+                iconUrl: iconUrl,
+                iconSize: iconSize,
+                iconAnchor: [iconSize[0] / 2, iconSize[1] / 2],
+                popupAnchor: [0, -iconSize[1] / 2],
+                // Empty rather than Leaflet's "Marker" default: if this URL is
+                // also missing, show nothing instead of a word on the map.
+                alt: ''
+            });
+
+            return L.marker([lat, lng], { icon }).bindPopup(() => this.createPopupContent(markerEl));
+        }
+
+        const bearing = parseFloat(markerEl.getAttribute('bearing'));
+
+        return L.marker([lat, lng], {
+            icon: this.createVehicleIcon(
+                this.getMarkerColor(markerEl),
+                this.getStrokeColor(markerEl),
+                isNaN(bearing) ? null : bearing,
+                LeafletMap.VEHICLE_KIND_BY_ROUTE_TYPE[markerEl.getAttribute('route-type')],
+                26
+            ),
+            keyboard: false,
+        }).bindPopup(() => this.createPopupContent(markerEl));
+    }
+
+    // Glyphs are drawn rather than pulled from Font Awesome: the map lives in
+    // a shadow root, and the document's .fa-* rules do not cross that
+    // boundary, so an <i class="fa-bus"> renders as nothing in here.
+    //
+    // GTFS route_type is finer-grained than a 10px glyph can express, so the
+    // types are grouped down to shapes that stay legible at marker size.
+    static get VEHICLE_GLYPHS() {
+        return {
+            // rounded body, windscreen band, two wheels
+            bus: '<path d="M8 8.5h8v5.2H8z" fill="#fff"/><path d="M8.6 9.4h6.8v1.8H8.6z" fill="currentColor"/>' +
+                 '<circle cx="9.6" cy="14.4" r="0.9" fill="#fff"/><circle cx="14.4" cy="14.4" r="0.9" fill="#fff"/>',
+            // body with a pantograph stroke on the roof
+            tram: '<path d="M8.4 8.6h7.2v5.4H8.4z" fill="#fff"/><path d="M9.1 9.4h5.8v1.7H9.1z" fill="currentColor"/>' +
+                  '<path d="M12 6.6v2" stroke="#fff" stroke-width="1" stroke-linecap="round"/>',
+            // blunt-nosed carriage
+            train: '<path d="M8.4 8.4h7.2v4.4a2.4 2.4 0 0 1-2.4 2.4h-2.4a2.4 2.4 0 0 1-2.4-2.4z" fill="#fff"/>' +
+                   '<path d="M9.2 9.2h5.6v2H9.2z" fill="currentColor"/>',
+            // hull plus a short mast
+            ferry: '<path d="M7.6 12.6h8.8l-1.4 2.6H9z" fill="#fff"/><path d="M11.4 8.2h1.2v4h-1.2z" fill="#fff"/>',
+            // cabin hanging from a cable
+            gondola: '<path d="M6.6 8h10.8" stroke="#fff" stroke-width="1" stroke-linecap="round"/>' +
+                     '<path d="M12 8v1.8" stroke="#fff" stroke-width="1"/>' +
+                     '<path d="M9.6 9.8h4.8v4.4H9.6z" fill="#fff"/>'
+        };
+    }
+
+    static get VEHICLE_KIND_BY_ROUTE_TYPE() {
+        return {
+            '0': 'tram',    // tram, streetcar, light rail
+            '1': 'train',   // subway, metro
+            '2': 'train',   // rail
+            '3': 'bus',
+            '4': 'ferry',
+            '5': 'tram',    // cable tram
+            '6': 'gondola', // aerial lift
+            '7': 'gondola', // funicular
+            '11': 'bus',    // trolleybus
+            '12': 'train'   // monorail
+        };
+    }
+
+    // A disc carrying the vehicle kind, with a pointer along the direction of
+    // travel. The pointer rotates; the glyph deliberately does not, so it
+    // stays readable whichever way the vehicle is heading.
+    createVehicleIcon(fill, stroke, bearing, kind, size) {
+        const pointer =
+            bearing === null
+                ? ''
+                : `<polygon points="12,0.8 15.2,6.4 8.8,6.4" fill="${fill}" stroke="${stroke}"
+                            stroke-width="1.4" stroke-linejoin="round"
+                            transform="rotate(${bearing} 12 12)" />`;
+
+        const glyph = LeafletMap.VEHICLE_GLYPHS[kind] || '';
+
+        return L.divIcon({
+            className: 'leaflet-vehicle-icon',
+            html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"
+                        style="color:${fill}">
+                     ${pointer}
+                     <circle cx="12" cy="12" r="7.4" fill="${fill}" stroke="${stroke}" stroke-width="1.4" />
+                     ${glyph}
+                   </svg>`,
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+            popupAnchor: [0, -size / 2],
         });
-
-        return L.marker([lat, lng], { icon }).bindPopup(() => this.createPopupContent(markerEl));
     }
 
     createFreeBikeMarker(lat, lng, markerEl) {
@@ -305,10 +520,17 @@ class LeafletMap extends HTMLElement {
             parseInt(iconEl.getAttribute('height')) || 32
         ];
 
+        // No icon-url means there is no image to switch to; leave whatever the
+        // marker already draws rather than replacing it with a broken image.
+        if (!iconUrl) return;
+
         const newIcon = L.icon({
             iconUrl: iconUrl,
             iconSize: iconSize,
-            iconAnchor: iconSize
+            iconAnchor: iconSize,
+            // Leaflet defaults this to "Marker", which is what shows when the
+            // image fails to load.
+            alt: ''
         });
 
         leafletMarker.setIcon(newIcon);

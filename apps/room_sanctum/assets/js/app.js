@@ -34,6 +34,7 @@ import { Base64 } from 'js-base64'
 // Import Web Components for Leaflet maps
 import './leaflet/leaflet-map'
 import './leaflet/leaflet-marker'
+import './leaflet/leaflet-line'
 import './leaflet/leaflet-icon'
 
 // Make compression libraries available globally for leaflet hook
@@ -46,6 +47,7 @@ window.Base64 = Base64;
 
 import L from 'leaflet'
 import 'leaflet-centermarker'
+import { addBasemap } from './leaflet/basemap'
 import LeafletMap from './hooks/leaflet_map.js'
 
 import LeafletMapBridge from './hooks/leaflet_map_bridge.js'
@@ -155,10 +157,7 @@ Hooks.mkMap = {
         });
         centerMarker.addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-        }).addTo(map);
+        addBasemap(map, { maxZoom: 19 });
 
         // Search functionality
         const searchInput = document.getElementById('location-search');
@@ -326,10 +325,7 @@ Hooks.mkTesterMap = {
         // });
         // marker.addTo(map);
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https//:openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-        }).addTo(map);
+        addBasemap(map, { maxZoom: 19 });
 
         this.handleEvent("add_marker", ({lat, lon}) => {
             const marker = L.marker(L.latLng(lat, lon))
@@ -368,10 +364,7 @@ Hooks.mkShowMap = {
             L.marker(coords).addTo(map);
         }
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 19,
-            attribution: '&copy; <a href="https://openstreetmap.org/copyright">OpenStreetMap contributors</a>'
-        }).addTo(map);
+        addBasemap(map, { maxZoom: 19 });
     }
 }
 
