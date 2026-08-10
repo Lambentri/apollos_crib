@@ -25,6 +25,11 @@ config :room_sanctum,
        password: "postgres",
        hostname: "localhost",
        database: "room_sanctum_test#{System.get_env("MIX_TEST_PARTITION")}",
+       # Matching dev.exs: postgres listens on 54321 here, and the geo_postgis
+       # types have to be registered or any query touching a geometry column
+       # fails to decode.
+       port: String.to_integer(System.get_env("PGPORT") || "54321"),
+       types: RoomSanctum.PostgresTypes,
        pool: Ecto.Adapters.SQL.Sandbox,
        pool_size: 10
 
