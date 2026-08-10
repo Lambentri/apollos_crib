@@ -701,9 +701,49 @@ end
     |> String.trim()
   end
 
+  # Postgres picks its newline style from the first terminator it sees. Given
+  # CR CR LF -- which Caltrain's trips.txt ships -- it decides the file is
+  # CR-terminated and then reads every second line as empty, failing with
+  # "missing data for column". Collapsing the CR run before each LF fixes that,
+  # and mapping a lone CR to LF keeps classic CR-only files loading.
+  defp rewrite_newlines(binary) do
+    binary
+    |> String.replace(~r/\r+\n/, "\n")
+    |> String.replace("\r", "\n")
+  end
+
+  # A CR run at the end of a chunk may be finished by a LF at the start of the
+  # next one, so it is held back rather than converted early.
+  defp hold_trailing_cr(binary) do
+    case Regex.run(~r/\r+\z/, binary, return: :index) do
+      [{start, len}] -> {binary_part(binary, 0, start), binary_part(binary, start, len)}
+      nil -> {binary, ""}
+    end
+  end
+
+  @doc false
+  # Exposed only so the normaliser can be exercised directly; the importer
+  # calls the private function.
+  def normalize_newlines_for_test(contents), do: normalize_newlines(contents)
+
+  defp normalize_newlines(contents) do
+    Stream.transform(
+      contents,
+      fn -> "" end,
+      fn chunk, carry ->
+        {body, pending} = hold_trailing_cr(carry <> IO.iodata_to_binary(chunk))
+        {[rewrite_newlines(body)], pending}
+      end,
+      fn carry -> {[rewrite_newlines(carry)], ""} end,
+      fn _carry -> :ok end
+    )
+  end
+
   defp write_file(contents, type, id, pid) do
     datetime = NaiveDateTime.local_now()
     Logger.info("GTFS::#{id} writing #{type} (c)")
+
+    contents = normalize_newlines(contents)
 
     cols_j =
       contents
@@ -732,6 +772,7 @@ end
       :stops -> RoomSanctum.Storage.truncate_stop(id)
       :stop_times -> RoomSanctum.Storage.truncate_stop_time(id)
       :trips -> RoomSanctum.Storage.truncate_trip(id)
+      :shapes -> RoomSanctum.Storage.truncate_shape(id)
       _ -> :ok
     end
 
@@ -745,6 +786,7 @@ end
         :stops -> {:gtfs_stops, [GTFS.Stop |> get_cols(cols_j_plus)], GTFS.Stop |> get_cols_pgtypes(cols_j_plus)}
         :stop_times -> {:gtfs_stop_times, [GTFS.StopTime |> get_cols(cols_j_plus)], GTFS.StopTime |> get_cols_pgtypes(cols_j_plus)}
         :trips -> {:gtfs_trips, [GTFS.Trip |> get_cols(cols_j_plus)], GTFS.Trip |> get_cols_pgtypes(cols_j_plus)}
+        :shapes -> {:gtfs_shapes, [GTFS.Shape |> get_cols(cols_j_plus)], GTFS.Shape |> get_cols_pgtypes(cols_j_plus)}
       end
 
 #    IO.inspect({table, columns, pg_cols})
@@ -937,6 +979,76 @@ end
     DateTime.utc_now()
   end
 
+
+  # linked_datasets.txt associates GTFS-RT feeds with the schedule that
+  # describes them, so a feed that ships one can wire up its own realtime URLs.
+  #
+  # Publishers disagree on the details, so this reads by header name rather
+  # than position: MBTA ships five columns and writes the flags as 1/0, while
+  # Caltrain ships seven and writes true/false.
+  @rt_flag_fields [
+    {"trip_updates", :url_rt_tu},
+    {"vehicle_positions", :url_rt_vp},
+    {"service_alerts", :url_rt_sa}
+  ]
+
+  def parse_linked_datasets(csv) do
+    case String.split(csv, ~r/\r?\n/, trim: true) do
+      [] ->
+        []
+
+      [header | rows] ->
+        keys = header |> String.split(",") |> Enum.map(&normalize_header/1)
+
+        Enum.map(rows, fn row ->
+          keys
+          |> Enum.zip(String.split(row, ","))
+          |> Map.new(fn {k, v} -> {k, String.trim(v)} end)
+        end)
+    end
+  end
+
+  defp rt_flag?(value) do
+    String.downcase(String.trim(value || "")) in ["1", "true", "yes"]
+  end
+
+  # A feed behind a key cannot be fetched with what we have, so it is left for
+  # the user to fill in by hand rather than saved as a URL that always 401s.
+  defp rt_open?(row) do
+    case Map.get(row, "authentication_type") do
+      nil -> true
+      value -> String.downcase(String.trim(value)) in ["", "0", "none"]
+    end
+  end
+
+  def linked_dataset_urls(rows) do
+    Enum.reduce(@rt_flag_fields, %{}, fn {flag, field}, acc ->
+      row = Enum.find(rows, fn r -> rt_flag?(Map.get(r, flag)) and rt_open?(r) end)
+      url = row && String.trim(Map.get(row, "url") || "")
+
+      if url in [nil, ""], do: acc, else: Map.put(acc, field, url)
+    end)
+  end
+
+  # Only ever fills blanks: a URL already in the config was put there
+  # deliberately and outranks whatever the feed advertises.
+  defp apply_linked_datasets(cfg, urls) do
+    fill =
+      urls
+      |> Enum.reject(fn {field, _url} ->
+        existing = Map.get(cfg.config, field)
+        is_binary(existing) and String.trim(existing) != ""
+      end)
+      |> Map.new()
+
+    if fill == %{} do
+      :ok
+    else
+      Logger.info("GTFS::#{cfg.id} linked_datasets supplied #{inspect(Map.keys(fill))}")
+      Configuration.update_source_config(cfg, fill)
+    end
+  end
+
   defp file_to_atom(filename) do
     case filename do
       "agency.txt" ->
@@ -959,6 +1071,9 @@ end
 
       "trips.txt" ->
         :trips
+
+      "shapes.txt" ->
+        :shapes
     end
   end
 
@@ -971,6 +1086,7 @@ end
       "stops.txt" -> 7
       "stop_times.txt" -> 8
       "trips.txt" -> 9
+      "shapes.txt" -> 10
     end
   end
 
@@ -985,15 +1101,28 @@ end
     case cfg.enabled do
       true ->
         Logger.info("GTFS::#{state.id} updating static info")
-        bcast(state.id, :downloading, 1, 9)
+        bcast(state.id, :downloading, 1, 10)
 
         case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
           {:ok, result} ->
-            bcast(state.id, :extracting, 2, 9)
+            bcast(state.id, :extracting, 2, 10)
 
             case result.body |> Unzip.InMem.new() |> Unzip.new() do
               {:ok, unzip} ->
                 files = Unzip.list_entries(unzip)
+
+                case Enum.find(files, &(&1.file_name == "linked_datasets.txt")) do
+                  nil ->
+                    :ok
+
+                  entry ->
+                    Unzip.file_stream!(unzip, entry.file_name)
+                    |> Enum.to_list()
+                    |> IO.iodata_to_binary()
+                    |> parse_linked_datasets()
+                    |> linked_dataset_urls()
+                    |> then(&apply_linked_datasets(cfg, &1))
+                end
 
                 try do
                   files
@@ -1007,11 +1136,12 @@ end
                           "stops.txt",
                           "stop_times.txt",
                           "trips.txt",
+                          "shapes.txt",
                          ],
                          e.file_name
                        ) do
 
-                      bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 9)
+                      bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 10)
 
                       Unzip.file_stream!(unzip, e.file_name)
                       |> write_file(file_to_atom(e.file_name), state.id, nil)
@@ -1046,11 +1176,11 @@ end
     case cfg.enabled do
       true ->
         Logger.info("GTFS::#{state.id} updating static info")
-        bcast(state.id, :downloading, 1, 9)
+        bcast(state.id, :downloading, 1, 10)
 
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
-            bcast(state.id, :extracting, 2, 9)
+            bcast(state.id, :extracting, 2, 10)
 
             case result.body
                  |> :zip.unzip([:memory]) do

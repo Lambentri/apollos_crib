@@ -358,6 +358,7 @@ defmodule RoomSanctum.Storage do
   end
 
   alias RoomSanctum.Storage.GTFS.Route
+  alias RoomSanctum.Storage.GTFS.Shape
 
   @doc """
   Returns the list of routes.
@@ -376,6 +377,169 @@ defmodule RoomSanctum.Storage do
     from(p in Route, where: p.source_id == ^source_id)
     |> Repo.all()
   end
+
+  @doc """
+  The routes that call at a stop, as a list of route_ids.
+
+  Backed by the (source_id, stop_id) index on stop_times -- without it the
+  planner walks every trip in the feed.
+  """
+  def routes_serving_stop(source_id, stop_id) do
+    Repo.query!(
+      """
+      SELECT DISTINCT t.route_id
+      FROM gtfs_stop_times st
+      JOIN gtfs_trips t ON t.source_id = st.source_id AND t.trip_id = st.trip_id
+      WHERE st.source_id = $1 AND st.stop_id = $2
+      """,
+      [source_id, stop_id]
+    ).rows
+    |> Enum.map(&List.first/1)
+  end
+
+  @doc """
+  route_id => route_type for one source.
+
+  Realtime vehicle positions carry only a route_id, but what a vehicle *is* --
+  bus, tram, ferry -- lives on the route, so callers resolve it once and carry
+  the map rather than querying per vehicle.
+  """
+  def route_types(source_id) do
+    from(r in Route,
+      where: r.source_id == ^source_id,
+      select: {r.route_id, r.route_type}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  # A drawn shape can run to a thousand points; at the weight these are
+  # rendered, far fewer is indistinguishable and keeps the payload sane when a
+  # feed has hundreds of routes.
+  @max_line_points 200
+
+  @doc """
+  One polyline per route: `[%{id:, color:, points: [[lat, lng], ...]}]`.
+
+  Uses shapes.txt where the feed ships it, which is the real drawn alignment.
+  Routes with no shape fall back to the ordered stops of a representative trip
+  -- straight hops between stops rather than following the road, but better
+  than nothing on feeds that omit shapes.
+  """
+  def list_route_lines(source_ids) when is_list(source_ids) do
+    source_ids
+    |> Enum.uniq()
+    |> Enum.flat_map(fn source_id ->
+      # route_id is only unique within a feed, so the map would otherwise get
+      # two lines claiming the same DOM id.
+      source_id
+      |> list_route_lines()
+      |> Enum.map(fn line -> %{line | id: "#{source_id}-#{line.id}"} end)
+    end)
+  end
+
+  def list_route_lines(source_id) do
+    shaped = shaped_route_lines(source_id)
+    covered = MapSet.new(shaped, & &1.id)
+
+    uncovered =
+      from(r in Route, where: r.source_id == ^source_id, select: r.route_id)
+      |> Repo.all()
+      |> Enum.reject(&MapSet.member?(covered, &1))
+
+    # The stop-sequence fallback reads stop_times, which runs to millions of
+    # rows; it is only worth paying for the routes shapes did not cover, and
+    # on a feed with complete shapes that is none of them.
+    shaped ++ stop_route_lines(source_id, uncovered)
+  end
+
+  defp shaped_route_lines(source_id) do
+    Repo.query!(
+      """
+      WITH rep AS (
+        SELECT DISTINCT ON (t.route_id) t.route_id, t.shape_id
+        FROM gtfs_trips t
+        WHERE t.source_id = $1 AND t.shape_id IS NOT NULL AND t.shape_id <> ''
+        ORDER BY t.route_id, t.shape_id
+      )
+      SELECT r.route_id, r.route_color, sh.shape_pt_lat, sh.shape_pt_lon
+      FROM rep
+      JOIN gtfs_routes r ON r.source_id = $1 AND r.route_id = rep.route_id
+      JOIN gtfs_shapes sh ON sh.source_id = $1 AND sh.shape_id = rep.shape_id
+      WHERE sh.shape_pt_lat IS NOT NULL AND sh.shape_pt_lon IS NOT NULL
+      ORDER BY r.route_id, sh.shape_pt_sequence
+      """,
+      [source_id]
+    )
+    |> rows_to_lines()
+  end
+
+  defp stop_route_lines(_source_id, []), do: []
+
+  defp stop_route_lines(source_id, route_ids) do
+    Repo.query!(
+      """
+      WITH rep AS (
+        SELECT DISTINCT ON (t.route_id) t.route_id, t.trip_id
+        FROM gtfs_trips t
+        WHERE t.source_id = $1 AND t.route_id = ANY($2)
+        ORDER BY t.route_id, t.trip_id
+      )
+      SELECT r.route_id, r.route_color, s.stop_lat, s.stop_lon
+      FROM rep
+      JOIN gtfs_routes r      ON r.source_id = $1 AND r.route_id = rep.route_id
+      JOIN gtfs_stop_times st ON st.source_id = $1 AND st.trip_id = rep.trip_id
+      JOIN gtfs_stops s       ON s.source_id = $1 AND s.stop_id = st.stop_id
+      WHERE s.stop_lat IS NOT NULL AND s.stop_lon IS NOT NULL
+      ORDER BY r.route_id, st.stop_sequence
+      """,
+      [source_id, route_ids]
+    )
+    |> rows_to_lines()
+  end
+
+  defp rows_to_lines(%{rows: rows}) do
+    rows
+    |> Enum.group_by(fn [route_id, _color, _lat, _lon] -> route_id end)
+    |> Enum.map(fn {route_id, grouped} ->
+      [[_, color, _, _] | _] = grouped
+
+      %{
+        id: route_id,
+        color: route_color(color),
+        points: grouped |> Enum.map(fn [_, _, lat, lon] -> [lat, lon] end) |> decimate()
+      }
+    end)
+    # A single point is not a line, and a route with no usable geometry is noise.
+    |> Enum.filter(&(length(&1.points) > 1))
+  end
+
+  # Every nth point, with the last one always kept so the line does not stop
+  # short of where the route actually ends.
+  defp decimate(points) do
+    case length(points) do
+      n when n <= @max_line_points ->
+        points
+
+      n ->
+        step = div(n, @max_line_points) + 1
+
+        kept =
+          points
+          |> Enum.with_index()
+          |> Enum.filter(fn {_point, index} -> rem(index, step) == 0 end)
+          |> Enum.map(&elem(&1, 0))
+
+        last = List.last(points)
+        if List.last(kept) == last, do: kept, else: kept ++ [last]
+    end
+  end
+
+  # GTFS stores route_color bare ("FFC72C"); CSS needs the hash.
+  defp route_color(nil), do: nil
+  defp route_color(""), do: nil
+  defp route_color("#" <> _ = color), do: color
+  defp route_color(color), do: "#" <> color
 
   def count_routes(source_id) do
     Repo.one(from p in Route, where: p.source_id == ^source_id, select: count(p.id))
@@ -456,6 +620,16 @@ defmodule RoomSanctum.Storage do
   """
   def delete_route(%Route{} = route) do
     Repo.delete(route)
+  end
+
+  def truncate_shape(source_id) do
+    from(p in Shape, where: p.source_id == ^source_id)
+    |> Repo.delete_all()
+  end
+
+  def count_shapes(source_id) do
+    from(p in Shape, where: p.source_id == ^source_id, select: count(p.id))
+    |> Repo.one()
   end
 
   def truncate_route(source_id) do
