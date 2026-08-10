@@ -325,7 +325,15 @@ gl_available_projects={@gitlab_available_projects}
                           <i class={"fa-solid #{if @view_mode == :system, do: "fa-map", else: "fa-table"} mr-1"}></i>
                           <%= if @view_mode == :system, do: "Map View", else: "System View" %>
                         </button>
-                        
+
+                        <button
+                          class={"btn btn-sm text-xs #{if @view_mode == :paint, do: "btn-primary", else: "btn-outline"}"}
+                          phx-click="toggle-paint"
+                        >
+                          <i class="fa-solid fa-palette mr-1"></i>
+                          Bulk Paint
+                        </button>
+
                         <!-- Available tints - clickable filters -->
                         <span class="text-amber-500"></span>
                         <span class="text-lime-500"></span>
@@ -352,14 +360,19 @@ gl_available_projects={@gitlab_available_projects}
                     <% end %>
                 </h3>
                 
-                <%= if @view_mode == :detail do %>
+                <%= cond do %>
+                <% @view_mode == :detail -> %>
                   <div class="px-6">
-                    <.query_geospatial_map 
+                    <.query_geospatial_map
                       queries={filter_queries_by_tint(@queries, @tint)}
                       vehicle_positions={@vehicle_positions}
                       free_bikes={@free_bikes}
                       stations={@stations}
                       station_statuses={@station_statuses}
+                      route_types={@route_types}
+                      route_lines={if @show_route_lines, do: @route_lines, else: []}
+                      route_lines_event={if @source.type == :gtfs, do: "toggle-route-lines"}
+                      show_route_lines={@show_route_lines}
                       source_tint={@source_tint}
                       selected_tint={@tint}
                       class=""
@@ -368,7 +381,75 @@ gl_available_projects={@gitlab_available_projects}
                       queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
                     />
                   </div>
-                <% else %>
+
+                <% @view_mode == :paint -> %>
+                  <div class="px-2">
+                    <p class="text-sm opacity-70 mb-3">
+                      Pick a tint for each query. Changes save as you click.
+                    </p>
+                    <%= if @queries == [] do %>
+                      <p class="text-sm opacity-60">This source has no queries yet.</p>
+                    <% else %>
+                      <div class="overflow-x-auto">
+                        <table class="table table-compact w-full">
+                          <tbody>
+                            <%= for q <- @queries do %>
+                              <% current = q.meta && q.meta.tint %>
+                              <tr>
+                                <td class="align-middle">
+                                  <div class="font-semibold"><%= q.name %></div>
+                                  <%= if q.notes not in [nil, ""] do %>
+                                    <div class="text-xs opacity-60"><%= q.notes %></div>
+                                  <% end %>
+                                </td>
+                                <td class="align-middle">
+                                  <div class="flex items-center gap-2 flex-wrap">
+                                    <label class="cursor-pointer" title="No tint">
+                                      <input
+                                        type="radio"
+                                        name={"tint-#{q.id}"}
+                                        value=""
+                                        class="sr-only"
+                                        checked={is_nil(current)}
+                                        phx-click="paint-query"
+                                        phx-value-query-id={q.id}
+                                        phx-value-tint=""
+                                      />
+                                      <span class={"#{swatch_class(is_nil(current))} bg-base-300"}>
+                                        <i class="fa-solid fa-ban text-xs opacity-60"></i>
+                                      </span>
+                                    </label>
+
+                                    <%= for tint <- @tint_opts do %>
+                                      <label class="cursor-pointer" title={tint}>
+                                        <input
+                                          type="radio"
+                                          name={"tint-#{q.id}"}
+                                          value={tint}
+                                          class="sr-only"
+                                          checked={current == tint}
+                                          phx-click="paint-query"
+                                          phx-value-query-id={q.id}
+                                          phx-value-tint={tint}
+                                        />
+                                        <span class={"#{swatch_class(current == tint)} bg-#{tint}-500"}>
+                                          <%= if current == tint do %>
+                                            <i class="fa-solid fa-check text-xs text-white"></i>
+                                          <% end %>
+                                        </span>
+                                      </label>
+                                    <% end %>
+                                  </div>
+                                </td>
+                              </tr>
+                            <% end %>
+                          </tbody>
+                        </table>
+                      </div>
+                    <% end %>
+                  </div>
+
+                <% true -> %>
                   <div class="flex flex-wrap gap-2">
                     <%= for q <- filter_queries_by_tint(@queries, @tint) do %>
                     <%= live_patch to: Routes.query_show_path(@socket, :show, q.id), class: "btn btn-primary float-left" do %>
@@ -405,23 +486,32 @@ gl_available_projects={@gitlab_available_projects}
                     Tester
                     <span class="" phx-click="add-tester"><i class="fa-solid fa-close"></i></span>
                 </h3>
-                <p>
+                <%!-- A div, not a p: everything below is block content, and the
+                      parser silently closed the paragraph at the first div. --%>
+                <div>
                     <%= case @source.type do %>
                     <% :gtfs -> %>
-                <div class="flex justify-between">
-                    <div class="flex flex-col">
+                <%!-- Same responsive split as the gbfs tester below, so the two
+                      halves line up instead of the search column sizing to its
+                      content. min-w-0 lets flex items shrink past their content. --%>
+                <div class="flex flex-col xl:flex-row justify-between gap-4">
+                    <div class="flex flex-col gap-2 w-full xl:w-1/2 min-w-0">
                         <div class="">
-                            <form phx-change="do-gtfs-search" phx-debounce="100">
-                                <fieldset>
-                                    <label for="name">Term</label>
-                                    <input type="hidden" value={@source_id} name="id"/>
-                                    <input type="term" name="name" value={@tester_query}
-                                           placeholder="Main Street"
-                                           autofocus autocomplete="off"
-                                           class="input input-bordered input-info w-full max-w-xs"
-                                    />
-                                </fieldset>
-                            </form>
+                            <div class="flex flex-col w-full border-opacity-50">
+                                <div class="grid h-20 card bg-base-300 rounded-box place-items-center">
+                                    <form phx-change="do-gtfs-search" phx-debounce="100">
+                                        <fieldset>
+                                            <label for="name">Term</label>
+                                            <input type="hidden" value={@source_id} name="id"/>
+                                            <input type="term" name="name" value={@tester_query}
+                                                   placeholder="Main Street"
+                                                   autofocus autocomplete="off"
+                                                   class="input input-bordered input-info w-full max-w-xs"
+                                            />
+                                        </fieldset>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
                         <div class="">
                             <ul class="menu bg-secondary rounded">
@@ -441,21 +531,64 @@ gl_available_projects={@gitlab_available_projects}
                         </div>
                     </div>
                     <div class="flex flex-col gap-2 w-full xl:w-1/2 min-w-0">
-                        <div class="text-xl">Selected: <%= @tester_selected_name %></div>
-                        <div class="text-xs">id: <%= @tester_selected %></div>
-                        <div class="">
-                            <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
-                            <.p_gtfs entries={condense({@source_id, :gtfs}, @tester_selected_data) |>
-                            preview({@source_id, :gtfs})} />
-                            <%= if @tester_selected_data != %{} do %>
-                            <span phx-click="add-query"><i class="fa fa-plus fa-fw"></i>query</span>
-                            <% end %>
-                            <% else %>
-                            -waiting on data-
-                            <% end %>
+                        <div class="card bg-base-300 rounded-box min-w-0">
+                            <div class="card-body min-w-0">
+                                <div class="flex items-baseline justify-between gap-2 min-w-0">
+                                    <h4 class="text-xl truncate">
+                                        <%= @tester_selected_name || "Nothing selected" %>
+                                    </h4>
+                                    <span :if={@tester_selected} class="badge badge-accent shrink-0">
+                                        <%= @tester_selected %>
+                                    </span>
+                                </div>
+
+                                <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
+                                    <.p_gtfs entries={condense({@source_id, :gtfs}, @tester_selected_data) |>
+                                    preview({@source_id, :gtfs})} />
+                                    <button class="btn btn-secondary btn-sm mt-2 self-start" phx-click="add-query">
+                                        <i class="fa fa-plus fa-fw mr-1"></i>query
+                                    </button>
+                                <% else %>
+                                    <div class="grid place-items-center py-10 opacity-60">
+                                        <i class="fa-solid fa-hourglass-half fa-lg mb-2"></i>
+                                        <span class="text-sm">
+                                            <%= if @tester_selected,
+                                              do: "Waiting on data…",
+                                              else: "Search, then pick a stop to preview it" %>
+                                        </span>
+                                    </div>
+                                <% end %>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <% focus_stop = tester_focus_station(@stations, @tester_selected) %>
+                <% focus_at = focus_stop && map_coords(focus_stop) %>
+                <%= if focus_at do %>
+                    <% {focus_lat, focus_lon} = focus_at %>
+                    <div class="mt-4">
+                        <.query_geospatial_map
+                          id="tester-map"
+                          queries={[]}
+                          stations={within_area(@stations, focus_at)}
+                          vehicle_positions={within_area(@vehicle_positions, focus_at)}
+                          free_bikes={within_area(@free_bikes, focus_at)}
+                          station_statuses={@station_statuses}
+                          route_types={@route_types}
+                          route_lines={if @show_route_lines, do: lines_for_stop(@route_lines, @tester_route_ids), else: []}
+                          route_lines_event={if @source.type == :gtfs, do: "toggle-route-lines"}
+                          show_route_lines={@show_route_lines}
+                          source_tint={@source_tint}
+                          queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
+                          focus={%{lat: focus_lat, lng: focus_lon}}
+                          focus_zoom={16}
+                          height="360px"
+                          legend={false}
+                        />
+                    </div>
+                <% end %>
+
                 <% :gbfs -> %>
                 <%!-- min-w-0 so these can shrink; flex items default to min-width:auto
                       and otherwise refuse to go below their content width. --%>
@@ -495,23 +628,70 @@ gl_available_projects={@gitlab_available_projects}
                             </ul>
                         </div>
                     </div>
-                    <div class="flex flex-col gap-2">
-                        <div class="text-xl">Selected: <%= @tester_selected_name %></div>
-                        <div class="text-xs">id: <%= @tester_selected %></div>
-                        <div class="">
-                            <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
-                            <.p_gbfs entries={condense({@source_id, :gbfs}, @tester_selected_data) |>
-                            preview({@source_id, :gbfs})} />
-                            <span phx-click="add-query"><i class="fa fa-plus fa-fw"></i>query</span>
-                            <% else %>
-                            -waiting on data-
-                            <% end %>
+                    <%!-- Matching the search column's width so the two halves
+                          balance instead of the preview collapsing to content. --%>
+                    <div class="flex flex-col gap-2 w-full xl:w-1/2 min-w-0">
+                        <div class="card bg-base-300 rounded-box min-w-0">
+                            <div class="card-body min-w-0">
+                                <div class="flex items-baseline justify-between gap-2 min-w-0">
+                                    <h4 class="text-xl truncate">
+                                        <%= @tester_selected_name || "Nothing selected" %>
+                                    </h4>
+                                    <span :if={@tester_selected} class="badge badge-accent shrink-0">
+                                        <%= @tester_selected %>
+                                    </span>
+                                </div>
+
+                                <%= if @tester_selected_data != %{} and @tester_selected != nil do %>
+                                    <.p_gbfs entries={condense({@source_id, :gbfs}, @tester_selected_data) |>
+                                    preview({@source_id, :gbfs})} />
+                                    <button class="btn btn-secondary btn-sm mt-2 self-start" phx-click="add-query">
+                                        <i class="fa fa-plus fa-fw mr-1"></i>query
+                                    </button>
+                                <% else %>
+                                    <div class="grid place-items-center py-10 opacity-60">
+                                        <i class="fa-solid fa-hourglass-half fa-lg mb-2"></i>
+                                        <span class="text-sm">
+                                            <%= if @tester_selected,
+                                              do: "Waiting on data…",
+                                              else: "Search, then pick a station to preview it" %>
+                                        </span>
+                                    </div>
+                                <% end %>
+                            </div>
                         </div>
                     </div>
                 </div>
+
+                <% focus_station = tester_focus_station(@stations, @tester_selected) %>
+                <% focus_point = focus_station && map_coords(focus_station) %>
+                <%= if focus_point do %>
+                    <% {station_lat, station_lon} = focus_point %>
+                    <div class="mt-4">
+                        <.query_geospatial_map
+                          id="tester-map"
+                          queries={[]}
+                          stations={within_area(@stations, focus_point)}
+                          vehicle_positions={within_area(@vehicle_positions, focus_point)}
+                          free_bikes={within_area(@free_bikes, focus_point)}
+                          station_statuses={@station_statuses}
+                          route_types={@route_types}
+                          route_lines={if @show_route_lines, do: lines_for_stop(@route_lines, @tester_route_ids), else: []}
+                          route_lines_event={if @source.type == :gtfs, do: "toggle-route-lines"}
+                          show_route_lines={@show_route_lines}
+                          source_tint={@source_tint}
+                          queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
+                          focus={%{lat: station_lat, lng: station_lon}}
+                          focus_zoom={16}
+                          height="360px"
+                          legend={false}
+                        />
+                    </div>
+                <% end %>
+
                 <% _default -> %>
                     <% end %>
-                </p>
+                </div>
             </div>
         </div>
     </div>

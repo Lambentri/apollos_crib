@@ -30,7 +30,33 @@ defmodule RoomSanctumWeb.QueryLive.Index do
      |> assign(:available_tints, available_tints)
      |> assign(:queries, queries)
      |> assign(:vehicle_positions, [])
+     |> assign(:show_route_lines, false)
+     |> assign(:route_lines, [])
      |> stream(:cfg_queries, queries)}
+  end
+
+  # The index spans sources, so this covers every GTFS source with a query on
+  # the map. Built on first use and then kept.
+  @impl true
+  def handle_event("toggle-route-lines", _params, socket) do
+    showing? = not socket.assigns.show_route_lines
+
+    lines =
+      case {showing?, socket.assigns.route_lines} do
+        {true, []} ->
+          socket.assigns.queries
+          |> Enum.filter(&(&1.source && &1.source.type == :gtfs))
+          |> Enum.map(& &1.source_id)
+          |> RoomSanctum.Storage.list_route_lines()
+
+        {_, existing} ->
+          existing
+      end
+
+    {:noreply,
+     socket
+     |> assign(:show_route_lines, showing?)
+     |> assign(:route_lines, lines)}
   end
 
   @impl true

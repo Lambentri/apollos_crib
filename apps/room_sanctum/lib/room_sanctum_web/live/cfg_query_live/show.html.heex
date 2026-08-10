@@ -123,6 +123,9 @@
           <.query_geospatial_map 
             queries={[@query]}
             vehicle_positions={@vehicle_positions}
+            route_lines={if @show_route_lines, do: @route_lines, else: []}
+            route_lines_event={if @query.source && @query.source.type == :gtfs, do: "toggle-route-lines"}
+            show_route_lines={@show_route_lines}
             selected_tint={if @query.meta && @query.meta.tint, do: @query.meta.tint, else: nil}
             class=""
             height="350px"

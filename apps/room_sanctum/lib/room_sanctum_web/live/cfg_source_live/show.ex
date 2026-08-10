@@ -28,7 +28,24 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:vehicle_positions, [])
       |> assign(:free_bikes, [])
       |> assign(:stations, [])
+      # Both are otherwise only set by the :update_sec tick 200ms in, so any
+      # view touching them could be rendered before they exist.
+      |> assign(:station_statuses, [])
+      |> assign(:source_tint, nil)
+      # Route geometry is off until asked for: building it walks stop_times,
+      # and on a full feed it is hundreds of polylines.
+      |> assign(:show_route_lines, false)
+      |> assign(:route_lines, [])
+      |> assign(:route_types, %{})
+      # Route ids calling at the stop the tester has selected, so its map can
+      # show that stop's routes rather than the whole system's.
+      |> assign(:tester_route_ids, [])
       |> assign(:view_mode, :system)
+      # Same palette the query form offers, so a tint picked here and one
+      # picked there are drawn from the same set. Every entry needs its
+      # bg-<tint>-500 to survive Tailwind's purge -- the literal swatches in
+      # cfg_query_live/form_component.html.heex are what keep them alive.
+      |> assign(:tint_opts, ~w(amber lime emerald sky violet fuchsia rose stone slate))
       |> assign(:gitlab_config_open, false)
       |> assign(:gitlab_available_projects, [])
       |> assign(:github_config_open, false)
@@ -69,6 +86,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _ -> []
     end
 
+    # Vehicle positions name a route, not a vehicle kind; the type comes from
+    # the route table.
+    route_types = case socket.assigns.source.type do
+      :gtfs -> Storage.route_types(socket.assigns.source_id)
+      _ -> %{}
+    end
+
     # Extract source tint for stations
     source_tint = if socket.assigns.source.meta && socket.assigns.source.meta.tint do
       socket.assigns.source.meta.tint
@@ -82,6 +106,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
      |> assign(:free_bikes, free_bikes)
      |> assign(:stations, stations)
      |> assign(:station_statuses, station_statuses)
+     |> assign(:route_types, route_types)
      |> assign(:source_tint, source_tint)}
   end
 
@@ -117,16 +142,21 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _default -> :ok
     end
 
+    source_id = String.to_integer(id)
+
+    # Queries were previously only loaded by the :update_sec tick 200ms after
+    # mount, so the card rendered empty on arrival -- which the bulk paint view
+    # would announce as "no queries yet" before correcting itself.
+    queries = Configuration.get_queries(:source, source_id)
+
     {
       :noreply,
       socket
       |> assign(:page_title, page_title(socket.assigns.live_action))
       |> assign(:source, source)
-      |> assign(
-        :source_id,
-        id
-        |> String.to_integer()
-      )
+      |> assign(:source_id, source_id)
+      |> assign(:queries, queries)
+      |> assign(:available_tints, get_available_tints(queries))
     }
   end
 
@@ -685,7 +715,17 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("pick-result", %{"id" => val, "name" => name}, socket) do
-    {:noreply, socket |> assign(:tester_selected, val) |> assign(:tester_selected_name, name)}
+    serving =
+      case socket.assigns.source.type do
+        :gtfs -> Storage.routes_serving_stop(socket.assigns.source_id, val)
+        _ -> []
+      end
+
+    {:noreply,
+     socket
+     |> assign(:tester_selected, val)
+     |> assign(:tester_selected_name, name)
+     |> assign(:tester_route_ids, serving)}
   end
 
   @impl true
@@ -845,8 +885,61 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     new_mode = case socket.assigns.view_mode do
       :system -> :detail
       :detail -> :system
+      # Leaving bulk paint by the other button lands on the map, which is
+      # where the tints just set are actually visible.
+      :paint -> :detail
     end
     {:noreply, socket |> assign(:view_mode, new_mode)}
+  end
+
+  # Built on first use and then kept: the query is not cheap enough to repeat
+  # every time the layer is switched back on.
+  def handle_event("toggle-route-lines", _params, socket) do
+    showing? = not socket.assigns.show_route_lines
+
+    lines =
+      case {showing?, socket.assigns.route_lines} do
+        {true, []} -> Storage.list_route_lines(socket.assigns.source_id)
+        {_, existing} -> existing
+      end
+
+    {:noreply,
+     socket
+     |> assign(:show_route_lines, showing?)
+     |> assign(:route_lines, lines)}
+  end
+
+  def handle_event("toggle-paint", _params, socket) do
+    new_mode = if socket.assigns.view_mode == :paint, do: :system, else: :paint
+    {:noreply, socket |> assign(:view_mode, new_mode)}
+  end
+
+  # Painting writes through immediately rather than collecting a form: the
+  # point of the view is working down a list of queries, and a save step you
+  # can forget would silently lose the whole pass.
+  def handle_event("paint-query", %{"query-id" => id} = params, socket) do
+    tint = case Map.get(params, "tint") do
+      "" -> nil
+      value -> value
+    end
+
+    query = Enum.find(socket.assigns.queries, &(to_string(&1.id) == to_string(id)))
+
+    case query && Configuration.update_query(query, %{"meta" => %{"tint" => tint}}) do
+      {:ok, _updated} ->
+        queries = Configuration.get_queries(:source, socket.assigns.source_id)
+
+        {:noreply,
+         socket
+         |> assign(:queries, queries)
+         |> assign(:available_tints, get_available_tints(queries))}
+
+      {:error, _changeset} ->
+        {:noreply, socket |> put_flash(:error, "Could not set that tint")}
+
+      nil ->
+        {:noreply, socket}
+    end
   end
 
   defp percent(num, denom) do
@@ -1049,6 +1142,76 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   defp getlatlng(coords) do
     coords |> Tuple.to_list() |> Poison.encode!()
+  end
+
+  # How far either side of the picked stop the tester map shows its
+  # neighbours. Roughly a kilometre, which is enough to place a stop on its
+  # street without dragging in the rest of the system.
+  @tester_area_degrees 0.01
+
+  # Everything the map draws carries its position differently: GBFS stations
+  # put a Geo.Point in :place, free bikes in :point, GTFS stops are normalised
+  # to :lat/:lon by stop_as_station/1, and realtime vehicles use the spelled
+  # out :latitude/:longitude.
+  defp map_coords(item) do
+    cond do
+      match?(%Geo.Point{}, Map.get(item, :place)) -> from_geo(Map.get(item, :place))
+      match?(%Geo.Point{}, Map.get(item, :point)) -> from_geo(Map.get(item, :point))
+      pair(item, :lat, :lon) -> pair(item, :lat, :lon)
+      pair(item, :latitude, :longitude) -> pair(item, :latitude, :longitude)
+      true -> nil
+    end
+  end
+
+  defp from_geo(%Geo.Point{coordinates: {lon, lat}}), do: {lat, lon}
+
+  defp pair(item, lat_key, lon_key) do
+    lat = Map.get(item, lat_key)
+    lon = Map.get(item, lon_key)
+    if is_number(lat) and is_number(lon), do: {lat, lon}, else: nil
+  end
+
+  defp tester_focus_station(_stations, nil), do: nil
+
+  defp tester_focus_station(stations, selected_id) do
+    Enum.find(stations, fn station ->
+      to_string(station.station_id) == to_string(selected_id)
+    end)
+  end
+
+  # The tester is looking at one stop, so the whole feed's geometry is noise:
+  # keep only the routes that call there. A pure filter over lines already
+  # loaded, so it costs nothing on the tester's 2s re-render.
+  defp lines_for_stop(lines, route_ids) do
+    serving = MapSet.new(route_ids)
+    Enum.filter(lines, &MapSet.member?(serving, &1.id))
+  end
+
+  defp within_area(items, {lat, lon}) do
+    Enum.filter(items, fn item ->
+      case map_coords(item) do
+        {ilat, ilon} ->
+          abs(ilat - lat) <= @tester_area_degrees and abs(ilon - lon) <= @tester_area_degrees
+
+        nil ->
+          false
+      end
+    end)
+  end
+
+  # The radio itself is sr-only, so the swatch carries the whole selected/not
+  # signal. A ring alone would be easy to miss against nine circles, hence the
+  # dimming of the unselected ones as well as the check drawn inside the
+  # chosen swatch.
+  defp swatch_class(selected?) do
+    base = "flex items-center justify-center w-7 h-7 rounded-full"
+
+    case selected? do
+      true -> base <> " ring-2 ring-offset-2 ring-offset-base-100 ring-base-content"
+      # Dimmed enough to recede behind the selected swatch, but not so far that
+      # the colours stop being tellable apart -- picking one is the whole job.
+      _ -> base <> " opacity-70 hover:opacity-100"
+    end
   end
 
   defp get_available_tints(queries) do

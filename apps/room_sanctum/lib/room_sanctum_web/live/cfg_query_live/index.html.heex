@@ -44,6 +44,9 @@
     <.query_geospatial_map 
       queries={@queries}
       vehicle_positions={@vehicle_positions}
+      route_lines={if @show_route_lines, do: @route_lines, else: []}
+      route_lines_event={if Enum.any?(@queries, &(&1.source && &1.source.type == :gtfs)), do: "toggle-route-lines"}
+      show_route_lines={@show_route_lines}
       selected_tint={@tint}
       class=""
       height="600px"
