@@ -607,6 +607,31 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     end)
   end
 
+  @doc """
+  Aircraft to plot from a query preview.
+  """
+  # The preview already holds what the worker returned for this query, so the
+  # map does not need its own read: an area query's result *is* the matching
+  # aircraft, filtered by class and altitude the way the query asks; a flight
+  # query returns one watch carrying the last position it was seen at.
+  #
+  # A watch that has not been sighted yet has no position, and is simply not
+  # plotted rather than being drawn somewhere invented.
+  def aircraft_from_preview(:icarus, preview) when is_list(preview) do
+    Enum.flat_map(preview, fn
+      %{"kind" => "flight", "position" => %{"lat" => _, "lon" => _} = position} -> [position]
+      %{"lat" => _, "lon" => _} = aircraft -> [aircraft]
+      _other -> []
+    end)
+  end
+
+  def aircraft_from_preview(_type, _preview), do: []
+
+  @doc """
+  As aircraft_from_preview/2, for a preview already known to be icarus'.
+  """
+  def aircraft_from_preview_list(preview), do: aircraft_from_preview(:icarus, preview)
+
   # ADS-B aircraft. Positions are string-keyed because that is how they leave
   # the adsb.fi payload, and the callsign is the useful label -- registration
   # or the ICAO address only when the flight is not transmitting one.

@@ -30,6 +30,7 @@ defmodule RoomSanctumWeb.QueryLive.Index do
      |> assign(:available_tints, available_tints)
      |> assign(:queries, queries)
      |> assign(:vehicle_positions, [])
+     |> assign(:aircraft, [])
      |> assign(:show_route_lines, false)
      |> assign(:route_lines, [])
      |> stream(:cfg_queries, queries)}
@@ -111,7 +112,32 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     # Schedule next update
     Process.send_after(self(), :update_vehicle_positions, 30_000) # Every 30 seconds
     
-    {:noreply, socket |> assign(:vehicle_positions, vehicle_positions)}
+    {:noreply,
+     socket
+     |> assign(:vehicle_positions, vehicle_positions)
+     |> assign(:aircraft, get_all_aircraft(socket.assigns.queries))}
+  end
+
+  # One read per icarus query, so each contributes the aircraft it actually
+  # matches -- its own radius, altitude band and class filters -- rather than
+  # everything its source can see. The worker answers from cache between its
+  # own refreshes, and an absent one contributes nothing.
+  defp get_all_aircraft(queries) do
+    if Code.ensure_loaded?(RoomIcarus.Worker) do
+      queries
+      |> Enum.filter(&(&1.source && &1.source.type == :icarus))
+      |> Enum.flat_map(fn query ->
+        try do
+          RoomIcarus.Worker.read(query.source_id, query.query)
+        catch
+          :exit, _ -> []
+        end
+      end)
+      |> RoomSanctumWeb.Components.QueryGeospatialMap.aircraft_from_preview_list()
+      |> Enum.uniq_by(& &1["hex"])
+    else
+      []
+    end
   end
 
   # Handle streaming map data batches for high-performance rendering

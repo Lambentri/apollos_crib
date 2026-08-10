@@ -97,6 +97,58 @@ defmodule RoomSanctumWeb.AircraftMapTest do
     assert html =~ ~s(lat="51.47")
   end
 
+  describe "aircraft from a query preview" do
+    test "an area query's preview is already the matching aircraft" do
+      preview = [plane(%{"hex" => "aaa"}), plane(%{"hex" => "bbb"})]
+
+      assert aircraft_from_preview(:icarus, preview) == preview
+    end
+
+    test "a flight query contributes the position its watch was last seen at" do
+      watch = %{
+        "kind" => "flight",
+        "callsign" => "UAL558",
+        "hex" => "a1b2c3",
+        "state" => "enroute",
+        "position" => plane(%{})
+      }
+
+      assert aircraft_from_preview(:icarus, [watch]) == [plane(%{})]
+    end
+
+    test "a watch with no sighting yet is not plotted somewhere invented" do
+      for position <- [nil, %{}, %{"lat" => 37.6}] do
+        watch = %{"kind" => "flight", "callsign" => "UAL558", "position" => position}
+        assert aircraft_from_preview(:icarus, [watch]) == [],
+               "plotted a watch whose position was #{inspect(position)}"
+      end
+    end
+
+    test "other source types contribute nothing" do
+      assert aircraft_from_preview(:gtfs, [plane(%{})]) == []
+      assert aircraft_from_preview(:gbfs, [plane(%{})]) == []
+    end
+
+    test "a preview that is not a list is tolerated" do
+      assert aircraft_from_preview(:icarus, nil) == []
+      assert aircraft_from_preview(:icarus, %{"lat" => 1.0, "lon" => 2.0}) == []
+    end
+
+    test "entries without a position are skipped rather than failing the lot" do
+      preview = [plane(%{"hex" => "ok"}), %{"hex" => "nofix", "flight" => "GHOST"}]
+
+      assert aircraft_from_preview(:icarus, preview) == [plane(%{"hex" => "ok"})]
+    end
+
+    test "what it returns is what the map renders" do
+      watch = %{"kind" => "flight", "position" => plane(%{"hex" => "inflight"})}
+      html = render_map(aircraft_from_preview(:icarus, [watch]))
+
+      assert html =~ "aircraft_inflight"
+      assert html =~ ~s(bearing="271.4")
+    end
+  end
+
   test "no aircraft is not an error" do
     html = render_map([])
 
