@@ -97,6 +97,7 @@ class LeafletMap extends HTMLElement {
         this.queriesLayer = L.layerGroup().addTo(this.map);
         this.vehiclesLayer = L.layerGroup().addTo(this.map);
         this.freeBikesLayer = L.layerGroup().addTo(this.map);
+        this.aircraftLayer = L.layerGroup().addTo(this.map);
         this.stationsLayer = L.layerGroup().addTo(this.map);
 
         // Set up streaming event handlers if enabled
@@ -295,6 +296,11 @@ class LeafletMap extends HTMLElement {
                 leafletMarker = this.createFreeBikeMarker(lat, lng, markerEl);
                 layer = this.freeBikesLayer;
                 break;
+            case 'aircraft':
+                leafletMarker = this.createAircraftMarker(lat, lng, markerEl);
+                layer = this.aircraftLayer;
+                break;
+
             case 'station':
                 leafletMarker = this.createStationMarker(lat, lng, markerEl);
                 layer = this.stationsLayer;
@@ -474,6 +480,56 @@ class LeafletMap extends HTMLElement {
             iconAnchor: [size / 2, size / 2],
             popupAnchor: [0, -size / 2],
         });
+    }
+
+    createAircraftMarker(lat, lng, markerEl) {
+        const track = parseFloat(markerEl.getAttribute('bearing'));
+
+        return L.marker([lat, lng], {
+            icon: this.createAircraftIcon(
+                this.aircraftColor(markerEl.getAttribute('aircraft-class')),
+                this.getStrokeColor(markerEl),
+                isNaN(track) ? null : track,
+                22
+            ),
+            keyboard: false,
+        }).bindPopup(() => this.createPopupContent(markerEl));
+    }
+
+    // Unlike a bus, the whole aircraft turns: a plane symbol that did not point
+    // along its track would be misleading, so the silhouette rotates rather
+    // than a separate pointer.
+    createAircraftIcon(fill, stroke, track, size) {
+        const plane =
+            '12,1 13.6,8 22,12.5 22,14.5 13.6,12.3 13.2,18.5 16,20.5 16,22 ' +
+            '12,20.8 8,22 8,20.5 10.8,18.5 10.4,12.3 2,14.5 2,12.5 10.4,8';
+
+        // No track at all: a disc, so the marker never claims a heading it
+        // does not have.
+        const body =
+            track === null
+                ? `<circle cx="12" cy="12" r="5.5" fill="${fill}" stroke="${stroke}" stroke-width="1.4" />`
+                : `<polygon points="${plane}" fill="${fill}" stroke="${stroke}" stroke-width="1.2"
+                            stroke-linejoin="round" transform="rotate(${track} 12 12)" />`;
+
+        return L.divIcon({
+            className: 'leaflet-aircraft-icon',
+            html: `<svg width="${size}" height="${size}" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">${body}</svg>`,
+            iconSize: [size, size],
+            iconAnchor: [size / 2, size / 2],
+            popupAnchor: [0, -size / 2],
+        });
+    }
+
+    aircraftColor(klass) {
+        const byClass = {
+            military: '#dc2626',   // red
+            cargo: '#f97316',      // orange
+            commercial: '#38bdf8', // light blue
+            general: '#a3a3a3'     // grey
+        };
+
+        return byClass[klass] || byClass.general;
     }
 
     createFreeBikeMarker(lat, lng, markerEl) {

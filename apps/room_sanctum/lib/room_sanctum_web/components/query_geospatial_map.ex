@@ -40,6 +40,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
   attr :vehicle_positions, :list, default: []
   attr :free_bikes, :list, default: []
+  attr :aircraft, :list, default: [],
+    doc: "ADS-B aircraft as room_icarus normalises them: string keys, lat/lon/track/class."
+
   attr :stations, :list, default: []
   attr :station_statuses, :list, default: []
   attr :source_tint, :string, default: nil
@@ -97,8 +100,15 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       |> assign(:map_queries, get_mappable_queries(assigns.queries))
       |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions, assigns.route_types))
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
+      |> assign(:map_aircraft, format_aircraft(assigns.aircraft))
       |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
-    groups = [assigns.map_queries, assigns.map_vehicles, assigns.map_free_bikes, assigns.map_stations]
+    groups = [
+      assigns.map_queries,
+      assigns.map_vehicles,
+      assigns.map_aircraft,
+      assigns.map_free_bikes,
+      assigns.map_stations
+    ]
     all_points = Enum.concat(groups)
     # Centre on everything, even any points a cap would drop -- unless the
     # caller named a place to look at.
@@ -178,6 +188,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               tint={Map.get(p, :tint)}
               bearing={Map.get(p, :bearing)}
               route-type={Map.get(p, :route_type)}
+              aircraft-class={Map.get(p, :aircraft_class)}
               id={"#{@id}-marker-#{p.id}"}
               data-has-query={
                 if Map.get(p, :type) == "station" &&
@@ -218,7 +229,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
           <h3 class="text-sm font-semibold text-base-content">
             Map Legend
             <span class="ml-2 text-xs text-base-content/60">
-              (<%= length(@map_queries) %> queries with location data<%= if length(@map_stations) > 0, do: ", #{length(@map_stations)} stations", else: "" %><%= if length(@map_free_bikes) > 0, do: ", #{length(@map_free_bikes)} free bikes", else: "" %>)
+              (<%= length(@map_queries) %> queries with location data<%= if length(@map_stations) > 0, do: ", #{length(@map_stations)} stations", else: "" %><%= if length(@map_free_bikes) > 0, do: ", #{length(@map_free_bikes)} free bikes", else: "" %><%= if length(@map_aircraft) > 0, do: ", #{length(@map_aircraft)} aircraft", else: "" %>)
             </span>
           </h3>
           
@@ -242,6 +253,13 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
             <div class="flex items-center">
               <i class="fas fa-fw fa-bicycle mr-1 text-green-600"></i>
               <span class="capitalize text-base-content/80">Free Bikes</span>
+            </div>
+          <% end %>
+
+          <%= if length(@map_aircraft) > 0 do %>
+            <div class="flex items-center">
+              <i class="fas fa-fw fa-plane mr-1 text-sky-400"></i>
+              <span class="capitalize text-base-content/80">Aircraft</span>
             </div>
           <% end %>
         </div>
@@ -585,6 +603,29 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         route_type: Map.get(route_types, vehicle.route_id),
         timestamp: vehicle.timestamp,
         icon: "fa-bus" # or different icon based on vehicle type
+      }
+    end)
+  end
+
+  # ADS-B aircraft. Positions are string-keyed because that is how they leave
+  # the adsb.fi payload, and the callsign is the useful label -- registration
+  # or the ICAO address only when the flight is not transmitting one.
+  defp format_aircraft(aircraft) do
+    aircraft
+    |> Enum.filter(fn ac -> ac["lat"] != nil and ac["lon"] != nil end)
+    |> Enum.map(fn ac ->
+      %{
+        id: "aircraft_#{ac["hex"]}",
+        type: "aircraft",
+        lat: ac["lat"],
+        lng: ac["lon"],
+        name: ac["flight"] || ac["registration"] || ac["hex"],
+        bearing: ac["track"],
+        aircraft_class: ac["class"],
+        altitude: ac["alt_baro"],
+        speed: ac["gs"],
+        registration: ac["registration"],
+        aircraft_type: ac["type"]
       }
     end)
   end

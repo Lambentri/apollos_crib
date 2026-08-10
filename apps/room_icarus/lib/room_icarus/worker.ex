@@ -78,6 +78,14 @@ defmodule RoomIcarus.Worker do
   def refresh_db_cfg(name), do: GenServer.cast(via("icarus#{name}"), :refresh_db_cfg)
   def refresh_aircraft(name), do: GenServer.cast(via("icarus#{name}"), :refresh_aircraft)
   def read(name, query), do: GenServer.call(via("icarus#{name}"), {:read, query})
+
+  @doc """
+  Every aircraft the worker is currently holding, across all watched areas.
+
+  This is the whole picture rather than one query's slice, which is what a map
+  of the source wants; per-query filtering stays in read/2.
+  """
+  def current_aircraft(name), do: GenServer.call(via("icarus#{name}"), :current_aircraft)
   def sweep_watches(name), do: GenServer.cast(via("icarus#{name}"), :sweep_watches)
 
   # Cast handlers
@@ -132,6 +140,18 @@ defmodule RoomIcarus.Worker do
       :flight -> {:reply, read_flight(query), state}
       _ -> {:reply, read_area(query, state), state}
     end
+  end
+
+  def handle_call(:current_aircraft, _from, state) do
+    aircraft =
+      state.aircraft
+      |> Map.values()
+      |> List.flatten()
+      |> Enum.filter(&(&1["lat"] && &1["lon"]))
+      # Overlapping areas hold the same airframe twice.
+      |> Enum.uniq_by(& &1["hex"])
+
+    {:reply, aircraft, state}
   end
 
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}

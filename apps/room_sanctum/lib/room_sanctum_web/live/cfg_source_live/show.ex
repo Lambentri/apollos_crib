@@ -40,6 +40,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       # Route ids calling at the stop the tester has selected, so its map can
       # show that stop's routes rather than the whole system's.
       |> assign(:tester_route_ids, [])
+      |> assign(:aircraft, [])
       |> assign(:view_mode, :system)
       # Same palette the query form offers, so a tint picked here and one
       # picked there are drawn from the same set. Every entry needs its
@@ -86,6 +87,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _ -> []
     end
 
+    # Whatever the ADS-B worker is currently holding across its watched areas.
+    aircraft = current_aircraft(socket.assigns.source.type, socket.assigns.source_id)
+
     # Vehicle positions name a route, not a vehicle kind; the type comes from
     # the route table.
     route_types = case socket.assigns.source.type do
@@ -107,6 +111,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
      |> assign(:stations, stations)
      |> assign(:station_statuses, station_statuses)
      |> assign(:route_types, route_types)
+     |> assign(:aircraft, aircraft)
      |> assign(:source_tint, source_tint)}
   end
 
@@ -159,6 +164,26 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:available_tints, get_available_tints(queries))
     }
   end
+
+  # The worker is only running for an enabled source, and it holds nothing
+  # until its first sweep, so an absent process is an ordinary state rather
+  # than an error worth taking the page down for.
+  defp current_aircraft(:icarus, source_id) do
+    # room_icarus is not a declared dependency of room_sanctum -- the umbrella
+    # loads it at runtime, but it is absent from this app's test env, and an
+    # unloaded module would raise rather than exit.
+    if Code.ensure_loaded?(RoomIcarus.Worker) do
+      try do
+        RoomIcarus.Worker.current_aircraft(source_id)
+      catch
+        :exit, _ -> []
+      end
+    else
+      []
+    end
+  end
+
+  defp current_aircraft(_type, _source_id), do: []
 
   # format_stations/3 reaches for :place directly, so every key it touches has
   # to be present -- a plain map without :place raises rather than falling
