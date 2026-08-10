@@ -1007,7 +1007,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def handle_info({:vehicle_positions_updated, source_id, vehicles}, socket) do
     if socket.assigns.source_id == source_id do
-      {:noreply, socket |> assign(:vehicle_positions, vehicles)}
+      {:noreply,
+       socket
+       |> assign(:vehicle_positions, Storage.with_trip_context(vehicles, socket.assigns.source_id))}
     else
       {:noreply, socket}
     end
@@ -1055,7 +1057,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     case socket.assigns.source.type do
       :gtfs ->
         vehicles = RoomGtfs.Worker.get_current_vehicle_positions(socket.assigns.source_id)
-        {:noreply, socket |> assign(:vehicle_positions, vehicles)}
+        {:noreply,
+       socket
+       |> assign(:vehicle_positions, Storage.with_trip_context(vehicles, socket.assigns.source_id))}
       _ ->
         {:noreply, socket}
     end

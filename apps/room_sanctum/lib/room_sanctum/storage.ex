@@ -379,6 +379,118 @@ defmodule RoomSanctum.Storage do
   end
 
   @doc """
+  Attach route, destination, direction and mode to realtime vehicle positions.
+
+  A position names a route and a trip and nothing else, so everything a marker
+  says comes from the static feed -- looked up only for the trips currently on
+  screen, which is tens of rows rather than the whole table.
+  """
+  def with_trip_context([], _source_id), do: []
+
+  def with_trip_context(vehicles, source_id) do
+    by_trip =
+      vehicles
+      |> Enum.map(&Map.get(&1, :trip_id))
+      |> Enum.reject(&is_nil/1)
+      |> then(&vehicle_context(source_id, &1))
+
+    # Realtime feeds run trips the schedule does not have -- shuttles and
+    # added trips -- but they still name a route the schedule knows. On MBTA
+    # that is about one vehicle in eight, which would otherwise show nothing
+    # at all rather than at least which route it is on.
+    by_route =
+      vehicles
+      |> Enum.reject(&Map.has_key?(by_trip, Map.get(&1, :trip_id)))
+      |> Enum.map(&Map.get(&1, :route_id))
+      |> Enum.reject(&is_nil/1)
+      |> then(&route_context(source_id, &1))
+
+    Enum.map(vehicles, fn vehicle ->
+      context =
+        Map.get(by_trip, Map.get(vehicle, :trip_id)) ||
+          Map.get(by_route, Map.get(vehicle, :route_id)) ||
+          %{}
+
+      Map.merge(vehicle, context)
+    end)
+  end
+
+  @doc """
+  Route name and mode by route_id, for vehicles whose trip is not in the feed.
+  """
+  def route_context(_source_id, []), do: %{}
+
+  def route_context(source_id, route_ids) do
+    Repo.query!(
+      """
+      SELECT r.route_id,
+             COALESCE(NULLIF(BTRIM(r.route_short_name), ''), r.route_long_name, r.route_id),
+             r.route_type
+      FROM gtfs_routes r
+      WHERE r.source_id = $1 AND r.route_id = ANY($2)
+      """,
+      [source_id, Enum.uniq(route_ids)]
+    ).rows
+    |> Map.new(fn [route_id, route, route_type] ->
+      {route_id, %{route: route, dest: nil, direction: nil, mode: mode_label(route_type)}}
+    end)
+  end
+
+  @doc """
+  Context for the trips a set of vehicles is running, keyed by trip_id:
+  `%{route:, dest:, direction:, mode:}`.
+
+  A realtime vehicle position carries only ids -- the route it is on and the
+  trip it is running -- so everything a human wants to read comes from the
+  static feed.
+  """
+  def vehicle_context(_source_id, []), do: %{}
+
+  def vehicle_context(source_id, trip_ids) do
+    Repo.query!(
+      """
+      SELECT t.trip_id,
+             COALESCE(NULLIF(BTRIM(r.route_short_name), ''), r.route_long_name, r.route_id),
+             NULLIF(BTRIM(t.trip_headsign), ''),
+             d.direction,
+             r.route_type
+      FROM gtfs_trips t
+      JOIN gtfs_routes r ON r.source_id = t.source_id AND r.route_id = t.route_id
+      LEFT JOIN gtfs_directions d
+             ON d.source_id = t.source_id
+            AND d.route_id = t.route_id
+            AND d.direction_id = t.direction_id
+      WHERE t.source_id = $1 AND t.trip_id = ANY($2)
+      """,
+      [source_id, Enum.uniq(trip_ids)]
+    ).rows
+    |> Map.new(fn [trip_id, route, dest, direction, route_type] ->
+      {trip_id,
+       %{route: route, dest: dest, direction: direction, mode: mode_label(route_type)}}
+    end)
+  end
+
+  # GTFS route_type as something worth showing a person. Anything outside the
+  # spec's list is left alone rather than guessed at.
+  defp mode_label(nil), do: nil
+
+  defp mode_label(route_type) do
+    case to_string(route_type) do
+      "0" -> "Tram"
+      "1" -> "Subway"
+      "2" -> "Rail"
+      "3" -> "Bus"
+      "4" -> "Ferry"
+      "5" -> "Cable tram"
+      "6" -> "Aerial lift"
+      "7" -> "Funicular"
+      "11" -> "Trolleybus"
+      "12" -> "Monorail"
+      other -> other
+    end
+  end
+
+  @doc """
   The routes that call at a stop, as a list of route_ids.
 
   Backed by the (source_id, stop_id) index on stop_times -- without it the

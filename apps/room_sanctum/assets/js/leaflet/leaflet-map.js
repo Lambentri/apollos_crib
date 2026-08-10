@@ -685,16 +685,27 @@ class LeafletMap extends HTMLElement {
                 </div>
         `;
 
-        // Add type-specific content
+        // Only rows we actually have. This used to print the vehicle-id and
+        // route-id attributes, which nothing set, so every transit popup read
+        // "Vehicle: null".
+        const row = (label, value) =>
+            value
+                ? `<div class="text-xs text-gray-600 mb-1"><strong>${label}:</strong> ${value}</div>`
+                : '';
+
         if (type === 'vehicle') {
-            const vehicleId = markerEl.getAttribute('vehicle-id');
-            const routeId = markerEl.getAttribute('route-id');
-            content += `
-                <div class="text-xs text-gray-600 mb-1">
-                    <strong>Vehicle:</strong> ${vehicleId}
-                </div>
-                ${routeId ? `<div class="text-xs text-gray-600 mb-1"><strong>Route:</strong> ${routeId}</div>` : ''}
-            `;
+            content +=
+                row('Route', markerEl.getAttribute('route')) +
+                row('To', markerEl.getAttribute('dest')) +
+                row('Direction', markerEl.getAttribute('direction')) +
+                row('Mode', markerEl.getAttribute('mode')) +
+                row('Vehicle', markerEl.getAttribute('vehicle-id'));
+        }
+
+        if (type === 'aircraft') {
+            content +=
+                row('Class', markerEl.getAttribute('aircraft-class')) +
+                row('Heading', markerEl.getAttribute('bearing'));
         }
 
         content += `</div>`;

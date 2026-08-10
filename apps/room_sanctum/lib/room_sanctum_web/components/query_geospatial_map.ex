@@ -214,6 +214,11 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               tint={Map.get(p, :tint)}
               bearing={Map.get(p, :bearing)}
               route-type={Map.get(p, :route_type)}
+              route={Map.get(p, :route)}
+              dest={Map.get(p, :dest)}
+              direction={Map.get(p, :direction)}
+              mode={Map.get(p, :mode)}
+              vehicle-id={Map.get(p, :vehicle_id)}
               aircraft-class={Map.get(p, :aircraft_class)}
               id={"#{@id}-marker-#{p.id}"}
               data-has-query={
@@ -627,6 +632,13 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         lng: vehicle.longitude,
         bearing: vehicle.bearing,
         route_type: Map.get(route_types, vehicle.route_id),
+        # Filled in from the static feed by the caller; a vehicle whose trip is
+        # not in the schedule keeps its ids and says so rather than inventing.
+        route: Map.get(vehicle, :route),
+        dest: Map.get(vehicle, :dest),
+        direction: Map.get(vehicle, :direction),
+        mode: Map.get(vehicle, :mode),
+        name: vehicle_label(vehicle),
         timestamp: vehicle.timestamp,
         icon: "fa-bus" # or different icon based on vehicle type
       }
@@ -657,6 +669,20 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   As aircraft_from_preview/2, for a preview already known to be icarus'.
   """
   def aircraft_from_preview_list(preview), do: aircraft_from_preview(:icarus, preview)
+
+  # "38 to Geary + 33rd Avenue" where the schedule knows the trip, otherwise
+  # whatever identifier the feed did give us.
+  defp vehicle_label(vehicle) do
+    route = Map.get(vehicle, :route)
+    dest = Map.get(vehicle, :dest)
+
+    case {route, dest} do
+      {nil, nil} -> vehicle.vehicle_id || vehicle.route_id || "Vehicle"
+      {route, nil} -> route
+      {nil, dest} -> dest
+      {route, dest} -> "#{route} to #{dest}"
+    end
+  end
 
   # ADS-B aircraft. Positions are string-keyed because that is how they leave
   # the adsb.fi payload, and the callsign is the useful label -- registration

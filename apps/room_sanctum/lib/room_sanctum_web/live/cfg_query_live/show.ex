@@ -32,7 +32,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
     lines =
       case {showing?, socket.assigns.route_lines} do
-        {true, []} -> RoomSanctum.Storage.list_route_lines([socket.assigns.query.source_id])
+        {true, []} -> route_lines_for(socket.assigns.query)
         {_, existing} -> existing
       end
 
@@ -41,6 +41,40 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:show_route_lines, showing?)
      |> assign(:route_lines, lines)}
   end
+
+  # A stop query is about one stop, so drawing every shape in the feed is
+  # useless -- MBTA alone is hundreds of routes. Only the routes that call
+  # there get drawn; a query that is not about a stop keeps the whole set,
+  # since there is nothing narrower to mean.
+  defp route_lines_for(%{source_id: source_id} = query) do
+    lines = RoomSanctum.Storage.list_route_lines([source_id])
+
+    case stop_id_of(query) do
+      nil ->
+        lines
+
+      stop_id ->
+        serving =
+          source_id
+          |> RoomSanctum.Storage.routes_serving_stop(stop_id)
+          |> MapSet.new(&"#{source_id}-#{&1}")
+
+        Enum.filter(lines, &MapSet.member?(serving, &1.id))
+    end
+  end
+
+  # GTFS stop queries key on :stop, GBFS on :stop_id.
+  defp stop_id_of(%{query: nil}), do: nil
+
+  defp stop_id_of(%{query: q}) do
+    case Map.get(q, :stop) || Map.get(q, :stop_id) do
+      value when is_binary(value) -> value
+      value when is_integer(value) -> to_string(value)
+      _ -> nil
+    end
+  end
+
+  defp stop_id_of(_), do: nil
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
@@ -176,13 +210,22 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     # Filter vehicles to only show those relevant to current query
     filtered_vehicles = filter_vehicles_for_single_query(vehicles, socket.assigns.query)
 #    IO.inspect("Query Show: Filtered #{length(vehicles)} to #{length(filtered_vehicles)} vehicles for stop")
-    {:noreply, socket |> assign(:vehicle_positions, filtered_vehicles)}
+    {:noreply,
+     socket
+     |> assign(
+       :vehicle_positions,
+       RoomSanctum.Storage.with_trip_context(filtered_vehicles, socket.assigns.query.source_id)
+     )}
   end
 
   def handle_info(:update_vehicle_positions, socket) do
     # Fetch and filter vehicle positions for this specific query
     if socket.assigns.query.source.type == :gtfs do
-      vehicles = get_vehicle_positions_for_query(socket.assigns.query)
+      vehicles =
+        socket.assigns.query
+        |> get_vehicle_positions_for_query()
+        |> RoomSanctum.Storage.with_trip_context(socket.assigns.query.source_id)
+
       {:noreply, socket |> assign(:vehicle_positions, vehicles)}
     else
       {:noreply, socket}

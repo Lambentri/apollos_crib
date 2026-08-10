@@ -318,7 +318,10 @@ defmodule RoomSanctumWeb.QueryLive.Index do
 #      IO.inspect("Fetching vehicles from source #{source_id}")
       try do
         case RoomGtfs.Worker.get_current_vehicle_positions(source_id) do
-          vehicles when is_list(vehicles) -> 
+          vehicles when is_list(vehicles) ->
+            # Per source: a trip_id only means anything within its own feed.
+            vehicles = RoomSanctum.Storage.with_trip_context(vehicles, source_id)
+
 #            IO.inspect("Source #{source_id} returned #{length(vehicles)} vehicles")
             vehicles
           other -> 
