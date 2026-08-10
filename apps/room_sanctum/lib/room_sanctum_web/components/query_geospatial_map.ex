@@ -86,6 +86,20 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     default: false,
     doc: "Whether the toggle reads as on. The state lives with the caller."
 
+  attr :aircraft_event, :string,
+    default: nil,
+    doc: """
+    When set, the map carries a toggle for the aircraft layer pushing this
+    event. For maps where aircraft are incidental rather than the subject --
+    the query index draws every query the user owns, and a couple of area
+    queries in different cities will fill it with planes and zoom out to fit
+    them.
+    """
+
+  attr :show_aircraft, :boolean,
+    default: false,
+    doc: "Whether the aircraft toggle reads as on. State lives with the caller."
+
   attr :legend, :boolean,
     default: true,
     doc: """
@@ -148,8 +162,20 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       <div class="mt-4 relative" id={"#{@id}-wrap"}>
         <%!-- Above Leaflet's own controls, which top out at z-index 1000
               inside the map's shadow root. --%>
-        <div :if={@route_lines_event} class="absolute top-2 right-2 z-[1100]">
+        <div :if={@route_lines_event || @aircraft_event} class="absolute top-2 right-2 z-[1100] flex gap-1">
           <button
+            :if={@aircraft_event}
+            type="button"
+            class={"btn btn-xs gap-1 shadow #{if @show_aircraft, do: "btn-primary", else: "btn-neutral"}"}
+            phx-click={@aircraft_event}
+            title={if @show_aircraft, do: "Hide aircraft", else: "Show aircraft"}
+          >
+            <i class="fa-solid fa-plane"></i>
+            Aircraft
+          </button>
+
+          <button
+            :if={@route_lines_event}
             type="button"
             class={"btn btn-xs gap-1 shadow #{if @show_route_lines, do: "btn-primary", else: "btn-neutral"}"}
             phx-click={@route_lines_event}

@@ -31,6 +31,9 @@ defmodule RoomSanctumWeb.QueryLive.Index do
      |> assign(:queries, queries)
      |> assign(:vehicle_positions, [])
      |> assign(:aircraft, [])
+     # Off by default: this map is about the user's queries, and a couple of
+     # area queries in different cities bury them under live traffic.
+     |> assign(:show_aircraft, false)
      |> assign(:show_route_lines, false)
      |> assign(:route_lines, [])
      |> stream(:cfg_queries, queries)}
@@ -115,8 +118,20 @@ defmodule RoomSanctumWeb.QueryLive.Index do
     {:noreply,
      socket
      |> assign(:vehicle_positions, vehicle_positions)
-     |> assign(:aircraft, get_all_aircraft(socket.assigns.queries))}
+     |> assign(:aircraft, refresh_aircraft(socket.assigns))}
   end
+
+  def handle_event("toggle-aircraft", _params, socket) do
+    showing? = not socket.assigns.show_aircraft
+
+    {:noreply,
+     socket
+     |> assign(:show_aircraft, showing?)
+     |> assign(:aircraft, if(showing?, do: get_all_aircraft(socket.assigns.queries), else: []))}
+  end
+
+  defp refresh_aircraft(%{show_aircraft: true, queries: queries}), do: get_all_aircraft(queries)
+  defp refresh_aircraft(_assigns), do: []
 
   # One read per icarus query, so each contributes the aircraft it actually
   # matches -- its own radius, altitude band and class filters -- rather than

@@ -45,6 +45,8 @@
       queries={@queries}
       vehicle_positions={@vehicle_positions}
       aircraft={@aircraft}
+      aircraft_event={if Enum.any?(@queries, &(&1.source && &1.source.type == :icarus)), do: "toggle-aircraft"}
+      show_aircraft={@show_aircraft}
       route_lines={if @show_route_lines, do: @route_lines, else: []}
       route_lines_event={if Enum.any?(@queries, &(&1.source && &1.source.type == :gtfs)), do: "toggle-route-lines"}
       show_route_lines={@show_route_lines}
