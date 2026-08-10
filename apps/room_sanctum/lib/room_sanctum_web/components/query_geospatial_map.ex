@@ -501,18 +501,19 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
             false
         end
 
-      :aqi ->
-        # For AQI, get coordinates from the monitoring site/foci
-        if query.query && Map.has_key?(query.query, :foci_id) do
-          get_aqi_foci_coordinates(query.query.foci_id)
-        else
-          false
-        end
-
-      _ -> 
-        false
+      # Everything else that knows where it is says so with a foci: aqi,
+      # weather, tidal, ephem, pollen, drought and icarus area queries all
+      # carry one, and used to fall through to "not mappable".
+      _ ->
+        foci_coordinates(query)
     end
   end
+
+  defp foci_coordinates(%{query: %{foci_id: foci_id}}) when not is_nil(foci_id) do
+    get_foci_coordinates(foci_id)
+  end
+
+  defp foci_coordinates(_query), do: false
 
   # Get coordinates for GTFS stop
   defp get_gtfs_stop_coordinates(source_id, stop_id) do
@@ -575,16 +576,17 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   end
 
   # Get coordinates for AQI foci
-  defp get_aqi_foci_coordinates(foci_id) do
+  # The field is :place. This read :point, and since that was in a guard the
+  # KeyError was swallowed and the clause simply never matched -- so a foci
+  # has never resolved to anywhere, and no aqi query has ever been placed.
+  defp get_foci_coordinates(foci_id) do
     case RoomSanctum.Storage.get_foci_by_id(foci_id) do
-      nil -> false
-      foci when foci.point != nil ->
-        case foci.point do
-          %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-          _ -> false
-        end
+      %{place: %Geo.Point{coordinates: {lng, lat}}} -> {lat, lng}
       _ -> false
     end
+  rescue
+    # get_foci_by_id raises rather than returning nil for a foci that is gone.
+    Ecto.NoResultsError -> false
   end
 
   # Get coordinates from GTFS vehicle positions

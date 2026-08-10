@@ -1,5 +1,6 @@
 defmodule RoomSanctumWeb.VisionLive.Show do
   use RoomSanctumWeb, :live_view_a
+  import RoomSanctumWeb.Components.QueryGeospatialMap
 
   alias RoomSanctum.Configuration
 
@@ -42,7 +43,8 @@ defmodule RoomSanctumWeb.VisionLive.Show do
   defp do_toggle(state) do
     case state do
       :basic -> :raw
-      :raw -> :basic
+      :raw -> :map
+      :map -> :basic
     end
   end
 
