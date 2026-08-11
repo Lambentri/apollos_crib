@@ -2888,17 +2888,66 @@ defmodule RoomSanctum.Storage do
   end
 
   def get_current_information_for_aqi(source_id, foci_id) do
+    case nearest_aqi_stations(source_id, foci_id, 1) do
+      [] -> [nil]
+      [station] -> [station]
+    end
+  end
+
+  @doc """
+  The monitoring stations nearest a foci, closest first.
+
+  One row per station: the feed replaces the whole set each hour, so the
+  current reading and the station itself are the same record.
+  """
+  def nearest_aqi_stations(source_id, foci_id, limit \\ 5) do
     foci = Cfg.get_foci!(foci_id)
+    nearby_aqi_stations(source_id, foci.place, limit)
+  end
 
-    # not great but I flailed a bit here for a few days and I want to get this done and didn't figure out array_agg
-    q =
-      from hod in HourlyObsData,
-        where: hod.source_id == ^source_id,
-        limit: 1,
-        order_by: {:asc, st_distance(hod.point, ^foci.place)}
+  @doc """
+  Monitoring stations nearest a point, closest first.
 
-    res = Repo.one(q)
-    [res]
+  Both geometries are {lon, lat}, so st_distance compares them directly --
+  they used to be transposed in step with each other, which worked until one
+  side was normalised.
+  """
+  def nearby_aqi_stations(source_id, %Geo.Point{} = point, limit \\ 5) do
+    from(hod in HourlyObsData,
+      where: hod.source_id == ^source_id and not is_nil(hod.point),
+      limit: ^limit,
+      order_by: {:asc, st_distance(hod.point, ^point)}
+    )
+    |> Repo.all()
+  end
+
+  def nearby_aqi_stations(_source_id, _point, _limit), do: []
+
+  @doc """
+  One named monitoring station, or an empty list if it is not reporting.
+  """
+  def get_aqi_station(source_id, aqsid) do
+    from(hod in HourlyObsData,
+      where: hod.source_id == ^source_id and hod.aqsid == ^aqsid,
+      order_by: [desc: hod.valid_date, desc: hod.valid_time],
+      limit: 1
+    )
+    |> Repo.all()
+  end
+
+  @doc """
+  Every station currently reporting for a source.
+
+  DISTINCT ON rather than a plain select, so this stays one row per station if
+  the feed ever keeps more than the latest hour.
+  """
+  def list_aqi_stations(source_id) do
+    from(hod in HourlyObsData,
+      where: hod.source_id == ^source_id and not is_nil(hod.point),
+      distinct: hod.aqsid,
+      order_by: [asc: hod.aqsid, desc: hod.valid_date, desc: hod.valid_time]
+    )
+    |> Repo.all()
   end
 
   alias RoomSanctum.Storage.ICalendar

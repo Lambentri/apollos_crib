@@ -21,7 +21,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:preview_mode, :raw)
      |> assign(:vehicle_positions, [])
      |> assign(:show_route_lines, false)
-     |> assign(:route_lines, [])}
+     |> assign(:route_lines, [])
+     |> assign(:nearby_stations, [])}
   end
 
   # Built on first use and then kept: the geometry query is not cheap enough to
@@ -87,6 +88,9 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:query_id, id)
      |> assign(:type, q.source.type)
      |> assign(:visions, [])
+     # On arrival rather than on the first :update tick, so the page does not
+     # come up without the context it is mostly there to show.
+     |> assign(:nearby_stations, nearby_stations(q))
      |> assign(:avail_visions, [])
      |> assign(:avail_sel, :false)
     }
@@ -196,8 +200,57 @@ defmodule RoomSanctumWeb.QueryLive.Show do
           )
       end
 
-    {:noreply, assign(socket, :preview, result)}
+    {:noreply,
+     socket
+     |> assign(:preview, result)
+     |> assign(:nearby_stations, nearby_stations(socket.assigns.query))}
   end
+
+  # For an air quality query, the answer is one station -- so the neighbours
+  # are the context that makes it readable: whether the number is local or the
+  # whole city is like that. Ordered closest first, the query's own station
+  # leading.
+  defp nearby_stations(%{source: %{type: :aqi}} = query) do
+    case query.query do
+      %{aqsid: aqsid} = q when is_binary(aqsid) and aqsid != "" ->
+        case RoomSanctum.Storage.get_aqi_station(query.source_id, aqsid) do
+          [station] -> RoomSanctum.Storage.nearby_aqi_stations(query.source_id, station.point, 6)
+          _ -> from_foci(query, q)
+        end
+
+      %{foci_id: foci_id} when not is_nil(foci_id) ->
+        RoomSanctum.Storage.nearest_aqi_stations(query.source_id, foci_id, 6)
+
+      _ ->
+        []
+    end
+  end
+
+  defp nearby_stations(_query), do: []
+
+  # The map speaks stations, not observations.
+  defp as_stations(observations) do
+    Enum.map(observations, fn obs ->
+      %{
+        place: obs.point,
+        station_id: obs.aqsid,
+        name: obs.site_name || obs.aqsid,
+        short_name: obs.aqsid,
+        capacity: 0,
+        address: obs.reporting_areas |> List.wrap() |> List.first(),
+        lat: obs.lat,
+        lon: obs.lon
+      }
+    end)
+  end
+
+  defp aqi_of(observation),
+    do: RoomSanctum.Storage.AirNow.HourlyObsData.overall_aqi(observation)
+
+  defp from_foci(query, %{foci_id: foci_id}) when not is_nil(foci_id),
+    do: RoomSanctum.Storage.nearest_aqi_stations(query.source_id, foci_id, 6)
+
+  defp from_foci(_query, _q), do: []
 
   def handle_info(:update_sec, socket) do
     visions = Configuration.get_visions(:query, socket.assigns.query_id)

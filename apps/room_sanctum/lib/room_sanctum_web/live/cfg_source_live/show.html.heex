@@ -379,7 +379,7 @@ gl_available_projects={@gitlab_available_projects}
                       class=""
                       height="600px"
                       add_query_event="map-add-query"
-                      queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
+                      queried_station_ids={Enum.map(@queries, &station_id_of/1)}
                     />
                   </div>
 
@@ -582,7 +582,7 @@ gl_available_projects={@gitlab_available_projects}
                           route_lines_event={if @source.type == :gtfs, do: "toggle-route-lines"}
                           show_route_lines={@show_route_lines}
                           source_tint={@source_tint}
-                          queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
+                          queried_station_ids={Enum.map(@queries, &station_id_of/1)}
                           focus={%{lat: focus_lat, lng: focus_lon}}
                           focus_zoom={16}
                           height="360px"
@@ -683,7 +683,7 @@ gl_available_projects={@gitlab_available_projects}
                           route_lines_event={if @source.type == :gtfs, do: "toggle-route-lines"}
                           show_route_lines={@show_route_lines}
                           source_tint={@source_tint}
-                          queried_station_ids={Enum.map(@queries, fn q -> q.query && (Map.get(q.query, :stop_id) || Map.get(q.query, :stop)) end)}
+                          queried_station_ids={Enum.map(@queries, &station_id_of/1)}
                           focus={%{lat: station_lat, lng: station_lon}}
                           focus_zoom={16}
                           height="360px"

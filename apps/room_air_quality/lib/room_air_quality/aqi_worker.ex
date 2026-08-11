@@ -27,8 +27,27 @@ defmodule RoomAirQuality.Worker do
     |> GenServer.cast(:update_static)
   end
 
+  # A station id names one monitor; a foci means "whatever is nearest". The
+  # station wins when both are set, and falls back to the foci if that monitor
+  # has stopped reporting rather than showing nothing.
   def query_place(id, query) do
-    Storage.get_current_information_for_aqi(id, query.foci_id)
+    aqsid = Map.get(query, :aqsid)
+    foci_id = Map.get(query, :foci_id)
+
+    cond do
+      is_binary(aqsid) and aqsid != "" ->
+        case Storage.get_aqi_station(id, aqsid) do
+          [] when not is_nil(foci_id) -> Storage.get_current_information_for_aqi(id, foci_id)
+          [] -> []
+          station -> station
+        end
+
+      not is_nil(foci_id) ->
+        Storage.get_current_information_for_aqi(id, foci_id)
+
+      true ->
+        []
+    end
   end
 
   def init(opts) do
@@ -164,9 +183,11 @@ defmodule RoomAirQuality.Worker do
           f |> Map.put(:parameters, p)
         end)
         |> Enum.map(fn data ->
+          # {lon, lat}, as PostGIS expects -- st_distance against a foci
+          # compares the two directly.
           point = %Geo.Point{
             coordinates:
-              {data.latitude |> String.to_float(), data.longitude |> String.to_float()},
+              {data.longitude |> String.to_float(), data.latitude |> String.to_float()},
             srid: 4326
           }
 
@@ -246,7 +267,7 @@ defmodule RoomAirQuality.Worker do
 
           point =
             if lat && lon do
-              %Geo.Point{coordinates: {lat, lon}, srid: 4326}
+              %Geo.Point{coordinates: {lon, lat}, srid: 4326}
             end
 
           RoomSanctum.Storage.change_hourly_obs_data(

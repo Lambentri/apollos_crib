@@ -78,6 +78,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     stations = case socket.assigns.source.type do
       :gbfs -> Storage.list_gbfs_station_information(socket.assigns.source_id)
       :gtfs -> socket.assigns.source_id |> Storage.list_stops() |> Enum.map(&stop_as_station/1)
+      :aqi -> socket.assigns.source_id |> Storage.list_aqi_stations() |> Enum.map(&site_as_station/1)
       _ -> []
     end
 
@@ -201,9 +202,37 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     }
   end
 
-  # GTFS queries key on :stop, GBFS on :stop_id.
+  # AirNow replaces its observations every hour, so a reading and the station
+  # that made it are one record. The name carries the current index, since that
+  # is what you want off a marker without opening it.
+  defp site_as_station(observation) do
+    %{
+      place: observation.point,
+      station_id: observation.aqsid,
+      name: station_label(observation),
+      short_name: observation.aqsid,
+      capacity: 0,
+      address: observation.reporting_areas |> List.wrap() |> List.first(),
+      lat: observation.lat,
+      lon: observation.lon
+    }
+  end
+
+  defp station_label(observation) do
+    name = observation.site_name || observation.aqsid
+
+    case RoomSanctum.Storage.AirNow.HourlyObsData.overall_aqi(observation) do
+      nil -> name
+      {value, pollutant} -> "#{name} - AQI #{value} (#{pollutant})"
+    end
+  end
+
+  # GTFS queries key on :stop, GBFS on :stop_id, AirNow on :aqsid.
   defp station_id_of(%{query: nil}), do: nil
-  defp station_id_of(%{query: q}), do: Map.get(q, :stop_id) || Map.get(q, :stop)
+
+  defp station_id_of(%{query: q}),
+    do: Map.get(q, :stop_id) || Map.get(q, :stop) || Map.get(q, :aqsid)
+
   defp station_id_of(_), do: nil
 
   defp page_title(:show), do: "Offering Detail"
@@ -235,6 +264,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   # GTFS names the field :stop, GBFS :stop_id.
   defp station_query_for(:gtfs, id), do: %{"__type__" => "gtfs", "stop" => id}
+  defp station_query_for(:aqi, id), do: %{"__type__" => "aqi", "aqsid" => id}
   defp station_query_for(type, id), do: %{"__type__" => to_string(type), "stop_id" => id}
 
   defp add_station_query(socket, station_id, name) do

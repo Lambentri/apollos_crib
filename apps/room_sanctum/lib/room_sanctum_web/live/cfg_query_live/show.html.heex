@@ -124,6 +124,8 @@
             queries={[@query]}
             vehicle_positions={@vehicle_positions}
             aircraft={aircraft_from_preview(@query.source && @query.source.type, @preview)}
+            stations={as_stations(@nearby_stations)}
+            queried_station_ids={Enum.take(@nearby_stations, 1) |> Enum.map(& &1.aqsid)}
             route_lines={if @show_route_lines, do: @route_lines, else: []}
             route_lines_event={if @query.source && @query.source.type == :gtfs, do: "toggle-route-lines"}
             show_route_lines={@show_route_lines}
@@ -132,6 +134,34 @@
             height="350px"
           />
         </div>
+
+        <%= if @nearby_stations != [] do %>
+          <%!-- The first is the station this query answers with; the rest are
+                what the air is doing around it. --%>
+          <div class="overflow-x-auto mt-3">
+            <table class="table table-compact w-full">
+              <tbody>
+                <%= for {station, index} <- Enum.with_index(@nearby_stations) do %>
+                  <tr class={if index == 0, do: "font-semibold", else: "opacity-70"}>
+                    <td>
+                      <i class={"fa-solid fa-fw mr-1 #{if index == 0, do: "fa-location-crosshairs text-accent", else: "fa-location-dot"}"}></i>
+                      <%= station.site_name || station.aqsid %>
+                    </td>
+                    <td class="text-right whitespace-nowrap">
+                      <%= case aqi_of(station) do %>
+                        <% nil -> %>
+                          <span class="opacity-60">not reporting</span>
+                        <% {value, pollutant} -> %>
+                          <span class="badge badge-accent"><%= value %></span>
+                          <span class="text-xs opacity-70 ml-1"><%= pollutant %></span>
+                      <% end %>
+                    </td>
+                  </tr>
+                <% end %>
+              </tbody>
+            </table>
+          </div>
+        <% end %>
       </div>
     </div>
   </div>

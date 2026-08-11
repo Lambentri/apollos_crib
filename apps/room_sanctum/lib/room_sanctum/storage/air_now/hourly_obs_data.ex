@@ -94,6 +94,29 @@ defmodule RoomSanctum.Storage.AirNow.HourlyObsData do
       :valid_time
     ])
   end
+  @doc """
+  The headline AQI for an observation, as `{value, pollutant}`.
+
+  AirNow reports a sub-index per pollutant and the AQI is the worst of them,
+  which is also the one worth naming -- "52 (PM2.5)" says what is driving it.
+  Returns nil when a station reported nothing this hour, which is common.
+  """
+  def overall_aqi(nil), do: nil
+
+  def overall_aqi(entry) do
+    [
+      {Map.get(entry, :pm25_aqi), "PM2.5"},
+      {Map.get(entry, :pm10_aqi), "PM10"},
+      {Map.get(entry, :ozone_aqi), "Ozone"},
+      {Map.get(entry, :no2_aqi), "NO2"}
+    ]
+    |> Enum.reject(fn {value, _pollutant} -> is_nil(value) end)
+    |> case do
+      [] -> nil
+      measured -> Enum.max_by(measured, fn {value, _pollutant} -> value end)
+    end
+  end
+
   def compile_pairs(entry) when is_nil(entry) do
     %{combined: "Pending"}
   end
