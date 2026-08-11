@@ -391,17 +391,71 @@ defmodule RoomGtfs.Worker.RT do
 
   def fetch_rt_url(url) do
     case HTTPoison.get(url, [], follow_redirect: true) do
+      {:ok, %{status_code: 200} = result} ->
+        decode_rt(url, result)
+
       {:ok, result} ->
-        try do
-          {:ok, result.body |> TransitRealtime.FeedMessage.decode()}
-        rescue
-          e ->
-            Logger.warning("failed to decode gtfs-rt protobuf from #{url}: #{inspect(e)}")
-            {:error, :decode_failed}
-        end
-      {:error, error} -> {:error, error}
+        Logger.warning(
+          "gtfs-rt url #{url} answered HTTP #{result.status_code}: #{body_hint(result.body)}"
+        )
+
+        {:error, :bad_status}
+
+      {:error, error} ->
+        {:error, error}
     end
   end
+
+  # A dead endpoint rarely says so with a status code. MBTA's CDN answers a
+  # missing object with 200 and an S3 AccessDenied document, which the decoder
+  # then reads as protobuf and reports as "closing group 7 but no groups are
+  # open" -- true, and useless for working out that the URL is wrong.
+  defp decode_rt(url, %{body: body} = result) do
+    if protobuf_response?(result) do
+      try do
+        {:ok, TransitRealtime.FeedMessage.decode(body)}
+      rescue
+        e ->
+          Logger.warning("failed to decode gtfs-rt protobuf from #{url}: #{inspect(e)}")
+          {:error, :decode_failed}
+      end
+    else
+      Logger.warning("gtfs-rt url #{url} did not return protobuf: #{body_hint(body)}")
+      {:error, :not_protobuf}
+    end
+  end
+
+  # Trust the content type when the server states one, since publishers vary
+  # (application/x-protobuf, application/octet-stream). With no type at all,
+  # fall back to rejecting bodies that are plainly markup.
+  def protobuf_response?(%{body: body} = result) do
+    case content_type(result) do
+      nil -> not markup?(body)
+      type -> String.contains?(type, "protobuf") or String.contains?(type, "octet-stream")
+    end
+  end
+
+  defp content_type(%{headers: headers}) do
+    Enum.find_value(headers, fn {name, value} ->
+      if String.downcase(name) == "content-type", do: String.downcase(value)
+    end)
+  end
+
+  defp content_type(_result), do: nil
+
+  defp markup?(body) when is_binary(body) do
+    body |> String.trim_leading() |> String.starts_with?(["<?xml", "<!DOCTYPE", "<html", "<HTML"])
+  end
+
+  defp markup?(_body), do: false
+
+  # Enough of the body to recognise an error page, without pouring a 350kB
+  # feed into the log.
+  defp body_hint(body) when is_binary(body) do
+    body |> String.slice(0, 160) |> String.replace(~r/\s+/, " ") |> String.trim()
+  end
+
+  defp body_hint(_body), do: "(no body)"
 
   def handle_cast(:refresh_db_cfg, state) do
     inst = Configuration.get_source!(state.id)
@@ -1033,13 +1087,24 @@ end
   # Only ever fills blanks: a URL already in the config was put there
   # deliberately and outranks whatever the feed advertises.
   defp apply_linked_datasets(cfg, urls) do
-    fill =
-      urls
-      |> Enum.reject(fn {field, _url} ->
+    {configured, blank} =
+      Enum.split_with(urls, fn {field, _url} ->
         existing = Map.get(cfg.config, field)
         is_binary(existing) and String.trim(existing) != ""
       end)
-      |> Map.new()
+
+    # A URL set by hand still wins -- it may be a proxy, or carry a key the
+    # feed cannot know about. But when the feed names a different one it is
+    # worth saying so out loud: a stale URL usually fails as a decode error
+    # somewhere else entirely, with nothing pointing back here.
+    for {field, url} <- configured, Map.get(cfg.config, field) != url do
+      Logger.warning(
+        "GTFS::#{cfg.id} #{field} is set to #{Map.get(cfg.config, field)} " <>
+          "but the feed advertises #{url}"
+      )
+    end
+
+    fill = Map.new(blank)
 
     if fill == %{} do
       :ok
