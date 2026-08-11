@@ -239,13 +239,39 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_event("add-to", %{"vision" => vision}, socket) do
     Process.send_after(self(), :update_sec, 200)
     vis = Configuration.get_vision!(vision)
-    new_query = %{id: nil, data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"}, type: "pinned"}
-    destruct = vis.queries |> Poison.encode!() |> Poison.decode!()
-    queries = destruct ++ [new_query]
-    new_ids = vis.query_ids || [] ++ [socket.assigns.query_id |> String.to_integer]
-    Configuration.update_vision_ni(vis, %{queries: queries, query_ids: new_ids})
+    query_id = String.to_integer(socket.assigns.query_id)
+    existing_ids = vis.query_ids || []
 
-    {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+    cond do
+      query_id in existing_ids ->
+        {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+
+      true ->
+        new_query = %{
+          id: nil,
+          data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"},
+          type: "pinned"
+        }
+
+        queries = (vis.queries |> Poison.encode!() |> Poison.decode!()) ++ [new_query]
+
+        # `||` binds looser than `++`, so `vis.query_ids || [] ++ [id]` read as
+        # `query_ids || ([] ++ [id])` and handed back the existing list
+        # untouched. The embed grew, the ids did not, and the second query
+        # added to any vision silently went nowhere.
+        query_ids = existing_ids ++ [query_id]
+
+        case Configuration.update_vision_ni(vis, %{queries: queries, query_ids: query_ids}) do
+          {:ok, _vision} ->
+            {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+
+          {:error, _changeset} ->
+            {:noreply,
+             socket
+             |> put_flash(:error, "Could not add this to #{vis.name}")
+             |> assign(:avail_sel, !socket.assigns.avail_sel)}
+        end
+    end
   end
 
   def handle_event("toggle-preview-mode", _params, socket) do
