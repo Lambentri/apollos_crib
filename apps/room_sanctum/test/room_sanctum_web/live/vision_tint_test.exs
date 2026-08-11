@@ -80,6 +80,51 @@ defmodule RoomSanctumWeb.VisionTintTest do
     end
   end
 
+  describe "the editor" do
+    # The picker first went into cfg_vision_live/form_component.html.heex,
+    # which nothing renders: the component defines render/1 inline, and that
+    # wins. Storage and display tests both passed while the picker was
+    # invisible, so these drive the editor itself.
+    test "offers the palette when editing an untinted vision", ctx do
+      v = vision(ctx.user)
+
+      {:ok, _live, html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :edit, v))
+
+      assert html =~ ">Tint<"
+
+      assert length(Regex.scan(~r/vision\[meta\]\[tint\]/, html)) ==
+               length(RoomSanctum.Tints.all()) + 1
+    end
+
+    test "offers the palette for a brand new vision", ctx do
+      {:ok, _live, html} = live(ctx.conn, Routes.vision_index_path(ctx.conn, :new))
+
+      assert length(Regex.scan(~r/vision\[meta\]\[tint\]/, html)) ==
+               length(RoomSanctum.Tints.all()) + 1
+    end
+
+    test "pre-selects the tint the vision already has", ctx do
+      v = vision(ctx.user, %{meta: %{tint: "teal"}})
+
+      {:ok, _live, html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :edit, v))
+
+      assert html =~ ~s(value="teal" class="sr-only" checked)
+      refute html =~ ~s(value="rose" class="sr-only" checked)
+    end
+
+    test "saving from the form keeps the tint", ctx do
+      v = vision(ctx.user)
+
+      {:ok, live, _html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :edit, v))
+
+      live
+      |> form("#vision-form", vision: %{name: "Dash", meta: %{tint: "orange"}})
+      |> render_submit()
+
+      assert Configuration.get_vision!(v.id).meta.tint == "orange"
+    end
+  end
+
   describe "showing it" do
     test "the vision list marks a tinted vision", ctx do
       vision(ctx.user, %{meta: %{tint: "teal"}})

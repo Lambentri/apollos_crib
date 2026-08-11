@@ -25,6 +25,41 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
         <.input field={@form[:public]} type="checkbox" label="Make this vision public" />
 
+        <.inputs_for :let={meta} field={@form[:meta]}>
+          <div class="form-control mt-4">
+            <label class="label label-text">Tint</label>
+            <div class="flex flex-wrap gap-2">
+              <%!-- The radio is sr-only; the swatch carries the whole state,
+                    the same way bulk paint does. --%>
+              <label class="cursor-pointer" title="No tint">
+                <input
+                  type="radio"
+                  name={meta[:tint].name}
+                  value=""
+                  class="sr-only"
+                  checked={meta[:tint].value in [nil, ""]}
+                />
+                <span class={"#{tint_swatch(meta[:tint].value in [nil, ""])} bg-base-300"}>
+                  <i class="fa-solid fa-ban text-xs opacity-60"></i>
+                </span>
+              </label>
+
+              <label :for={tint <- RoomSanctum.Tints.all()} class="cursor-pointer" title={tint}>
+                <input
+                  type="radio"
+                  name={meta[:tint].name}
+                  value={tint}
+                  class="sr-only"
+                  checked={to_string(meta[:tint].value) == tint}
+                />
+                <span class={"#{tint_swatch(to_string(meta[:tint].value) == tint)} bg-#{tint}-500"}>
+                  <i :if={to_string(meta[:tint].value) == tint} class="fa-solid fa-check text-xs text-white"></i>
+                </span>
+              </label>
+            </div>
+          </div>
+        </.inputs_for>
+
         <div class="mt-6">
           <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Queries</h3>
 
