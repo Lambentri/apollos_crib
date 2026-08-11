@@ -41,6 +41,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       # show that stop's routes rather than the whole system's.
       |> assign(:tester_route_ids, [])
       |> assign(:aircraft, [])
+      |> assign(:alerts, [])
       |> assign(:view_mode, :system)
       # Same palette the query form offers, so a tint picked here and one
       # picked there are drawn from the same set. Every entry needs its
@@ -88,6 +89,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _ -> []
     end
 
+    # Service alerts, for a GTFS source that has an alert feed configured.
+    alerts = current_alerts(socket.assigns.source, queries)
+
     # Whatever the ADS-B worker is currently holding across its watched areas.
     aircraft = current_aircraft(socket.assigns.source.type, socket.assigns.source_id)
 
@@ -113,6 +117,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
      |> assign(:station_statuses, station_statuses)
      |> assign(:route_types, route_types)
      |> assign(:aircraft, aircraft)
+     |> assign(:alerts, alerts)
      |> assign(:source_tint, source_tint)}
   end
 
@@ -164,6 +169,54 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:queries, queries)
       |> assign(:available_tints, get_available_tints(queries))
     }
+  end
+
+  # Alerts are only worth fetching for a source that publishes them; a GTFS
+  # source with no alert feed configured has nothing to say.
+  defp current_alerts(%{type: :gtfs, config: %{url_rt_sa: url}} = source, queries)
+       when is_binary(url) and url != "" do
+    if Code.ensure_loaded?(RoomGtfs.Worker) do
+      queried = queries |> Enum.map(&station_id_of/1) |> Enum.reject(&is_nil/1) |> MapSet.new()
+
+      source.id
+      |> RoomGtfs.Worker.current_alerts()
+      |> Enum.map(fn alert ->
+        touching = Enum.filter(alert.stop_ids, &MapSet.member?(queried, &1))
+        Map.put(alert, :queried_stop_ids, touching)
+      end)
+      # What already affects something you watch comes first -- that is the
+      # question the list is here to answer.
+      |> Enum.sort_by(fn alert -> {alert.queried_stop_ids == [], alert.header || ""} end)
+    else
+      []
+    end
+  end
+
+  defp current_alerts(_source, _queries), do: []
+
+  # GTFS effects are SCREAMING_SNAKE; a person reads "Stop moved".
+  def alert_effect_label(effect) do
+    effect
+    |> to_string()
+    |> String.downcase()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
+
+  # Anything that stops or diverts service is worth noticing before an
+  # accessibility notice or a construction hoarding.
+  def alert_effect_class("NO_SERVICE"), do: "badge-error"
+  def alert_effect_class("REDUCED_SERVICE"), do: "badge-warning"
+  def alert_effect_class("SIGNIFICANT_DELAYS"), do: "badge-warning"
+  def alert_effect_class("DETOUR"), do: "badge-warning"
+  def alert_effect_class("STOP_MOVED"), do: "badge-warning"
+  def alert_effect_class(_effect), do: "badge-ghost"
+
+  defp stop_name(stations, stop_id) do
+    case Enum.find(stations, &(&1.station_id == stop_id)) do
+      nil -> stop_id
+      station -> station.name || stop_id
+    end
   end
 
   # The worker is only running for an enabled source, and it holds nothing

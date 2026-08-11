@@ -66,6 +66,23 @@ defmodule RoomGtfs.Worker do
     end
   end
 
+  @doc """
+  Every alert currently in force, unfiltered.
+
+  query_alerts/3 answers "does this affect that stop"; this is the whole feed,
+  for looking over what a source is reporting and deciding what is worth a
+  query. Returns [] when the worker is not running or no alert feed is set.
+  """
+  def current_alerts(name) do
+    try do
+      "gtfs-rt#{name}"
+      |> via_tuple()
+      |> GenServer.call(:current_alerts, 10_000)
+    catch
+      :exit, _ -> []
+    end
+  end
+
   def get_current_vehicle_positions(name) do
     "gtfs-rt#{name}"
     |> via_tuple
@@ -333,6 +350,68 @@ defmodule RoomGtfs.Worker.RT do
     end
 
     {:reply, alerts, state}
+  end
+
+  def handle_call(:current_alerts, _from, state) do
+    now = System.os_time(:second)
+
+    alerts =
+      case state.rt_sa do
+        nil ->
+          []
+
+        feed ->
+          feed.entity
+          |> Enum.filter(& &1.alert)
+          |> Enum.filter(fn entity -> alert_active?(entity.alert, now) end)
+          |> Enum.map(&present_alert/1)
+      end
+
+    {:reply, alerts, state}
+  end
+
+  defp alert_active?(alert, now) do
+    case alert.active_period do
+      [] ->
+        true
+
+      periods ->
+        Enum.any?(periods, fn p ->
+          (p.start == nil or p.start <= now) and
+            (Map.get(p, :end) == nil or Map.get(p, :end) >= now)
+        end)
+    end
+  end
+
+  # An alert names what it affects as a list of informed entities, each of
+  # which may carry a route, a stop, both, or neither -- "neither" meaning the
+  # whole agency. Those ids are the thing worth reading: they say whether an
+  # alert touches anything you would want a query for.
+  defp present_alert(entity) do
+    alert = entity.alert
+
+    %{
+      id: entity.id,
+      effect: alert.effect |> to_string(),
+      cause: alert.cause |> to_string(),
+      header: get_translation(alert.header_text),
+      description: get_translation(alert.description_text),
+      url: get_translation(alert.url),
+      route_ids: informed(alert, :route_id),
+      stop_ids: informed(alert, :stop_id),
+      agency_wide?: Enum.any?(alert.informed_entity, fn e ->
+        e.route_id in [nil, ""] and e.stop_id in [nil, ""] and e.trip == nil
+      end),
+      starts_at: alert.active_period |> Enum.map(& &1.start) |> Enum.reject(&is_nil/1) |> Enum.min(fn -> nil end),
+      ends_at: alert.active_period |> Enum.map(&Map.get(&1, :end)) |> Enum.reject(&is_nil/1) |> Enum.max(fn -> nil end)
+    }
+  end
+
+  defp informed(alert, key) do
+    alert.informed_entity
+    |> Enum.map(&Map.get(&1, key))
+    |> Enum.reject(&(&1 in [nil, ""]))
+    |> Enum.uniq()
   end
 
   defp get_translation(nil), do: nil

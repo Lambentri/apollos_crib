@@ -479,6 +479,75 @@ gl_available_projects={@gitlab_available_projects}
             </div>
         </div>
     </div>
+    <%= if @alerts != [] do %>
+    <div class="flex">
+        <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">
+                    Service Alerts
+                    <span class="text-sm font-normal opacity-60">
+                        <%= length(@alerts) %> in force<%= if Enum.any?(@alerts, &(&1.queried_stop_ids != [])) do %>,
+                        <%= Enum.count(@alerts, &(&1.queried_stop_ids != [])) %> touching a query<% end %>
+                    </span>
+                </h3>
+
+                <%!-- Tall feeds are the norm -- MBTA runs 80-odd at once -- so
+                      this scrolls rather than pushing the page down. --%>
+                <div class="max-h-96 overflow-y-auto pr-1">
+                    <%= for alert <- @alerts do %>
+                        <div class={"border-l-4 pl-3 py-2 mb-2 #{if alert.queried_stop_ids != [], do: "border-accent bg-base-200", else: "border-base-300"}"}>
+                            <div class="flex items-start justify-between gap-2">
+                                <div class="font-semibold text-sm"><%= alert.header %></div>
+                                <span class={"badge badge-sm shrink-0 #{alert_effect_class(alert.effect)}"}>
+                                    <%= alert_effect_label(alert.effect) %>
+                                </span>
+                            </div>
+
+                            <%= if alert.description not in [nil, ""] do %>
+                                <div class="text-xs opacity-70 mt-1"><%= alert.description %></div>
+                            <% end %>
+
+                            <div class="text-xs mt-1 flex flex-wrap gap-1 items-center">
+                                <%= if alert.agency_wide? do %>
+                                    <span class="badge badge-xs badge-outline">whole agency</span>
+                                <% end %>
+                                <%= for route_id <- Enum.take(alert.route_ids, 8) do %>
+                                    <span class="badge badge-xs badge-outline"><%= route_id %></span>
+                                <% end %>
+                            </div>
+
+                            <%= if alert.stop_ids != [] do %>
+                                <div class="text-xs mt-1 flex flex-wrap gap-2 items-center">
+                                    <%= for stop_id <- Enum.take(alert.stop_ids, 8) do %>
+                                        <%= if stop_id in alert.queried_stop_ids do %>
+                                            <span class="text-accent">
+                                                <i class="fa-solid fa-circle-check mr-1"></i><%= stop_name(@stations, stop_id) %>
+                                            </span>
+                                        <% else %>
+                                            <span
+                                                class="cursor-pointer opacity-70 hover:opacity-100"
+                                                phx-click="map-add-query"
+                                                phx-value-station-id={stop_id}
+                                                phx-value-name={stop_name(@stations, stop_id)}
+                                                title={"Add a query for #{stop_name(@stations, stop_id)}"}
+                                            >
+                                                <i class="fa-solid fa-plus mr-1"></i><%= stop_name(@stations, stop_id) %>
+                                            </span>
+                                        <% end %>
+                                    <% end %>
+                                    <%= if length(alert.stop_ids) > 8 do %>
+                                        <span class="opacity-50">+<%= length(alert.stop_ids) - 8 %> more</span>
+                                    <% end %>
+                                </div>
+                            <% end %>
+                        </div>
+                    <% end %>
+                </div>
+            </div>
+        </div>
+    </div>
+    <% end %>
+
     <%= if @tester do %>
     <div class="flex">
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
