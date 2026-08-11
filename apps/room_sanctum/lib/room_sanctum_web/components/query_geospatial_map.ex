@@ -579,15 +579,31 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # The field is :place. This read :point, and since that was in a guard the
   # KeyError was swallowed and the clause simply never matched -- so a foci
   # has never resolved to anywhere, and no aqi query has ever been placed.
+  #
+  # A foci stores {lat, lon}, which is the reverse of the PostGIS convention
+  # everything else here follows -- gbfs stations and free bikes are {lon, lat}.
+  # That is how the foci picker writes it and how room_icarus reads it, so it
+  # is the convention, not a bug to correct: reading it the standard way put
+  # SFO in Antarctica, latitude clamped to -90.
   defp get_foci_coordinates(foci_id) do
     case RoomSanctum.Storage.get_foci_by_id(foci_id) do
-      %{place: %Geo.Point{coordinates: {lng, lat}}} -> {lat, lng}
+      %{place: %Geo.Point{coordinates: {lat, lon}}} -> on_earth(lat, lon)
       _ -> false
     end
   rescue
     # get_foci_by_id raises rather than returning nil for a foci that is gone.
     Ecto.NoResultsError -> false
   end
+
+  # Leaflet clamps an out-of-range latitude to the pole, so a point stored the
+  # other way round would be drawn confidently in the wrong hemisphere. Better
+  # to leave it off the map.
+  defp on_earth(lat, lon)
+       when is_number(lat) and is_number(lon) and
+              lat >= -90 and lat <= 90 and lon >= -180 and lon <= 180,
+       do: {lat, lon}
+
+  defp on_earth(_lat, _lon), do: false
 
   # Get coordinates from GTFS vehicle positions
   defp get_gtfs_vehicle_coordinates(source_id, query) do

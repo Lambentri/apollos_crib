@@ -24,7 +24,9 @@ defmodule RoomSanctumWeb.QueryPlacementTest do
       Configuration.create_foci(%{
         name: "Home",
         user_id: user.id,
-        place: %Geo.Point{coordinates: {-71.0589, 42.3601}, srid: 4326}
+        # {lat, lon} -- how the foci picker writes it, verified against the
+        # rows in the running database
+        place: %Geo.Point{coordinates: {42.3601, -71.0589}, srid: 4326}
       })
 
     %{user: user, foci: foci}
@@ -106,6 +108,53 @@ defmodule RoomSanctumWeb.QueryPlacementTest do
 
     refute html =~ ~s(name="AAPL")
     refute html =~ ~s(lat="0")
+  end
+
+  test "a foci is read the way the app writes it, not the PostGIS way", %{user: user} do
+    # Read as {lon, lat} this is latitude -71, which Leaflet clamps to the
+    # south pole -- SFO drawn in Antarctica.
+    {:ok, sfo} =
+      Configuration.create_foci(%{
+        name: "SFO",
+        user_id: user.id,
+        place: %Geo.Point{coordinates: {37.6226, -122.3843}, srid: 4326}
+      })
+
+    src = source(user, :ephem, %{"__type__" => "ephem"})
+
+    {:ok, query} =
+      Configuration.create_query(%{
+        name: "Above SFO", notes: "", source_id: src.id, user_id: user.id,
+        query: %{"__type__" => "ephem", "foci_id" => sfo.id}
+      })
+
+    html = render_queries([Configuration.get_query!(query.id)])
+
+    assert html =~ ~s(lat="37.6226")
+    assert html =~ ~s(lng="-122.3843")
+    refute html =~ ~s(lat="-122.3843")
+  end
+
+  test "a foci stored somewhere impossible is left off rather than drawn at the pole",
+       %{user: user} do
+    {:ok, broken} =
+      Configuration.create_foci(%{
+        name: "Broken",
+        user_id: user.id,
+        place: %Geo.Point{coordinates: {-122.3843, 37.6226}, srid: 4326}
+      })
+
+    src = source(user, :ephem, %{"__type__" => "ephem"})
+
+    {:ok, query} =
+      Configuration.create_query(%{
+        name: "Nowhere", notes: "", source_id: src.id, user_id: user.id,
+        query: %{"__type__" => "ephem", "foci_id" => broken.id}
+      })
+
+    html = render_queries([Configuration.get_query!(query.id)])
+
+    refute html =~ ~s(name="Nowhere")
   end
 
   test "placeable and unplaceable queries mix without either breaking", %{user: user, foci: foci} do
