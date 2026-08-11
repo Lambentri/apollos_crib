@@ -37,10 +37,10 @@
                   >
                     <i class={"fas fa-fw fa-star #{if v == @pythiae.curr_vision, do: "text-accent"}"}></i>
                   </button>
+                  <% vision = vision_by_id(v, @visions) %>
                   <a href={Routes.vision_show_path(@socket, :show, v)} class="text-sm hover:underline btn btn-sm btn-secondary gap-2">
-                    <% vision = get_by_id(v, @visions) %>
-                    <.tint_dot tint={vision.meta && vision.meta.tint} />
-                    <%= vision.name %>
+                    <.tint_dot tint={vision && vision.meta && vision.meta.tint} />
+                    <%= (vision && vision.name) || "Vision ##{v}" %>
                   </a>
                 </div>
               <% end%>
@@ -86,9 +86,17 @@
         <div class="card-body">
           <h3 class="card-title">Current Vision</h3>
           <p>
-            <a href={Routes.vision_show_path(@socket, :show, @pythiae.curr_vision)} class="text-sm hover:underline btn btn-secondary">
-              <%= get_by_id(@pythiae.curr_vision, @visions).name %>
-            </a>
+            <% current = vision_by_id(@pythiae.curr_vision, @visions) %>
+            <%= if current do %>
+              <a href={Routes.vision_show_path(@socket, :show, current.id)} class="text-sm hover:underline btn btn-secondary gap-2">
+                <.tint_dot tint={current.meta && current.meta.tint} />
+                <%= current.name %>
+              </a>
+            <% else %>
+              <span class="text-sm opacity-60">
+                <%= if @pythiae.curr_vision, do: "Vision ##{@pythiae.curr_vision} is gone", else: "None set" %>
+              </span>
+            <% end %>
           </p>
         </div>
       </div>

@@ -109,6 +109,16 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     end
   end
 
+  @doc """
+  The vision with this id, or nil.
+
+  get_by_id/2 hands back the id itself when the list is empty and nil when the
+  id is not in it, so `get_by_id(...).name` raises three ways: no visions
+  loaded, an id pointing at a deleted vision, and no current vision set at all.
+  A pythiae that has never had one would take the whole page down.
+  """
+  def vision_by_id(id, visions), do: Enum.find(visions, &(&1.id == id))
+
   def get_by_id(id, array) do
     case array do
       [] -> id
