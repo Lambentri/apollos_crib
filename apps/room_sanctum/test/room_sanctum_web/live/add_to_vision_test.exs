@@ -180,6 +180,80 @@ defmodule RoomSanctumWeb.AddToVisionTest do
     end
   end
 
+  describe "taking a query back out" do
+    defp remove(conn, query, vision) do
+      {:ok, live, _html} = live(conn, Routes.query_show_path(conn, :show, query))
+      send(live.pid, :update_sec)
+      _ = render(live)
+      render_click(live, "remove-from", %{"vision" => to_string(vision.id)})
+      Process.sleep(50)
+      Configuration.get_vision!(vision.id)
+    end
+
+    test "drops the query from both halves", ctx do
+      q = query(ctx, "AAPL")
+      add(ctx.conn, q, ctx.vision)
+
+      vision = remove(ctx.conn, q, ctx.vision)
+
+      assert vision.query_ids == []
+      assert vision.queries == []
+    end
+
+    test "the query page stops listing the vision", ctx do
+      q = query(ctx, "AAPL")
+      add(ctx.conn, q, ctx.vision)
+      assert length(Configuration.get_visions(:query, to_string(q.id))) == 1
+
+      remove(ctx.conn, q, ctx.vision)
+
+      assert Configuration.get_visions(:query, to_string(q.id)) == []
+    end
+
+    test "the vision is offered again afterwards", ctx do
+      q = query(ctx, "AAPL")
+      add(ctx.conn, q, ctx.vision)
+      assert Configuration.get_visions_nv(:query, to_string(q.id)) == []
+
+      remove(ctx.conn, q, ctx.vision)
+
+      assert length(Configuration.get_visions_nv(:query, to_string(q.id))) == 1
+    end
+
+    test "the other queries in that vision are left alone", ctx do
+      a = query(ctx, "AAPL")
+      b = query(ctx, "MSFT")
+      add(ctx.conn, a, ctx.vision)
+      add(ctx.conn, b, ctx.vision)
+
+      vision = remove(ctx.conn, a, ctx.vision)
+
+      assert vision.query_ids == [b.id]
+      assert length(vision.queries) == 1
+    end
+
+    test "removing something already gone is not an error", ctx do
+      q = query(ctx, "AAPL")
+
+      vision = remove(ctx.conn, q, ctx.vision)
+
+      assert vision.query_ids in [nil, []]
+    end
+
+    test "the button only appears while the panel is open", ctx do
+      q = query(ctx, "AAPL")
+      add(ctx.conn, q, ctx.vision)
+
+      {:ok, live, _html} = live(ctx.conn, Routes.query_show_path(ctx.conn, :show, q))
+      send(live.pid, :update_sec)
+      closed = render(live)
+      refute closed =~ ~s(phx-click="remove-from")
+
+      open = render_click(live, "toggle-sel", %{})
+      assert open =~ ~s(phx-click="remove-from")
+    end
+  end
+
   defp conn_for(ctx), do: ctx.conn
 
   test "a third query still lands", ctx do

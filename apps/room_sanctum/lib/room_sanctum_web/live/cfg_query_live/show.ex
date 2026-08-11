@@ -268,6 +268,31 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     end
   end
 
+  def handle_event("remove-from", %{"vision" => vision}, socket) do
+    Process.send_after(self(), :update_sec, 200)
+
+    vision = Configuration.get_vision!(vision)
+    query_id = String.to_integer(socket.assigns.query_id)
+
+    # Both halves again: drop every embed pointing at this query -- there may
+    # be more than one, since re-pinning used to duplicate them -- and the id.
+    queries =
+      vision.queries
+      |> Poison.encode!()
+      |> Poison.decode!()
+      |> Enum.reject(fn q -> to_string(get_in(q, ["data", "query"])) == to_string(query_id) end)
+
+    query_ids = (vision.query_ids || []) -- [query_id]
+
+    case Configuration.update_vision_ni(vision, %{queries: queries, query_ids: query_ids}) do
+      {:ok, _vision} ->
+        {:noreply, socket}
+
+      {:error, _changeset} ->
+        {:noreply, put_flash(socket, :error, "Could not remove this from #{vision.name}")}
+    end
+  end
+
   # A vision records its queries twice: an embedded list that renders, and an
   # id array every "is this query in a vision" lookup reads. Both have to move.
   defp pin_query(vision, socket) do
