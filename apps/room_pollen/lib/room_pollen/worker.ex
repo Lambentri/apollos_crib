@@ -147,7 +147,7 @@ defmodule RoomPollen.Worker do
   defp resolve_foci(foci_id) do
     try do
       case Configuration.get_foci!(foci_id) do
-        %{place: %{coordinates: {lat, lng}}} -> {lat, lng}
+        %{place: %{coordinates: {lng, lat}}} -> {lat, lng}
         _ -> nil
       end
     rescue

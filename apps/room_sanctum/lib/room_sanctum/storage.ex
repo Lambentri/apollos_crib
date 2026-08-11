@@ -3001,7 +3001,7 @@ defmodule RoomSanctum.Storage do
 
   def get_upcoming_calendar_entries(source_id, query) do
     foci = Configuration.get_foci!(query.foci_id)
-    {lat, lon} = foci.place.coordinates
+    {lon, lat} = foci.place.coordinates
     tz = WhereTZ.lookup(lat, lon)
     # todo make this configurable from somewhere
     now = DateTime.new!(Date.utc_today(), Time.new!(0, 0, 0), tz)

@@ -13,7 +13,7 @@ defmodule RoomCronos.Worker do
   def query_cronos(name, query) do
     q = Configuration.get_query!(name)
     foci = Configuration.get_foci!(query.foci_id)
-    {lat, lon} = foci.place.coordinates
+    {lon, lat} = foci.place.coordinates
     tz = WhereTZ.lookup(lat, lon)
     now = DateTime.now!(tz)
 

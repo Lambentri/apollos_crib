@@ -327,7 +327,7 @@ defmodule RoomIcarus.Worker do
   defp resolve_foci(foci_id) do
     try do
       case Configuration.get_foci!(foci_id) do
-        %{place: %{coordinates: {lat, lon}}} -> {lat, lon}
+        %{place: %{coordinates: {lon, lat}}} -> {lat, lon}
         _ -> nil
       end
     rescue

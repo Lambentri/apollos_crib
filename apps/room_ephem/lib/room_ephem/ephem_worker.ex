@@ -98,7 +98,7 @@ defmodule RoomEphem.Worker do
   def query_ephem(_name, query) do
     IO.inspect("QEPH")
     foci = Configuration.get_foci!(query.foci_id)
-    {lat, lon} = foci.place.coordinates
+    {lon, lat} = foci.place.coordinates
     lat = normalize_ll(lat)
     lon = normalize_ll(lon)
 

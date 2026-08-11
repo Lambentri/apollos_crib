@@ -24,7 +24,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
 
     # Extract coordinates if they exist
     {lat, lng} = case foci.place do
-      %Geo.Point{coordinates: {lat, lng}} -> {lat, lng}
+      %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
       _ -> {nil, nil}
     end
 
@@ -90,7 +90,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
     case parse_coordinates(coords_str) do
       {:ok, {lat, lng}} ->
         lat_lng_pt = %Geo.Point{
-          coordinates: {normalize_ll(lat), normalize_ll(lng)},
+          coordinates: {normalize_ll(lng), normalize_ll(lat)},
           srid: 4326
         }
 
@@ -133,7 +133,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
     case {lat_val, lng_val} do
       {{:ok, lat_f}, {:ok, lng_f}} when lat_f >= -90 and lat_f <= 90 and lng_f >= -180 and lng_f <= 180 ->
         lat_lng_pt = %Geo.Point{
-          coordinates: {normalize_ll(lat_f), normalize_ll(lng_f)},
+          coordinates: {normalize_ll(lng_f), normalize_ll(lat_f)},
           srid: 4326
         }
 

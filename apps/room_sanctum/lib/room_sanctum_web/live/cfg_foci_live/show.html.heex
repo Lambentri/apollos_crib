@@ -25,18 +25,19 @@
         <div class="card-body">
           <h3 class="card-title">Coordinates</h3>
           <div class="grid grid-cols-2 gap-4">
+            <%!-- Stored {lon, lat}, as PostGIS expects. --%>
             <div>
               <p class="text-sm font-semibold text-gray-600">Latitude</p>
-              <p class="text-lg font-mono"><%= elem(@foci.place.coordinates, 0) |> Float.round(6) %></p>
+              <p class="text-lg font-mono"><%= elem(@foci.place.coordinates, 1) |> Float.round(6) %></p>
             </div>
             <div>
               <p class="text-sm font-semibold text-gray-600">Longitude</p>
-              <p class="text-lg font-mono"><%= elem(@foci.place.coordinates, 1) |> Float.round(6) %></p>
+              <p class="text-lg font-mono"><%= elem(@foci.place.coordinates, 0) |> Float.round(6) %></p>
             </div>
           </div>
           <div class="mt-2">
             <a 
-              href={"https://www.openstreetmap.org/?mlat=#{elem(@foci.place.coordinates, 0)}&mlon=#{elem(@foci.place.coordinates, 1)}#map=15/#{elem(@foci.place.coordinates, 0)}/#{elem(@foci.place.coordinates, 1)}"}
+              href={"https://www.openstreetmap.org/?mlat=#{elem(@foci.place.coordinates, 1)}&mlon=#{elem(@foci.place.coordinates, 0)}#map=15/#{elem(@foci.place.coordinates, 1)}/#{elem(@foci.place.coordinates, 0)}"}
               target="_blank"
               class="link link-primary text-sm"
             >
@@ -44,7 +45,7 @@
             </a>
             <span class="mx-2">•</span>
             <a 
-              href={"https://www.google.com/maps?q=#{elem(@foci.place.coordinates, 0)},#{elem(@foci.place.coordinates, 1)}"}
+              href={"https://www.google.com/maps?q=#{elem(@foci.place.coordinates, 1)},#{elem(@foci.place.coordinates, 0)}"}
               target="_blank"
               class="link link-primary text-sm"
             >

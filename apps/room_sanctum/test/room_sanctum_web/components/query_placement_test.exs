@@ -24,9 +24,8 @@ defmodule RoomSanctumWeb.QueryPlacementTest do
       Configuration.create_foci(%{
         name: "Home",
         user_id: user.id,
-        # {lat, lon} -- how the foci picker writes it, verified against the
-        # rows in the running database
-        place: %Geo.Point{coordinates: {42.3601, -71.0589}, srid: 4326}
+        # {lon, lat}, as PostGIS expects and as the foci picker now writes
+        place: %Geo.Point{coordinates: {-71.0589, 42.3601}, srid: 4326}
       })
 
     %{user: user, foci: foci}
@@ -110,14 +109,14 @@ defmodule RoomSanctumWeb.QueryPlacementTest do
     refute html =~ ~s(lat="0")
   end
 
-  test "a foci is read the way the app writes it, not the PostGIS way", %{user: user} do
-    # Read as {lon, lat} this is latitude -71, which Leaflet clamps to the
-    # south pole -- SFO drawn in Antarctica.
+  test "a foci is read lon-first, as it is stored", %{user: user} do
+    # Read the other way round this is latitude -122, which Leaflet clamps to
+    # the south pole -- SFO drawn in Antarctica, which is what used to happen.
     {:ok, sfo} =
       Configuration.create_foci(%{
         name: "SFO",
         user_id: user.id,
-        place: %Geo.Point{coordinates: {37.6226, -122.3843}, srid: 4326}
+        place: %Geo.Point{coordinates: {-122.3843, 37.6226}, srid: 4326}
       })
 
     src = source(user, :ephem, %{"__type__" => "ephem"})
@@ -141,7 +140,8 @@ defmodule RoomSanctumWeb.QueryPlacementTest do
       Configuration.create_foci(%{
         name: "Broken",
         user_id: user.id,
-        place: %Geo.Point{coordinates: {-122.3843, 37.6226}, srid: 4326}
+        # latitude -122 cannot exist
+        place: %Geo.Point{coordinates: {37.6226, -122.3843}, srid: 4326}
       })
 
     src = source(user, :ephem, %{"__type__" => "ephem"})

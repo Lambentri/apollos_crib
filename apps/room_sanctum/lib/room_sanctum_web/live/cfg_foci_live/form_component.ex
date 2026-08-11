@@ -58,8 +58,9 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
   end
 
   def handle_event("map-update", %{"latlng" => latlng}, socket) do
+    # {lon, lat}, as PostGIS and GeoJSON expect.
     lat_lng_pt = %Geo.Point{
-      coordinates: {latlng["lat"] |> normalize_ll, latlng["lng"] |> normalize_ll},
+      coordinates: {latlng["lng"] |> normalize_ll, latlng["lat"] |> normalize_ll},
       srid: 4326
     }
 

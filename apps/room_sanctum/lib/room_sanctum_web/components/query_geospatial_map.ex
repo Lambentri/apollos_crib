@@ -587,7 +587,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # SFO in Antarctica, latitude clamped to -90.
   defp get_foci_coordinates(foci_id) do
     case RoomSanctum.Storage.get_foci_by_id(foci_id) do
-      %{place: %Geo.Point{coordinates: {lat, lon}}} -> on_earth(lat, lon)
+      %{place: %Geo.Point{coordinates: {lon, lat}}} -> on_earth(lat, lon)
       _ -> false
     end
   rescue
