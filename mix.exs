@@ -32,6 +32,8 @@ defmodule ApollosCrib.MixProject do
             room_treasury: :permanent,
             room_bourse: :permanent,
             room_scribes: :permanent,
+            room_pollen: :permanent,
+            room_drought: :permanent,
             runtime_tools: :permanent
           ]
         ]
