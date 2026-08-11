@@ -94,8 +94,9 @@ defmodule RoomSanctumWeb.SourceLiveBulkPaintTest do
       for query <- queries do
         radios = Regex.scan(~r/name="tint-#{query.id}"/, html) |> length()
 
-        # nine tints in the palette, plus the "no tint" option
-        assert radios == 10, "query #{query.id} rendered #{radios} radios"
+        # every tint in the palette, plus the "no tint" option
+        expected = length(RoomSanctum.Tints.all()) + 1
+        assert radios == expected, "query #{query.id} rendered #{radios} radios"
       end
     end
 

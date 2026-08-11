@@ -1,0 +1,125 @@
+defmodule RoomSanctumWeb.VisionTintTest do
+  @moduledoc """
+  A vision can carry a tint, the same way a source or a query does.
+  """
+  use RoomSanctumWeb.ConnCase
+
+  import Phoenix.LiveViewTest
+
+  alias RoomSanctum.{Accounts, Configuration}
+
+  setup %{conn: conn} do
+    {:ok, user} =
+      Accounts.register_user(%{
+        email: "tint#{System.unique_integer([:positive])}@example.com",
+        password: "hello world!hello world!"
+      })
+
+    %{conn: log_in_user(conn, user), user: user}
+  end
+
+  defp vision(user, attrs \\ %{}) do
+    {:ok, vision} =
+      Configuration.create_vision(Map.merge(%{name: "Dash", user_id: user.id}, attrs))
+
+    vision
+  end
+
+  describe "storing a tint" do
+    test "a vision keeps the colour it was given", ctx do
+      v = vision(ctx.user, %{meta: %{tint: "teal"}})
+
+      assert Configuration.get_vision!(v.id).meta.tint == "teal"
+    end
+
+    test "a vision without one is fine", ctx do
+      v = vision(ctx.user)
+
+      assert v.meta == nil or v.meta.tint == nil
+    end
+
+    test "the tint can be changed and cleared", ctx do
+      v = vision(ctx.user, %{meta: %{tint: "teal"}})
+
+      {:ok, v} = Configuration.update_vision(v, %{meta: %{tint: "rose"}})
+      assert v.meta.tint == "rose"
+
+      {:ok, v} = Configuration.update_vision(v, %{meta: %{tint: ""}})
+      assert v.meta.tint == nil
+    end
+
+    test "a colour with no stylesheet behind it is refused", ctx do
+      assert {:error, changeset} =
+               Configuration.create_vision(%{
+                 name: "Bad", user_id: ctx.user.id, meta: %{tint: "chartreuse"}
+               })
+
+      assert %{tint: ["unknown colour"]} =
+               changeset
+               |> Ecto.Changeset.get_change(:meta)
+               |> Map.fetch!(:errors)
+               |> Enum.into(%{}, fn {field, {msg, _opts}} -> {field, [msg]} end)
+    end
+
+    test "daisyui's neutral is refused, since it has no numbered scale", ctx do
+      assert {:error, _} =
+               Configuration.create_vision(%{
+                 name: "Bad", user_id: ctx.user.id, meta: %{tint: "neutral"}
+               })
+    end
+
+    test "every colour the picker offers is accepted", ctx do
+      for tint <- RoomSanctum.Tints.all() do
+        assert {:ok, v} =
+                 Configuration.create_vision(%{
+                   name: "V #{tint}", user_id: ctx.user.id, meta: %{tint: tint}
+                 })
+
+        assert v.meta.tint == tint
+      end
+    end
+  end
+
+  describe "showing it" do
+    test "the vision list marks a tinted vision", ctx do
+      vision(ctx.user, %{meta: %{tint: "teal"}})
+
+      {:ok, _live, html} = live(ctx.conn, Routes.vision_index_path(ctx.conn, :index))
+
+      assert html =~ "text-teal-500"
+    end
+
+    test "an untinted vision gets no dot", ctx do
+      vision(ctx.user)
+
+      {:ok, _live, html} = live(ctx.conn, Routes.vision_index_path(ctx.conn, :index))
+
+      refute html =~ "fa-circle mr-2 text-"
+    end
+
+    test "a query's page shows the tint of the visions it belongs to", ctx do
+      {:ok, source} =
+        Configuration.create_source(%{
+          name: "Markets", notes: "", type: :bourse, enabled: true,
+          user_id: ctx.user.id, config: %{"__type__" => "bourse"}
+        })
+
+      {:ok, query} =
+        Configuration.create_query(%{
+          name: "AAPL", notes: "", source_id: source.id, user_id: ctx.user.id,
+          query: %{"__type__" => "bourse", "symbol" => "AAPL"}
+        })
+
+      v = vision(ctx.user, %{meta: %{tint: "fuchsia"}})
+
+      {:ok, live, _html} = live(ctx.conn, Routes.query_show_path(ctx.conn, :show, query))
+      send(live.pid, :update_sec)
+      _ = render(live)
+      render_click(live, "add-to", %{"vision" => to_string(v.id)})
+      Process.sleep(50)
+      send(live.pid, :update_sec)
+
+      assert render(live) =~ "text-fuchsia-500"
+    end
+  end
+end

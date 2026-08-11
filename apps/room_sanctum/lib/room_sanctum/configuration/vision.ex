@@ -9,6 +9,10 @@ defmodule RoomSanctum.Configuration.Vision do
     embeds_many :queries, RoomSanctum.Configuration.Vision.Schema, on_replace: :delete
     field :public, :boolean
 
+    embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
+      field :tint, :string
+    end
+
     timestamps()
     field :query_ids, {:array, :integer}
   end
@@ -17,10 +21,27 @@ defmodule RoomSanctum.Configuration.Vision do
   def changeset(vision, attrs) do
     vision
     |> cast(attrs, [:name, :user_id, :query_ids, :public])
+    |> cast_embed(:meta, required: false, with: &meta_changeset/2)
     |> cast_embed(:queries, with: &RoomSanctum.Configuration.Vision.Schema.changeset/2, sort_param: :queries_sort, drop_param: :queries_drop)
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
     |> validate_queries_have_valid_ids()
+  end
+
+  def meta_changeset(meta, attrs \\ %{}) do
+    meta
+    |> cast(attrs, [:tint])
+    |> validate_tint()
+  end
+
+  # A tint that is not in the palette has no stylesheet behind it, so it would
+  # render as an unstyled dot rather than a colour.
+  defp validate_tint(changeset) do
+    case get_field(changeset, :tint) do
+      nil -> changeset
+      "" -> put_change(changeset, :tint, nil)
+      tint -> if RoomSanctum.Tints.valid?(tint), do: changeset, else: add_error(changeset, :tint, "unknown colour")
+    end
   end
 
   defp validate_queries_have_valid_ids(changeset) do

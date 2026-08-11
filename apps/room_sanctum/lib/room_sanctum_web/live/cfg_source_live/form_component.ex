@@ -279,7 +279,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
      socket
      |> assign(assigns)
      |> assign(:mailbox_sel, mailbox_sel)
-     |> assign(:tint_opts, ["red", "amber", "lime", "emerald", "sky", "violet", "fuchsia", "rose", "stone", "slate", "zinc"])
+     |> assign(:tint_opts, RoomSanctum.Tints.all())
      |> assign(:run_period_idx, run_period_idx)
      |> assign(:github_poll_idx, github_secs_to_idx(gh_secs))
      |> assign(:github_estimate, gh_estimate)

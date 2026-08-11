@@ -24,7 +24,7 @@ defmodule RoomSanctumWeb.QueryLive.FormComponent do
       |> assign(assigns)
       |> assign_form(changeset)
       |> assign(:changeset, changeset)
-      |> assign(:tint_opts, ["amber", "lime", "emerald", "sky", "violet", "fuchsia", "rose", "stone", "slate"])
+      |> assign(:tint_opts, RoomSanctum.Tints.all())
       |> assign(:cfg_sources, sources)
       |> assign(:cfg_foci, focis)
       |> assign(:current_type, current_type)

@@ -79,7 +79,9 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   @impl true
   def update(%{vision: vision} = assigns, socket) do
-    changeset = Configuration.change_vision(vision)
+    # inputs_for renders nothing for a nil embed, so a vision that has never
+    # been tinted would show no picker at all.
+    changeset = vision |> with_meta() |> Configuration.change_vision()
 
     {:ok,
       socket
@@ -222,6 +224,19 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
 
   defp assign_form(socket, %Ecto.Changeset{} = changeset) do
     assign(socket, :form, to_form(changeset))
+  end
+
+  defp with_meta(%{meta: nil} = vision),
+    do: %{vision | meta: %RoomSanctum.Configuration.Vision.Meta{}}
+
+  defp with_meta(vision), do: vision
+
+  defp tint_swatch(selected?) do
+    base = "flex items-center justify-center w-7 h-7 rounded-full"
+
+    if selected?,
+      do: base <> " ring-2 ring-offset-2 ring-offset-base-100 ring-base-content",
+      else: base <> " opacity-70 hover:opacity-100"
   end
 
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})

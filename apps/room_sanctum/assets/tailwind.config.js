@@ -83,6 +83,17 @@ module.exports = {
         '../lib/*_web.ex',
         '../lib/*_web/**/*.*ex'
     ],
+    // Tint classes are assembled at runtime -- text-${tint}-500 and friends --
+    // so nothing in the source ever contains them for Tailwind to find. Until
+    // now they survived only because of literal dummy spans in a few
+    // templates, which is why text-red-500 was missing while bg-red-500 was
+    // not. Keep this in step with RoomSanctum.Tints.
+    safelist: [
+        {
+            pattern: /^(text|bg|border|ring)-(red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose|slate|gray|zinc|stone)-(50|100|200|300|400|500|600|700|800|900)$/,
+            variants: ['hover'],
+        },
+    ],
     theme: {
         extend: {},
     },

@@ -371,10 +371,15 @@ defmodule RoomSanctum.Configuration do
     |> Repo.update()
   end
 
-  defp inj_fake_ids(attrs) do
-    q = attrs["queries"] |> Enum.map(fn {ctr, val} -> val |> Map.put("id", ctr) end)
-    Map.put(attrs, "queries", q)
+  # The form submits its queries as an index-keyed map and each one needs an id
+  # to survive the round trip. Anything else -- an update that only touches the
+  # name, or the tint -- has no queries to renumber and used to die on
+  # `nil |> Enum.map`.
+  defp inj_fake_ids(%{"queries" => queries} = attrs) when is_map(queries) or is_list(queries) do
+    Map.put(attrs, "queries", Enum.map(queries, fn {ctr, val} -> Map.put(val, "id", ctr) end))
   end
+
+  defp inj_fake_ids(attrs), do: attrs
 
   @doc """
   Deletes a vision.

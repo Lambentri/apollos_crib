@@ -183,6 +183,7 @@
         <%= for v <- @visions do %>
           <div class="flex gap-2 mx-2">
             <%= live_patch to: Routes.vision_show_path(@socket, :show, v.id), class: "btn btn-primary gap-2 grow" do %>
+              <i :if={v.meta && v.meta.tint} class={"fa-solid fa-circle text-#{v.meta && v.meta.tint}-500"}></i>
               <%= v.name %>
             <% end %>
             <%!-- Only while the panel is open, so the usual view of "the
@@ -205,7 +206,10 @@
               <%!-- Direct children of the card body, so they stretch the same
                     way the visions this query already belongs to do. --%>
               <%= for v <- @avail_visions do %>
-                <div class="btn btn-secondary gap-2 float-left mx-2" phx-click="add-to" phx-value-vision={v.id}><%= v.name %></div>
+                <div class="btn btn-secondary gap-2 float-left mx-2" phx-click="add-to" phx-value-vision={v.id}>
+                  <i :if={v.meta && v.meta.tint} class={"fa-solid fa-circle text-#{v.meta && v.meta.tint}-500"}></i>
+                  <%= v.name %>
+                </div>
               <% end %>
             <% end %>
 

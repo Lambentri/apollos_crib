@@ -43,11 +43,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:aircraft, [])
       |> assign(:alerts, [])
       |> assign(:view_mode, :system)
-      # Same palette the query form offers, so a tint picked here and one
-      # picked there are drawn from the same set. Every entry needs its
-      # bg-<tint>-500 to survive Tailwind's purge -- the literal swatches in
-      # cfg_query_live/form_component.html.heex are what keep them alive.
-      |> assign(:tint_opts, ~w(amber lime emerald sky violet fuchsia rose stone slate))
+      |> assign(:tint_opts, RoomSanctum.Tints.all())
       |> assign(:gitlab_config_open, false)
       |> assign(:gitlab_available_projects, [])
       |> assign(:github_config_open, false)
