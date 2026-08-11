@@ -31,4 +31,6 @@ EXPOSE 4002
 EXPOSE 4001
 WORKDIR /opt/app
 COPY --from=0 /opt/release .
-CMD exec /opt/app/bin/start_server start
+COPY rel/entrypoint.sh /opt/app/entrypoint.sh
+RUN chmod +x /opt/app/entrypoint.sh
+CMD ["/opt/app/entrypoint.sh"]
