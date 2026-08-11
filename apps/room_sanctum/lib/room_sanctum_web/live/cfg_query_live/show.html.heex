@@ -142,13 +142,12 @@
       <div class="card-body">
         <h3 class="card-title flex justify-between">
           Visions
-          <%= if @avail_visions != [] do %>
-            <%= if @avail_sel do %>
-              <span class="" phx-click="toggle-sel"><i class="fa-solid fa-minus"></i></span>
-            <% else %>
-              <span class="" phx-click="toggle-sel"><i class="fa-solid fa-plus"></i></span>
-            <% end %>
-
+          <%!-- Shown even with nothing to add to: that is when you want to
+                make a vision, not when you are locked out of the panel. --%>
+          <%= if @avail_sel do %>
+            <span class="cursor-pointer" phx-click="toggle-sel"><i class="fa-solid fa-minus"></i></span>
+          <% else %>
+            <span class="cursor-pointer" phx-click="toggle-sel"><i class="fa-solid fa-plus"></i></span>
           <% end %>
         </h3>
         <%= for v <- @visions do %>
@@ -157,10 +156,28 @@
           <% end %>
         <% end%>
         <%= if @avail_sel do %>
-            <h4 class="text-xl text-accent font-bold">Add to</h4>
-            <%= for v <- @avail_visions do %>
-                <div class="btn btn-secondary gap-2 float-left mx-2" phx-click="add-to" phx-value-vision={v.id}><%= v.name %></div>
+            <%= if @avail_visions != [] do %>
+              <h4 class="text-xl text-accent font-bold">Add to</h4>
+              <div class="flex flex-wrap gap-2">
+                <%= for v <- @avail_visions do %>
+                  <div class="btn btn-secondary gap-2" phx-click="add-to" phx-value-vision={v.id}><%= v.name %></div>
+                <% end %>
+              </div>
             <% end %>
+
+            <h4 class="text-xl text-accent font-bold mt-4">Or a new one</h4>
+            <form phx-submit="add-to-new" class="flex gap-2 items-center max-w-md">
+              <input
+                type="text"
+                name="vision[name]"
+                placeholder="Morning commute"
+                autocomplete="off"
+                class="input input-bordered input-sm w-full"
+              />
+              <button type="submit" class="btn btn-accent btn-sm shrink-0">
+                <i class="fa-solid fa-plus mr-1"></i>Create
+              </button>
+            </form>
         <% end %>
       </div>
     </div>

@@ -101,6 +101,87 @@ defmodule RoomSanctumWeb.AddToVisionTest do
     assert length(vision.queries) == 1
   end
 
+  describe "into a vision that does not exist yet" do
+    defp create_with(conn, query, name) do
+      {:ok, live, _html} = live(conn, Routes.query_show_path(conn, :show, query))
+      send(live.pid, :update_sec)
+      _ = render(live)
+      html = render_submit(live, "add-to-new", %{"vision" => %{"name" => name}})
+      Process.sleep(50)
+      html
+    end
+
+    test "creates the vision and pins the query to it", ctx do
+      q = query(ctx, "AAPL")
+
+      create_with(ctx.conn, q, "Morning commute")
+
+      vision =
+        Configuration.list_visions()
+        |> Enum.find(&(&1.name == "Morning commute"))
+
+      assert vision
+      assert vision.query_ids == [q.id]
+      assert length(vision.queries) == 1
+    end
+
+    test "the query page then shows it", ctx do
+      q = query(ctx, "AAPL")
+
+      create_with(ctx.conn, q, "Morning commute")
+
+      visions = Configuration.get_visions(:query, to_string(q.id))
+      assert Enum.map(visions, & &1.name) == ["Morning commute"]
+    end
+
+    test "the form is offered even when there is nothing to add to", ctx do
+      q = query(ctx, "AAPL")
+
+      # the only vision already holds it, so the "add to" list is empty
+      add(ctx.conn, q, ctx.vision)
+
+      {:ok, live, _html} = live(conn_for(ctx), Routes.query_show_path(ctx.conn, :show, q))
+      send(live.pid, :update_sec)
+      _ = render(live)
+      html = render_click(live, "toggle-sel", %{})
+
+      assert html =~ ~s(phx-submit="add-to-new")
+    end
+
+    test "a blank name is refused rather than making an unnamed vision", ctx do
+      q = query(ctx, "AAPL")
+      before = length(Configuration.list_visions())
+
+      html = create_with(ctx.conn, q, "   ")
+
+      assert html =~ "Give the vision a name"
+      assert length(Configuration.list_visions()) == before
+    end
+
+    test "the new vision belongs to the user who made it", ctx do
+      q = query(ctx, "AAPL")
+
+      create_with(ctx.conn, q, "Mine")
+
+      vision = Configuration.list_visions() |> Enum.find(&(&1.name == "Mine"))
+      assert vision.user_id == ctx.user.id
+    end
+
+    test "two new visions from the same query both hold it", ctx do
+      q = query(ctx, "AAPL")
+
+      create_with(ctx.conn, q, "One")
+      create_with(ctx.conn, q, "Two")
+
+      for name <- ["One", "Two"] do
+        vision = Configuration.list_visions() |> Enum.find(&(&1.name == name))
+        assert vision.query_ids == [q.id], "#{name} did not get the query"
+      end
+    end
+  end
+
+  defp conn_for(ctx), do: ctx.conn
+
   test "a third query still lands", ctx do
     queries = for symbol <- ~w(AAPL MSFT GOOG), do: query(ctx, symbol)
 

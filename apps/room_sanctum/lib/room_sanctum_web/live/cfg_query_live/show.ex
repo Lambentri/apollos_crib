@@ -238,39 +238,69 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   def handle_event("add-to", %{"vision" => vision}, socket) do
     Process.send_after(self(), :update_sec, 200)
-    vis = Configuration.get_vision!(vision)
-    query_id = String.to_integer(socket.assigns.query_id)
-    existing_ids = vis.query_ids || []
 
-    cond do
-      query_id in existing_ids ->
-        {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+    vision
+    |> Configuration.get_vision!()
+    |> pin_query(socket)
+  end
 
-      true ->
-        new_query = %{
-          id: nil,
-          data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"},
-          type: "pinned"
-        }
+  # Create a vision around this query, for when the one you want does not exist
+  # yet -- otherwise pinning the first query to a new vision means leaving the
+  # page, making it, and coming back.
+  def handle_event("add-to-new", %{"vision" => %{"name" => name}}, socket) do
+    Process.send_after(self(), :update_sec, 200)
 
-        queries = (vis.queries |> Poison.encode!() |> Poison.decode!()) ++ [new_query]
+    case String.trim(name) do
+      "" ->
+        {:noreply, put_flash(socket, :error, "Give the vision a name")}
 
-        # `||` binds looser than `++`, so `vis.query_ids || [] ++ [id]` read as
-        # `query_ids || ([] ++ [id])` and handed back the existing list
-        # untouched. The embed grew, the ids did not, and the second query
-        # added to any vision silently went nowhere.
-        query_ids = existing_ids ++ [query_id]
-
-        case Configuration.update_vision_ni(vis, %{queries: queries, query_ids: query_ids}) do
-          {:ok, _vision} ->
-            {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+      name ->
+        case Configuration.create_vision(%{
+               name: name,
+               user_id: socket.assigns.current_user.id
+             }) do
+          {:ok, vision} ->
+            pin_query(vision, socket)
 
           {:error, _changeset} ->
-            {:noreply,
-             socket
-             |> put_flash(:error, "Could not add this to #{vis.name}")
-             |> assign(:avail_sel, !socket.assigns.avail_sel)}
+            {:noreply, put_flash(socket, :error, "Could not create #{name}")}
         end
+    end
+  end
+
+  # A vision records its queries twice: an embedded list that renders, and an
+  # id array every "is this query in a vision" lookup reads. Both have to move.
+  defp pin_query(vision, socket) do
+    query_id = String.to_integer(socket.assigns.query_id)
+    existing_ids = vision.query_ids || []
+
+    if query_id in existing_ids do
+      {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+    else
+      new_query = %{
+        id: nil,
+        data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"},
+        type: "pinned"
+      }
+
+      queries = (vision.queries |> Poison.encode!() |> Poison.decode!()) ++ [new_query]
+
+      # `||` binds looser than `++`, so `vision.query_ids || [] ++ [id]` read as
+      # `query_ids || ([] ++ [id])` and handed back the existing list untouched.
+      # The embed grew, the ids did not, and the second query added to any
+      # vision silently went nowhere.
+      query_ids = existing_ids ++ [query_id]
+
+      case Configuration.update_vision_ni(vision, %{queries: queries, query_ids: query_ids}) do
+        {:ok, _vision} ->
+          {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
+
+        {:error, _changeset} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Could not add this to #{vision.name}")
+           |> assign(:avail_sel, !socket.assigns.avail_sel)}
+      end
     end
   end
 
