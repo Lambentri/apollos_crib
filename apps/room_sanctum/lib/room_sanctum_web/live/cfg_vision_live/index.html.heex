@@ -35,7 +35,7 @@
     <%= for {id, vision} <- @streams.visions do %>
       <tr id={"vision-#{vision.id}"}>
         <td>
-          <i :if={vision.meta && vision.meta.tint} class={"fa-solid fa-circle mr-2 text-#{vision.meta && vision.meta.tint}-500"}></i>
+          <.tint_dot tint={vision.meta && vision.meta.tint} class="mr-2" />
           <%= vision.name %>
         </td>
         <td>$query</td>

@@ -134,6 +134,21 @@ defmodule RoomSanctumWeb.VisionTintTest do
       assert html =~ "text-teal-500"
     end
 
+    test "the vision's own page shows it beside the name", ctx do
+      v = vision(ctx.user, %{meta: %{tint: "teal"}})
+
+      {:ok, _live, html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :show, v))
+
+      assert html =~ "text-teal-500"
+      # beside the name, not somewhere else on the page
+      assert html =~ ~r/text-teal-500.{0,120}Dash/s
+    end
+
+    # The pythiae page cannot be rendered from this app's tests: it reads
+    # users_rabbit, which belongs to room_hermes and is not migrated into
+    # room_sanctum's test database. Its dot comes from the same tint_dot
+    # component covered below.
+
     test "an untinted vision gets no dot", ctx do
       vision(ctx.user)
 

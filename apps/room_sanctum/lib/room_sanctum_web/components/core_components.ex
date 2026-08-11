@@ -884,4 +884,22 @@ defmodule RoomSanctumWeb.CoreComponents do
     </div>
     """
   end
+
+  @doc """
+  The coloured dot marking a tinted source, query or vision.
+
+  Renders nothing when there is no tint, so callers can hand it whatever a
+  meta embed holds -- including a nil embed -- without guarding first.
+
+      <.tint_dot tint={@vision.meta && @vision.meta.tint} />
+  """
+  attr :tint, :string, default: nil
+  attr :class, :string, default: ""
+
+  def tint_dot(assigns) do
+    ~H"""
+    <i :if={@tint not in [nil, ""]} class={"fa-solid fa-circle text-#{@tint}-500 #{@class}"}></i>
+    """
+  end
+
 end

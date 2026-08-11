@@ -18,7 +18,10 @@
 
 <div class="mx-4 py-2">
   <div class="flex">
-    <h2 class="text-2xl font-bold text-accent-300"><%= @vision.name %></h2>
+    <h2 class="text-2xl font-bold text-accent-300">
+      <.tint_dot tint={@vision.meta && @vision.meta.tint} class="mr-2" />
+      <%= @vision.name %>
+    </h2>
   </div>
   <div class="flex flex-col flex-col-reverse sm:flex-col-reverse md:flex-col">
           <div class="flex flex-wrap md:flex-nowrap flex-col-reverse md:flex-row">
