@@ -18,6 +18,19 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
     end
   end
 
+  # see FormComponent: keep what has been typed when the coordinates change
+  defp with_place(socket, place) do
+    params = socket |> current_params() |> Map.put("place", place)
+
+    Configuration.change_foci(socket.assigns.foci, params)
+  end
+
+  defp current_params(%{assigns: %{form: %Phoenix.HTML.Form{source: %Ecto.Changeset{params: p}}}})
+       when is_map(p),
+       do: p
+
+  defp current_params(_socket), do: %{}
+
   @impl true
   def update(%{foci: foci} = assigns, socket) do
     changeset = Configuration.change_foci(foci)
@@ -96,7 +109,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
           srid: 4326
         }
 
-        cs = socket.assigns.foci |> Ecto.Changeset.change(place: lat_lng_pt)
+        cs = with_place(socket, lat_lng_pt)
 
         {
           :noreply,
@@ -139,7 +152,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
           srid: 4326
         }
 
-        cs = socket.assigns.foci |> Ecto.Changeset.change(place: lat_lng_pt)
+        cs = with_place(socket, lat_lng_pt)
 
         {
           :noreply,

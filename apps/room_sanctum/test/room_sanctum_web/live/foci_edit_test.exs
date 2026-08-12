@@ -13,8 +13,31 @@ defmodule RoomSanctumWeb.FociEditTest do
   import Phoenix.LiveViewTest
 
   alias RoomSanctum.{Accounts, Configuration}
+  alias RoomSanctumWeb.FociLive.{FormComponent, FormComponentCoords}
 
   @sfo %Geo.Point{coordinates: {-122.3841977119446, 37.62257668960213}, srid: 4326}
+
+  # The map hook pushes its events to #foci-form, which LiveViewTest cannot
+  # drive (the form carries phx-target, not phx-hook), so the tests that need
+  # a pin drop go at the component directly.
+  defp socket_for(component, ctx) do
+    {:ok, socket} =
+      component.update(
+        %{
+          foci: ctx.foci,
+          id: ctx.foci.id,
+          title: "Modify Foci",
+          action: :edit,
+          patch: "/",
+          current_user: ctx.user
+        },
+        %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}, flash: %{}}}
+      )
+
+    socket
+  end
+
+  defp typed_name(socket), do: Ecto.Changeset.get_field(socket.assigns.form.source, :name)
 
   setup %{conn: conn} do
     {:ok, user} =
@@ -97,24 +120,10 @@ defmodule RoomSanctumWeb.FociEditTest do
   end
 
   describe "picking a new place" do
-    # The map hook pushes map-update to #foci-form, which LiveViewTest cannot
-    # drive (the form carries phx-target, not phx-hook), so this drives the
-    # component directly. The point is that the fallback is assign_new: a
-    # place clicked on the map must survive the next update/2.
-    alias RoomSanctumWeb.FociLive.FormComponent
-
-    defp socket_for(foci) do
-      {:ok, socket} =
-        FormComponent.update(
-          %{foci: foci, id: foci.id, title: "Modify Foci", action: :edit, patch: "/"},
-          %Phoenix.LiveView.Socket{assigns: %{__changed__: %{}}}
-        )
-
-      socket
-    end
-
+    # The fallback is assign_new: a place clicked on the map must survive the
+    # next update/2.
     test "the stored place is what the form falls back to", ctx do
-      assert socket_for(ctx.foci).assigns.place == @sfo
+      assert socket_for(FormComponent, ctx).assigns.place == @sfo
     end
 
     test "a place clicked on the map is not reset by the next re-render", ctx do
@@ -122,7 +131,7 @@ defmodule RoomSanctumWeb.FociEditTest do
         FormComponent.handle_event(
           "map-update",
           %{"latlng" => %{"lat" => 42.3601, "lng" => -71.0589}},
-          socket_for(ctx.foci)
+          socket_for(FormComponent, ctx)
         )
 
       assert socket.assigns.place.coordinates == {-71.0589, 42.3601}
@@ -132,6 +141,98 @@ defmodule RoomSanctumWeb.FociEditTest do
         FormComponent.update(%{foci: ctx.foci, id: ctx.foci.id}, socket)
 
       assert socket.assigns.place.coordinates == {-71.0589, 42.3601}
+    end
+  end
+
+  describe "renaming and moving the pin together" do
+    # Each of these rebuilt the changeset from the stored record, so whatever
+    # had been typed but not yet saved was thrown away.
+    test "dragging the map keeps the name you typed", ctx do
+      socket = socket_for(FormComponent, ctx)
+
+      {:noreply, socket} =
+        FormComponent.handle_event("validate", %{"foci" => %{"name" => "SFO2"}}, socket)
+
+      assert typed_name(socket) == "SFO2"
+
+      {:noreply, socket} =
+        FormComponent.handle_event(
+          "map-update",
+          %{"latlng" => %{"lat" => 42.3601, "lng" => -71.0589}},
+          socket
+        )
+
+      assert typed_name(socket) == "SFO2"
+      assert socket.assigns.place.coordinates == {-71.0589, 42.3601}
+    end
+
+    test "the coordinate box keeps the name you typed", ctx do
+      socket = socket_for(FormComponentCoords, ctx)
+
+      {:noreply, socket} =
+        FormComponentCoords.handle_event("validate", %{"foci" => %{"name" => "SFO2"}}, socket)
+
+      {:noreply, socket} =
+        FormComponentCoords.handle_event("coord-update", %{"coords" => "42.3601, -71.0589"}, socket)
+
+      assert typed_name(socket) == "SFO2"
+      assert socket.assigns.place.coordinates == {-71.0589, 42.3601}
+    end
+
+    test "nudging a single coordinate keeps the name you typed", ctx do
+      socket = socket_for(FormComponentCoords, ctx)
+
+      {:noreply, socket} =
+        FormComponentCoords.handle_event("validate", %{"foci" => %{"name" => "SFO2"}}, socket)
+
+      {:noreply, socket} =
+        FormComponentCoords.handle_event("latitude-update", %{"value" => "42.3601"}, socket)
+
+      assert typed_name(socket) == "SFO2"
+      assert {_lon, 42.3601} = socket.assigns.place.coordinates
+    end
+
+    test "saving after both stores both", ctx do
+      socket = socket_for(FormComponent, ctx)
+
+      {:noreply, socket} =
+        FormComponent.handle_event("validate", %{"foci" => %{"name" => "SFO2"}}, socket)
+
+      {:noreply, socket} =
+        FormComponent.handle_event(
+          "map-update",
+          %{"latlng" => %{"lat" => 42.3601, "lng" => -71.0589}},
+          socket
+        )
+
+      {:noreply, _socket} =
+        FormComponent.handle_event("save", %{"foci" => %{"name" => "SFO2"}}, socket)
+
+      reloaded = Configuration.get_foci!(ctx.foci.id)
+      assert reloaded.name == "SFO2"
+      assert reloaded.place.coordinates == {-71.0589, 42.3601}
+    end
+
+    test "moving the pin twice still keeps the name", ctx do
+      socket = socket_for(FormComponent, ctx)
+
+      {:noreply, socket} =
+        FormComponent.handle_event("validate", %{"foci" => %{"name" => "SFO2"}}, socket)
+
+      socket =
+        Enum.reduce([{42.36, -71.05}, {40.71, -74.0}], socket, fn {lat, lng}, acc ->
+          {:noreply, acc} =
+            FormComponent.handle_event(
+              "map-update",
+              %{"latlng" => %{"lat" => lat, "lng" => lng}},
+              acc
+            )
+
+          acc
+        end)
+
+      assert typed_name(socket) == "SFO2"
+      assert socket.assigns.place.coordinates == {-74.0, 40.71}
     end
   end
 

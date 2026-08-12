@@ -15,6 +15,22 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
     end
   end
 
+  # Moving the pin must not discard what has been typed but not yet saved, so
+  # the changeset is rebuilt from the form's current params rather than from
+  # the stored record. No :action is set, so a half-filled form does not start
+  # showing errors just because the map was touched.
+  defp with_place(socket, place) do
+    params = socket |> current_params() |> Map.put("place", place)
+
+    Configuration.change_foci(socket.assigns.foci, params)
+  end
+
+  defp current_params(%{assigns: %{form: %Phoenix.HTML.Form{source: %Ecto.Changeset{params: p}}}})
+       when is_map(p),
+       do: p
+
+  defp current_params(_socket), do: %{}
+
   @impl true
   def update(%{foci: foci} = assigns, socket) do
     changeset = Configuration.change_foci(foci)
@@ -68,9 +84,8 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
       srid: 4326
     }
 
-    cs = socket.assigns.foci |> Ecto.Changeset.change(place: lat_lng_pt)
-    #         |> Map.put(:action, :validate)
-    # cs = socket.assigns.foci |> Configuration.change_foci(%{place: lat_lng_pt}) |> Map.put(:action, :validate)
+    cs = with_place(socket, lat_lng_pt)
+
     {
       :noreply,
       socket
