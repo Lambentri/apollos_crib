@@ -32,6 +32,8 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
       :ok,
       socket
       |> assign(assigns)
+      # see FormComponent: validate and save write this over the params
+      |> assign_new(:place, fn -> foci.place end)
       |> assign(:latitude, lat)
       |> assign(:longitude, lng)
       |> assign(:coord_input, format_coords(lat, lng))

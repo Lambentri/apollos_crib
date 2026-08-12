@@ -23,6 +23,10 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
       :ok,
       socket
       |> assign(assigns)
+      # validate and save both write this over the params, so without it a
+      # foci edited by any other field loses the point it is a foci for.
+      # assign_new, so a place picked off the map is not reset by a re-render.
+      |> assign_new(:place, fn -> foci.place end)
       |> assign_form(changeset)
     }
   end

@@ -1,5 +1,5 @@
 defmodule RoomSanctumWeb.FociLive.Show do
-  use RoomSanctumWeb, :live_view
+  use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Configuration
 
