@@ -27,6 +27,9 @@ defmodule RoomSanctum.Configuration.Queries.Icarus do
     # Empty means no filtering, so area queries saved before this field existed
     # keep showing everything.
     field :classes, {:array, :string}, default: []
+    # Blank means no cap, so queries saved before this field existed are
+    # unchanged. Results are sorted nearest-first, so this keeps the closest.
+    field :limit, :integer
 
     # :flight
     field :flight_number, :string
@@ -48,6 +51,7 @@ defmodule RoomSanctum.Configuration.Queries.Icarus do
       :alt_min,
       :alt_max,
       :classes,
+      :limit,
       :flight_number,
       :dest,
       :sched_arrival,
@@ -73,6 +77,7 @@ defmodule RoomSanctum.Configuration.Queries.Icarus do
     |> validate_number(:alt_min, greater_than_or_equal_to: 0)
     |> validate_number(:alt_max, greater_than_or_equal_to: 0)
     |> validate_subset(:classes, RoomIcarus.Classify.classes())
+    |> validate_number(:limit, greater_than_or_equal_to: 1)
     |> validate_altitude_band()
   end
 

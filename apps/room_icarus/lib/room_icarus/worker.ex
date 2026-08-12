@@ -302,10 +302,7 @@ defmodule RoomIcarus.Worker do
                 list
             end
 
-          cached
-          |> filter_altitude(query)
-          |> RoomIcarus.Classify.filter(field(query, :classes))
-          |> Enum.sort_by(&(&1["dst"] || 0))
+          shape_area(cached, query)
       end
 
     result
@@ -370,6 +367,32 @@ defmodule RoomIcarus.Worker do
             _ -> is_nil(min_alt)
           end
         end)
+    end
+  end
+
+  @doc """
+  Applies an area query's filters to a cached aircraft list.
+
+  Altitude and class first, then nearest-first, then the count cap -- so a
+  limit keeps the closest aircraft the query actually asked for, rather than
+  trimming the feed before it has been filtered.
+
+  Public so the shaping can be exercised without a running worker or a foci to
+  resolve.
+  """
+  def shape_area(list, query) do
+    list
+    |> filter_altitude(query)
+    |> RoomIcarus.Classify.filter(field(query, :classes))
+    |> Enum.sort_by(&(&1["dst"] || 0))
+    |> take_limit(field(query, :limit))
+  end
+
+  # A blank or unparseable limit means no cap.
+  defp take_limit(list, limit) do
+    case numeric(limit) do
+      n when is_number(n) and n >= 1 -> Enum.take(list, trunc(n))
+      _ -> list
     end
   end
 

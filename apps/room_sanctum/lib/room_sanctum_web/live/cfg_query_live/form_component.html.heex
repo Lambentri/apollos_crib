@@ -283,6 +283,14 @@
         </p>
       </div>
 
+      <div class="form-control">
+        <.input field={icarus_form[:limit]} type="number" label="Most aircraft to show (blank for no limit)" />
+        <p class="text-xs text-base-content/60 mt-1">
+          Applied after the filters above, to the nearest aircraft first - a limit of 5 shows the
+          five closest that match, not the first five the feed happened to return.
+        </p>
+      </div>
+
       <div class="divider">Flight mode</div>
       <div class="form-control">
         <.input field={icarus_form[:flight_number]} type="text" label="Flight number (e.g. UA 558)" />
