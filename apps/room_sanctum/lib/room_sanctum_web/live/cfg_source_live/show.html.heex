@@ -356,9 +356,37 @@ gl_available_projects={@gitlab_available_projects}
                     <%= case @source.type do %>
                     <% val when val in [:gtfs, :gbfs] -> %>
                     <span class="" phx-click="add-tester"><i class="fa-solid fa-plus"></i>Test</span>
+                    <% type when type in [:weather, :ephem, :pollen, :aqi, :calendar, :icarus] -> %>
+                    <span class="cursor-pointer" phx-click="toggle-foci-add">
+                        <i class={"fa-solid #{if @foci_add_open, do: "fa-minus", else: "fa-plus"}"}></i>Query
+                    </span>
                     <% _default -> %>
                     <% end %>
                 </h3>
+
+                <%= if @foci_add_open do %>
+                    <%!-- These queries are "this source, at this place", so a
+                          foci is the whole thing a new one needs. --%>
+                    <div class="flex flex-wrap items-end gap-2 mb-3">
+                        <form phx-change="foci-pick">
+                            <select name="foci[id]" class="select select-bordered select-sm">
+                                <option value="">Pick a place</option>
+                                <option :for={f <- @focis} value={f.id} selected={to_string(f.id) == @foci_pick}>
+                                    <%= f.name %>
+                                </option>
+                            </select>
+                        </form>
+
+                        <button class="btn btn-secondary btn-sm" phx-click="foci-add"
+                                disabled={is_nil(@foci_pick)}>
+                            <i class="fa-solid fa-plus mr-1"></i>Add as query
+                        </button>
+
+                        <span :if={@focis == []} class="text-xs opacity-60">
+                            No foci yet -- make one first.
+                        </span>
+                    </div>
+                <% end %>
                 
                 <%= cond do %>
                 <% @view_mode == :detail -> %>

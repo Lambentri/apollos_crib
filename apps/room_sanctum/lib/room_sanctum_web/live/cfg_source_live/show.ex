@@ -42,6 +42,9 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:tester_route_ids, [])
       |> assign(:aircraft, [])
       |> assign(:alerts, [])
+      |> assign(:focis, [])
+      |> assign(:foci_pick, nil)
+      |> assign(:foci_add_open, false)
       |> assign(:view_mode, :system)
       |> assign(:tint_opts, RoomSanctum.Tints.all())
       |> assign(:gitlab_config_open, false)
@@ -156,6 +159,11 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     # would announce as "no queries yet" before correcting itself.
     queries = Configuration.get_queries(:source, source_id)
 
+    focis =
+      if foci_source?(source.type),
+        do: Configuration.list_focis({:user, socket.assigns.current_user.id}),
+        else: []
+
     {
       :noreply,
       socket
@@ -164,8 +172,86 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:source_id, source_id)
       |> assign(:queries, queries)
       |> assign(:available_tints, get_available_tints(queries))
+      |> assign(:focis, focis)
     }
   end
+
+  # Source types whose query is "this thing, at this place". Cronos is left out
+  # on purpose: its foci only supplies a timezone, and a cronos query still
+  # needs a period or a target date to mean anything, so one built from a foci
+  # alone would be a query that reports nothing.
+  @foci_sources [:weather, :ephem, :pollen, :aqi, :calendar, :icarus]
+
+  def foci_source?(type), do: type in @foci_sources
+
+  # Days and limit are display bounds rather than choices about what is being
+  # asked, so a calendar query can be created with sensible ones and adjusted
+  # later. Icarus defaults to an area query, which is what a foci means there.
+  @doc false
+  # Exposed for tests: an icarus query cannot be created from room_sanctum's
+  # test env, so this is how its shape is checked.
+  def foci_query_preview(type, foci_id), do: foci_query_for(type, foci_id)
+
+  defp foci_query_for(:calendar, foci_id),
+    do: %{"__type__" => "calendar", "foci_id" => foci_id, "days" => 7, "limit" => 10}
+
+  defp foci_query_for(:icarus, foci_id),
+    do: %{"__type__" => "icarus", "foci_id" => foci_id, "mode" => "area", "dist" => 25}
+
+  defp foci_query_for(type, foci_id),
+    do: %{"__type__" => to_string(type), "foci_id" => foci_id}
+
+  @impl true
+  def handle_event("toggle-foci-add", _params, socket) do
+    {:noreply, assign(socket, :foci_add_open, !socket.assigns.foci_add_open)}
+  end
+
+  def handle_event("foci-pick", %{"foci" => %{"id" => ""}}, socket) do
+    {:noreply, assign(socket, :foci_pick, nil)}
+  end
+
+  def handle_event("foci-pick", %{"foci" => %{"id" => id}}, socket) do
+    {:noreply, assign(socket, :foci_pick, id)}
+  end
+
+  def handle_event("foci-add", _params, socket) do
+    case socket.assigns.foci_pick do
+      nil ->
+        {:noreply, put_flash(socket, :error, "Pick a foci first")}
+
+      id ->
+        foci_id = String.to_integer(id)
+        foci = Enum.find(socket.assigns.focis, &(&1.id == foci_id))
+        type = socket.assigns.source.type
+
+        case Configuration.create_query(%{
+               user_id: socket.assigns.current_user.id,
+               source_id: socket.assigns.source.id,
+               name: query_name_for(type, foci),
+               query: foci_query_for(type, foci_id),
+               public: true
+             }) do
+          {:ok, _query} ->
+            queries = Configuration.get_queries(:source, socket.assigns.source_id)
+
+            {:noreply,
+             socket
+             |> assign(:queries, queries)
+             |> assign(:available_tints, get_available_tints(queries))
+             |> assign(:foci_pick, nil)
+             |> assign(:foci_add_open, false)
+             |> put_flash(:info, "Added query for #{foci && foci.name}")}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Could not add that query")}
+        end
+    end
+  end
+
+  # "Weather at Home" reads better in a list of queries than "Home" alone,
+  # which is what the map's + query produces for a stop.
+  defp query_name_for(type, %{name: name}), do: "#{String.capitalize(to_string(type))} at #{name}"
+  defp query_name_for(type, _foci), do: to_string(type)
 
   # Alerts are only worth fetching for a source that publishes them; a GTFS
   # source with no alert feed configured has nothing to say.
