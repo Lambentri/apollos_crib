@@ -29,10 +29,17 @@ defmodule RoomSanctumWeb.SourceLive.LiveLayers do
   names a route and the glyph is chosen from the route's type, so the caller
   would otherwise have to know to look it up separately.
   """
-  def for_source(%{type: :gtfs, id: id}) do
+  def for_source(source, shape \\ nil)
+
+  def for_source(%{type: :gtfs, id: id}, _shape) do
     vehicles =
       safely(fn -> RoomGtfs.Worker.get_current_vehicle_positions(id) end, [])
       |> Storage.with_trip_context(id)
+      # source_id is what a layer toggle filters on. No shape: a vehicle is drawn
+      # as a route glyph turned to its bearing, and overriding that with the
+      # source's shape would cost more than it says -- stations are what a tint
+      # map has thousands of and what needed telling apart.
+      |> Enum.map(&Map.put(&1, :source_id, id))
 
     %{
       vehicles: vehicles,
@@ -43,7 +50,7 @@ defmodule RoomSanctumWeb.SourceLive.LiveLayers do
     }
   end
 
-  def for_source(%{type: :gbfs, id: id}) do
+  def for_source(%{type: :gbfs, id: id}, _shape) do
     bikes =
       safely(fn -> Storage.list_gbfs_free_bike_status() end, [])
       |> Enum.filter(&(&1.source_id == id))
@@ -51,16 +58,22 @@ defmodule RoomSanctumWeb.SourceLive.LiveLayers do
     %{vehicles: [], free_bikes: bikes, aircraft: [], route_types: %{}}
   end
 
-  def for_source(%{type: :icarus, id: id}) do
-    %{vehicles: [], free_bikes: [], aircraft: aircraft(id), route_types: %{}}
+  def for_source(%{type: :icarus, id: id}, _shape) do
+    aircraft = Enum.map(aircraft(id), &Map.put(&1, "source_id", id))
+    %{vehicles: [], free_bikes: [], aircraft: aircraft, route_types: %{}}
   end
 
-  def for_source(_source), do: empty()
+  def for_source(_source, _shape), do: empty()
 
-  @doc "Merged layers across several sources, ready to hand to the map."
-  def for_sources(sources) do
+  @doc """
+  Merged layers across several sources, ready to hand to the map.
+
+  `shapes` maps a source id to the marker shape its vehicles should be drawn
+  with, so several agencies on one map stay distinguishable.
+  """
+  def for_sources(sources, shapes \\ %{}) do
     sources
-    |> Enum.map(&for_source/1)
+    |> Enum.map(&for_source(&1, Map.get(shapes, &1.id)))
     |> Enum.reduce(empty(), fn layer, acc ->
       %{
         vehicles: acc.vehicles ++ layer.vehicles,

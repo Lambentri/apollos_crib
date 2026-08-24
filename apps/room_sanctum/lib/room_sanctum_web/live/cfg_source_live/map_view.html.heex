@@ -18,37 +18,69 @@
     </div>
   </div>
 <% else %>
-  <div class="mx-6 my-2 flex flex-wrap gap-2">
+  <%!-- Each offering is a layer toggle. The shape swatch is the same shape its
+        markers are drawn with, so the legend and the map read as one thing --
+        and if there are more offerings than shapes the repeat is visible here
+        rather than being a mystery on the map. --%>
+  <div class="mx-6 my-2 flex flex-wrap items-center gap-2">
     <%= for source <- @sources do %>
-      <.link navigate={~p"/cfg/offerings/#{source.id}"}
-             class={"badge badge-lg gap-2 bg-#{@tint}-100 border-#{@tint}-400 hover:bg-#{@tint}-200"}>
+      <div class={[
+        "badge badge-lg gap-2 cursor-pointer select-none border",
+        if(hidden?(@hidden, source),
+          do: "opacity-40 border-base-300 line-through",
+          else: "bg-#{@tint}-100 border-#{@tint}-400 hover:bg-#{@tint}-200")
+      ]}
+        phx-click="toggle-source"
+        phx-value-id={source.id}
+        title={if hidden?(@hidden, source), do: "Show #{source.name}", else: "Hide #{source.name}"}>
+        <span class={"shape-swatch shape-#{Map.get(@shapes, source.id, "circle")} text-#{@tint}-600"}></span>
         <i class={"fa fa-fw #{icon_code(source.type)}"}></i>
         <%= source.name %>
         <span class="opacity-70 text-xs">
           <%= cond do %>
-            <% !mappable?(source) -> %>no places
-            <% Map.get(@counts, source.id, 0) == 0 -> %>nothing loaded
-            <% true -> %><%= Map.get(@counts, source.id) %>
+            <% !mappable?(source) and not LiveLayers.live?(source) -> %>nothing to draw
+            <% Map.get(@counts, source.id, 0) == 0 and mappable?(source) -> %>nothing loaded
+            <% true -> %><%= Map.get(@counts, source.id, 0) %>
           <% end %>
         </span>
-      </.link>
+      </div>
     <% end %>
+
+    <button :if={MapSet.size(@hidden) > 0} class="btn btn-xs btn-ghost" phx-click="show-all-sources">
+      show all
+    </button>
+
+    <span class="text-xs opacity-60">
+      click an offering to hide it &middot;
+      <.link navigate={~p"/cfg/offerings"} class="underline">all offerings</.link>
+    </span>
   </div>
 
-  <%= if @stations == [] and @vehicles == [] and @free_bikes == [] and @aircraft == [] do %>
+  <%= if visible(@stations, @hidden) == [] and visible(@vehicles, @hidden) == [] and visible(@free_bikes, @hidden) == [] and visible(@aircraft, @hidden, "source_id") == [] do %>
     <div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
       <div class="card-body">
-        <h3 class="card-title italic">Nothing to draw</h3>
-        <p>
-          These offerings have no geography of their own. Only GTFS, GBFS and
-          AirNow sources store places; for the rest, where you want the data is
-          a property of the query rather than of the offering, so their queries
-          are what you would map.
-        </p>
-        <p :if={Enum.any?(@sources, &mappable?(&1))} class="text-sm opacity-70">
-          Some of these could draw places but have none loaded yet -- run an
-          update from the offering's page first.
-        </p>
+        <%!-- Everything hidden is a different situation from nothing to show,
+              and saying the wrong one sends you looking for a data problem that
+              is really a switched-off layer. --%>
+        <%= if MapSet.size(@hidden) >= length(@sources) do %>
+          <h3 class="card-title italic">Every offering is hidden</h3>
+          <p>
+            All <%= length(@sources) %> of them are switched off above.
+            <button class="link" phx-click="show-all-sources">Show them again</button>.
+          </p>
+        <% else %>
+          <h3 class="card-title italic">Nothing to draw</h3>
+          <p>
+            These offerings have no geography of their own. Only GTFS, GBFS and
+            AirNow sources store places; for the rest, where you want the data is
+            a property of the query rather than of the offering, so their queries
+            are what you would map.
+          </p>
+          <p :if={Enum.any?(@sources, &mappable?(&1))} class="text-sm opacity-70">
+            Some of these could draw places but have none loaded yet -- run an
+            update from the offering's page first.
+          </p>
+        <% end %>
       </div>
     </div>
   <% else %>
@@ -56,12 +88,12 @@
       <.query_geospatial_map
         id="tint-map"
         queries={[]}
-        stations={@stations}
+        stations={visible(@stations, @hidden)}
         station_statuses={@station_statuses}
-        vehicle_positions={@vehicles}
+        vehicle_positions={visible(@vehicles, @hidden)}
         route_types={@route_types}
-        free_bikes={@free_bikes}
-        aircraft={if @show_aircraft, do: @aircraft, else: []}
+        free_bikes={visible(@free_bikes, @hidden)}
+        aircraft={if @show_aircraft, do: visible(@aircraft, @hidden, "source_id"), else: []}
         aircraft_event={if any_aircraft?(@sources), do: "toggle-aircraft"}
         show_aircraft={@show_aircraft}
         source_tint={@tint}
@@ -75,12 +107,19 @@
             marker kinds, and what is useful here is knowing whether a layer is
             empty because nothing is running or because no source supplies it. --%>
       <div class="mt-2 text-xs opacity-70 flex flex-wrap gap-3">
-        <span><%= length(@stations) %> places</span>
-        <span :if={@vehicles != []}>
-          <%= length(@vehicles) %> vehicles<%= inferred_note(@vehicles) %>
+        <span><%= length(visible(@stations, @hidden)) %> places</span>
+        <span :if={visible(@vehicles, @hidden) != []}>
+          <%= length(visible(@vehicles, @hidden)) %> vehicles<%= inferred_note(visible(@vehicles, @hidden)) %>
         </span>
-        <span :if={@free_bikes != []}><%= length(@free_bikes) %> loose bikes</span>
-        <span :if={@aircraft != [] and @show_aircraft}><%= length(@aircraft) %> aircraft</span>
+        <span :if={visible(@free_bikes, @hidden) != []}>
+          <%= length(visible(@free_bikes, @hidden)) %> loose bikes
+        </span>
+        <span :if={@show_aircraft and visible(@aircraft, @hidden, "source_id") != []}>
+          <%= length(visible(@aircraft, @hidden, "source_id")) %> aircraft
+        </span>
+        <span :if={MapSet.size(@hidden) > 0}>
+          <%= MapSet.size(@hidden) %> offering(s) hidden
+        </span>
         <span :if={Enum.any?(@sources, &LiveLayers.live?(&1)) and @vehicles == [] and @free_bikes == []}>
           nothing moving right now
         </span>

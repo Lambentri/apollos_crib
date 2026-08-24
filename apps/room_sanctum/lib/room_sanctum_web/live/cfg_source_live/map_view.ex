@@ -43,6 +43,13 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
   # often than that returns the same feed.
   @refresh :timer.seconds(30)
 
+  # Marker shape is what separates one offering from another here: fill colour
+  # already means "what kind of thing this is" and the outline already means
+  # "which tint", so shape is the axis left over. Assigned in the order sources
+  # are listed, and repeating past the end of this list -- which the legend makes
+  # visible, since it shows each source's shape next to its name.
+  @shapes ~w(circle square diamond triangle hexagon)
+
   @impl true
   def mount(_params, _session, socket) do
     # Only once connected: the static render would pay for every worker read and
@@ -56,6 +63,8 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
      |> assign(:stations, [])
      |> assign(:station_statuses, [])
      |> assign(:counts, %{})
+     |> assign(:shapes, %{})
+     |> assign(:hidden, MapSet.new())
      |> assign(:max_markers, @max_markers)
      |> assign(:show_aircraft, false)
      |> assign_live(%{vehicles: [], free_bikes: [], aircraft: [], route_types: %{}})}
@@ -64,12 +73,36 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
   @impl true
   def handle_info(:refresh_live, socket) do
     Process.send_after(self(), :refresh_live, @refresh)
-    {:noreply, assign_live(socket, LiveLayers.for_sources(socket.assigns.sources))}
+    {:noreply,
+     assign_live(socket, LiveLayers.for_sources(socket.assigns.sources, socket.assigns.shapes))}
   end
 
   @impl true
   def handle_event("toggle-aircraft", _params, socket) do
     {:noreply, assign(socket, :show_aircraft, not socket.assigns.show_aircraft)}
+  end
+
+  # Hiding is held here rather than pushed at the map, because the markers a
+  # hidden source contributes should not be rendered at all -- a tint covering
+  # three bus agencies is twenty thousand markers, and turning one off should
+  # make the page lighter, not just quieter.
+  @impl true
+  def handle_event("toggle-source", %{"id" => id}, socket) do
+    id = String.to_integer(id)
+
+    hidden =
+      if MapSet.member?(socket.assigns.hidden, id) do
+        MapSet.delete(socket.assigns.hidden, id)
+      else
+        MapSet.put(socket.assigns.hidden, id)
+      end
+
+    {:noreply, assign(socket, :hidden, hidden)}
+  end
+
+  @impl true
+  def handle_event("show-all-sources", _params, socket) do
+    {:noreply, assign(socket, :hidden, MapSet.new())}
   end
 
   defp assign_live(socket, layers) do
@@ -107,24 +140,45 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
     #
     # Labelled per source too, because one map holding several of them
     # otherwise gives no way to tell whose stop a marker is.
+    shapes =
+      sources
+      |> Enum.with_index()
+      |> Map.new(fn {source, i} -> {source.id, Enum.at(@shapes, rem(i, length(@shapes)))} end)
+
     per_source =
       Enum.map(sources, fn source ->
-        {source, source |> Stations.for_source() |> Stations.label_with_source(source)}
+        {source, Stations.attach_source(Stations.for_source(source), source, shapes[source.id])}
       end)
 
     socket
     |> assign(:page_title, "#{String.capitalize(tint)} Offerings Map")
     |> assign(:tint, tint)
     |> assign(:sources, sources)
+    |> assign(:shapes, shapes)
+    # A tint change is a different set of offerings, so nothing stays hidden
+    # across one -- an id hidden here would silently hide an unrelated source.
+    |> assign(:hidden, MapSet.new())
     |> assign(:stations, Enum.flat_map(per_source, fn {_source, stations} -> stations end))
     |> assign(:counts, Map.new(per_source, fn {source, stations} -> {source.id, length(stations)} end))
     |> assign(:station_statuses, Enum.flat_map(sources, &Stations.statuses_for_source/1))
     |> then(fn s ->
       # The sources just changed, so anything live already assigned describes the
       # tint that was on screen a moment ago.
-      if connected?(s), do: assign_live(s, LiveLayers.for_sources(sources)), else: s
+      if connected?(s), do: assign_live(s, LiveLayers.for_sources(sources, shapes)), else: s
     end)
   end
+
+  # Filtered at render rather than by reloading: the station lists are the
+  # expensive part and do not change when a layer is switched off.
+  defp visible(items, hidden, key \\ :source_id) do
+    if MapSet.size(hidden) == 0 do
+      items
+    else
+      Enum.reject(items, fn item -> Map.get(item, key) in hidden end)
+    end
+  end
+
+  defp hidden?(hidden, source), do: MapSet.member?(hidden, source.id)
 
   defp any_aircraft?(sources), do: Enum.any?(sources, &(&1.type == :icarus))
 

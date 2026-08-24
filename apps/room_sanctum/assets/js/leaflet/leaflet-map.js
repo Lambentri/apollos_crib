@@ -26,6 +26,62 @@ template.innerHTML = `
     </div>
 `
 
+
+// Leaflet draws circles on canvas and nothing else, but a map holding several
+// offerings needs a third axis after fill (what kind of thing) and outline
+// (which tint) -- so: shape says whose.
+//
+// This reaches into the Canvas renderer's internals (_drawing, _ctx,
+// _fillStroke) because that is the only way to add a path type; they have been
+// stable across Leaflet 1.x, and a break shows up as markers that do not draw
+// rather than as a crash.
+const SHAPE_POINTS = {
+    square:   (x, y, r) => [[x - r, y - r], [x + r, y - r], [x + r, y + r], [x - r, y + r]],
+    diamond:  (x, y, r) => [[x, y - r], [x + r, y], [x, y + r], [x - r, y]],
+    triangle: (x, y, r) => [[x, y - r], [x + r, y + r * 0.8], [x - r, y + r * 0.8]],
+    hexagon:  (x, y, r) => {
+        const pts = [];
+        for (let i = 0; i < 6; i++) {
+            const a = Math.PI / 6 + (i * Math.PI) / 3;
+            pts.push([x + r * Math.cos(a), y + r * Math.sin(a)]);
+        }
+        return pts;
+    }
+};
+
+L.Canvas.include({
+    _updateShapeMarker(layer) {
+        if (!this._drawing || layer._empty()) return;
+
+        const points = SHAPE_POINTS[layer.options.shape];
+        if (!points) return this._updateCircle(layer);
+
+        const p = layer._point;
+        const r = Math.max(Math.round(layer._radius), 1);
+        const ctx = this._ctx;
+        const pts = points(p.x, p.y, r);
+
+        ctx.beginPath();
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        this._fillStroke(ctx, layer);
+    }
+});
+
+// Same geometry and hit-testing as a circleMarker -- only the drawing differs --
+// so everything else about a marker keeps working.
+const ShapeMarker = L.CircleMarker.extend({
+    options: { shape: 'circle' },
+
+    _updatePath() {
+        if (!this.options.shape || this.options.shape === 'circle' || !SHAPE_POINTS[this.options.shape]) {
+            return this._renderer._updateCircle(this);
+        }
+        this._renderer._updateShapeMarker(this);
+    }
+});
+
 class LeafletMap extends HTMLElement {
     constructor() {
         super();
@@ -558,8 +614,9 @@ class LeafletMap extends HTMLElement {
             }).bindPopup(() => this.createPopupContent(markerEl));
         }
 
-        return L.circleMarker([lat, lng], {
+        return new ShapeMarker([lat, lng], {
             renderer: this.canvasRenderer,
+            shape: markerEl.getAttribute('shape') || 'circle',
             radius: 7,
             weight: this.hasTint(markerEl) ? 3 : 2,
             color: this.getStrokeColor(markerEl),

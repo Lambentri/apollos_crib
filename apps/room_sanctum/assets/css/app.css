@@ -192,3 +192,19 @@
           0 0 151px #fef3c7;
   font-family: "Caveat";
 }
+/* Legend swatches on the tint map: the same five shapes the canvas draws, so a
+   badge and its markers read as one thing. Drawn with clip-path rather than
+   glyphs because a font may not have a filled hexagon and would silently fall
+   back to a box. currentColor, so the tint class on the badge colours it. */
+.shape-swatch {
+  display: inline-block;
+  width: 0.7rem;
+  height: 0.7rem;
+  background-color: currentColor;
+  flex: none;
+}
+.shape-circle   { border-radius: 9999px; }
+.shape-square   { border-radius: 1px; }
+.shape-diamond  { clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%); }
+.shape-triangle { clip-path: polygon(50% 0%, 100% 90%, 0% 90%); }
+.shape-hexagon  { clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%); }

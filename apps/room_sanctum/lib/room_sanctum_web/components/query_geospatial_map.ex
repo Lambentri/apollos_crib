@@ -212,6 +212,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               name={Map.get(p, :name)}
               type={Map.get(p, :type)}
               tint={Map.get(p, :tint)}
+              shape={Map.get(p, :shape)}
               bearing={Map.get(p, :bearing)}
               route-type={Map.get(p, :route_type)}
               route={Map.get(p, :route)}
@@ -898,6 +899,11 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         lat: lat,
         lng: lng,
         tint: source_tint,  # Use the source tint passed from the parent
+        # Set where one map holds several sources: the tint map gives each
+        # offering its own shape, since fill already means the marker's kind and
+        # the outline already means its tint. Nil everywhere else, which draws a
+        # circle as before.
+        shape: Map.get(station, :shape),
         icon: "fa-bicycle"
       }
 

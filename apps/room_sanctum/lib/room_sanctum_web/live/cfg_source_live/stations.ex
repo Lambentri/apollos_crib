@@ -57,15 +57,20 @@ defmodule RoomSanctumWeb.SourceLive.Stations do
   def statuses_for_source(_source), do: []
 
   @doc """
-  Names the source in each station's label.
+  Marks each station as belonging to a source: name, id, and marker shape.
 
-  Only wanted where one map holds several sources: on an offering's own map
+  Only wanted where one map holds several sources. On an offering's own map
   every marker belongs to the source you are already looking at, and repeating
-  its name on all four thousand of them is noise. On the tint map it is the
+  its name across four thousand of them is noise; on the tint map it is the
   only way to tell whose stop you clicked, since the marker element carries no
   source of its own.
+
+  `source_id` is what layer toggles filter on, and `shape` is how the map draws
+  one source's markers differently from another's — the fill colour already
+  means "what kind of thing this is" and the outline already means "which
+  tint", so shape is the axis left for "whose".
   """
-  def label_with_source(stations, source) do
+  def attach_source(stations, source, shape \\ nil) do
     Enum.map(stations, fn station ->
       name = Map.get(station, :name)
 
@@ -77,10 +82,23 @@ defmodule RoomSanctumWeb.SourceLive.Stations do
         end
 
       # Map.put over both shapes: GBFS stations arrive as Ecto structs and the
-      # other two as plain maps, and every one of them has a :name.
-      Map.put(station, :name, labelled)
+      # other two as plain maps, and every one of them has a :name. The two
+      # added keys are read back through Map.get, so a struct not declaring them
+      # is fine -- put/3 on a struct with an unknown key would raise, which is
+      # why they go on as a plain map.
+      station
+      |> plain_map()
+      |> Map.put(:name, labelled)
+      |> Map.put(:source_id, source.id)
+      |> Map.put(:shape, shape)
     end)
   end
+
+  # GBFS stations arrive as Ecto structs, which have a fixed key set -- adding
+  # :source_id or :shape to one raises. The other two kinds are already plain
+  # maps, so this only converts what needs converting.
+  defp plain_map(%_struct{} = station), do: Map.from_struct(station)
+  defp plain_map(station) when is_map(station), do: station
 
   # Every key here has to be present even when it is nil: the map component's
   # format_stations/3 reaches for :place directly, so a map without it raises
