@@ -55,6 +55,10 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/offerings", SourceLive.Index, :index
     live "/cfg/offerings/new", SourceLive.Index, :new
     live "/cfg/offerings/import", SourceLive.Index, :import
+    # Ahead of the `:id` routes. Nothing below actually collides -- none of them
+    # is three segments ending in a free value -- but "map" reading as an id is
+    # exactly the kind of thing a later route would introduce quietly.
+    live "/cfg/offerings/map/:tint", SourceLive.MapView, :index
     live "/cfg/offerings/:id/edit", SourceLive.Index, :edit
     live "/cfg/offerings/:id", SourceLive.Show, :show
     live "/cfg/offerings/:id/show/edit", SourceLive.Show, :edit

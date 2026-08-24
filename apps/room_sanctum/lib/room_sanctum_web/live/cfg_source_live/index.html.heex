@@ -103,10 +103,20 @@
             <span class="text-slate-500"></span>
             <span class="text-stone-950"></span>
             
-            <!-- Available tints - clickable filters -->
+            <!-- Available tints - clickable filters, each with a link to its map -->
             <%= for tint <- @available_tints do %>
-              <span class="cursor-pointer mx-1" phx-click="set-tint" phx-value-tint={tint}>
-                <i class={"fa-solid fa-circle text-#{tint}-500 hover:text-#{tint}-700 #{if @tint == tint, do: "text-lg", else: ""}"}></i>
+              <span class="inline-flex items-center mx-1">
+                <span class="cursor-pointer" phx-click="set-tint" phx-value-tint={tint}>
+                  <i class={"fa-solid fa-circle text-#{tint}-500 hover:text-#{tint}-700 #{if @tint == tint, do: "text-lg", else: ""}"}></i>
+                </span>
+                <%!-- The dot filters this table; the pin leaves for the map of
+                      everything wearing that colour. Two actions on one glyph
+                      would make one of them undiscoverable. --%>
+                <.link navigate={~p"/cfg/offerings/map/#{tint}"}
+                       title={"Map every #{tint} offering"}
+                       class={"ml-0.5 #{if @tint == tint, do: "", else: "opacity-40 hover:opacity-100"}"}>
+                  <i class={"fa-solid fa-location-dot fa-2xs text-#{tint}-600"}></i>
+                </.link>
               </span>
             <% end %>
         </th>

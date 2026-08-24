@@ -4,6 +4,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
+  alias RoomSanctumWeb.SourceLive.Stations
 
   @impl true
   def mount(_params, _session, socket) do
@@ -72,21 +73,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _ -> []
     end
 
-    # Stations for the map. GTFS stops carry stop_lat/stop_lon/stop_name where
-    # GBFS uses lat/lon/name, so they are normalised to one shape rather than
-    # teaching the map component two vocabularies.
-    stations = case socket.assigns.source.type do
-      :gbfs -> Storage.list_gbfs_station_information(socket.assigns.source_id)
-      :gtfs -> socket.assigns.source_id |> Storage.list_stops() |> Enum.map(&stop_as_station/1)
-      :aqi -> socket.assigns.source_id |> Storage.list_aqi_stations() |> Enum.map(&site_as_station/1)
-      _ -> []
-    end
+    stations = Stations.for_source(socket.assigns.source)
 
     # Add station status for GBFS sources
-    station_statuses = case socket.assigns.source.type do
-      :gbfs -> Storage.list_gbfs_station_status(socket.assigns.source_id)
-      _ -> []
-    end
+    station_statuses = Stations.statuses_for_source(socket.assigns.source)
 
     # Service alerts, for a GTFS source that has an alert feed configured.
     alerts = current_alerts(socket.assigns.source, queries)
@@ -320,47 +310,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   defp current_aircraft(_type, _source_id), do: []
-
-  # format_stations/3 reaches for :place directly, so every key it touches has
-  # to be present -- a plain map without :place raises rather than falling
-  # through to the lat/lon branch.
-  defp stop_as_station(stop) do
-    %{
-      place: nil,
-      station_id: stop.stop_id,
-      name: stop.stop_name,
-      short_name: stop.stop_code,
-      capacity: 0,
-      address: stop.stop_address,
-      lat: stop.stop_lat,
-      lon: stop.stop_lon
-    }
-  end
-
-  # AirNow replaces its observations every hour, so a reading and the station
-  # that made it are one record. The name carries the current index, since that
-  # is what you want off a marker without opening it.
-  defp site_as_station(observation) do
-    %{
-      place: observation.point,
-      station_id: observation.aqsid,
-      name: station_label(observation),
-      short_name: observation.aqsid,
-      capacity: 0,
-      address: observation.reporting_areas |> List.wrap() |> List.first(),
-      lat: observation.lat,
-      lon: observation.lon
-    }
-  end
-
-  defp station_label(observation) do
-    name = observation.site_name || observation.aqsid
-
-    case RoomSanctum.Storage.AirNow.HourlyObsData.overall_aqi(observation) do
-      nil -> name
-      {value, pollutant} -> "#{name} - AQI #{value} (#{pollutant})"
-    end
-  end
 
   # GTFS queries key on :stop, GBFS on :stop_id, AirNow on :aqsid.
   defp station_id_of(%{query: nil}), do: nil

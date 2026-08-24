@@ -1,0 +1,69 @@
+<div class="flex items-center justify-between mx-4">
+  <h1 class="text-3xl font-bold text-accent bg-secondary-300 py-2">
+    <i class={"fa-solid fa-circle text-#{@tint}-500 fa-sm"}></i>
+    <%= String.capitalize(@tint) %> Offerings
+  </h1>
+
+  <.itb icon="fa-arrow-left" to={~p"/cfg/offerings"} what="All Offerings"></.itb>
+</div>
+
+<%= if @sources == [] do %>
+  <div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+    <div class="card-body">
+      <h3 class="card-title italic">Nothing tinted <%= @tint %></h3>
+      <p>
+        No offering of yours carries this tint. Tint one on its edit form and it
+        will appear here.
+      </p>
+    </div>
+  </div>
+<% else %>
+  <div class="mx-6 my-2 flex flex-wrap gap-2">
+    <%= for source <- @sources do %>
+      <.link navigate={~p"/cfg/offerings/#{source.id}"}
+             class={"badge badge-lg gap-2 bg-#{@tint}-100 border-#{@tint}-400 hover:bg-#{@tint}-200"}>
+        <i class={"fa fa-fw #{icon_code(source.type)}"}></i>
+        <%= source.name %>
+        <span class="opacity-70 text-xs">
+          <%= cond do %>
+            <% !mappable?(source) -> %>no places
+            <% Map.get(@counts, source.id, 0) == 0 -> %>nothing loaded
+            <% true -> %><%= Map.get(@counts, source.id) %>
+          <% end %>
+        </span>
+      </.link>
+    <% end %>
+  </div>
+
+  <%= if @stations == [] do %>
+    <div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
+      <div class="card-body">
+        <h3 class="card-title italic">Nothing to draw</h3>
+        <p>
+          These offerings have no geography of their own. Only GTFS, GBFS and
+          AirNow sources store places; for the rest, where you want the data is
+          a property of the query rather than of the offering, so their queries
+          are what you would map.
+        </p>
+        <p :if={Enum.any?(@sources, &mappable?(&1))} class="text-sm opacity-70">
+          Some of these could draw places but have none loaded yet -- run an
+          update from the offering's page first.
+        </p>
+      </div>
+    </div>
+  <% else %>
+    <div class="px-6">
+      <.query_geospatial_map
+        id="tint-map"
+        queries={[]}
+        stations={@stations}
+        station_statuses={@station_statuses}
+        source_tint={@tint}
+        selected_tint={@tint}
+        max_markers={@max_markers}
+        class=""
+        height="700px"
+      />
+    </div>
+  <% end %>
+<% end %>
