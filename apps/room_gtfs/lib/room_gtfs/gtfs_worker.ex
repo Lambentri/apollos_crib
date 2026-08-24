@@ -31,10 +31,16 @@ defmodule RoomGtfs.Worker do
     |> GenServer.cast(:scheduled_static)
   end
 
+  @doc """
+  Ask for a source's static feed to be reimported.
+
+  This queues rather than starts. Every caller — the nightly scheduler and the
+  button on the source page both — lands here, and `RoomGtfs.ImportJob` decides
+  when the import actually runs; see that module for why. A source that already
+  has an import queued or running does not get a second one.
+  """
   def update_static_data(name) do
-    "gtfs#{name}"
-    |> via_tuple()
-    |> GenServer.cast(:update_static)
+    RoomGtfs.ImportJob.enqueue(name)
   end
 
   def update_static_data(name, :str) do
@@ -726,16 +732,24 @@ defmodule RoomGtfs.Worker.Static do
   end
 
   defp bcast(id, file, complete, total) do
-    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, file, complete, total})
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, wire_id(id), file, complete, total})
   end
 
   defp bcast(id, :disabled) do
-    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :disabled})
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, wire_id(id), :disabled})
   end
 
   defp bcast(id, :done) do
-    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :done})
+    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, wire_id(id), :done})
   end
+
+  # The source page does `String.to_integer/1` on the id it receives, so these
+  # messages have always carried a string — which they did by accident, because
+  # the only caller was a GenServer whose name is the id as a string. The
+  # importer is now handed an integer by the job that runs it, so the shape is
+  # pinned here rather than left to whoever happens to call.
+  defp wire_id(id) when is_binary(id), do: id
+  defp wire_id(id) when is_integer(id), do: Integer.to_string(id)
 
   def init(opts) do
 
@@ -1238,79 +1252,123 @@ end
     "gtfs_#{atom}"
   end
 
-  @impl true
-  def handle_cast(:update_static, state) do
-    cfg = Configuration.get_source!(state.id)
+  @doc """
+  Import a source's static feed, start to finish, in the calling process.
 
-    case cfg.enabled do
-      true ->
-        Logger.info("GTFS::#{state.id} updating static info")
-        bcast(state.id, :downloading, 1, 10)
+  This is the slow half of GTFS: download a zip, then COPY eight files into
+  Postgres, of which stop_times runs to millions of rows and is preceded by a
+  delete of the millions already there. It is deliberately synchronous — the
+  caller is held for the whole import, which is what lets `RoomGtfs.ImportJob`
+  bound how many run at once. Casting this at a GenServer instead, as the
+  scheduler used to, means the cast returns immediately and nothing anywhere
+  knows how many imports are in flight.
 
-        case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
-          {:ok, result} ->
-            bcast(state.id, :extracting, 2, 10)
+  Returns `:ok` once the feed has been written, or `{:error, reason}` for a
+  failure that happened before anything was written — a download that failed, a
+  body that was not a zip. Those are safe to retry. A file that fails *during*
+  the load is logged and the import still finishes and stamps `last_run`, which
+  is long-standing behaviour: a retry would truncate and reload the seven files
+  that did work.
+  """
+  def import_static(id) do
+    cfg = Configuration.get_source!(id)
 
-            case result.body |> Unzip.InMem.new() |> Unzip.new() do
-              {:ok, unzip} ->
-                files = Unzip.list_entries(unzip)
-
-                case Enum.find(files, &(&1.file_name == "linked_datasets.txt")) do
-                  nil ->
-                    :ok
-
-                  entry ->
-                    Unzip.file_stream!(unzip, entry.file_name)
-                    |> Enum.to_list()
-                    |> IO.iodata_to_binary()
-                    |> parse_linked_datasets()
-                    |> linked_dataset_urls()
-                    |> then(&apply_linked_datasets(cfg, &1))
-                end
-
-                try do
-                  files
-                  |> Enum.map(fn e ->
-                    if Enum.member?(
-                         [
-                          "agency.txt",
-                          "calendar.txt",
-                          "directions.txt",
-                          "routes.txt",
-                          "stops.txt",
-                          "stop_times.txt",
-                          "trips.txt",
-                          "shapes.txt",
-                         ],
-                         e.file_name
-                       ) do
-
-                      bcast(state.id, file_to_atom(e.file_name), file_to_order(e.file_name), 10)
-
-                      Unzip.file_stream!(unzip, e.file_name)
-                      |> write_file(file_to_atom(e.file_name), state.id, nil)
-                    end
-                  end)
-                rescue
-                  e ->
-                    Logger.error("GTFS::#{state.id} error during static import: #{inspect(e)}")
-                after
-                  Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
-                  bcast(state.id, :done)
-                end
-
-              {:error, term} ->
-                Logger.error(term)
-            end
-          {:error, error} -> Logger.error(error)
-        end
+    if cfg.enabled do
+      do_import_static(id, cfg)
+    else
+      # Previously a `case cfg.enabled do true -> ... end`, which raised
+      # CaseClauseError on a disabled source. Harmless when it was a cast into
+      # a GenServer that restarted; as a queued job it would fail, retry and
+      # fail again.
+      Logger.info("GTFS::#{id} static import skipped, source is disabled")
+      :ok
     end
+  end
 
-    {:noreply, state}
+  defp do_import_static(id, cfg) do
+    Logger.info("GTFS::#{id} updating static info")
+    bcast(id, :downloading, 1, 10)
+
+    case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
+      {:ok, result} ->
+        bcast(id, :extracting, 2, 10)
+
+        case result.body |> Unzip.InMem.new() |> Unzip.new() do
+          {:ok, unzip} ->
+            files = Unzip.list_entries(unzip)
+
+            case Enum.find(files, &(&1.file_name == "linked_datasets.txt")) do
+              nil ->
+                :ok
+
+              entry ->
+                Unzip.file_stream!(unzip, entry.file_name)
+                |> Enum.to_list()
+                |> IO.iodata_to_binary()
+                |> parse_linked_datasets()
+                |> linked_dataset_urls()
+                |> then(&apply_linked_datasets(cfg, &1))
+            end
+
+            try do
+              files
+              |> Enum.map(fn e ->
+                if Enum.member?(
+                     [
+                      "agency.txt",
+                      "calendar.txt",
+                      "directions.txt",
+                      "routes.txt",
+                      "stops.txt",
+                      "stop_times.txt",
+                      "trips.txt",
+                      "shapes.txt",
+                     ],
+                     e.file_name
+                   ) do
+
+                  bcast(id, file_to_atom(e.file_name), file_to_order(e.file_name), 10)
+
+                  Unzip.file_stream!(unzip, e.file_name)
+                  |> write_file(file_to_atom(e.file_name), id, nil)
+                end
+              end)
+            rescue
+              e ->
+                Logger.error("GTFS::#{id} error during static import: #{inspect(e)}")
+            after
+              Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
+              bcast(id, :done)
+            end
+
+            :ok
+
+          {:error, term} ->
+            # `Logger.error/1` takes chardata, not a struct: passing the
+            # raw term raised here, inside the branch meant to report the
+            # error.
+            Logger.error("GTFS::#{id} static feed was not a readable zip: #{inspect(term)}")
+            {:error, {:unzip, term}}
+        end
+
+      {:error, error} ->
+        Logger.error("GTFS::#{id} static feed download failed: #{inspect(error)}")
+        {:error, {:download, error}}
+    end
   end
 
   defp replace(string) do
     String.replace(string, ~s("), "")
+  end
+
+  # Runs the import immediately, in this GenServer, bypassing the queue.
+  # Nothing in the app reaches this any more — `update_static_data/1` enqueues
+  # instead — but it is left as the way to force one feed from IEx without
+  # waiting behind whatever else is queued.
+  @impl true
+  def handle_cast(:update_static, state) do
+    import_static(state.id)
+    {:noreply, state}
   end
 
   @impl true

@@ -90,7 +90,12 @@ config :logger,
 config :phoenix, :json_library, Jason
 config :room_sanctum, Oban,
        engine: Oban.Engines.Basic,
-       queues: [default: 10, webhooks: 20, emails: 20],
+       # gtfs_import is 1 on purpose. A GTFS static import bulk-loads millions of
+       # rows through its own Postgrex connections, and several at once — which
+       # is what happened when every source scheduled itself for midnight —
+       # buries Postgres. See RoomGtfs.ImportJob. Raising this trades database
+       # load for getting through the feeds sooner.
+       queues: [default: 10, webhooks: 20, emails: 20, gtfs_import: 1],
        repo: RoomSanctum.Repo
 config :messenger, smtp_opts: [[port: 2525]]
 

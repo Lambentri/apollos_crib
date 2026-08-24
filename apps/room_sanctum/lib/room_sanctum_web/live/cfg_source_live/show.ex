@@ -1287,6 +1287,17 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           |> assign(:status_val, 0)
         }
 
+      # GTFS imports run one at a time through Oban, so an update that was
+      # asked for has not necessarily started. Without this the button reads as
+      # doing nothing until the feed reaches the front of the queue.
+      :queued ->
+        {
+          :noreply,
+          socket
+          |> assign(:status, "Queued")
+          |> assign(:status_val, 0)
+        }
+
       _ ->
         case complete == total do
           true ->
