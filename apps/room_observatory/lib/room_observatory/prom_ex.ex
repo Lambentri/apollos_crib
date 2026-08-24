@@ -72,7 +72,11 @@ defmodule RoomObservatory.PromEx do
       # label the Ecto plugin already attaches.
       {Plugins.Ecto, repos: [RoomSanctum.Repo, RoomHermes.Repo], metric_prefix: [:phx, :ecto]},
       # Oban runs under room_sanctum only (see config/config.exs).
-      {Plugins.Oban, metric_prefix: [:phx, :oban]}
+      {Plugins.Oban, metric_prefix: [:phx, :oban]},
+      # Not a PromEx plugin — see the module. Counts configured sources and the
+      # rows they have accumulated, which nothing in the app emits telemetry
+      # for, so it asks the database on a timer.
+      {RoomObservatory.Plugins.Sanctum, metric_prefix: [:phx, :sanctum]}
     ]
   end
 end
