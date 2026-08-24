@@ -524,9 +524,17 @@ defmodule RoomGtfs.Worker.RT do
   # subway feed is 1,488 rows that would otherwise be read on every poll.
   defp ensure_stops(state) do
     now = System.monotonic_time(:millisecond)
-    age = now - Map.get(state, :stops_at, -@stops_ttl)
 
-    if age >= @stops_ttl do
+    # Matched rather than defaulted: the key is present from init with a value of
+    # nil, so Map.get/3's default never fired and the first poll of every worker
+    # arithmetic'd against nil.
+    stale? =
+      case state.stops_at do
+        nil -> true
+        at -> now - at >= @stops_ttl
+      end
+
+    if stale? do
       stops =
         state.id
         |> Storage.list_stops()
