@@ -101,9 +101,22 @@ defmodule RoomSanctum.Storage do
     Repo.delete(agency)
   end
 
+  # A GTFS import deletes a whole feed before reloading it, and gtfs_stop_times
+  # runs to a couple of million rows per source. Ecto's default 15s is not
+  # nearly enough for that delete on a database that is doing anything else,
+  # and when it is exceeded the error blames the pool --
+  # "client ... timed out because it queued and checked out the connection for
+  # longer than 15000ms" -- which reads like connection starvation rather than
+  # a statement that simply needed longer than a quarter of a minute.
+  #
+  # Only the GTFS truncates carry this. The GBFS ones below delete hundreds of
+  # rows, not millions, and a query there running past 15s means something is
+  # wrong rather than something is big.
+  @gtfs_truncate_timeout :timer.minutes(15)
+
   def truncate_agency(source_id) do
     from(p in Agency, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   @doc """
@@ -222,7 +235,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_calendar(source_id) do
     from(p in Calendar, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   @doc """
@@ -341,7 +354,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_direction(source_id) do
     from(p in Direction, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   @doc """
@@ -736,7 +749,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_shape(source_id) do
     from(p in Shape, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   def count_shapes(source_id) do
@@ -746,7 +759,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_route(source_id) do
     from(p in Route, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   @doc """
@@ -865,7 +878,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_stop_time(source_id) do
     from(p in StopTime, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   defp convert_gtfs_time(time) do
@@ -1023,7 +1036,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_stop(source_id) do
     from(p in Stop, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   @doc """
@@ -1162,7 +1175,7 @@ defmodule RoomSanctum.Storage do
 
   def truncate_trip(source_id) do
     from(p in Trip, where: p.source_id == ^source_id)
-    |> Repo.delete_all()
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
   end
 
   @doc """

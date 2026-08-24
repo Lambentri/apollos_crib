@@ -937,6 +937,12 @@ end
       end
 
 #    IO.inspect({table, columns, pg_cols})
+    # `Repo.config/0` carries Ecto's `timeout: 15000`, which looks like it would
+    # cap the bulk statements below. It does not: DBConnection takes the
+    # *transaction's* timeout as the default for statements run inside it, and
+    # the transaction is opened with `timeout: :infinity`. Verified rather than
+    # assumed -- a 3s query on a connection started with `timeout: 1000` runs
+    # fine inside an `:infinity` transaction, and fails inside a 1s one.
     opts = RoomSanctum.Repo.config()
     {:ok, pid} = Postgrex.start_link(opts)
 
