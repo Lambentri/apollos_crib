@@ -127,6 +127,27 @@ config :phoenix, :template_engines, [
   neex: LiveViewNative.Engine
 ]
 
+# Prometheus metrics for the whole release — see apps/room_observatory.
+#
+# `metrics_server` rather than a plug in either endpoint: /metrics on a Phoenix
+# router would be reachable through the Ingress, which matches `/` as a prefix.
+# PromEx's server is Plug.Cowboy-based, which is the right fit here because
+# this release already runs cowboy via Phoenix 1.7 — the Bandit apps in this
+# fleet use a second Bandit listener instead, for the same reason in reverse.
+#
+# `grafana: :disabled` is load-bearing, not boilerplate: PromEx would otherwise
+# upload its own dashboards on boot, and this fleet's dashboards are committed
+# in deployment/grafana and pushed from there.
+config :room_observatory, RoomObservatory.PromEx,
+  disabled: false,
+  manual_metrics_start_delay: :no_delay,
+  drop_metrics_groups: [],
+  grafana: :disabled,
+  metrics_server: [
+    port: 9568,
+    path: "/metrics"
+  ]
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"

@@ -49,7 +49,11 @@ defmodule RoomHermes.MixProject do
       {:floki, ">= 0.30.0", only: :test},
       {:phoenix_live_dashboard, "~> 0.8.3"},
       {:esbuild, "~> 0.3", runtime: Mix.env() == :dev},
-      {:telemetry_metrics, "~> 0.6"},
+      # 1.0 rather than 0.6 because PromEx requires it (see
+      # apps/room_observatory). The 1.0 release was a stability
+      # declaration rather than a rewrite — counter/1, summary/1,
+      # last_value/1 and distribution/1 are unchanged.
+      {:telemetry_metrics, "~> 1.0"},
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},

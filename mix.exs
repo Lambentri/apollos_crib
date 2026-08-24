@@ -12,6 +12,8 @@ defmodule ApollosCrib.MixProject do
           include_erts: true,
           include_executables_for: [:unix],
           applications: [
+            # Depends on both Phoenix apps, so OTP starts it after them.
+            room_observatory: :permanent,
             room_sanctum: :permanent,
             room_hermes: :permanent,
             room_zeus: :permanent,
