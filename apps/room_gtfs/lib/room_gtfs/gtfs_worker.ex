@@ -325,6 +325,20 @@ defmodule RoomGtfs.Worker.RT do
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, id, :disabled})
   end
 
+  # Every realtime fetch goes through here so that the outcome is recorded
+  # whether it worked or not. The logs already say when one fails; what they
+  # cannot say is that a feed stopped being fetched at all, which is the failure
+  # that looks exactly like silence. See RoomGtfs.FeedHealth.
+  defp fetch_recorded(state, kind, url) do
+    started = System.monotonic_time(:millisecond)
+    result = FeedCache.get(url)
+    took = System.monotonic_time(:millisecond) - started
+
+    RoomGtfs.FeedHealth.record(state.id, state.inst && state.inst.name, kind, url, result, took)
+
+    result
+  end
+
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
   def handle_call({:query_alerts, stop, route_ids}, _from, state) do
@@ -682,7 +696,7 @@ defmodule RoomGtfs.Worker.RT do
                 state
 
               val ->
-                case FeedCache.get(val) do
+                case fetch_recorded(state, :sa, val) do
                   {:ok, data_sa} when is_struct(data_sa, TransitRealtime.FeedMessage) ->
                     state |> Map.put(:rt_sa, data_sa)
 
@@ -701,7 +715,7 @@ defmodule RoomGtfs.Worker.RT do
                 state
 
               val ->
-                case FeedCache.get(val) do
+                case fetch_recorded(state, :tu, val) do
                   {:ok, data_tu} when is_struct(data_tu, TransitRealtime.FeedMessage) ->
                     state |> Map.put(:rt_tu, data_tu)
 
@@ -720,7 +734,7 @@ defmodule RoomGtfs.Worker.RT do
                 state
 
               val ->
-                case FeedCache.get(val) do
+                case fetch_recorded(state, :vp, val) do
                   {:ok, data_vp} when is_struct(data_vp, TransitRealtime.FeedMessage) ->
                     new_state = state |> Map.put(:rt_vp, data_vp) |> ensure_stops()
 

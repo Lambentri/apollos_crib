@@ -34,7 +34,7 @@
         phx-value-id={source.id}
         title={if hidden?(@hidden, source), do: "Show #{source.name}", else: "Hide #{source.name}"}>
         <span class={"shape-swatch shape-#{Map.get(@shapes, source.id, "circle")} text-#{@tint}-600"}></span>
-        <i class={"fa fa-fw #{icon_code(source.type)}"}></i>
+        <i class={"fas fa-fw #{source_icon(source.type)}"}></i>
         <%= source.name %>
         <span class="opacity-70 text-xs">
           <%= cond do %>

@@ -194,5 +194,8 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
 
   defp mappable?(source), do: Stations.mappable?(source)
 
-  defp icon_code(source_type), do: RoomSanctumWeb.IconHelpers.icon_code(source_type)
+  # icon/1, not icon_code/1: the latter returns a bare codepoint ("f55e") for
+  # places that set it as CSS content, and putting one in a class attribute
+  # names no class at all.
+  defp source_icon(source_type), do: RoomSanctumWeb.IconHelpers.icon(source_type)
 end

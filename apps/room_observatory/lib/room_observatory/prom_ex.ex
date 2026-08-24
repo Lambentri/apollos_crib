@@ -76,7 +76,11 @@ defmodule RoomObservatory.PromEx do
       # Not a PromEx plugin — see the module. Counts configured sources and the
       # rows they have accumulated, which nothing in the app emits telemetry
       # for, so it asks the database on a timer.
-      {RoomObservatory.Plugins.Sanctum, metric_prefix: [:phx, :sanctum]}
+      {RoomObservatory.Plugins.Sanctum, metric_prefix: [:phx, :sanctum]},
+      # Realtime feed health. Also not a PromEx plugin in the upstream sense --
+      # it reads what the GTFS workers recorded about their last fetch, because
+      # a feed that stops being polled emits no telemetry and writes no log.
+      {RoomObservatory.Plugins.GtfsRealtime, metric_prefix: [:phx, :gtfsrt]}
     ]
   end
 end

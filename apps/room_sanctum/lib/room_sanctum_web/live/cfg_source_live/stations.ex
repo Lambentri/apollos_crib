@@ -91,6 +91,7 @@ defmodule RoomSanctumWeb.SourceLive.Stations do
       |> Map.put(:name, labelled)
       |> Map.put(:source_id, source.id)
       |> Map.put(:shape, shape)
+      |> Map.put(:icon, RoomSanctumWeb.IconHelpers.icon(source.type))
     end)
   end
 

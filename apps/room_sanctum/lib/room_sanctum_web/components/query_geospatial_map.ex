@@ -904,7 +904,12 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         # the outline already means its tint. Nil everywhere else, which draws a
         # circle as before.
         shape: Map.get(station, :shape),
-        icon: "fa-bicycle"
+        # Was hardcoded to a bicycle, which is right for a dock and wrong for a
+        # bus stop and an air quality site. Nothing renders this today -- the
+        # map lives in a shadow root where Font Awesome's classes do not apply,
+        # which is why the markers draw their glyphs as SVG -- so this is the
+        # value being correct for whenever it is, not a visible change.
+        icon: Map.get(station, :icon) || "fa-location-dot"
       }
 
       # Add station status fields if available

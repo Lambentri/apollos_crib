@@ -39,7 +39,11 @@ defmodule RoomObservatory.MixProject do
       # leaned on transitively.
       {:plug_cowboy, "~> 2.5"},
       {:room_sanctum, in_umbrella: true},
-      {:room_hermes, in_umbrella: true}
+      {:room_hermes, in_umbrella: true},
+      # For RoomGtfs.FeedHealth. Realtime feed health is the one thing here that
+      # no telemetry event reports and no log line can express -- a feed that
+      # stopped being polled produces silence, not an error.
+      {:room_gtfs, in_umbrella: true}
     ]
   end
 end
