@@ -16,10 +16,14 @@ defmodule RoomGtfs.MixProject do
   end
 
   # Run "mix help compile.app" to learn about applications.
+  # `mod:` is set so that RoomGtfs.Application.start/2 runs and registers the
+  # GTFS-realtime protobuf extensions. Without a start callback the extension
+  # modules compile, sit there, and are never put in the registry the decoder
+  # consults -- which fails silently rather than loudly.
   def application do
     [
-      extra_applications: [:logger]
-      #      mod: {RoomGtfs.Application, []}
+      extra_applications: [:logger],
+      mod: {RoomGtfs.Application, []}
     ]
   end
 

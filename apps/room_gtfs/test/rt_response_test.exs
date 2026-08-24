@@ -56,4 +56,38 @@ defmodule RoomGtfs.RtResponseTest do
     # a feed whose first bytes happen to resemble markup is still protobuf
     assert RT.protobuf_response?(response("application/x-protobuf", "<?xml"))
   end
+
+  test "a mislabelled feed is accepted on its framing" do
+    # The MTA's subway feeds are served as application/json and are protobuf.
+    # Trusting the header loses every one of them, so a body framed as a
+    # FeedMessage -- tag 1, wire type 2, the byte 0x0A -- is believed instead.
+    # Encoded rather than hand-written, so the fixture cannot drift from what
+    # the framing check looks for.
+    feed =
+      TransitRealtime.FeedMessage.encode(%TransitRealtime.FeedMessage{
+        header: %TransitRealtime.FeedHeader{
+          gtfs_realtime_version: "2.0",
+          timestamp: 1_700_000_000
+        },
+        entity: []
+      })
+
+    assert RT.protobuf_response?(response("application/json", feed))
+    assert RT.protobuf_response?(response("text/plain", feed))
+    assert RT.protobuf_response?(response(nil, feed))
+  end
+
+  test "a json error is still rejected when it is served as json" do
+    # The counterpart to the above: the header is no longer the gate, so the
+    # body has to carry the rejection on its own.
+    refute RT.protobuf_response?(response("application/json", "\n  {\"error\":\"nope\"}"))
+    refute RT.protobuf_response?(response("application/json", "[{\"error\":\"nope\"}]"))
+  end
+
+  test "a body that is not valid utf-8 does not blow up the check" do
+    # Protobuf bodies routinely are not, and the check reads bytes for exactly
+    # this reason.
+    assert RT.protobuf_response?(response("application/json", <<0x0A, 0xFF, 0xFE, 0x80>>))
+    assert RT.protobuf_response?(response(nil, <<0x12, 0xFF, 0xFE, 0x80>>))
+  end
 end

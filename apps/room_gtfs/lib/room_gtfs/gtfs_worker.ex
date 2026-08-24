@@ -263,6 +263,7 @@ defmodule RoomGtfs.Worker.RT do
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
   alias RoomSanctum.Repo
+  alias RoomGtfs.FeedCache
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs-rt" <> opts[:name]))
@@ -511,15 +512,61 @@ defmodule RoomGtfs.Worker.RT do
     end
   end
 
-  # Trust the content type when the server states one, since publishers vary
-  # (application/x-protobuf, application/octet-stream). With no type at all,
-  # fall back to rejecting bodies that are plainly markup.
+  # The point of this is to catch a dead endpoint answering HTTP 200 with an
+  # error document, not to police content types -- publishers get those wrong.
+  # The MTA's subway feeds are served as `application/json` and are protobuf, so
+  # a stated type cannot be the gate: believing it there loses every subway
+  # feed, and only the body knows.
+  #
+  # Order matters. A publisher that says protobuf is believed even if the first
+  # bytes resemble markup. Failing that, a body framed as a FeedMessage is
+  # accepted whatever the header claims. Only then is an obvious error document
+  # rejected, and anything else still gets the benefit of the doubt -- the
+  # decoder is the real arbiter and reports a body hint when it fails.
   def protobuf_response?(%{body: body} = result) do
+    cond do
+      declared_protobuf?(result) -> true
+      feed_message_framed?(body) -> true
+      markup?(body) -> false
+      json_text?(body) -> false
+      true -> true
+    end
+  end
+
+  defp declared_protobuf?(result) do
     case content_type(result) do
-      nil -> not markup?(body)
+      nil -> false
       type -> String.contains?(type, "protobuf") or String.contains?(type, "octet-stream")
     end
   end
+
+  # A FeedMessage begins with its required `header` field -- tag 1, wire type 2,
+  # the byte 0x0A -- then that submessage's length, and the header in turn
+  # begins with its own required `gtfs_realtime_version`, tag 1 wire type 2.
+  #
+  # One byte is not enough to check: 0x0A is also a newline, so a JSON error
+  # document that happens to start with one would pass. Two levels plus a length
+  # the body can actually satisfy tells them apart.
+  defp feed_message_framed?(<<0x0A, len, rest::binary>>) when len < 128 do
+    byte_size(rest) >= len and match?(<<0x0A, _::binary>>, rest)
+  end
+
+  defp feed_message_framed?(_body), do: false
+
+  # Byte-wise rather than via String: a protobuf body is frequently not valid
+  # UTF-8, and only the first non-blank character is being asked about.
+  defp json_text?(body) when is_binary(body) do
+    case skip_blanks(body) do
+      <<?{, _::binary>> -> true
+      <<?[, _::binary>> -> true
+      _ -> false
+    end
+  end
+
+  defp json_text?(_body), do: false
+
+  defp skip_blanks(<<c, rest::binary>>) when c in [?\s, ?\t, ?\r, ?\n], do: skip_blanks(rest)
+  defp skip_blanks(body), do: body
 
   defp content_type(%{headers: headers}) do
     Enum.find_value(headers, fn {name, value} ->
@@ -530,7 +577,13 @@ defmodule RoomGtfs.Worker.RT do
   defp content_type(_result), do: nil
 
   defp markup?(body) when is_binary(body) do
-    body |> String.trim_leading() |> String.starts_with?(["<?xml", "<!DOCTYPE", "<html", "<HTML"])
+    case skip_blanks(body) do
+      <<?<, _::binary>> = trimmed ->
+        String.starts_with?(trimmed, ["<?xml", "<!DOCTYPE", "<html", "<HTML", "<Error"])
+
+      _ ->
+        false
+    end
   end
 
   defp markup?(_body), do: false
@@ -558,7 +611,7 @@ defmodule RoomGtfs.Worker.RT do
                 state
 
               val ->
-                case fetch_rt_url(val) do
+                case FeedCache.get(val) do
                   {:ok, data_sa} when is_struct(data_sa, TransitRealtime.FeedMessage) ->
                     state |> Map.put(:rt_sa, data_sa)
 
@@ -577,7 +630,7 @@ defmodule RoomGtfs.Worker.RT do
                 state
 
               val ->
-                case fetch_rt_url(val) do
+                case FeedCache.get(val) do
                   {:ok, data_tu} when is_struct(data_tu, TransitRealtime.FeedMessage) ->
                     state |> Map.put(:rt_tu, data_tu)
 
@@ -596,7 +649,7 @@ defmodule RoomGtfs.Worker.RT do
                 state
 
               val ->
-                case fetch_rt_url(val) do
+                case FeedCache.get(val) do
                   {:ok, data_vp} when is_struct(data_vp, TransitRealtime.FeedMessage) ->
                     new_state = state |> Map.put(:rt_vp, data_vp)
                     
@@ -647,7 +700,15 @@ defmodule RoomGtfs.Worker.RT do
       _otherwise ->
         relevant_trips =
           state.rt_tu.entity
-          |> Enum.filter(fn x -> Enum.member?(trips, x.trip_update.trip.trip_id) end)
+          # A FeedMessage may carry any mix of entity kinds, and the MTA's subway
+          # feeds put trip updates and vehicle positions in the same one -- so
+          # `url_rt_tu` and `url_rt_vp` are the same URL and half of what arrives
+          # here has no trip_update at all. MBTA publishes them as separate
+          # files, which is why this held up until a subway source was added.
+          |> Enum.filter(fn x ->
+            x.trip_update && x.trip_update.trip &&
+              Enum.member?(trips, x.trip_update.trip.trip_id)
+          end)
           |> Enum.map(fn x ->
             x
             |> Kernel.put_in(
