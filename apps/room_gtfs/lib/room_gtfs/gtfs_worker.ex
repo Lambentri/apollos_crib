@@ -245,6 +245,7 @@ defmodule RoomGtfs.Worker do
       calendars:  Storage.count_calendars(id),
       directions: Storage.count_directions(id),
       routes:     Storage.count_routes(id),
+      shapes:     Storage.count_shapes(id),
       stops:      Storage.count_stops(id),
       stop_times: Storage.count_stop_times(id),
       trips:      Storage.count_trips(id),
@@ -726,6 +727,21 @@ defmodule RoomGtfs.Worker.Static do
   alias RoomSanctum.Storage
   alias RoomSanctum.Repo
   alias RoomSanctum.Storage.GTFS
+
+  # The files that get loaded, and the only ones file_to_atom/1 and
+  # file_to_order/1 accept. Everything else in a feed -- calendar_dates.txt,
+  # feed_info.txt, linked_datasets.txt -- is either handled separately or
+  # ignored.
+  @import_files ~w(
+    agency.txt
+    calendar.txt
+    directions.txt
+    routes.txt
+    shapes.txt
+    stops.txt
+    stop_times.txt
+    trips.txt
+  )
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs-st" <> opts[:name]))
@@ -1241,16 +1257,23 @@ end
     end
   end
 
+  # The order the progress bar counts in, which has to be the order the files are
+  # actually written in or the bar moves backwards. Entries come from the zip's
+  # own directory, which for every feed seen here is alphabetical -- so shapes is
+  # written fifth, between routes and stops, and was previously numbered tenth.
+  # Being numbered last meant its step arrived as "10 of 10", which the source
+  # page reads as completion: the bar hit 100% and flipped to idle while three
+  # more files, stop_times included, were still to load.
   def file_to_order(filename) do
     case filename do
       "agency.txt" -> 3
       "calendar.txt" -> 4
       "directions.txt" -> 5
       "routes.txt" -> 6
-      "stops.txt" -> 7
-      "stop_times.txt" -> 8
-      "trips.txt" -> 9
-      "shapes.txt" -> 10
+      "shapes.txt" -> 7
+      "stops.txt" -> 8
+      "stop_times.txt" -> 9
+      "trips.txt" -> 10
     end
   end
 
@@ -1293,11 +1316,11 @@ end
 
   defp do_import_static(id, cfg) do
     Logger.info("GTFS::#{id} updating static info")
-    bcast(id, :downloading, 1, 10)
+    bcast(id, :downloading, 1, 11)
 
     case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
       {:ok, result} ->
-        bcast(id, :extracting, 2, 10)
+        bcast(id, :extracting, 2, 11)
 
         case result.body |> Unzip.InMem.new() |> Unzip.new() do
           {:ok, unzip} ->
@@ -1317,27 +1340,23 @@ end
             end
 
             try do
+              # Sorted, because `Unzip.list_entries/1` maps over `cd_list`, which
+              # is a map -- so the order it hands back is neither the zip's nor
+              # alphabetical, it is whatever the hash gives. Left to that, the
+              # progress bar walks backwards: stop_times (step 9) came out ahead
+              # of stops (step 8) on the MTA feeds. Sorting by the same function
+              # that numbers the steps makes the order the bar claims the order
+              # the files are actually written in, for every feed.
               files
+              |> Enum.filter(&(&1.file_name in @import_files))
+              |> Enum.sort_by(&file_to_order(&1.file_name))
               |> Enum.map(fn e ->
-                if Enum.member?(
-                     [
-                      "agency.txt",
-                      "calendar.txt",
-                      "directions.txt",
-                      "routes.txt",
-                      "stops.txt",
-                      "stop_times.txt",
-                      "trips.txt",
-                      "shapes.txt",
-                     ],
-                     e.file_name
-                   ) do
+                type = file_to_atom(e.file_name)
 
-                  bcast(id, file_to_atom(e.file_name), file_to_order(e.file_name), 10)
+                bcast(id, type, file_to_order(e.file_name), 11)
 
-                  Unzip.file_stream!(unzip, e.file_name)
-                  |> write_file(file_to_atom(e.file_name), id, nil)
-                end
+                Unzip.file_stream!(unzip, e.file_name)
+                |> write_file(type, id, nil)
               end)
             rescue
               e ->

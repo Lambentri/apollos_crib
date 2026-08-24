@@ -1165,7 +1165,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def handle_info({type, id, :done} = info, socket) do
     source = Configuration.get_source!(socket.assigns.source_id)
-    {:noreply, socket |> assign(:source, source) |> put_flash(:info, "Completed")}
+
+    {:noreply,
+     socket
+     |> assign(:source, source)
+     |> assign(:status, :idle)
+     |> assign(:status_val, 0)
+     |> put_flash(:info, "Completed")}
   end
 
   # Handle vehicle position updates for source-specific display
