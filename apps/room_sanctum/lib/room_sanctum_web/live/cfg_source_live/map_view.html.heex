@@ -35,7 +35,7 @@
     <% end %>
   </div>
 
-  <%= if @stations == [] do %>
+  <%= if @stations == [] and @vehicles == [] and @free_bikes == [] and @aircraft == [] do %>
     <div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-2">
       <div class="card-body">
         <h3 class="card-title italic">Nothing to draw</h3>
@@ -58,12 +58,33 @@
         queries={[]}
         stations={@stations}
         station_statuses={@station_statuses}
+        vehicle_positions={@vehicles}
+        route_types={@route_types}
+        free_bikes={@free_bikes}
+        aircraft={if @show_aircraft, do: @aircraft, else: []}
+        aircraft_event={if any_aircraft?(@sources), do: "toggle-aircraft"}
+        show_aircraft={@show_aircraft}
         source_tint={@tint}
         selected_tint={@tint}
         max_markers={@max_markers}
         class=""
         height="700px"
       />
+
+      <%!-- Counts rather than a legend entry: the map's own legend explains the
+            marker kinds, and what is useful here is knowing whether a layer is
+            empty because nothing is running or because no source supplies it. --%>
+      <div class="mt-2 text-xs opacity-70 flex flex-wrap gap-3">
+        <span><%= length(@stations) %> places</span>
+        <span :if={@vehicles != []}>
+          <%= length(@vehicles) %> vehicles<%= inferred_note(@vehicles) %>
+        </span>
+        <span :if={@free_bikes != []}><%= length(@free_bikes) %> loose bikes</span>
+        <span :if={@aircraft != [] and @show_aircraft}><%= length(@aircraft) %> aircraft</span>
+        <span :if={Enum.any?(@sources, &LiveLayers.live?(&1)) and @vehicles == [] and @free_bikes == []}>
+          nothing moving right now
+        </span>
+      </div>
     </div>
   <% end %>
 <% end %>

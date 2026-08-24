@@ -265,6 +265,9 @@ defmodule RoomGtfs.Worker.RT do
   alias RoomSanctum.Repo
   alias RoomGtfs.FeedCache
 
+  # Static stops only change when a feed is reimported.
+  @stops_ttl :timer.minutes(5)
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs-rt" <> opts[:name]))
   end
@@ -310,7 +313,11 @@ defmodule RoomGtfs.Worker.RT do
        inst: nil,
        rt_sa: nil,
        rt_tu: nil,
-       rt_vp: nil
+       rt_vp: nil,
+       # stop_id => {lat, lon}, for feeds that report a station instead of a
+       # coordinate. See vehicle_positions_from/2.
+       stops: %{},
+       stops_at: nil
      }}
   end
 
@@ -451,30 +458,86 @@ defmodule RoomGtfs.Worker.RT do
   defp feed_summary(_), do: %{loaded: false}
 
   # Helper function to extract vehicle positions from protobuf data
-  defp extract_vehicle_positions(data_vp) do
-    case data_vp do
-      nil ->
-        []
-      
-      %{entity: entities} ->
-        entities
-        |> Enum.filter(fn entity -> entity.vehicle && entity.vehicle.position end)
-        |> Enum.map(fn entity ->
-          %{
-            vehicle_id: entity.vehicle.vehicle.id,
-            trip_id: if(entity.vehicle.trip, do: entity.vehicle.trip.trip_id, else: nil),
-            route_id: if(entity.vehicle.trip, do: entity.vehicle.trip.route_id, else: nil),
-            latitude: entity.vehicle.position.latitude,
-            longitude: entity.vehicle.position.longitude,
-            bearing: entity.vehicle.position.bearing,
-            timestamp: entity.vehicle.timestamp
-          }
-        end)
-        
+  @doc """
+  Vehicles from a realtime feed, placed on the map.
+
+  A GTFS-RT VehiclePosition may carry a `position` and may not. Buses do:
+  every one of the MTA's 318 had a latitude. NYCT subway trains do not -- not
+  one of 45 did -- because what the subway reports is which station a train is
+  at or heading to, `stop_id` plus `current_status`, and never a coordinate.
+  Filtering on `position` therefore drew every bus and no train at all.
+
+  So a train without a position is placed at the stop it names, and marked
+  `position_inferred: true` so nothing downstream mistakes it for a fix. For a
+  subway that is arguably the more useful reading anyway: you care which
+  station it is at, not where it is in the tunnel.
+
+  `stops` is a `stop_id => {lat, lon}` map from the source's own static feed.
+  Empty, this behaves as it always did.
+  """
+  def vehicle_positions_from(nil, _stops), do: []
+
+  def vehicle_positions_from(%{entity: entities}, stops) do
+    entities
+    |> Enum.filter(& &1.vehicle)
+    |> Enum.flat_map(fn entity -> [place_vehicle(entity.vehicle, stops)] end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  def vehicle_positions_from(_feed, _stops), do: []
+
+  defp place_vehicle(v, stops) do
+    base = %{
+      vehicle_id: v.vehicle && v.vehicle.id,
+      trip_id: v.trip && v.trip.trip_id,
+      route_id: v.trip && v.trip.route_id,
+      stop_id: v.stop_id,
+      current_status: v.current_status,
+      timestamp: v.timestamp
+    }
+
+    case {v.position, v.stop_id && Map.get(stops, v.stop_id)} do
+      {%{latitude: lat, longitude: lon} = pos, _} when not is_nil(lat) and not is_nil(lon) ->
+        Map.merge(base, %{
+          latitude: lat,
+          longitude: lon,
+          bearing: pos.bearing,
+          position_inferred: false
+        })
+
+      {_, {lat, lon}} when not is_nil(lat) and not is_nil(lon) ->
+        # No bearing: the stop knows where it is, not which way the train faces.
+        Map.merge(base, %{
+          latitude: lat,
+          longitude: lon,
+          bearing: nil,
+          position_inferred: true
+        })
+
       _ ->
-        []
+        nil
     end
   end
+
+  # Static stops for this source, as the fallback above needs them. Reloaded at
+  # most every few minutes: they only change when a feed is reimported, and a
+  # subway feed is 1,488 rows that would otherwise be read on every poll.
+  defp ensure_stops(state) do
+    now = System.monotonic_time(:millisecond)
+    age = now - Map.get(state, :stops_at, -@stops_ttl)
+
+    if age >= @stops_ttl do
+      stops =
+        state.id
+        |> Storage.list_stops()
+        |> Map.new(fn stop -> {stop.stop_id, {stop.stop_lat, stop.stop_lon}} end)
+
+      state |> Map.put(:stops, stops) |> Map.put(:stops_at, now)
+    else
+      state
+    end
+  end
+
 
   def fetch_rt_url(url) do
     case HTTPoison.get(url, [], follow_redirect: true) do
@@ -651,10 +714,10 @@ defmodule RoomGtfs.Worker.RT do
               val ->
                 case FeedCache.get(val) do
                   {:ok, data_vp} when is_struct(data_vp, TransitRealtime.FeedMessage) ->
-                    new_state = state |> Map.put(:rt_vp, data_vp)
-                    
+                    new_state = state |> Map.put(:rt_vp, data_vp) |> ensure_stops()
+
                     # Broadcast vehicle position updates
-                    vehicles = extract_vehicle_positions(data_vp)
+                    vehicles = vehicle_positions_from(data_vp, new_state.stops)
                     
                     # Broadcast to specific source channel for source page
                     Phoenix.PubSub.broadcast(
@@ -723,59 +786,19 @@ defmodule RoomGtfs.Worker.RT do
     end
   end
 
+  # Both of these place vehicles through vehicle_positions_from/2, so a pull
+  # here and the push broadcast on each poll agree about where a train is.
   def handle_call(:query_vehicle_positions, _from, state) do
-    # Return all vehicle positions
-    case state.rt_vp do
-      nil ->
-        {:reply, [], state}
-      
-      _otherwise ->
-        vehicles = state.rt_vp.entity
-        |> Enum.filter(fn entity -> entity.vehicle && entity.vehicle.position end)
-        |> Enum.map(fn entity ->
-          %{
-            vehicle_id: entity.vehicle.vehicle.id,
-            trip_id: if(entity.vehicle.trip, do: entity.vehicle.trip.trip_id, else: nil),
-            route_id: if(entity.vehicle.trip, do: entity.vehicle.trip.route_id, else: nil),
-            latitude: entity.vehicle.position.latitude,
-            longitude: entity.vehicle.position.longitude,
-            bearing: entity.vehicle.position.bearing,
-            timestamp: entity.vehicle.timestamp
-          }
-        end)
-        
-        {:reply, vehicles, state}
-    end
+    {:reply, vehicle_positions_from(state.rt_vp, state.stops), state}
   end
 
   def handle_call({:query_vehicle_positions, trips}, _from, state) do
-    # Return vehicle positions for specific trips
-    case state.rt_vp do
-      nil ->
-        {:reply, [], state}
-      
-      _otherwise ->
-        vehicles = state.rt_vp.entity
-        |> Enum.filter(fn entity -> 
-          entity.vehicle && 
-          entity.vehicle.position &&
-          entity.vehicle.trip &&
-          Enum.member?(trips, entity.vehicle.trip.trip_id)
-        end)
-        |> Enum.map(fn entity ->
-          %{
-            vehicle_id: entity.vehicle.vehicle.id,
-            trip_id: entity.vehicle.trip.trip_id,
-            route_id: entity.vehicle.trip.route_id,
-            latitude: entity.vehicle.position.latitude,
-            longitude: entity.vehicle.position.longitude,
-            bearing: entity.vehicle.position.bearing,
-            timestamp: entity.vehicle.timestamp
-          }
-        end)
-        
-        {:reply, vehicles, state}
-    end
+    vehicles =
+      state.rt_vp
+      |> vehicle_positions_from(state.stops)
+      |> Enum.filter(&(&1.trip_id && &1.trip_id in trips))
+
+    {:reply, vehicles, state}
   end
 end
 

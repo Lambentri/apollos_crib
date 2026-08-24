@@ -27,6 +27,7 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
   import RoomSanctumWeb.Components.QueryGeospatialMap
 
   alias RoomSanctum.Configuration
+  alias RoomSanctumWeb.SourceLive.LiveLayers
   alias RoomSanctumWeb.SourceLive.Stations
 
   # A backstop, not a budget. An offering's own map draws MBTA's ten thousand
@@ -38,8 +39,16 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
   # loud, rather than as a wedged browser.
   @max_markers 50_000
 
+  # Matches the source page. The realtime workers poll every 30s, so asking more
+  # often than that returns the same feed.
+  @refresh :timer.seconds(30)
+
   @impl true
   def mount(_params, _session, socket) do
+    # Only once connected: the static render would pay for every worker read and
+    # then be replaced.
+    if connected?(socket), do: Process.send_after(self(), :refresh_live, 100)
+
     {:ok,
      socket
      |> assign(:tint, nil)
@@ -47,7 +56,28 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
      |> assign(:stations, [])
      |> assign(:station_statuses, [])
      |> assign(:counts, %{})
-     |> assign(:max_markers, @max_markers)}
+     |> assign(:max_markers, @max_markers)
+     |> assign(:show_aircraft, false)
+     |> assign_live(%{vehicles: [], free_bikes: [], aircraft: [], route_types: %{}})}
+  end
+
+  @impl true
+  def handle_info(:refresh_live, socket) do
+    Process.send_after(self(), :refresh_live, @refresh)
+    {:noreply, assign_live(socket, LiveLayers.for_sources(socket.assigns.sources))}
+  end
+
+  @impl true
+  def handle_event("toggle-aircraft", _params, socket) do
+    {:noreply, assign(socket, :show_aircraft, not socket.assigns.show_aircraft)}
+  end
+
+  defp assign_live(socket, layers) do
+    socket
+    |> assign(:vehicles, layers.vehicles)
+    |> assign(:free_bikes, layers.free_bikes)
+    |> assign(:aircraft, layers.aircraft)
+    |> assign(:route_types, layers.route_types)
   end
 
   @impl true
@@ -89,6 +119,23 @@ defmodule RoomSanctumWeb.SourceLive.MapView do
     |> assign(:stations, Enum.flat_map(per_source, fn {_source, stations} -> stations end))
     |> assign(:counts, Map.new(per_source, fn {source, stations} -> {source.id, length(stations)} end))
     |> assign(:station_statuses, Enum.flat_map(sources, &Stations.statuses_for_source/1))
+    |> then(fn s ->
+      # The sources just changed, so anything live already assigned describes the
+      # tint that was on screen a moment ago.
+      if connected?(s), do: assign_live(s, LiveLayers.for_sources(sources)), else: s
+    end)
+  end
+
+  defp any_aircraft?(sources), do: Enum.any?(sources, &(&1.type == :icarus))
+
+  # Subway trains report a station rather than a coordinate, so they are drawn at
+  # the stop they name. Saying how many is the difference between a map that is
+  # slightly approximate and one that is quietly lying.
+  defp inferred_note(vehicles) do
+    case Enum.count(vehicles, &Map.get(&1, :position_inferred)) do
+      0 -> ""
+      n -> " (#{n} placed at a stop)"
+    end
   end
 
   defp mappable?(source), do: Stations.mappable?(source)
