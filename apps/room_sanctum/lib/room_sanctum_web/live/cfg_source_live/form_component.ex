@@ -89,56 +89,112 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   end
 
   @doc """
-  Requests an hour the three intervals add up to, counting each distinct URL
-  once.
+  The kinds a source reads, grouped by the URL they come from -- one control per
+  group, because a URL is what actually gets scheduled.
 
-  A source with one combined feed polls one URL however many kinds read from
-  it, so counting per kind would overstate it threefold -- and the number is
-  only worth showing because some feeds are metered, where an overstatement is
-  as unhelpful as no number at all.
+  Three sliders over one combined feed were a lie: the URL is fetched on the
+  fastest of the three clocks, so setting service alerts slower than trip
+  updates saved no request at all, it just handed the slower kinds a staler copy
+  of a message that had already arrived. One group, one interval, everything in
+  it equally fresh.
+
+  Delegates, so the form and the poller cannot disagree about what a group is.
   """
-  def rt_requests_per_hour(config, idxs) when is_map(config) do
-    for {kind, _label} <- rt_period_kinds(), reduce: %{} do
-      acc ->
-        case rt_url_for(config, kind) do
-          nil -> acc
-          url -> Map.update(acc, url, rt_idx_to_secs(idxs[kind]), &min(&1, rt_idx_to_secs(idxs[kind])))
-        end
+  def rt_groups(config) when is_map(config), do: RoomGtfs.Worker.RT.rt_groups(config)
+  def rt_groups(_config), do: []
+
+  @doc """
+  Names a group by what it carries: the kinds when it is some of them, and
+  nothing more specific than "Realtime" when one feed carries all three.
+  """
+  def rt_group_label(kinds) do
+    case Enum.sort(kinds) do
+      [:sa, :tu, :vp] -> "Realtime (combined feed)"
+      sorted -> sorted |> Enum.map(&kind_title/1) |> Enum.join(", ")
     end
-    |> Enum.map(fn {_url, secs} -> div(3600, secs) end)
+  end
+
+  defp kind_title(:tu), do: "Trip updates"
+  defp kind_title(:vp), do: "Vehicle positions"
+  defp kind_title(:sa), do: "Service alerts"
+
+  @doc "Form key for a group's slider, e.g. `rt_idx_g_sa-tu-vp`."
+  def rt_group_key(kinds), do: "rt_idx_g_" <> (kinds |> Enum.sort() |> Enum.join("-"))
+
+  @doc """
+  The index a group's slider sits at. The kinds in a group are written together,
+  so they agree; the fastest wins if a config was edited by hand.
+  """
+  def rt_group_idx(config, kinds) do
+    kinds
+    |> Enum.map(fn kind -> rt_config_seconds(config, kind) end)
+    |> Enum.reject(&is_nil/1)
+    |> case do
+      [] -> rt_secs_to_idx(nil)
+      seconds -> rt_secs_to_idx(Enum.min(seconds))
+    end
+  end
+
+  def rt_config_seconds(config, kind) when is_map(config) do
+    Map.get(config, String.to_existing_atom("rt_period_#{kind}")) ||
+      Map.get(config, "rt_period_#{kind}")
+  end
+
+  def rt_config_seconds(_config, _kind), do: nil
+
+  defp to_seconds(value) when is_integer(value), do: value
+  defp to_seconds(value) when is_binary(value), do: String.to_integer(value)
+
+  @doc """
+  Requests an hour these intervals add up to.
+
+  One term per group rather than per kind, because a group is one URL: three
+  kinds arriving in one feed cost one request, and counting them separately
+  would treat a combined feed as three times more expensive than it is. The
+  number is only worth showing because some feeds are metered, and an
+  overstatement there is as unhelpful as no number at all.
+  """
+  def rt_requests_per_hour(config, idxs) when is_map(config) and is_map(idxs) do
+    config
+    |> rt_groups()
+    |> Enum.map(fn {_url, kinds} ->
+      idx = Map.get(idxs, kinds) || rt_group_idx(config, kinds)
+      div(3600, rt_idx_to_secs(idx))
+    end)
     |> Enum.sum()
   end
 
   def rt_requests_per_hour(_config, _idxs), do: 0
 
-  defp rt_url_for(config, kind) do
-    specific =
-      case kind do
-        :tu -> Map.get(config, :url_rt_tu)
-        :vp -> Map.get(config, :url_rt_vp)
-        :sa -> Map.get(config, :url_rt_sa)
-      end
+  # One slider writes every kind in its group, so the stored per-kind values
+  # remain the source of truth and a config edited by hand still works.
+  @doc false
+  # Public only so it can be exercised directly: it is the step that turns what
+  # the form submits into what the schema stores, and getting it wrong writes a
+  # poll interval nobody asked for.
+  def convert_rt_period_params(%{"config" => config} = source_params) when is_map(config) do
+    config
+    |> Map.keys()
+    |> Enum.filter(&String.starts_with?(&1, "rt_idx_g_"))
+    |> Enum.reduce(source_params, fn key, params ->
+      secs = rt_idx_to_secs(get_in(params, ["config", key]))
 
-    blank(specific) || blank(Map.get(config, :url_rt_shared))
-  end
+      kinds =
+        key
+        |> String.replace_prefix("rt_idx_g_", "")
+        |> String.split("-", trim: true)
 
-  defp blank(nil), do: nil
-  defp blank(""), do: nil
-  defp blank(value), do: value
-
-  defp convert_rt_period_params(source_params) do
-    Enum.reduce(rt_period_kinds(), source_params, fn {kind, _label}, params ->
-      case get_in(params, ["config", "rt_idx_#{kind}"]) do
-        nil ->
-          params
-
-        idx ->
-          params
-          |> put_in(["config", "rt_period_#{kind}"], rt_idx_to_secs(idx))
-          |> update_in(["config"], &Map.delete(&1, "rt_idx_#{kind}"))
-      end
+      params
+      |> then(fn p ->
+        Enum.reduce(kinds, p, fn kind, acc ->
+          put_in(acc, ["config", "rt_period_#{kind}"], secs)
+        end)
+      end)
+      |> update_in(["config"], &Map.delete(&1, key))
     end)
   end
+
+  def convert_rt_period_params(source_params), do: source_params
 
   # GitHub poll-interval slider: index → label/seconds
   @github_poll_steps [
@@ -353,19 +409,8 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> Enum.map(&{&1.name, &1.id})
     run_period_idx = seconds_to_idx(source.meta && source.meta.run_period)
 
-    rt_idxs =
-      Map.new(rt_period_kinds(), fn {kind, _label} ->
-        secs =
-          case source.config do
-            %RoomSanctum.Configuration.Configs.GTFS{} = cfg ->
-              Map.get(cfg, String.to_existing_atom("rt_period_#{kind}"))
-
-            _other ->
-              nil
-          end
-
-        {kind, rt_secs_to_idx(secs)}
-      end)
+    rt_groups = rt_groups(source.config)
+    rt_idxs = Map.new(rt_groups, fn {_url, kinds} -> {kinds, rt_group_idx(source.config, kinds)} end)
 
     gh_secs =
       case source.config do
@@ -399,6 +444,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
      |> assign(:mailbox_sel, mailbox_sel)
      |> assign(:tint_opts, RoomSanctum.Tints.all())
      |> assign(:run_period_idx, run_period_idx)
+     |> assign(:rt_groups, rt_groups)
      |> assign(:rt_idxs, rt_idxs)
      |> assign(:rt_requests, rt_requests_per_hour(source.config, rt_idxs))
      |> assign(:github_poll_idx, github_secs_to_idx(gh_secs))
@@ -489,15 +535,30 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     # Read back from the converted params rather than the changeset: a slider
     # the user has just dragged is in the params, and its label has to move with
     # it or the control reads as broken.
+    rt_groups = rt_groups(config_for_estimate)
+
     rt_idxs =
-      Map.new(rt_period_kinds(), fn {kind, _label} ->
-        secs = get_in(source_params, ["config", "rt_period_#{kind}"])
-        {kind, rt_secs_to_idx(secs)}
+      Map.new(rt_groups, fn {_url, kinds} ->
+        # From the converted params, not the changeset: a slider just dragged is
+        # in the params, and its label has to move with it.
+        seconds =
+          kinds
+          |> Enum.map(&get_in(source_params, ["config", "rt_period_#{&1}"]))
+          |> Enum.reject(&is_nil/1)
+
+        idx =
+          case seconds do
+            [] -> rt_group_idx(config_for_estimate, kinds)
+            values -> values |> Enum.map(&to_seconds/1) |> Enum.min() |> rt_secs_to_idx()
+          end
+
+        {kinds, idx}
       end)
 
     {:noreply,
      socket
      |> assign(:run_period_idx, run_period_idx)
+     |> assign(:rt_groups, rt_groups)
      |> assign(:rt_idxs, rt_idxs)
      |> assign(:rt_requests, rt_requests_per_hour(config_for_estimate, rt_idxs))
      |> assign(:github_poll_idx, gh_idx)

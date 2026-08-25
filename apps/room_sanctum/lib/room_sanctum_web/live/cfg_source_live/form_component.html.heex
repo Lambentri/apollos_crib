@@ -89,23 +89,23 @@
             </span>
         </label>
     </div>
-    <%= for {kind, title} <- RoomSanctumWeb.SourceLive.FormComponent.rt_period_kinds() do %>
+    <%= for {_url, kinds} <- @rt_groups do %>
     <div class="form-control mt-2">
         <label class="label">
             <span class="label-text">
-                <%= title %> interval &mdash;
+                <%= RoomSanctumWeb.SourceLive.FormComponent.rt_group_label(kinds) %> interval &mdash;
                 <span class="font-bold">
-                    <%= RoomSanctumWeb.SourceLive.FormComponent.rt_period_label(@rt_idxs[kind]) %>
+                    <%= RoomSanctumWeb.SourceLive.FormComponent.rt_period_label(@rt_idxs[kinds]) %>
                 </span>
             </span>
         </label>
         <input type="range"
-            name={"source[config][rt_idx_#{kind}]"}
-            id={"source_config_rt_idx_#{kind}"}
+            name={"source[config][#{RoomSanctumWeb.SourceLive.FormComponent.rt_group_key(kinds)}]"}
+            id={"source_config_#{RoomSanctumWeb.SourceLive.FormComponent.rt_group_key(kinds)}"}
             min="0"
             max={length(RoomSanctumWeb.SourceLive.FormComponent.rt_period_steps()) - 1}
             step="1"
-            value={@rt_idxs[kind]}
+            value={@rt_idxs[kinds]}
             class="range range-sm range-secondary" />
         <div class="flex justify-between text-xs px-1 mt-1">
             <%= for {label, _secs} <- RoomSanctumWeb.SourceLive.FormComponent.rt_period_steps() do %>
@@ -114,15 +114,15 @@
         </div>
     </div>
     <% end %>
-    <p class="text-xs text-base-content/60 mt-1">
-        The three kinds go stale at different rates: trip updates in seconds, service
-        alerts a few times a day. Feeds sharing one URL are fetched once between them.
+    <p :if={@rt_groups != []} class="text-xs text-base-content/60 mt-1">
+        One control per feed URL, since a URL is what gets fetched. Kinds arriving in
+        the same feed are refreshed together &mdash; scheduling them apart would fetch
+        that feed on the fastest of their clocks and then hand the others a staler copy
+        of the message that had already arrived.
     </p>
-    <div class="text-xs mt-2 opacity-80">
+    <div :if={@rt_groups != []} class="text-xs mt-2 opacity-80">
         <i class="fa-solid fa-fw fa-gauge-high"></i>
-        Roughly
-        <span class="font-bold"><%= @rt_requests %></span>
-        requests an hour, counting each distinct URL once.
+        Roughly <span class="font-bold"><%= @rt_requests %></span> requests an hour.
         511.org allows 60 on a default token.
     </div>
     <div class="form-control">
