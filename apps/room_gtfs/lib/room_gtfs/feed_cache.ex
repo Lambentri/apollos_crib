@@ -161,6 +161,13 @@ defmodule RoomGtfs.FeedCache do
         bump(@fetches)
     end
 
+    # Everyone past the first was coalesced into this one fetch and never
+    # touched the network, so they count as hits. Without this the counter
+    # under-reports sharing exactly when sharing is working hardest -- several
+    # sources asking for one URL at the same instant is the case single flight
+    # exists for, and it was reading as zero hits.
+    bump(@hits, length(waiting) - 1)
+
     Enum.each(waiting, &GenServer.reply(&1, result))
     {:noreply, %{state | inflight: inflight, refs: refs}}
   end
@@ -225,8 +232,12 @@ defmodule RoomGtfs.FeedCache do
     ArgumentError -> []
   end
 
-  defp bump(pos) do
-    :ets.update_counter(@table, :__counters__, {pos, 1})
+  defp bump(pos, by \\ 1)
+
+  defp bump(_pos, by) when by <= 0, do: 0
+
+  defp bump(pos, by) do
+    :ets.update_counter(@table, :__counters__, {pos, by})
   rescue
     ArgumentError -> 0
   end
