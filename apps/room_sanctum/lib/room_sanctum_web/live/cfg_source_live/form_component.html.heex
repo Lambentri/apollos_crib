@@ -89,15 +89,41 @@
             </span>
         </label>
     </div>
-    <div class="form-control">
-        <.input field={gtfs_form[:rt_period]} type="number" label="Realtime poll interval (seconds)"/>
+    <%= for {kind, title} <- RoomSanctumWeb.SourceLive.FormComponent.rt_period_kinds() do %>
+    <div class="form-control mt-2">
         <label class="label">
-            <span class="label-text-alt opacity-70">
-                Blank polls every 30s. Raise it for a feed with a request quota &mdash;
-                511.org allows 60 requests an hour, which three feed kinds exhaust in
-                twenty minutes at the default.
+            <span class="label-text">
+                <%= title %> interval &mdash;
+                <span class="font-bold">
+                    <%= RoomSanctumWeb.SourceLive.FormComponent.rt_period_label(@rt_idxs[kind]) %>
+                </span>
             </span>
         </label>
+        <input type="range"
+            name={"source[config][rt_idx_#{kind}]"}
+            id={"source_config_rt_idx_#{kind}"}
+            min="0"
+            max={length(RoomSanctumWeb.SourceLive.FormComponent.rt_period_steps()) - 1}
+            step="1"
+            value={@rt_idxs[kind]}
+            class="range range-sm range-secondary" />
+        <div class="flex justify-between text-xs px-1 mt-1">
+            <%= for {label, _secs} <- RoomSanctumWeb.SourceLive.FormComponent.rt_period_steps() do %>
+                <span><%= label %></span>
+            <% end %>
+        </div>
+    </div>
+    <% end %>
+    <p class="text-xs text-base-content/60 mt-1">
+        The three kinds go stale at different rates: trip updates in seconds, service
+        alerts a few times a day. Feeds sharing one URL are fetched once between them.
+    </p>
+    <div class="text-xs mt-2 opacity-80">
+        <i class="fa-solid fa-fw fa-gauge-high"></i>
+        Roughly
+        <span class="font-bold"><%= @rt_requests %></span>
+        requests an hour, counting each distinct URL once.
+        511.org allows 60 on a default token.
     </div>
     <div class="form-control">
         <.input field={gtfs_form[:rt_agency]} type="text" label="Realtime operator code"/>

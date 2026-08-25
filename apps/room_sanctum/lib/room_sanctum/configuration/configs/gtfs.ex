@@ -22,12 +22,16 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
 
     field :tz, :string
 
-    # Seconds between realtime polls. Nil polls at the default 30s, which is
-    # what an unmetered feed wants. A metered one does not: 511.org allows 60
-    # requests an hour on a default token, and three feed kinds polled every 30
-    # seconds is 360 -- so those sources set this and trade freshness for
-    # staying inside the budget.
-    field :rt_period, :integer
+    # Seconds between realtime polls, per kind, because the three kinds do not
+    # deserve the same cadence. Trip updates go stale in seconds; service alerts
+    # change a few times a day and polling them as often as vehicle positions is
+    # pure waste -- and waste is not free where a feed is metered. 511.org
+    # allows 60 requests an hour on a default token.
+    #
+    # Nil is the default interval, not "never": see RoomGtfs.Worker.RT.
+    field :rt_period_tu, :integer
+    field :rt_period_vp, :integer
+    field :rt_period_sa, :integer
 
     # Operator code for a feed that carries several agencies at once, e.g. "SF"
     # for a source reading 511's regional feed. Realtime entities there are
@@ -39,11 +43,21 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
 
   def changeset(source, params) do
     source
-    |> cast(params, ~w(url url_rt_sa url_rt_tu url_rt_vp url_rt_shared tz rt_period rt_agency)a)
+    |> cast(
+      params,
+      ~w(url url_rt_sa url_rt_tu url_rt_vp url_rt_shared tz rt_agency
+         rt_period_tu rt_period_vp rt_period_sa)a
+    )
     |> validate_required([:url, :tz])
-    # Below about ten seconds the poller cannot keep up and the feed will not
-    # have changed anyway; the upper bound is a day, past which it is not
-    # realtime by any reading.
-    |> validate_number(:rt_period, greater_than_or_equal_to: 10, less_than_or_equal_to: 86_400)
+    |> validate_periods()
+  end
+
+  # Below about ten seconds the poller cannot keep up and the feed will not have
+  # changed anyway; the upper bound is a day, past which it is not realtime by
+  # any reading.
+  defp validate_periods(changeset) do
+    Enum.reduce([:rt_period_tu, :rt_period_vp, :rt_period_sa], changeset, fn field, acc ->
+      validate_number(acc, field, greater_than_or_equal_to: 10, less_than_or_equal_to: 86_400)
+    end)
   end
 end

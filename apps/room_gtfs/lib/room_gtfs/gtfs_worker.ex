@@ -268,6 +268,11 @@ defmodule RoomGtfs.Worker.RT do
   # Static stops only change when a feed is reimported.
   @stops_ttl :timer.minutes(5)
 
+  # What a kind polls at when the source has not said. One request a minute per
+  # kind is fresh enough for a bus and cheap enough for a metered feed to be
+  # worth a second look before lowering.
+  @default_rt_period :timer.seconds(60)
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gtfs-rt" <> opts[:name]))
   end
@@ -302,7 +307,10 @@ defmodule RoomGtfs.Worker.RT do
     )
 
     Periodic.start_link(
-      every: :timer.seconds(30),
+      # 15s because that is the finest interval a source can be set to, and the
+      # tick is the floor on all of them. Every kind that is not due returns
+      # immediately, so the extra ticks cost a message and a map lookup.
+      every: :timer.seconds(15),
       run: fn -> RoomGtfs.Worker.RT.update_realtime_data(opts[:name]) end,
       initial_delay: :timer.seconds(60)
     )
@@ -317,7 +325,9 @@ defmodule RoomGtfs.Worker.RT do
        # stop_id => {lat, lon}, for feeds that report a station instead of a
        # coordinate. See vehicle_positions_from/2.
        stops: %{},
-       stops_at: nil
+       stops_at: nil,
+       # kind => when it was last polled; each has its own interval.
+       rt_polled_at: %{}
      }}
   end
 
@@ -332,11 +342,8 @@ defmodule RoomGtfs.Worker.RT do
   # A source polling every three minutes can happily use data up to three
   # minutes old, and several sources sharing one URL -- which is the whole point
   # of the regional feed -- then fetch it once between them instead of once each.
-  defp cached_get(state, url) do
-    case rt_period_ms(state) do
-      nil -> FeedCache.get(url)
-      period -> FeedCache.get(url, period - :timer.seconds(5))
-    end
+  defp cached_get(state, kind, url) do
+    FeedCache.get(url, max(rt_period_ms(state, kind) - :timer.seconds(5), :timer.seconds(1)))
   end
 
   defp record_health(state, kind, url, result, took) do
@@ -748,34 +755,44 @@ defmodule RoomGtfs.Worker.RT do
   end
 
   def handle_cast(:update_realtime, state) do
-    if rt_due?(state) do
-      do_update_realtime(Map.put(state, :rt_polled_at, System.monotonic_time(:millisecond)))
-    else
-      {:noreply, state}
+    do_update_realtime(state)
+  end
+
+  # Each kind keeps its own clock. Trip updates go stale in seconds; service
+  # alerts change a few times a day, and polling them as often as vehicle
+  # positions buys nothing and costs a request -- which matters where the feed
+  # is metered, and is simply waste where it is not.
+  #
+  # Gated here rather than by rescheduling the Periodic, which cannot be changed
+  # once started and would have to be torn down and rebuilt whenever the config
+  # is refreshed -- every four seconds, as it happens.
+  defp due?(state, kind) do
+    case state |> Map.get(:rt_polled_at, %{}) |> Map.get(kind) do
+      nil -> true
+      at -> System.monotonic_time(:millisecond) - at >= rt_period_ms(state, kind)
     end
   end
 
-  # The poller ticks every 30s for everyone; a source with its own interval is
-  # gated here rather than by rescheduling the Periodic, which cannot be changed
-  # once started and would have to be torn down and rebuilt on every config
-  # refresh.
-  defp rt_due?(state) do
-    case rt_period_ms(state) do
-      nil ->
-        true
+  defp mark_polled(state, kind) do
+    polled = state |> Map.get(:rt_polled_at, %{}) |> Map.put(kind, System.monotonic_time(:millisecond))
+    Map.put(state, :rt_polled_at, polled)
+  end
 
-      period ->
-        case Map.get(state, :rt_polled_at) do
-          nil -> true
-          at -> System.monotonic_time(:millisecond) - at >= period
-        end
+  defp rt_period_ms(state, kind) do
+    state.inst
+    |> case do
+      %{config: config} -> Map.get(config, period_field(kind))
+      _ -> nil
+    end
+    |> case do
+      seconds when is_integer(seconds) -> :timer.seconds(seconds)
+      _ -> @default_rt_period
     end
   end
 
-  defp rt_period_ms(%{inst: %{config: %{rt_period: seconds}}}) when is_integer(seconds),
-    do: :timer.seconds(seconds)
-
-  defp rt_period_ms(_state), do: nil
+  defp period_field(:tu), do: :rt_period_tu
+  defp period_field(:vp), do: :rt_period_vp
+  defp period_field(:sa), do: :rt_period_sa
 
   defp do_update_realtime(state) do
     state =
@@ -799,35 +816,39 @@ defmodule RoomGtfs.Worker.RT do
   defp rt_url(config, :vp), do: Map.get(config, :url_rt_vp) || Map.get(config, :url_rt_shared)
 
   defp fetch_kind(kind, state) do
-    case rt_url(state.inst.config, kind) do
-      nil ->
+    url = rt_url(state.inst.config, kind)
+
+    cond do
+      is_nil(url) -> state
+      not due?(state, kind) -> state
+      true -> do_fetch_kind(kind, url, mark_polled(state, kind))
+    end
+  end
+
+  defp do_fetch_kind(kind, url, state) do
+    started = System.monotonic_time(:millisecond)
+    result = cached_get(state, kind, url)
+    took = System.monotonic_time(:millisecond) - started
+
+    case result do
+      {:ok, feed} when is_struct(feed, TransitRealtime.FeedMessage) ->
+        # Narrowed before it is recorded, so health reports what this kind
+        # actually got. Recording the raw feed would have every kind of a
+        # combined source claim the same entity count -- exactly the reading
+        # that means "the same URL is in all three fields by mistake", and
+        # would say it about a correct configuration.
+        feed = feed |> for_this_agency(state) |> slice(entity_field(kind))
+        record_health(state, kind, url, {:ok, feed}, took)
+        store_feed(state, kind, feed)
+
+      {:error, error} ->
+        record_health(state, kind, url, result, took)
+
+        Logger.info(
+          "failed to fetch gtfs-rt url[#{kind}] for '#{state.inst.name}', reason: #{inspect(error)}"
+        )
+
         state
-
-      url ->
-        started = System.monotonic_time(:millisecond)
-        result = cached_get(state, url)
-        took = System.monotonic_time(:millisecond) - started
-
-        case result do
-          {:ok, feed} when is_struct(feed, TransitRealtime.FeedMessage) ->
-            # Narrowed before it is recorded, so health reports what this kind
-            # actually got. Recording the raw feed would have every kind of a
-            # combined source claim the same entity count -- exactly the reading
-            # that means "the same URL is in all three fields by mistake", and
-            # would say it about a correct configuration.
-            feed = feed |> for_this_agency(state) |> slice(entity_field(kind))
-            record_health(state, kind, url, {:ok, feed}, took)
-            store_feed(state, kind, feed)
-
-          {:error, error} ->
-            record_health(state, kind, url, result, took)
-
-            Logger.info(
-              "failed to fetch gtfs-rt url[#{kind}] for '#{state.inst.name}', reason: #{inspect(error)}"
-            )
-
-            state
-        end
     end
   end
 

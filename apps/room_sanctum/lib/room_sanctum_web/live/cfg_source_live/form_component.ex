@@ -36,6 +36,110 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     end
   end
 
+  # Realtime poll-interval slider, one per feed kind. The three do not deserve
+  # the same cadence: trip updates go stale in seconds, service alerts change a
+  # few times a day, and on a metered feed the difference is the whole budget.
+  #
+  # The top of the range exists for 511.org, which allows 60 requests an hour on
+  # a default token -- three kinds at 240s is 45, and at 90s it would be 120.
+  @rt_period_steps [
+    {"15s", 15},
+    {"30s", 30},
+    {"45s", 45},
+    {"60s", 60},
+    {"75s", 75},
+    {"90s", 90},
+    {"2m", 120},
+    {"3m", 180},
+    {"4m", 240}
+  ]
+
+  # Index 3 -- 60s. Fresh enough for a bus, and cheap enough that a metered feed
+  # is worth a second look before it is lowered.
+  @rt_period_default_idx 3
+
+  def rt_period_steps, do: @rt_period_steps
+
+  def rt_period_kinds,
+    do: [{:tu, "Trip updates"}, {:vp, "Vehicle positions"}, {:sa, "Service alerts"}]
+
+  def rt_secs_to_idx(nil), do: @rt_period_default_idx
+
+  def rt_secs_to_idx(secs) when is_integer(secs) do
+    @rt_period_steps
+    |> Enum.with_index()
+    |> Enum.min_by(fn {{_, s}, _} -> abs(s - secs) end)
+    |> elem(1)
+  end
+
+  def rt_secs_to_idx(_other), do: @rt_period_default_idx
+
+  def rt_idx_to_secs(idx) when is_binary(idx), do: rt_idx_to_secs(String.to_integer(idx))
+
+  def rt_idx_to_secs(idx) do
+    {_, secs} = Enum.at(@rt_period_steps, idx, Enum.at(@rt_period_steps, @rt_period_default_idx))
+    secs
+  end
+
+  def rt_period_label(idx) do
+    {label, _secs} =
+      Enum.at(@rt_period_steps, idx, Enum.at(@rt_period_steps, @rt_period_default_idx))
+
+    label
+  end
+
+  @doc """
+  Requests an hour the three intervals add up to, counting each distinct URL
+  once.
+
+  A source with one combined feed polls one URL however many kinds read from
+  it, so counting per kind would overstate it threefold -- and the number is
+  only worth showing because some feeds are metered, where an overstatement is
+  as unhelpful as no number at all.
+  """
+  def rt_requests_per_hour(config, idxs) when is_map(config) do
+    for {kind, _label} <- rt_period_kinds(), reduce: %{} do
+      acc ->
+        case rt_url_for(config, kind) do
+          nil -> acc
+          url -> Map.update(acc, url, rt_idx_to_secs(idxs[kind]), &min(&1, rt_idx_to_secs(idxs[kind])))
+        end
+    end
+    |> Enum.map(fn {_url, secs} -> div(3600, secs) end)
+    |> Enum.sum()
+  end
+
+  def rt_requests_per_hour(_config, _idxs), do: 0
+
+  defp rt_url_for(config, kind) do
+    specific =
+      case kind do
+        :tu -> Map.get(config, :url_rt_tu)
+        :vp -> Map.get(config, :url_rt_vp)
+        :sa -> Map.get(config, :url_rt_sa)
+      end
+
+    blank(specific) || blank(Map.get(config, :url_rt_shared))
+  end
+
+  defp blank(nil), do: nil
+  defp blank(""), do: nil
+  defp blank(value), do: value
+
+  defp convert_rt_period_params(source_params) do
+    Enum.reduce(rt_period_kinds(), source_params, fn {kind, _label}, params ->
+      case get_in(params, ["config", "rt_idx_#{kind}"]) do
+        nil ->
+          params
+
+        idx ->
+          params
+          |> put_in(["config", "rt_period_#{kind}"], rt_idx_to_secs(idx))
+          |> update_in(["config"], &Map.delete(&1, "rt_idx_#{kind}"))
+      end
+    end)
+  end
+
   # GitHub poll-interval slider: index → label/seconds
   @github_poll_steps [
     {"15s", 15},
@@ -249,6 +353,20 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> Enum.map(&{&1.name, &1.id})
     run_period_idx = seconds_to_idx(source.meta && source.meta.run_period)
 
+    rt_idxs =
+      Map.new(rt_period_kinds(), fn {kind, _label} ->
+        secs =
+          case source.config do
+            %RoomSanctum.Configuration.Configs.GTFS{} = cfg ->
+              Map.get(cfg, String.to_existing_atom("rt_period_#{kind}"))
+
+            _other ->
+              nil
+          end
+
+        {kind, rt_secs_to_idx(secs)}
+      end)
+
     gh_secs =
       case source.config do
         %RoomSanctum.Configuration.Configs.Github{poll_seconds: secs}
@@ -281,6 +399,8 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
      |> assign(:mailbox_sel, mailbox_sel)
      |> assign(:tint_opts, RoomSanctum.Tints.all())
      |> assign(:run_period_idx, run_period_idx)
+     |> assign(:rt_idxs, rt_idxs)
+     |> assign(:rt_requests, rt_requests_per_hour(source.config, rt_idxs))
      |> assign(:github_poll_idx, github_secs_to_idx(gh_secs))
      |> assign(:github_estimate, gh_estimate)
      |> assign(:gitlab_poll_idx, gitlab_secs_to_idx(gl_secs))
@@ -324,6 +444,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       source_params
       |> inj_uid(socket)
       |> convert_run_period_params()
+      |> convert_rt_period_params()
       |> convert_github_poll_params()
       |> convert_gitlab_poll_params()
 
@@ -365,9 +486,20 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
         {socket.assigns[:gitlab_poll_idx] || 1, socket.assigns[:gitlab_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
       end
 
+    # Read back from the converted params rather than the changeset: a slider
+    # the user has just dragged is in the params, and its label has to move with
+    # it or the control reads as broken.
+    rt_idxs =
+      Map.new(rt_period_kinds(), fn {kind, _label} ->
+        secs = get_in(source_params, ["config", "rt_period_#{kind}"])
+        {kind, rt_secs_to_idx(secs)}
+      end)
+
     {:noreply,
      socket
      |> assign(:run_period_idx, run_period_idx)
+     |> assign(:rt_idxs, rt_idxs)
+     |> assign(:rt_requests, rt_requests_per_hour(config_for_estimate, rt_idxs))
      |> assign(:github_poll_idx, gh_idx)
      |> assign(:github_estimate, gh_estimate)
      |> assign(:gitlab_poll_idx, gl_idx)
@@ -380,6 +512,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       source_params
       |> inj_uid(socket)
       |> convert_run_period_params()
+      |> convert_rt_period_params()
       |> convert_github_poll_params()
       |> convert_gitlab_poll_params()
 
