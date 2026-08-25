@@ -26,6 +26,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:tester_selected, nil)
       |> assign(:tester_selected_name, nil)
       |> assign(:tester_selected_data, %{})
+      |> assign(:rt_test, nil)
       |> assign(:vehicle_positions, [])
       |> assign(:free_bikes, [])
       |> assign(:stations, [])
@@ -318,6 +319,20 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     do: Map.get(q, :stop_id) || Map.get(q, :stop) || Map.get(q, :aqsid)
 
   defp station_id_of(_), do: nil
+
+  defp rt_kind_name(:tu), do: "trip updates"
+  defp rt_kind_name(:vp), do: "vehicle positions"
+  defp rt_kind_name(:sa), do: "service alerts"
+
+  defp rt_finding_class(:error), do: "text-error"
+  defp rt_finding_class(:warn), do: "text-warning"
+  defp rt_finding_class(:ok), do: "text-success"
+  defp rt_finding_class(_severity), do: "opacity-70"
+
+  defp rt_finding_icon(:error), do: "fa-circle-exclamation"
+  defp rt_finding_icon(:warn), do: "fa-triangle-exclamation"
+  defp rt_finding_icon(:ok), do: "fa-circle-check"
+  defp rt_finding_icon(_severity), do: "fa-circle-info"
 
   defp page_title(:show), do: "Offering Detail"
   defp page_title(:edit), do: "Modify Offering"
@@ -800,6 +815,19 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     )
 
     {:noreply, socket}
+  end
+
+  # Fetches the source's realtime URLs and reports what is wrong with them. Runs
+  # on demand rather than on load: it makes real requests, and some feeds are
+  # metered.
+  @impl true
+  def handle_event("do-rt-test", _params, socket) do
+    {:noreply, assign(socket, :rt_test, RoomGtfs.FeedTester.run(socket.assigns.source))}
+  end
+
+  @impl true
+  def handle_event("dismiss-rt-test", _params, socket) do
+    {:noreply, assign(socket, :rt_test, nil)}
   end
 
   @impl true

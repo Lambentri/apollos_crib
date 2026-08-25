@@ -288,6 +288,48 @@ gl_available_projects={@gitlab_available_projects}
         </div>
     </div>
 
+    <div :if={@source.type == :gtfs} class="flex">
+        <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <h3 class="card-title">Realtime feeds</h3>
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary btn-sm" phx-click="do-rt-test">
+                            <i class="fa-solid fa-stethoscope mr-1"></i> Test
+                        </button>
+                        <button :if={@rt_test} class="btn btn-ghost btn-sm" phx-click="dismiss-rt-test">
+                            <i class="fa-solid fa-close"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <p :if={is_nil(@rt_test)} class="text-xs opacity-60">
+                    Fetches each realtime URL and checks it against this offering's schedule.
+                    Makes one request per feed, so mind a metered source.
+                </p>
+
+                <p :if={@rt_test == []} class="text-sm opacity-70">
+                    No realtime URLs configured for this offering.
+                </p>
+
+                <div :for={group <- @rt_test || []} class="mt-2">
+                    <div class="text-xs font-mono opacity-70 break-all"><%= group.url %></div>
+                    <div class="text-xs opacity-60 mb-1">
+                        <%= Enum.map_join(group.kinds, ", ", &rt_kind_name/1) %>
+                        <%= if Map.get(group, :total) do %>
+                            &middot; <%= group.total %> entities
+                        <% end %>
+                    </div>
+                    <div :for={{severity, message} <- group.findings}
+                         class={"text-sm flex gap-2 items-start #{rt_finding_class(severity)}"}>
+                        <i class={"fa-solid fa-fw mt-0.5 #{rt_finding_icon(severity)}"}></i>
+                        <span><%= message %></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <%= if @stats != %{} do %>
     <div class="flex">
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
