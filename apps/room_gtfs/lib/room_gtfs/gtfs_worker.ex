@@ -331,13 +331,79 @@ defmodule RoomGtfs.Worker.RT do
   # that looks exactly like silence. See RoomGtfs.FeedHealth.
   defp fetch_recorded(state, kind, url) do
     started = System.monotonic_time(:millisecond)
-    result = FeedCache.get(url)
+
+    # A source polling every three minutes can happily use data up to three
+    # minutes old, and several sources sharing one URL -- which is the whole
+    # point of the regional feed -- then fetch it once between them instead of
+    # once each.
+    result =
+      case rt_period_ms(state) do
+        nil -> FeedCache.get(url)
+        period -> FeedCache.get(url, period - :timer.seconds(5))
+      end
     took = System.monotonic_time(:millisecond) - started
 
     RoomGtfs.FeedHealth.record(state.id, state.inst && state.inst.name, kind, url, result, took)
 
     result
   end
+
+  @doc """
+  Narrow a multi-agency feed to one source, and unprefix what is left.
+
+  511's regional feed carries 28 operators in one message, which is how three
+  Bay Area sources share a single request against a 60-per-hour quota. Trips
+  there are keyed `SF:12074394_M21`, and the static feed calls the same trip
+  `12074394_M21`, so a source reading the regional feed matches nothing until
+  the prefix comes off.
+
+  Stripping alone would be wrong. Two operators can use the same trip id --
+  short numeric ids like "1100" are common -- so entities belonging to other
+  agencies are dropped rather than unprefixed into a namespace where they can
+  collide. Only stop ids are left alone, because the regional feed does not
+  prefix those.
+
+  A source with no `rt_agency` gets its feed back untouched, which is every
+  single-agency feed.
+  """
+  def for_this_agency(feed, %{inst: %{config: %{rt_agency: agency}}})
+      when is_binary(agency) and agency != "" do
+    prefix = agency <> ":"
+
+    entities =
+      feed.entity
+      |> Enum.filter(&belongs_to?(&1, prefix))
+      |> Enum.map(&unprefix(&1, prefix))
+
+    %{feed | entity: entities}
+  end
+
+  def for_this_agency(feed, _state), do: feed
+
+  defp belongs_to?(entity, prefix) do
+    String.starts_with?(entity_trip_id(entity) || "", prefix)
+  end
+
+  defp entity_trip_id(%{trip_update: %{trip: %{trip_id: id}}}) when is_binary(id), do: id
+  defp entity_trip_id(%{vehicle: %{trip: %{trip_id: id}}}) when is_binary(id), do: id
+  defp entity_trip_id(_entity), do: nil
+
+  defp unprefix(entity, prefix) do
+    entity
+    |> update_trip(entity.trip_update, prefix, :trip_update)
+    |> then(fn e -> update_trip(e, e.vehicle, prefix, :vehicle) end)
+  end
+
+  defp update_trip(entity, nil, _prefix, _key), do: entity
+
+  defp update_trip(entity, %{trip: nil}, _prefix, _key), do: entity
+
+  defp update_trip(entity, %{trip: trip} = message, prefix, key) do
+    trip = %{trip | trip_id: String.replace_prefix(trip.trip_id || "", prefix, "")}
+    Map.put(entity, key, %{message | trip: trip})
+  end
+
+  defp update_trip(entity, _message, _prefix, _key), do: entity
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
@@ -687,6 +753,36 @@ defmodule RoomGtfs.Worker.RT do
   end
 
   def handle_cast(:update_realtime, state) do
+    if rt_due?(state) do
+      do_update_realtime(Map.put(state, :rt_polled_at, System.monotonic_time(:millisecond)))
+    else
+      {:noreply, state}
+    end
+  end
+
+  # The poller ticks every 30s for everyone; a source with its own interval is
+  # gated here rather than by rescheduling the Periodic, which cannot be changed
+  # once started and would have to be torn down and rebuilt on every config
+  # refresh.
+  defp rt_due?(state) do
+    case rt_period_ms(state) do
+      nil ->
+        true
+
+      period ->
+        case Map.get(state, :rt_polled_at) do
+          nil -> true
+          at -> System.monotonic_time(:millisecond) - at >= period
+        end
+    end
+  end
+
+  defp rt_period_ms(%{inst: %{config: %{rt_period: seconds}}}) when is_integer(seconds),
+    do: :timer.seconds(seconds)
+
+  defp rt_period_ms(_state), do: nil
+
+  defp do_update_realtime(state) do
     state =
       case state.inst.enabled do
         true ->
@@ -698,7 +794,7 @@ defmodule RoomGtfs.Worker.RT do
               val ->
                 case fetch_recorded(state, :sa, val) do
                   {:ok, data_sa} when is_struct(data_sa, TransitRealtime.FeedMessage) ->
-                    state |> Map.put(:rt_sa, data_sa)
+                    state |> Map.put(:rt_sa, for_this_agency(data_sa, state))
 
                   {:error, error} ->
                     Logger.info(
@@ -717,7 +813,7 @@ defmodule RoomGtfs.Worker.RT do
               val ->
                 case fetch_recorded(state, :tu, val) do
                   {:ok, data_tu} when is_struct(data_tu, TransitRealtime.FeedMessage) ->
-                    state |> Map.put(:rt_tu, data_tu)
+                    state |> Map.put(:rt_tu, for_this_agency(data_tu, state))
 
                   {:error, error} ->
                     Logger.info(
@@ -736,6 +832,7 @@ defmodule RoomGtfs.Worker.RT do
               val ->
                 case fetch_recorded(state, :vp, val) do
                   {:ok, data_vp} when is_struct(data_vp, TransitRealtime.FeedMessage) ->
+                    data_vp = for_this_agency(data_vp, state)
                     new_state = state |> Map.put(:rt_vp, data_vp) |> ensure_stops()
 
                     # Broadcast vehicle position updates
@@ -1420,6 +1517,57 @@ end
     end
   end
 
+  # Bytes after the end-of-central-directory record, which some publishers add
+  # and the zip format does not allow undeclared.
+  #
+  # 511.org appends an HTML fragment to every GTFS download -- 680 bytes of
+  # `<!DOCTYPE html ...>` -- while declaring a comment length of zero. The
+  # `unzip` command shrugs and reads the archive anyway; Unzip looks for the
+  # EOCD at the tail of the blob, does not find it there, and reports "missing
+  # EOCD record". A ten megabyte feed then fails to import over 680 bytes of
+  # markup, and the error names neither the cause nor the culprit.
+  #
+  # So the record is found and anything past it dropped. A well-formed archive
+  # ends exactly at its EOCD and comes back untouched.
+  def trim_zip_tail(body) when is_binary(body) do
+    case last_eocd_offset(body) do
+      nil ->
+        body
+
+      offset ->
+        <<_::binary-size(offset), _::binary-size(20), comment_len::16-little, _rest::binary>> = body
+        declared_end = offset + 22 + comment_len
+
+        if byte_size(body) > declared_end do
+          Logger.info(
+            "gtfs zip carried #{byte_size(body) - declared_end} bytes after its EOCD; trimming"
+          )
+
+          binary_part(body, 0, declared_end)
+        else
+          body
+        end
+    end
+  end
+
+  def trim_zip_tail(body), do: body
+
+  # Searched from the end, and only over the tail: the signature is four bytes
+  # and can occur by chance inside compressed data, so the last plausible
+  # occurrence is the one that means anything. 128KB covers a legal 64KB comment
+  # and then some junk on top of it.
+  defp last_eocd_offset(body) do
+    window = min(byte_size(body), 128 * 1024)
+    start = byte_size(body) - window
+
+    body
+    |> binary_part(start, window)
+    |> then(&:binary.matches(&1, <<0x50, 0x4B, 0x05, 0x06>>))
+    |> Enum.map(fn {at, _len} -> start + at end)
+    |> Enum.filter(&(&1 + 22 <= byte_size(body)))
+    |> List.last()
+  end
+
   defp do_import_static(id, cfg) do
     Logger.info("GTFS::#{id} updating static info")
     bcast(id, :downloading, 1, 11)
@@ -1428,7 +1576,7 @@ end
       {:ok, result} ->
         bcast(id, :extracting, 2, 11)
 
-        case result.body |> Unzip.InMem.new() |> Unzip.new() do
+        case result.body |> trim_zip_tail() |> Unzip.InMem.new() |> Unzip.new() do
           {:ok, unzip} ->
             files = Unzip.list_entries(unzip)
 

@@ -79,6 +79,26 @@
     <div class="form-control">
         <.input field={gtfs_form[:url_rt_vp]} type="text" label="Realtime URL Vehicle Positions"/>
     </div>
+    <div class="form-control">
+        <.input field={gtfs_form[:rt_period]} type="number" label="Realtime poll interval (seconds)"/>
+        <label class="label">
+            <span class="label-text-alt opacity-70">
+                Blank polls every 30s. Raise it for a feed with a request quota &mdash;
+                511.org allows 60 requests an hour, which three feed kinds exhaust in
+                twenty minutes at the default.
+            </span>
+        </label>
+    </div>
+    <div class="form-control">
+        <.input field={gtfs_form[:rt_agency]} type="text" label="Realtime operator code"/>
+        <label class="label">
+            <span class="label-text-alt opacity-70">
+                Only for a feed carrying several agencies at once, such as 511's regional
+                feed, where trips are keyed <code>SF:12074394_M21</code>. Selects this
+                source's entities and strips the prefix. Leave blank otherwise.
+            </span>
+        </label>
+    </div>
     <% end %>
     <div class="form-control mt-2">
       <label class="label"><span class="label-text">Static refresh interval</span></label>
