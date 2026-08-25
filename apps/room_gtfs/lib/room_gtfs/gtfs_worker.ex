@@ -329,23 +329,18 @@ defmodule RoomGtfs.Worker.RT do
   # whether it worked or not. The logs already say when one fails; what they
   # cannot say is that a feed stopped being fetched at all, which is the failure
   # that looks exactly like silence. See RoomGtfs.FeedHealth.
-  defp fetch_recorded(state, kind, url) do
-    started = System.monotonic_time(:millisecond)
+  # A source polling every three minutes can happily use data up to three
+  # minutes old, and several sources sharing one URL -- which is the whole point
+  # of the regional feed -- then fetch it once between them instead of once each.
+  defp cached_get(state, url) do
+    case rt_period_ms(state) do
+      nil -> FeedCache.get(url)
+      period -> FeedCache.get(url, period - :timer.seconds(5))
+    end
+  end
 
-    # A source polling every three minutes can happily use data up to three
-    # minutes old, and several sources sharing one URL -- which is the whole
-    # point of the regional feed -- then fetch it once between them instead of
-    # once each.
-    result =
-      case rt_period_ms(state) do
-        nil -> FeedCache.get(url)
-        period -> FeedCache.get(url, period - :timer.seconds(5))
-      end
-    took = System.monotonic_time(:millisecond) - started
-
+  defp record_health(state, kind, url, result, took) do
     RoomGtfs.FeedHealth.record(state.id, state.inst && state.inst.name, kind, url, result, took)
-
-    result
   end
 
   @doc """
@@ -784,92 +779,98 @@ defmodule RoomGtfs.Worker.RT do
 
   defp do_update_realtime(state) do
     state =
-      case state.inst.enabled do
-        true ->
-          state =
-            case state.inst.config |> Map.get(:url_rt_sa) do
-              nil ->
-                state
-
-              val ->
-                case fetch_recorded(state, :sa, val) do
-                  {:ok, data_sa} when is_struct(data_sa, TransitRealtime.FeedMessage) ->
-                    state |> Map.put(:rt_sa, for_this_agency(data_sa, state))
-
-                  {:error, error} ->
-                    Logger.info(
-                      "failed to fetch gtfs-rt url[sa] for '#{state.inst.name}', reason: #{inspect(error)}"
-                    )
-
-                    state
-                end
-            end
-
-          state =
-            case state.inst.config |> Map.get(:url_rt_tu) do
-              nil ->
-                state
-
-              val ->
-                case fetch_recorded(state, :tu, val) do
-                  {:ok, data_tu} when is_struct(data_tu, TransitRealtime.FeedMessage) ->
-                    state |> Map.put(:rt_tu, for_this_agency(data_tu, state))
-
-                  {:error, error} ->
-                    Logger.info(
-                      "failed to fetch gtfs-rt url[tu] for '#{state.inst.name}', reason: #{inspect(error)}"
-                    )
-
-                    state
-                end
-            end
-
-          state =
-            case state.inst.config |> Map.get(:url_rt_vp) do
-              nil ->
-                state
-
-              val ->
-                case fetch_recorded(state, :vp, val) do
-                  {:ok, data_vp} when is_struct(data_vp, TransitRealtime.FeedMessage) ->
-                    data_vp = for_this_agency(data_vp, state)
-                    new_state = state |> Map.put(:rt_vp, data_vp) |> ensure_stops()
-
-                    # Broadcast vehicle position updates
-                    vehicles = vehicle_positions_from(data_vp, new_state.stops)
-                    
-                    # Broadcast to specific source channel for source page
-                    Phoenix.PubSub.broadcast(
-                      RoomSanctum.PubSub, 
-                      "gtfs_vehicle_positions:#{state.id}", 
-                      {:vehicle_positions_updated, state.id, vehicles}
-                    )
-                    
-                    # Also broadcast to general channel for query pages
-                    Phoenix.PubSub.broadcast(
-                      RoomSanctum.PubSub, 
-                      "gtfs_vehicle_positions", 
-                      {:vehicle_positions_updated, vehicles}
-                    )
-                    
-                    new_state
-
-                  {:error, error} ->
-                    Logger.info(
-                      "failed to fetch gtfs-rt url[vp] for '#{state.inst.name}', reason: #{inspect(error)}"
-                    )
-
-                    state
-                end
-            end
-
-        false ->
-          bcast(state.id, :disabled)
-          state
+      if state.inst.enabled do
+        Enum.reduce([:sa, :tu, :vp], state, &fetch_kind/2)
+      else
+        bcast(state.id, :disabled)
+        state
       end
 
     {:noreply, state}
   end
+
+  # Where each kind comes from. A kind with no URL of its own falls back to the
+  # combined feed, so an agency publishing everything in one message -- the MTA
+  # subway feeds are 67 trip updates, 45 vehicle positions and an alert in a
+  # single URL -- names it once instead of three times. Specific beats general,
+  # so a combined feed plus a dedicated alerts feed works too.
+  defp rt_url(config, :sa), do: Map.get(config, :url_rt_sa) || Map.get(config, :url_rt_shared)
+  defp rt_url(config, :tu), do: Map.get(config, :url_rt_tu) || Map.get(config, :url_rt_shared)
+  defp rt_url(config, :vp), do: Map.get(config, :url_rt_vp) || Map.get(config, :url_rt_shared)
+
+  defp fetch_kind(kind, state) do
+    case rt_url(state.inst.config, kind) do
+      nil ->
+        state
+
+      url ->
+        started = System.monotonic_time(:millisecond)
+        result = cached_get(state, url)
+        took = System.monotonic_time(:millisecond) - started
+
+        case result do
+          {:ok, feed} when is_struct(feed, TransitRealtime.FeedMessage) ->
+            # Narrowed before it is recorded, so health reports what this kind
+            # actually got. Recording the raw feed would have every kind of a
+            # combined source claim the same entity count -- exactly the reading
+            # that means "the same URL is in all three fields by mistake", and
+            # would say it about a correct configuration.
+            feed = feed |> for_this_agency(state) |> slice(entity_field(kind))
+            record_health(state, kind, url, {:ok, feed}, took)
+            store_feed(state, kind, feed)
+
+          {:error, error} ->
+            record_health(state, kind, url, result, took)
+
+            Logger.info(
+              "failed to fetch gtfs-rt url[#{kind}] for '#{state.inst.name}', reason: #{inspect(error)}"
+            )
+
+            state
+        end
+    end
+  end
+
+  defp entity_field(:sa), do: :alert
+  defp entity_field(:tu), do: :trip_update
+  defp entity_field(:vp), do: :vehicle
+
+  # Sliced to the kind it is being held as, always -- not only for a combined
+  # feed. Three sources pointing at one mixed URL used to store the whole feed
+  # three times, so the health metrics reported the same entity count for all
+  # three kinds, which is indistinguishable from having pasted the same URL into
+  # all three fields by mistake. Sliced, subway reads 67/45/1 and says what it
+  # actually has. The query handlers filter by kind anyway, so this changes
+  # nothing they see.
+  defp store_feed(state, :sa, feed), do: Map.put(state, :rt_sa, feed)
+
+  defp store_feed(state, :tu, feed), do: Map.put(state, :rt_tu, feed)
+
+  defp store_feed(state, :vp, feed) do
+    state = state |> Map.put(:rt_vp, feed) |> ensure_stops()
+    vehicles = vehicle_positions_from(feed, state.stops)
+
+    # The source page watches its own channel; the query pages watch the shared
+    # one and sort out which vehicles are theirs.
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      "gtfs_vehicle_positions:#{state.id}",
+      {:vehicle_positions_updated, state.id, vehicles}
+    )
+
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      "gtfs_vehicle_positions",
+      {:vehicle_positions_updated, vehicles}
+    )
+
+    state
+  end
+
+  defp slice(feed, field) do
+    %{feed | entity: Enum.filter(feed.entity, &Map.get(&1, field))}
+  end
+
 
   def handle_call({:query_realtime, trips, stop}, _from, state) do
     #    IO.inspect(trips)

@@ -9,6 +9,17 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
     field :url_rt_sa, :string
     field :url_rt_tu, :string
     field :url_rt_vp, :string
+
+    # One feed carrying more than one kind of entity. Plenty of agencies publish
+    # trip updates, vehicle positions and alerts in three files; some put them
+    # in one message, and the MTA's subway feeds are the clearest case -- a
+    # single URL that is 67 trip updates, 45 vehicle positions and an alert.
+    #
+    # Any kind without a URL of its own is taken from here, so a source with a
+    # combined feed sets this alone, and one with a combined feed plus a
+    # separate alerts feed sets this and url_rt_sa. Specific beats general.
+    field :url_rt_shared, :string
+
     field :tz, :string
 
     # Seconds between realtime polls. Nil polls at the default 30s, which is
@@ -28,7 +39,7 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
 
   def changeset(source, params) do
     source
-    |> cast(params, ~w(url url_rt_sa url_rt_tu url_rt_vp tz rt_period rt_agency)a)
+    |> cast(params, ~w(url url_rt_sa url_rt_tu url_rt_vp url_rt_shared tz rt_period rt_agency)a)
     |> validate_required([:url, :tz])
     # Below about ten seconds the poller cannot keep up and the feed will not
     # have changed anyway; the upper bound is a day, past which it is not

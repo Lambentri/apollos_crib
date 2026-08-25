@@ -80,6 +80,16 @@
         <.input field={gtfs_form[:url_rt_vp]} type="text" label="Realtime URL Vehicle Positions"/>
     </div>
     <div class="form-control">
+        <.input field={gtfs_form[:url_rt_shared]} type="text" label="Realtime URL (combined feed)"/>
+        <label class="label">
+            <span class="label-text-alt opacity-70">
+                For an agency that publishes trip updates, vehicle positions and alerts in
+                one feed &mdash; MTA subway does. Fills in whichever of the three above are
+                left blank, and each is split out by entity type.
+            </span>
+        </label>
+    </div>
+    <div class="form-control">
         <.input field={gtfs_form[:rt_period]} type="number" label="Realtime poll interval (seconds)"/>
         <label class="label">
             <span class="label-text-alt opacity-70">
