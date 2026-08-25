@@ -39,6 +39,16 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
     # and says what prefix to strip. Left blank for a single-agency feed, which
     # is nearly all of them.
     field :rt_agency, :string
+
+    # Whether realtime trip ids are the tail of the schedule's rather than the
+    # whole thing. NYCT does this: realtime says "098600_5..S03R" where
+    # gtfs_subway.zip says "ASP26GEN-1038-Sunday-00_098600_5..S03R", the leading
+    # part being which published schedule the trip belongs to.
+    #
+    # Off by default, and deliberately not inferred. A suffix comparison is
+    # looser than an exact one and can match a trip it should not; a feed that
+    # needs it should say so rather than have it guessed from a bad day's data.
+    field :rt_trip_id_suffix, :boolean, default: false
   end
 
   def changeset(source, params) do
@@ -46,7 +56,7 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
     |> cast(
       params,
       ~w(url url_rt_sa url_rt_tu url_rt_vp url_rt_shared tz rt_agency
-         rt_period_tu rt_period_vp rt_period_sa)a
+         rt_trip_id_suffix rt_period_tu rt_period_vp rt_period_sa)a
     )
     |> validate_required([:url, :tz])
     |> validate_periods()

@@ -101,11 +101,50 @@ defmodule RoomGtfs.Worker do
     |> GenServer.call({:query_vehicle_positions, trips}, 30_000)
   end
 
+  @doc """
+  Whether a realtime trip id refers to a scheduled trip id.
+
+  Usually they are the same string. NYCT sends the tail of it -- realtime
+  "098600_5..S03R" against a schedule that says
+  "ASP26GEN-1038-Sunday-00_098600_5..S03R", the leading part naming which
+  published schedule the trip belongs to -- so an exact comparison finds
+  nothing and those arrivals never show a live time.
+
+  Off unless the source says so. A suffix comparison is looser and can match a
+  trip it should not; a feed that needs it should declare it rather than have it
+  guessed.
+  """
+  def trip_id_match?(config, scheduled, realtime)
+
+  def trip_id_match?(_config, scheduled, realtime) when scheduled == realtime, do: true
+
+  def trip_id_match?(%{rt_trip_id_suffix: true}, scheduled, realtime)
+      when is_binary(scheduled) and is_binary(realtime) do
+    String.ends_with?(scheduled, realtime)
+  end
+
+  def trip_id_match?(_config, _scheduled, _realtime), do: false
+
+  @doc false
+  # A realtime id against a whole list of scheduled ones. Exact matching gets a
+  # MapSet; suffix matching cannot, and the lists it runs against are the trips
+  # calling at one stop, so a scan is the right size of answer.
+  def any_trip_match?(%{rt_trip_id_suffix: true} = config, scheduled_ids, realtime) do
+    Enum.any?(scheduled_ids, &trip_id_match?(config, &1, realtime))
+  end
+
+  def any_trip_match?(_config, scheduled_ids, realtime) do
+    realtime in scheduled_ids
+  end
+
   def query_stop(id, query) do
     inst = Configuration.get_source!(id)
     res = Storage.get_upcoming_arrivals_for_stop(id, query.stop) |> Storage.fix_arrival_times
 
-    case inst.config.url_rt_tu do
+    # Not `url_rt_tu` alone: a source whose trip updates arrive in a combined
+    # feed has that field blank and its URL in url_rt_shared, and gating on the
+    # specific field skipped realtime entirely for exactly those sources.
+    case RoomGtfs.Worker.RT.rt_url_for(inst.config, :tu) do
       nil ->
         res
 
@@ -119,7 +158,9 @@ defmodule RoomGtfs.Worker do
           rtvals ->
             res
             |> Enum.map(fn x ->
-              case Enum.find(rtvals, fn v -> x.trip_id == v.trip_update.trip.trip_id end) do
+              case Enum.find(rtvals, fn v ->
+                     trip_id_match?(inst.config, x.trip_id, v.trip_update.trip.trip_id)
+                   end) do
                 nil ->
                   x
 
@@ -880,9 +921,24 @@ defmodule RoomGtfs.Worker.RT do
   # subway feeds are 67 trip updates, 45 vehicle positions and an alert in a
   # single URL -- names it once instead of three times. Specific beats general,
   # so a combined feed plus a dedicated alerts feed works too.
-  defp rt_url(config, :sa), do: Map.get(config, :url_rt_sa) || Map.get(config, :url_rt_shared)
-  defp rt_url(config, :tu), do: Map.get(config, :url_rt_tu) || Map.get(config, :url_rt_shared)
-  defp rt_url(config, :vp), do: Map.get(config, :url_rt_vp) || Map.get(config, :url_rt_shared)
+  @doc """
+  Where a kind's feed comes from: its own URL, or the combined one behind it.
+
+  Public because the question is asked outside the poller too -- `query_stop/2`
+  has to know whether trip updates exist at all before it goes looking for them,
+  and asking `url_rt_tu` directly gets the wrong answer for a combined feed.
+  """
+  def rt_url_for(config, kind)
+
+  def rt_url_for(config, :sa), do: blank(Map.get(config, :url_rt_sa)) || blank(Map.get(config, :url_rt_shared))
+  def rt_url_for(config, :tu), do: blank(Map.get(config, :url_rt_tu)) || blank(Map.get(config, :url_rt_shared))
+  def rt_url_for(config, :vp), do: blank(Map.get(config, :url_rt_vp)) || blank(Map.get(config, :url_rt_shared))
+
+  defp blank(nil), do: nil
+  defp blank(""), do: nil
+  defp blank(value), do: value
+
+  defp rt_url(config, kind), do: rt_url_for(config, kind)
 
   defp entity_field(:sa), do: :alert
   defp entity_field(:tu), do: :trip_update
@@ -943,7 +999,11 @@ defmodule RoomGtfs.Worker.RT do
           # files, which is why this held up until a subway source was added.
           |> Enum.filter(fn x ->
             x.trip_update && x.trip_update.trip &&
-              Enum.member?(trips, x.trip_update.trip.trip_id)
+              RoomGtfs.Worker.any_trip_match?(
+                state.inst && state.inst.config,
+                trips,
+                x.trip_update.trip.trip_id
+              )
           end)
           |> Enum.map(fn x ->
             x
@@ -969,7 +1029,10 @@ defmodule RoomGtfs.Worker.RT do
     vehicles =
       state.rt_vp
       |> vehicle_positions_from(state.stops)
-      |> Enum.filter(&(&1.trip_id && &1.trip_id in trips))
+      |> Enum.filter(
+        &(&1.trip_id &&
+            RoomGtfs.Worker.any_trip_match?(state.inst && state.inst.config, trips, &1.trip_id))
+      )
 
     {:reply, vehicles, state}
   end

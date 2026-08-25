@@ -239,26 +239,27 @@ defmodule RoomGtfs.FeedTester do
       |> Enum.take(@sample)
 
     result
-    |> match_against(:trips, trips, source.id, &known_trips/2)
-    |> match_against(:stops, stops, source.id, &known_stops/2)
+    |> match_against(:trips, trips, source, &known_trips/2)
+    |> match_against(:stops, stops, source, &known_stops/2)
   end
 
-  defp match_against(result, _label, [], _source_id, _fun), do: result
+  defp match_against(result, _label, [], _source, _fun), do: result
 
-  defp match_against(result, label, ids, source_id, fun) do
-    known = fun.(source_id, ids)
+  defp match_against(result, label, ids, source, fun) do
+    known = fun.(source, ids)
     pct = round(known / length(ids) * 100)
     result = Map.put(result, :"#{label}_match", pct)
 
     cond do
-      pct == 0 and label == :trips and partial_trip_ids?(source_id, ids) ->
+      pct == 0 and label == :trips and partial_trip_ids?(source.id, ids) ->
         add(
           result,
           :error,
           "its trip ids are the tail end of the schedule's -- realtime sends " <>
             "\"098600_5..S03R\" where the schedule says " <>
-            "\"ASP26GEN-1038-Sunday-00_098600_5..S03R\". NYCT publishes partial ids like this. " <>
-            "Nothing matches on an exact comparison, so there are no live times"
+            "\"ASP26GEN-1038-Sunday-00_098600_5..S03R\". NYCT publishes partial ids like " <>
+            "this, and nothing matches on an exact comparison, so there are no live times. " <>
+            "Tick \"Realtime sends partial trip ids\" on this offering to match on the tail"
         )
 
       pct == 0 ->
@@ -309,19 +310,38 @@ defmodule RoomGtfs.FeedTester do
     matched > 0
   end
 
-  defp known_trips(source_id, ids) do
-    Repo.one(
-      from(t in "gtfs_trips",
-        where: t.source_id == ^to_int(source_id) and t.trip_id in ^ids,
-        select: count(fragment("DISTINCT ?", t.trip_id))
-      )
-    ) || 0
+  # Counted the way the poller matches, so a source configured for partial ids is
+  # not reported as broken for behaving exactly as configured.
+  defp known_trips(source, ids) do
+    if Map.get(source.config, :rt_trip_id_suffix) do
+      # Counting realtime ids that found a schedule entry, not schedule entries
+      # that were found: several scheduled trips share one realtime id across
+      # service days, and counting those would read as more than 100%.
+      Repo.one(
+        from(r in fragment("SELECT unnest(?::text[]) AS id", ^ids),
+          where:
+            fragment(
+              "EXISTS (SELECT 1 FROM gtfs_trips t WHERE t.source_id = ? AND t.trip_id LIKE '%' || ?)",
+              ^to_int(source.id),
+              r.id
+            ),
+          select: count()
+        )
+      ) || 0
+    else
+      Repo.one(
+        from(t in "gtfs_trips",
+          where: t.source_id == ^to_int(source.id) and t.trip_id in ^ids,
+          select: count(fragment("DISTINCT ?", t.trip_id))
+        )
+      ) || 0
+    end
   end
 
-  defp known_stops(source_id, ids) do
+  defp known_stops(source, ids) do
     Repo.one(
       from(s in "gtfs_stops",
-        where: s.source_id == ^to_int(source_id) and s.stop_id in ^ids,
+        where: s.source_id == ^to_int(source.id) and s.stop_id in ^ids,
         select: count(fragment("DISTINCT ?", s.stop_id))
       )
     ) || 0

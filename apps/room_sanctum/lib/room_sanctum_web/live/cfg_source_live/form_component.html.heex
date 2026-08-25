@@ -126,6 +126,19 @@
         511.org allows 60 on a default token.
     </div>
     <div class="form-control">
+        <.input field={gtfs_form[:rt_trip_id_suffix]} type="checkbox"
+                label="Realtime sends partial trip ids"/>
+        <label class="label">
+            <span class="label-text-alt opacity-70">
+                For a feed whose trip ids are the tail of the schedule's &mdash; NYCT
+                subway sends <code>098600_5..S03R</code> where the schedule says
+                <code>ASP26GEN-1038-Sunday-00_098600_5..S03R</code>. Leave off unless the
+                feed tester says otherwise; matching on a suffix is looser than matching
+                exactly.
+            </span>
+        </label>
+    </div>
+    <div class="form-control">
         <.input field={gtfs_form[:rt_agency]} type="text" label="Realtime operator code"/>
         <label class="label">
             <span class="label-text-alt opacity-70">
