@@ -38,6 +38,9 @@ Debian/Ubuntu users may need to install `erlang-xmerl`
 Postgres is expected on **port 54321** (not 5432) as `postgres`/`postgres`, database
 `room_sanctum_dev` — see `config/dev.exs`. `docker-compose.yml` brings one up.
 
+Maps draw from CARTO unless a tile server is configured — see
+[CUSTOM_MAPS.md](CUSTOM_MAPS.md).
+
 #### First-time setup
 
 ```sh

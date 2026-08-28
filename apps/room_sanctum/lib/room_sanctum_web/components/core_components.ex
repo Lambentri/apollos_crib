@@ -20,6 +20,20 @@ defmodule RoomSanctumWeb.CoreComponents do
   import RoomSanctumWeb.Gettext
 
   @doc """
+  Renders the configured tile server as meta tags for the Leaflet basemaps.
+
+  Belongs in `<head>`. Renders nothing when no tile server is configured, and
+  the frontend keeps its built-in default. See `RoomSanctum.Basemap`.
+  """
+  def basemap_meta(assigns) do
+    assigns = assign(assigns, :tags, RoomSanctum.Basemap.meta_tags())
+
+    ~H"""
+    <meta :for={{name, value} <- @tags} name={"basemap-" <> name} content={value} />
+    """
+  end
+
+  @doc """
   Renders a modal.
 
   ## Examples

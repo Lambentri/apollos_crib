@@ -1,28 +1,85 @@
 import L from 'leaflet'
 
-// CARTO's greyscale basemaps. Keyless, and monochrome by design rather than
-// desaturated after the fact -- a CSS grayscale() filter over standard OSM
-// tiles flattens the colour-coded road hierarchy into near-identical greys,
-// whereas these are drawn for it, so labels and roads keep their separation
-// once a tint is laid over them.
+// CARTO's greyscale basemaps, the default when no server is configured.
+// Keyless, and monochrome by design rather than desaturated after the fact --
+// a CSS grayscale() filter over standard OSM tiles flattens the colour-coded
+// road hierarchy into near-identical greys, whereas these are drawn for it, so
+// labels and roads keep their separation once a tint is laid over them.
 // CARTO publishes each basemap split into a label-free layer and a label-only
 // layer as well as the combined `_all`. Drawing the labels as a separate layer
 // above the wash is what keeps type readable: tinted along with everything
 // else, place names lose most of their contrast against the roads behind them.
 // The cost is a second tile request per tile, which `labels: false` opts out
 // of by falling back to the combined layer.
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/'
+const CARTO_URL = 'https://{s}.basemaps.cartocdn.com/'
+const cartoUrl = (style) => CARTO_URL + style + '/{z}/{x}/{y}{r}.png'
 
-const STYLES = {
-    light: { all: 'light_all', base: 'light_nolabels', labels: 'light_only_labels' },
-    dark: { all: 'dark_all', base: 'dark_nolabels', labels: 'dark_only_labels' }
+const CARTO = {
+    light: {
+        all: cartoUrl('light_all'),
+        base: cartoUrl('light_nolabels'),
+        labels: cartoUrl('light_only_labels')
+    },
+    dark: {
+        all: cartoUrl('dark_all'),
+        base: cartoUrl('dark_nolabels'),
+        labels: cartoUrl('dark_only_labels')
+    },
+    subdomains: 'abcd',
+    maxZoom: null,
+    retina: true,
+    attribution:
+        '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
+        '&copy; <a href="https://carto.com/attributions">CARTO</a>'
 }
 
-const tileUrl = (style) => TILE_URL + style + '/{z}/{x}/{y}{r}.png'
+// The server the page was served with, written into <head> as
+// <meta name="basemap-*"> by RoomSanctum.Basemap. Meta tags rather than an
+// attribute on each map: the maps are created from half a dozen places,
+// including a web component inside a shadow root, and all of them draw from
+// the same server.
+function meta(name) {
+    const el = document.querySelector('meta[name="basemap-' + name + '"]')
+    const value = el && el.content.trim()
+    return value || null
+}
 
-const ATTRIBUTION =
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors ' +
-    '&copy; <a href="https://carto.com/attributions">CARTO</a>'
+// Resolved once per page. Only `basemap-url` is required to switch servers:
+// a server with a single style is drawn under both themes, and one with no
+// separate label layer simply takes the wash over its labels.
+let source = null
+
+function tileSource() {
+    if (source) return source
+
+    const url = meta('url')
+    if (!url) {
+        source = CARTO
+        return source
+    }
+
+    const dark = meta('dark-url') || url
+    const labels = meta('labels-url')
+    const darkLabels = meta('dark-labels-url') || labels
+    const maxZoom = parseInt(meta('max-zoom'), 10)
+
+    source = {
+        light: { all: url, base: url, labels: labels },
+        dark: { all: dark, base: dark, labels: darkLabels },
+        subdomains: meta('subdomains') || '',
+        maxZoom: Number.isFinite(maxZoom) ? maxZoom : null,
+        // Leaflet's detectRetina has two modes, and only one of them is safe
+        // to assume. With `{r}` in the template it asks the server for the @2x
+        // tile; without it, it requests the *next zoom down* at half size --
+        // four times the tiles, and nothing at all at the server's deepest
+        // zoom. A plain renderd-style server has neither @2x nor the headroom,
+        // so retina rendering is opt-in via `{r}` in TILE_URL.
+        retina: url.includes('{r}'),
+        attribution: meta('attribution') ||
+            '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }
+    return source
+}
 
 // Which daisyUI variable the tint is taken from, and how far the wash is
 // pushed.
@@ -94,7 +151,7 @@ function watchTheme() {
 }
 
 /**
- * Add a monochrome basemap to `map` and wash it in the current theme colour.
+ * Add a basemap to `map` and wash it in the current theme colour.
  *
  * Returns a handle with `refresh()` (re-read the theme now) and `remove()`.
  *
@@ -105,11 +162,13 @@ function watchTheme() {
  *   blend     mix-blend-mode for the wash (default 'color')
  *   labels    false to use the combined basemap and let the wash cover the
  *             labels too -- one tile request per tile instead of two, at the
- *             cost of much less readable type (default true)
+ *             cost of much less readable type (default true; ignored when the
+ *             configured server publishes no label-only layer)
  *   styleFrom element to resolve custom properties against; defaults to the
  *             map container, which matters inside a shadow root where the
  *             host may sit under a different data-theme than <html>
- *   maxZoom   passed to the tile layer (default 20)
+ *   maxZoom   passed to the tile layer (default 20), unless the configured
+ *             server declares a lower limit of its own
  */
 export function addBasemap(map, opts = {}) {
     const container = map.getContainer()
@@ -118,17 +177,23 @@ export function addBasemap(map, opts = {}) {
     const tintOpt = opts.tint || DEFAULT_TINT_VAR
     const strength = opts.strength == null ? DEFAULT_STRENGTH : Number(opts.strength)
 
-    const withLabels = opts.labels !== false
-    const styleFor = () => STYLES[variant] || (isDarkTheme(styleFrom) ? STYLES.dark : STYLES.light)
-    const baseUrl = () => tileUrl(withLabels ? styleFor().base : styleFor().all)
+    const src = tileSource()
+    // A server that publishes no label-only layer has nothing to draw above
+    // the wash, so `labels` can only ever turn the second request off.
+    const withLabels = opts.labels !== false && !!(src.light.labels && src.dark.labels)
+    const styleFor = () => src[variant] || (isDarkTheme(styleFrom) ? src.dark : src.light)
+    const baseUrl = () => (withLabels ? styleFor().base : styleFor().all)
 
     const tileOpts = {
-        subdomains: 'abcd',
-        maxZoom: opts.maxZoom || 20,
-        detectRetina: true
+        subdomains: src.subdomains,
+        // A configured server's own limit wins over the caller's: callers pass
+        // the zoom the view wants, which a server without tiles that deep can
+        // only answer with 404s.
+        maxZoom: src.maxZoom || opts.maxZoom || 20,
+        detectRetina: src.retina
     }
 
-    const tiles = L.tileLayer(baseUrl(), Object.assign({ attribution: ATTRIBUTION }, tileOpts))
+    const tiles = L.tileLayer(baseUrl(), Object.assign({ attribution: src.attribution }, tileOpts))
         .addTo(map)
 
     // The wash has to be a Leaflet pane, not a child of the container.
@@ -165,7 +230,7 @@ export function addBasemap(map, opts = {}) {
         const labelPane = map.createPane(LABEL_PANE)
         labelPane.style.zIndex = LABEL_Z
         labelPane.style.pointerEvents = 'none'
-        labelTiles = L.tileLayer(tileUrl(styleFor().labels),
+        labelTiles = L.tileLayer(styleFor().labels,
             Object.assign({ pane: LABEL_PANE }, tileOpts)).addTo(map)
     }
 
@@ -173,7 +238,7 @@ export function addBasemap(map, opts = {}) {
         // setUrl no-ops when the template is unchanged, so this only refetches
         // tiles when the theme actually crossed the light/dark line.
         tiles.setUrl(baseUrl())
-        if (labelTiles) labelTiles.setUrl(tileUrl(styleFor().labels))
+        if (labelTiles) labelTiles.setUrl(styleFor().labels)
 
         const color = tintOpt === 'none' ? null : asColor(
             tintOpt.startsWith('--') ? cssVar(tintOpt, styleFrom) : tintOpt

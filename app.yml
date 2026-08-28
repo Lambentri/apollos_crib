@@ -109,6 +109,30 @@ spec:
             - name: PHX_HOST
               value: ac.gmp.io
 
+            # Basemap tiles, from our own renderd server rather than CARTO.
+            # See CUSTOM_MAPS.md. The label-only overlays are what let the
+            # theme tint wash the basemap without washing the place names.
+            - name: TILE_URL
+              value: https://tiles.neiam.org/grayscale/{z}/{x}/{y}.png
+
+            - name: TILE_URL_DARK
+              value: https://tiles.neiam.org/dark/{z}/{x}/{y}.png
+
+            - name: TILE_LABELS_URL
+              value: https://tiles.neiam.org/grayscale_only_labels/{z}/{x}/{y}.png
+
+            - name: TILE_LABELS_URL_DARK
+              value: https://tiles.neiam.org/dark_only_labels/{z}/{x}/{y}.png
+
+            - name: TILE_MAX_ZOOM
+              value: '20'
+
+            - name: TILE_ATTRIBUTION
+              value: >-
+                &copy; <a
+                href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
+                contributors
+
           name: apollos-crib
           ports:
             - containerPort: 4000

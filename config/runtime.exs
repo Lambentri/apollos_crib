@@ -196,3 +196,15 @@ config :room_sanctum,
        env: config_env(),
        host: System.get_env("PHX_HOST", "localhost")
 
+# Tile server for the Leaflet basemaps. Read here rather than in config.exs so
+# a release is repointed at another server by restarting it. Every key is
+# optional: with none set the frontend falls back to CARTO. See
+# `RoomSanctum.Basemap` for what each one does.
+config :room_sanctum, :basemap,
+       url: System.get_env("TILE_URL"),
+       dark_url: System.get_env("TILE_URL_DARK"),
+       labels_url: System.get_env("TILE_LABELS_URL"),
+       dark_labels_url: System.get_env("TILE_LABELS_URL_DARK"),
+       attribution: System.get_env("TILE_ATTRIBUTION"),
+       subdomains: System.get_env("TILE_SUBDOMAINS"),
+       max_zoom: System.get_env("TILE_MAX_ZOOM")

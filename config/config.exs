@@ -153,6 +153,12 @@ config :room_observatory, RoomObservatory.PromEx,
     path: "/metrics"
   ]
 
+# Which tile server the Leaflet basemaps draw from. Blank means CARTO's keyless
+# greyscale basemaps, the frontend's built-in default; set TILE_URL (and
+# friends -- see RoomSanctum.Basemap) in the environment to point the maps at
+# your own server instead.
+config :room_sanctum, :basemap, []
+
 # Import environment specific config. This must remain at the bottom
 # of this file so it overrides the configuration defined above.
 import_config "#{config_env()}.exs"
