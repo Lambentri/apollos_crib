@@ -1292,14 +1292,37 @@ defmodule RoomSanctum.Storage do
     |> conditional_where(source_id, stop_id, timestamp_time_hour, timestamp_time)
     |> order_by([st], asc: st.arrival_time)
     |> limit(^limit)
-    |> join(:left, [st], s in Stop, as: :stop, on: s.stop_id == st.stop_id)
-    |> join(:left, [st], t in Trip, as: :trip, on: t.trip_id == st.trip_id)
-    |> join(:left, [_st, trip: t], r in Route, as: :route, on: t.route_id == r.route_id)
-    |> join(:left, [_st, trip: t], d in Direction,
-      as: :direction,
-      on: t.direction_id == d.direction_id and t.route_id == d.route_id
+    # Every join carries source_id, and not only because a trip_id is unique
+    # within a feed rather than across them -- 3,491 stop_ids, 438 route_ids
+    # and 185 trip_ids are shared by two feeds in the dev database, so without
+    # it a stop's arrivals pick up another agency's routes and calendars, and
+    # one arrival comes back several times over. It is also the whole of the
+    # performance story: every unique index on these tables leads with
+    # source_id, so joining on the bare id can use none of them, and matching
+    # a stop's arrivals meant a sequential scan of gtfs_trips -- 271k rows --
+    # hashed afresh on every request.
+    |> join(:left, [st], s in Stop,
+      as: :stop,
+      on: s.stop_id == st.stop_id and s.source_id == st.source_id
     )
-    |> join(:left, [_st, trip: t], c in Calendar, as: :calendar, on: t.service_id == c.service_id)
+    |> join(:left, [st], t in Trip,
+      as: :trip,
+      on: t.trip_id == st.trip_id and t.source_id == st.source_id
+    )
+    |> join(:left, [st, trip: t], r in Route,
+      as: :route,
+      on: t.route_id == r.route_id and r.source_id == st.source_id
+    )
+    |> join(:left, [st, trip: t], d in Direction,
+      as: :direction,
+      on:
+        t.direction_id == d.direction_id and t.route_id == d.route_id and
+          d.source_id == st.source_id
+    )
+    |> join(:left, [st, trip: t], c in Calendar,
+      as: :calendar,
+      on: t.service_id == c.service_id and c.source_id == st.source_id
+    )
     |> select(
       [st, s, t, r, d, c],
       #          [c,d,r,t,s,st],
