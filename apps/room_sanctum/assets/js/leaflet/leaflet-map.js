@@ -20,6 +20,23 @@ template.innerHTML = `
         height: 100%;
         min-height: 400px;
       }
+      /* Only shown once the user has moved the map themselves; until then the
+         map follows the data and there is nothing to reset to. */
+      .leaflet-reset-view button {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        padding: 3px 7px;
+        font: 600 11px/1.4 system-ui, sans-serif;
+        color: #334155;
+        background: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .leaflet-reset-view button:hover {
+        background: #f1f5f9;
+      }
     </style>
     <div class="map-container">
         <slot></slot>
@@ -93,7 +110,17 @@ class LeafletMap extends HTMLElement {
         // High-performance markers tracking
         this.markers = new Map(); // Track all markers by ID
         this.markerElements = new Map(); // Track marker DOM elements
+        // Which layer group each marker went into. Removing a marker from the
+        // map alone leaves the group still holding it, so the group grows for
+        // the life of the page and a re-added group brings ghosts back.
+        this.markerLayers = new Map();
+        this.lines = new Map();
         this.canvasRenderer = null;
+
+        // The map follows the computed view until the user moves it, then
+        // stays put and offers to start following again.
+        this.followView = true;
+        this.programmaticView = false;
         
         // Initialize after DOM is ready
         setTimeout(() => this.initializeMap(), 100);
@@ -105,13 +132,99 @@ class LeafletMap extends HTMLElement {
 
     attributeChangedCallback(name, oldValue, newValue) {
         if (!this.map) return;
-        
+
         if (name === 'lat' || name === 'lng' || name === 'zoom') {
-            const lat = parseFloat(this.getAttribute('lat')) || 39.8283;
-            const lng = parseFloat(this.getAttribute('lng')) || -98.5795;
-            const zoom = parseInt(this.getAttribute('zoom')) || 4;
-            this.map.setView([lat, lng], zoom);
+            this.applyView();
         }
+    }
+
+    // The view attributes are recomputed from the data on every render, so
+    // honouring them unconditionally yanked the map back to the centroid of a
+    // moving fleet several times a minute -- which is what a redraw looked
+    // like even when no marker was touched.
+    applyView(force = false) {
+        if (!this.map || (!force && !this.followView)) return;
+
+        const lat = parseFloat(this.getAttribute('lat'));
+        const lng = parseFloat(this.getAttribute('lng'));
+        const zoom = parseInt(this.getAttribute('zoom'));
+
+        if (isNaN(lat) || isNaN(lng)) return;
+
+        const target = L.latLng(lat, lng);
+        const nextZoom = isNaN(zoom) ? this.map.getZoom() : zoom;
+
+        if (!force && this.map.getZoom() === nextZoom && !this.viewDriftedFrom(target)) return;
+
+        this.programmaticView = true;
+        try {
+            this.map.setView(target, nextZoom, { animate: true });
+        } finally {
+            this.programmaticView = false;
+        }
+    }
+
+    // A centroid never sits still while vehicles move, so following it exactly
+    // would leave the map permanently drifting. Only move once the target has
+    // left the middle half of the viewport.
+    viewDriftedFrom(target) {
+        const bounds = this.map.getBounds();
+        const centre = this.map.getCenter();
+        const latSlack = (bounds.getNorth() - bounds.getSouth()) / 4;
+        const lngSlack = (bounds.getEast() - bounds.getWest()) / 4;
+
+        return Math.abs(target.lat - centre.lat) > latSlack ||
+               Math.abs(target.lng - centre.lng) > lngSlack;
+    }
+
+    // Both fire synchronously from inside setView, so the flag set around it is
+    // enough to tell our own moves from the user's. movestart rather than
+    // dragstart because keyboard panning never drags.
+    watchForUserView() {
+        const stopFollowing = () => {
+            if (this.programmaticView || !this.followView) return;
+            this.followView = false;
+            this.updateResetControl();
+        };
+
+        this.map.on('movestart', stopFollowing);
+        this.map.on('zoomstart', stopFollowing);
+    }
+
+    addResetViewControl() {
+        const control = L.control({ position: 'bottomleft' });
+
+        control.onAdd = () => {
+            const wrap = L.DomUtil.create('div', 'leaflet-bar leaflet-reset-view');
+            wrap.innerHTML = `
+                <button type="button" title="Recentre, and follow the data again">
+                  <svg viewBox="0 0 24 24" width="11" height="11" aria-hidden="true">
+                    <circle cx="12" cy="12" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2" />
+                    <path d="M12 1.5v3.5M12 19v3.5M1.5 12h3.5M19 12h3.5"
+                          stroke="currentColor" stroke-width="2.2" stroke-linecap="round" />
+                  </svg>
+                  <span>Reset view</span>
+                </button>
+            `;
+
+            L.DomEvent.disableClickPropagation(wrap);
+            wrap.querySelector('button').addEventListener('click', () => {
+                this.followView = true;
+                this.applyView(true);
+                this.updateResetControl();
+            });
+
+            return wrap;
+        };
+
+        control.addTo(this.map);
+        this.resetViewControl = control;
+        this.updateResetControl();
+    }
+
+    updateResetControl() {
+        const el = this.resetViewControl && this.resetViewControl.getContainer();
+        if (el) el.style.display = this.followView ? 'none' : '';
     }
 
     initializeMap() {
@@ -147,7 +260,6 @@ class LeafletMap extends HTMLElement {
         linePane.style.pointerEvents = 'none';
         this.lineRenderer = L.canvas({ pane: 'routeLines', padding: 0.5 });
         this.linesLayer = L.layerGroup().addTo(this.map);
-        this.lines = new Map();
 
         // Initialize layer groups for different marker types
         this.queriesLayer = L.layerGroup().addTo(this.map);
@@ -169,6 +281,10 @@ class LeafletMap extends HTMLElement {
         });
         this.resizeObserver.observe(this.mapElement);
 
+        // After the initial setView, so it is not mistaken for a user move.
+        this.watchForUserView();
+        this.addResetViewControl();
+
         // One more pass after layout settles, for the first paint.
         requestAnimationFrame(() => this.map && this.map.invalidateSize({ animate: false }));
 
@@ -177,20 +293,21 @@ class LeafletMap extends HTMLElement {
 
     connectedCallback() {
         // Observer for marker elements being added/removed
+        // Reordering a child is one removal and one insertion of the *same*
+        // node, and the two records arrive in whichever order the patch made
+        // them -- so acting on each record in turn either rebuilt the marker
+        // for nothing or, when the addition came first, deleted it outright.
+        // Collect the nodes the batch touched and ask the DOM what became of
+        // each one instead.
         this.observer = new MutationObserver((mutations) => {
-            mutations.forEach((mutation) => {
-                mutation.addedNodes.forEach(node => {
-                    if (node.nodeType !== Node.ELEMENT_NODE) return;
-                    if (node.tagName === 'LEAFLET-MARKER') this.addMarkerElement(node);
-                    if (node.tagName === 'LEAFLET-LINE') this.addLineElement(node);
-                });
+            const touched = new Set();
 
-                mutation.removedNodes.forEach(node => {
-                    if (node.nodeType !== Node.ELEMENT_NODE) return;
-                    if (node.tagName === 'LEAFLET-MARKER') this.removeMarkerElement(node);
-                    if (node.tagName === 'LEAFLET-LINE') this.removeLineElement(node);
-                });
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach(node => this.collectTouched(node, touched));
+                mutation.removedNodes.forEach(node => this.collectTouched(node, touched));
             });
+
+            touched.forEach(node => this.reconcileNode(node));
         });
 
         this.observer.observe(this, { childList: true, subtree: true });
@@ -239,6 +356,29 @@ class LeafletMap extends HTMLElement {
                 this.addLineElement(lineEl);
             });
         }, 200);
+    }
+
+    collectTouched(node, touched) {
+        if (node.nodeType !== Node.ELEMENT_NODE) return;
+        if (node.tagName === 'LEAFLET-MARKER' || node.tagName === 'LEAFLET-LINE') touched.add(node);
+    }
+
+    reconcileNode(node) {
+        const isMarker = node.tagName === 'LEAFLET-MARKER';
+
+        if (!this.contains(node)) {
+            isMarker ? this.removeMarkerElement(node) : this.removeLineElement(node);
+            return;
+        }
+
+        // Still ours: only a node we are not already drawing needs building. A
+        // node that merely moved is identical to the one we hold, and an id
+        // reused by a different element does need rebuilding.
+        if (isMarker) {
+            if (this.markerElements.get(this.markerIdFor(node)) !== node) this.addMarkerElement(node);
+        } else if (this.lines.get(node.getAttribute('id')) === undefined) {
+            this.addLineElement(node);
+        }
     }
 
     disconnectedCallback() {
@@ -295,27 +435,65 @@ class LeafletMap extends HTMLElement {
         this.lines.delete(lineId);
     }
 
-    // A pure move slides the existing layer, which is far cheaper than
-    // rebuilding it and leaves an open popup open -- worth having when a whole
-    // fleet shifts every refresh. Anything that changes how the marker looks
-    // has to go through addMarkerElement, which recreates it.
+    // What the marker is drawn from. Everything else -- the name, the route,
+    // the vehicle id -- is only ever read back out of the element when a popup
+    // opens, so changing it needs no new layer.
+    static get ICON_ATTRIBUTES() {
+        return new Set(['type', 'tint', 'shape', 'route-type', 'aircraft-class']);
+    }
+
+    markerIdFor(markerEl) {
+        return markerEl.getAttribute('id') ||
+            `${parseFloat(markerEl.getAttribute('lat'))}-${parseFloat(markerEl.getAttribute('lng'))}`;
+    }
+
+    // Sliding the existing layer is far cheaper than rebuilding it and leaves
+    // an open popup open -- worth having when a whole fleet shifts every
+    // refresh. This used to require that *only* lat and lng changed, which no
+    // moving marker satisfies: vehicles and aircraft report a new bearing with
+    // every position, so each one was torn down and rebuilt on every tick.
     applyMarkerUpdate(markerEl, changedAttributes) {
         if (!this.map || !markerEl.isConnected) return;
 
-        const markerId = markerEl.getAttribute('id');
-        const existing = markerId && this.markers.get(markerId);
-        const positionOnly = [...changedAttributes].every((name) => name === 'lat' || name === 'lng');
+        const existing = this.markers.get(this.markerIdFor(markerEl));
+        if (!existing || !existing.setLatLng) return this.addMarkerElement(markerEl);
 
-        if (existing && existing.setLatLng && positionOnly) {
-            const lat = parseFloat(markerEl.getAttribute('lat'));
-            const lng = parseFloat(markerEl.getAttribute('lng'));
-            if (!isNaN(lat) && !isNaN(lng)) {
-                existing.setLatLng([lat, lng]);
-                return;
-            }
+        for (const name of changedAttributes) {
+            if (LeafletMap.ICON_ATTRIBUTES.has(name)) return this.addMarkerElement(markerEl);
         }
 
-        this.addMarkerElement(markerEl);
+        if (changedAttributes.has('lat') || changedAttributes.has('lng')) {
+            const lat = parseFloat(markerEl.getAttribute('lat'));
+            const lng = parseFloat(markerEl.getAttribute('lng'));
+            if (isNaN(lat) || isNaN(lng)) return this.addMarkerElement(markerEl);
+            existing.setLatLng([lat, lng]);
+        }
+
+        if (changedAttributes.has('bearing') && !this.rotateMarker(existing, markerEl)) {
+            return this.addMarkerElement(markerEl);
+        }
+
+        // The popup builds its content lazily, so a stale one only exists while
+        // it is on screen.
+        if (existing.isPopupOpen && existing.isPopupOpen()) {
+            existing.setPopupContent(this.createPopupContent(markerEl));
+        }
+    }
+
+    // Turning the part of the icon that points somewhere, rather than building
+    // a whole new icon for a heading change. False means this marker cannot be
+    // turned in place -- an image icon, or a heading appearing or disappearing,
+    // which swaps the symbol itself -- and the caller rebuilds it.
+    rotateMarker(marker, markerEl) {
+        const element = marker.getElement && marker.getElement();
+        const rotating = element && element.querySelector('[data-rotates]');
+        if (!rotating) return false;
+
+        const bearing = parseFloat(markerEl.getAttribute('bearing'));
+        if (isNaN(bearing)) return false;
+
+        rotating.setAttribute('transform', `rotate(${bearing} 12 12)`);
+        return true;
     }
 
     addMarkerElement(markerEl) {
@@ -327,7 +505,7 @@ class LeafletMap extends HTMLElement {
 
         const lat = parseFloat(markerEl.getAttribute('lat'));
         const lng = parseFloat(markerEl.getAttribute('lng'));
-        const markerId = markerEl.getAttribute('id') || `${lat}-${lng}`;
+        const markerId = this.markerIdFor(markerEl);
         const markerType = markerEl.getAttribute('type') || 'query';
 
         if (isNaN(lat) || isNaN(lng)) {
@@ -373,6 +551,7 @@ class LeafletMap extends HTMLElement {
             layer.addLayer(leafletMarker);
             this.markers.set(markerId, leafletMarker);
             this.markerElements.set(markerId, markerEl);
+            this.markerLayers.set(markerId, layer);
 
             // Set up click forwarding from Leaflet marker to DOM element
             leafletMarker.on('click', () => {
@@ -405,17 +584,22 @@ class LeafletMap extends HTMLElement {
     }
 
     removeMarkerElement(markerEl) {
-        const markerId = markerEl.getAttribute('id') || `${markerEl.getAttribute('lat')}-${markerEl.getAttribute('lng')}`;
-        this.removeMarkerById(markerId);
+        this.removeMarkerById(this.markerIdFor(markerEl));
     }
 
     removeMarkerById(markerId) {
         const existingMarker = this.markers.get(markerId);
-        if (existingMarker) {
-            this.map.removeLayer(existingMarker);
-            this.markers.delete(markerId);
-            this.markerElements.delete(markerId);
-        }
+        if (!existingMarker) return;
+
+        // Through the group that holds it: taking it off the map alone leaves
+        // the group's own reference behind, so the group grows without bound
+        // and clearing it later resurrects markers that are long gone.
+        const layer = this.markerLayers.get(markerId);
+        layer ? layer.removeLayer(existingMarker) : this.map.removeLayer(existingMarker);
+
+        this.markers.delete(markerId);
+        this.markerElements.delete(markerId);
+        this.markerLayers.delete(markerId);
     }
 
     createOptimizedQueryMarker(lat, lng, markerEl) {
@@ -518,7 +702,7 @@ class LeafletMap extends HTMLElement {
         const pointer =
             bearing === null
                 ? ''
-                : `<polygon points="12,0.8 15.2,6.4 8.8,6.4" fill="${fill}" stroke="${stroke}"
+                : `<polygon data-rotates points="12,0.8 15.2,6.4 8.8,6.4" fill="${fill}" stroke="${stroke}"
                             stroke-width="1.4" stroke-linejoin="round"
                             transform="rotate(${bearing} 12 12)" />`;
 
@@ -565,7 +749,7 @@ class LeafletMap extends HTMLElement {
         const body =
             track === null
                 ? `<circle cx="12" cy="12" r="5.5" fill="${fill}" stroke="${stroke}" stroke-width="1.4" />`
-                : `<polygon points="${plane}" fill="${fill}" stroke="${stroke}" stroke-width="1.2"
+                : `<polygon data-rotates points="${plane}" fill="${fill}" stroke="${stroke}" stroke-width="1.2"
                             stroke-linejoin="round" transform="rotate(${track} 12 12)" />`;
 
         return L.divIcon({
@@ -839,6 +1023,7 @@ class LeafletMap extends HTMLElement {
         // Clear the maps as well
         this.markers.clear();
         this.markerElements.clear();
+        this.markerLayers.clear();
         
         // Clear the layer groups
         if (this.queriesLayer) this.queriesLayer.clearLayers();

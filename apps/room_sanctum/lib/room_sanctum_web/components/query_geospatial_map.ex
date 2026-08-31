@@ -116,13 +116,21 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_aircraft, format_aircraft(assigns.aircraft))
       |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
-    groups = [
-      assigns.map_queries,
-      assigns.map_vehicles,
-      assigns.map_aircraft,
-      assigns.map_free_bikes,
-      assigns.map_stations
-    ]
+    # Sorted, and by a stable key: within a group the order is whatever the feed
+    # or the query happened to return, and a marker that changes place in the
+    # list is a DOM node LiveView *moves* -- which the map element sees as that
+    # marker being removed and a new one added, and rebuilds it for nothing.
+    groups =
+      Enum.map(
+        [
+          assigns.map_queries,
+          assigns.map_vehicles,
+          assigns.map_aircraft,
+          assigns.map_free_bikes,
+          assigns.map_stations
+        ],
+        fn points -> Enum.sort_by(points, &to_string(&1.id)) end
+      )
     all_points = Enum.concat(groups)
     # Centre on everything, even any points a cap would drop -- unless the
     # caller named a place to look at.
