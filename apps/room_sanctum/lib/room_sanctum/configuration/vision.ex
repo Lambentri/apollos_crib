@@ -26,6 +26,25 @@ defmodule RoomSanctum.Configuration.Vision do
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
     |> validate_queries_have_valid_ids()
+    |> validate_queries_are_distinct()
+  end
+
+  # A query belongs on a vision once. Twice is never deliberate -- the same
+  # arrivals drawn twice on the board and two identical markers on the map --
+  # and the form now takes the queries that are spoken for out of every other
+  # row's picker, so reaching here means something got past that.
+  defp validate_queries_are_distinct(changeset) do
+    ids =
+      changeset
+      |> get_field(:queries)
+      |> List.wrap()
+      |> Enum.map(fn query -> query.data && Map.get(query.data, :query) end)
+      |> Enum.reject(&is_nil/1)
+
+    case ids -- Enum.uniq(ids) do
+      [] -> changeset
+      _repeated -> add_error(changeset, :queries, "each query can only be on a vision once")
+    end
   end
 
   def meta_changeset(meta, attrs \\ %{}) do

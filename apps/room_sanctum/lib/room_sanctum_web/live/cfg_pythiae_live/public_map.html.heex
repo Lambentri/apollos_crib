@@ -1,0 +1,27 @@
+<div class="h-dvh w-full relative">
+  <%!-- Nothing but the map, sized to the window. dvh rather than vh so a phone's
+        collapsing address bar does not leave a strip of page under it. --%>
+  <.query_geospatial_map
+    id="pythiae-map"
+    queries={@queries}
+    aircraft={@aircraft}
+    stations={@stations}
+    station_statuses={@station_statuses}
+    free_bikes={@free_bikes}
+    vehicle_positions={@vehicle_positions}
+    queried_station_ids={@queried_station_ids}
+    query_summaries={@query_summaries}
+    height="100dvh"
+    gutter={false}
+    legend={false}
+  />
+
+  <%!-- Which vision is on screen, for a display someone walks past. Above the
+        map's own controls, and out of the way of the zoom buttons. --%>
+  <div class="absolute top-2 right-2 z-[1100] pointer-events-none">
+    <span class="badge badge-neutral badge-lg shadow gap-2">
+      <%= @pythiae.name %>
+      <span class="opacity-60"><%= @curr_vision %></span>
+    </span>
+  </div>
+</div>

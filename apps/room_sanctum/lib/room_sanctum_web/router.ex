@@ -38,6 +38,11 @@ defmodule RoomSanctumWeb.Router do
       live "/p/p/:name", PythiaeLive.Public, :show
       live "/p/s/c/:id", ScribusLive.Public, :show # color version
     end
+    # The same vision as /p/p, drawn where its queries are rather than as a
+    # board of cards. Its own layout because a map wants the whole window.
+    live_session :public_map, root_layout: {RoomSanctumWeb.Layouts, :root_public_map} do
+      live "/p/m/:name", PythiaeLive.PublicMap, :show
+    end
     live_session :public_inky, root_layout: {RoomSanctumWeb.Layouts, :root_public_inky} do
       live "/p/s/i/:id", ScribusLive.Public, :show # monochrome
     end

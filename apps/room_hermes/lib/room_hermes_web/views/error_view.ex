@@ -7,10 +7,12 @@ defmodule RoomHermesWeb.ErrorView do
   #   "Internal Server Error"
   # end
 
-  # By default, Phoenix returns the status message from
-  # the template name. For example, "404.html" becomes
-  # "Not Found".
-  def template_not_found(template, _assigns) do
+  # By default, Phoenix returns the status message from the template name. For
+  # example, "404.html" becomes "Not Found".
+  #
+  # render/2 rather than template_not_found/2, which was Phoenix 1.6's fallback
+  # and is not on the path the endpoint takes -- see RoomSanctumWeb.ErrorView.
+  def render(template, _assigns) do
     Phoenix.Controller.status_message_from_template(template)
   end
 end

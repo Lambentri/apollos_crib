@@ -139,13 +139,13 @@ defmodule RoomSanctumWeb.CoreComponents do
       {@rest}
     >
       <p :if={@title} class="flex items-center gap-1.5 text-sm font-semibold leading-6">
-        <.icon :if={@kind == :info} name="hero-information-circle-mini" class="h-4 w-4" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle-mini" class="h-4 w-4" />
+        <.icon :if={@kind == :info} name="fa-circle-info" class="h-4 w-4" />
+        <.icon :if={@kind == :error} name="fa-circle-exclamation" class="h-4 w-4" />
         <%= @title %>
       </p>
       <p class="mt-2 text-sm leading-5"><%= msg %></p>
       <button type="button" class="group absolute top-1 right-1 p-2" aria-label={gettext("close")}>
-        <.icon name="hero-x-mark-solid" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
+        <.icon name="fa-xmark" class="h-5 w-5 opacity-40 group-hover:opacity-70" />
       </button>
     </div>
     """
@@ -172,7 +172,7 @@ defmodule RoomSanctumWeb.CoreComponents do
       phx-connected={hide("#disconnected")}
       hidden
     >
-      Attempting to reconnect <.icon name="hero-arrow-path" class="ml-1 h-3 w-3 animate-spin" />
+      Attempting to reconnect <.icon name="fa-arrows-rotate" class="ml-1 h-3 w-3 animate-spin" />
     </.flash>
     """
   end
@@ -295,6 +295,7 @@ defmodule RoomSanctumWeb.CoreComponents do
   attr :multiple, :boolean, default: false, doc: "the multiple flag for select inputs"
 
   attr :checked_value, :string, doc: "the currently checked value"
+
   attr :rest, :global,
     include: ~w(accept autocomplete capture cols disabled form list max maxlength min minlength
                 multiple pattern placeholder readonly required rows size step)
@@ -374,7 +375,6 @@ defmodule RoomSanctumWeb.CoreComponents do
   end
 
   # checked={(@checked_value == opt) || (@field.value == String.to_atom(opt))}
-
 
   # A card grid instead of a <select>: same single form field, but every choice
   # is visible at once with room for a line explaining what it pulls in.
@@ -601,7 +601,7 @@ defmodule RoomSanctumWeb.CoreComponents do
   def error(assigns) do
     ~H"""
     <p class="mt-3 flex gap-3 text-sm leading-6 text-rose-600 phx-no-feedback:hidden">
-      <.icon name="hero-exclamation-circle-mini" class="mt-0.5 h-5 w-5 flex-none" />
+      <.icon name="fa-circle-exclamation" class="mt-0.5 h-5 w-5 flex-none" />
       <%= render_slot(@inner_block) %>
     </p>
     """
@@ -752,7 +752,7 @@ defmodule RoomSanctumWeb.CoreComponents do
         navigate={@navigate}
         class="text-sm font-semibold leading-6 text-zinc-900 hover:text-zinc-700"
       >
-        <.icon name="hero-arrow-left-solid" class="h-3 w-3" />
+        <.icon name="fa-arrow-left" class="h-3 w-3" />
         <%= render_slot(@inner_block) %>
       </.link>
     </div>
@@ -767,22 +767,26 @@ defmodule RoomSanctumWeb.CoreComponents do
   be applied by using the `-solid` and `-mini` suffix.
 
   You can customize the size and colors of the icons by setting
-  width, height, and background color classes.
+  size and colour classes.
 
-  Icons are extracted from your `assets/vendor/heroicons` directory and bundled
-  within your compiled app.css by the plugin in your `assets/tailwind.config.js`.
+  Font Awesome, which is what this app loads: `<.icon name="fa-trash" />`. The
+  generated code this replaced took heroicon names -- `hero-trash` -- and drew
+  them as `<span class="hero-trash">`, which needs a heroicons dependency and a
+  Tailwind plugin to become an SVG. This app has never had either, so every
+  icon rendered as an empty span: the vision form's add and remove buttons, the
+  flash messages' close and status marks, all of them.
 
   ## Examples
 
-      <.icon name="hero-x-mark-solid" />
-      <.icon name="hero-arrow-path" class="ml-1 w-3 h-3 animate-spin" />
+      <.icon name="fa-xmark" />
+      <.icon name="fa-arrows-rotate" class="ml-1 w-3 h-3 animate-spin" />
   """
   attr :name, :string, required: true
   attr :class, :string, default: nil
 
-  def icon(%{name: "hero-" <> _} = assigns) do
+  def icon(assigns) do
     ~H"""
-    <span class={[@name, @class]} />
+    <span class={["fa-solid fa-fw", @name, @class]} />
     """
   end
 
@@ -915,5 +919,4 @@ defmodule RoomSanctumWeb.CoreComponents do
     <i :if={@tint not in [nil, ""]} class={"fa-solid fa-circle text-#{@tint}-500 #{@class}"}></i>
     """
   end
-
 end

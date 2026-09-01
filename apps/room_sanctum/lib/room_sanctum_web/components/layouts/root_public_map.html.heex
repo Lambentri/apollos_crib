@@ -1,4 +1,5 @@
-<html data-theme="her">
+<!DOCTYPE html>
+<html data-theme="her" class="h-full">
 <head>
   <meta charset="utf-8"/>
   <meta http-equiv="X-UA-Compatible" content="IE=edge"/>
@@ -9,11 +10,10 @@
   <link phx-track-static rel="stylesheet" href={Routes.static_path(@conn, "/assets/app.css")}/>
   <script defer phx-track-static type="text/javascript" src={Routes.static_path(@conn, "/assets/app.js")}></script>
 </head>
-<body>
-<div class="p-2 h-full">
-  <div class="bg-neutral sm:rounded-lg shadow-xl p-4 h-full overflow-y-clip">
-    <%= @inner_content %>
-  </div>
-</div>
+<%!-- No padding, no card, no scrollbar: the page is the map. The other public
+      layouts wrap their content in a bordered panel, which is right for a
+      board of cards and wrong for something meant to fill a screen on a wall. --%>
+<body class="h-full overflow-hidden">
+<%= @inner_content %>
 </body>
 </html>

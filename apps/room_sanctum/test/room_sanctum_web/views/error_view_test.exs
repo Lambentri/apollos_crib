@@ -11,4 +11,16 @@ defmodule RoomSanctumWeb.ErrorViewTest do
   test "renders 500.html" do
     assert render_to_string(RoomSanctumWeb.ErrorView, "500.html", []) == "Internal Server Error"
   end
+
+  # The two above pass through Phoenix.View, which falls back to
+  # template_not_found/2 -- so they passed while every real 404 answered 500.
+  # The endpoint renders errors through Phoenix.Template, which does not, and
+  # raised "no 404 html template defined" *while rendering the 404*. This one
+  # goes the way a browser does.
+  test "a missing page is answered 404, not 500", %{conn: conn} do
+    conn = get(conn, "/no-such-page")
+
+    assert conn.status == 404
+    assert conn.resp_body =~ "Not Found"
+  end
 end

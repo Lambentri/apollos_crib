@@ -110,6 +110,15 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     default: false,
     doc: "Whether the aircraft toggle reads as on. State lives with the caller."
 
+  attr :gutter, :boolean,
+    default: true,
+    doc: """
+    The 1rem above the map, which separates it from whatever it sits under.
+    False on a page that is nothing but the map, where that rem is a strip of
+    background at the top of the screen and an equal strip clipped off the
+    bottom.
+    """
+
   attr :legend, :boolean,
     default: true,
     doc: """
@@ -177,7 +186,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       <%!-- No phx-update here on purpose: the element patches lat/lng/zoom through
             attributeChangedCallback and markers through a MutationObserver, so
             LiveView should morph it in place rather than replace it. --%>
-      <div class="mt-4 relative" id={"#{@id}-wrap"}>
+      <div class={"relative #{if @gutter, do: "mt-4"}"} id={"#{@id}-wrap"}>
         <%!-- Above Leaflet's own controls, which top out at z-index 1000
               inside the map's shadow root. --%>
         <div :if={@route_lines_event || @aircraft_event} class="absolute top-2 right-2 z-[1100] flex gap-1">
