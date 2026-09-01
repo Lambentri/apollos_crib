@@ -78,7 +78,7 @@ defmodule RoomGtfs.RTIndex do
       |> Enum.map(&{{source_id, :vp, &1.trip_id}, &1})
 
     replace(source_id, :vp, rows)
-    :ets.insert(@table, {{source_id, :vp_all}, vehicles})
+    if exists?(), do: :ets.insert(@table, {{source_id, :vp_all}, vehicles})
     :ok
   end
 
@@ -140,9 +140,9 @@ defmodule RoomGtfs.RTIndex do
   end
 
   def vehicles(source_id) do
-    case :ets.lookup(@table, {source_id, :vp_all}) do
+    case exists?() and :ets.lookup(@table, {source_id, :vp_all}) do
       [{_k, vehicles}] -> {:ok, vehicles}
-      [] -> :miss
+      _otherwise -> :miss
     end
   end
 
@@ -150,16 +150,33 @@ defmodule RoomGtfs.RTIndex do
   # Whether this source has ever stored a feed of this kind. Distinct from
   # having no rows: a feed can legitimately arrive carrying nothing.
   def indexed?(source_id, kind) do
-    :ets.member(@table, {source_id, {:present, kind}})
+    exists?() and :ets.member(@table, {source_id, {:present, kind}})
   end
+
+  @doc false
+  # The table is not always there, and every access has to survive that.
+  #
+  # It is created by this app's supervisor and dies with it, so there are two
+  # windows either side of a running node: before the supervisor has started,
+  # and after it has stopped. The second is the one that bit -- during a
+  # deploy, the old node's ETS table goes while LiveViews are still asking it
+  # for arrivals, and `:ets.member/2` against a table that has gone raises
+  # rather than answering. Every caller holding a query crashed on the way out.
+  #
+  # A missing table means nothing is indexed, which is a state the readers
+  # already handle: they fall back to asking the worker.
+  def exists?, do: :ets.whereis(@table) != :undefined
 
   # The marker is a two-element key on purpose: the per-trip rows are scanned
   # with a three-element pattern for suffix matching, and a marker shaped like
   # one of them comes back from that scan as a trip whose id is an atom.
   defp replace(source_id, kind, rows) do
-    :ets.match_delete(@table, {{source_id, kind, :_}, :_})
-    :ets.insert(@table, rows)
-    :ets.insert(@table, {{source_id, {:present, kind}}, true})
+    if exists?() do
+      :ets.match_delete(@table, {{source_id, kind, :_}, :_})
+      :ets.insert(@table, rows)
+      :ets.insert(@table, {{source_id, {:present, kind}}, true})
+    end
+
     :ok
   end
 

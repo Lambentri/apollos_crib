@@ -88,6 +88,9 @@ defmodule RoomGtfs.Worker do
           |> via_tuple()
           |> GenServer.call({:query_realtime, trips, stop}, 5_000)
           |> Enum.map(&slim_entity/1)
+        rescue
+          # As above: a stopped Registry raises rather than exiting.
+          ArgumentError -> []
         catch
           :exit, _ -> []
         end
@@ -132,6 +135,12 @@ defmodule RoomGtfs.Worker do
       "gtfs-rt#{name}"
       |> via_tuple()
       |> GenServer.call({:query_alerts, stop, route_ids}, 10_000)
+    rescue
+      # A Registry that has stopped -- which is what a shutting-down node
+      # looks like -- raises from the lookup before any call happens, where a
+      # dead process would have exited. Catching only the exit left every
+      # in-flight caller to crash on the way out of a deploy.
+      ArgumentError -> []
     catch
       :exit, _ -> []
     end
@@ -149,6 +158,12 @@ defmodule RoomGtfs.Worker do
       "gtfs-rt#{name}"
       |> via_tuple()
       |> GenServer.call(:current_alerts, 10_000)
+    rescue
+      # A Registry that has stopped -- which is what a shutting-down node
+      # looks like -- raises from the lookup before any call happens, where a
+      # dead process would have exited. Catching only the exit left every
+      # in-flight caller to crash on the way out of a deploy.
+      ArgumentError -> []
     catch
       :exit, _ -> []
     end
@@ -162,6 +177,9 @@ defmodule RoomGtfs.Worker do
       :miss ->
         try do
           "gtfs-rt#{name}" |> via_tuple() |> GenServer.call(:query_vehicle_positions, 5_000)
+        rescue
+          # As above: a stopped Registry raises rather than exiting.
+          ArgumentError -> []
         catch
           :exit, _ -> []
         end
@@ -304,6 +322,8 @@ defmodule RoomGtfs.Worker do
       _val ->
         try do
           get_current_vehicle_positions(id, trips, @occupancy_timeout_ms)
+        rescue
+          ArgumentError -> []
         catch
           :exit, _ -> []
         end
@@ -670,6 +690,12 @@ defmodule RoomGtfs.Worker.RT do
       "gtfs-rt#{name}"
       |> via_tuple()
       |> GenServer.call(:stats)
+    rescue
+      # A Registry that has stopped -- which is what a shutting-down node
+      # looks like -- raises from the lookup before any call happens, where a
+      # dead process would have exited. Catching only the exit left every
+      # in-flight caller to crash on the way out of a deploy.
+      ArgumentError -> %{rt_sa: :unavailable, rt_tu: :unavailable, rt_vp: :unavailable}
     catch
       :exit, _ -> %{rt_sa: :unavailable, rt_tu: :unavailable, rt_vp: :unavailable}
     end

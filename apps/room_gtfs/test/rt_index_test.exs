@@ -12,15 +12,29 @@ defmodule RoomGtfs.RTIndexTest do
   alias RoomGtfs.RTIndex
   alias TransitRealtime, as: T
 
+  # The table's owner is linked to whoever started it, so in tests it does not
+  # outlive the process that created it. Each test therefore makes sure the
+  # table is there rather than assuming a previous one left it behind -- which
+  # also makes the "table is gone" tests below safe to run in any order.
   setup do
+    ensure_table()
+
+    id = System.unique_integer([:positive])
+
+    on_exit(fn ->
+      if :ets.whereis(RTIndex.table()) != :undefined do
+        :ets.match_delete(RTIndex.table(), {{id, :_, :_}, :_})
+      end
+    end)
+
+    %{id: id}
+  end
+
+  defp ensure_table do
     if :ets.whereis(RTIndex.table()) == :undefined do
       {:ok, _} = RTIndex.start_link()
       Process.sleep(20)
     end
-
-    id = System.unique_integer([:positive])
-    on_exit(fn -> :ets.match_delete(RTIndex.table(), {{id, :_, :_}, :_}) end)
-    %{id: id}
   end
 
   defp entity(trip_id, stop_ids, attrs \\ []) do
@@ -121,6 +135,33 @@ defmodule RoomGtfs.RTIndexTest do
       RTIndex.put_trip_updates(id, [entity("something-else", ["s1"])])
 
       assert {:ok, []} = RTIndex.trip_updates_by_suffix(id, ["ASP26_098600"], "s1")
+    end
+  end
+
+  describe "when the table is not there" do
+    # It is created by the app's supervisor and dies with it, so there are two
+    # windows either side of a running node. The second is the one that bit: on
+    # a deploy the old node's table goes while LiveViews are still asking for
+    # arrivals, and every caller holding a query crashed on the way out.
+    setup do
+      # The next test's setup puts it back.
+      if :ets.whereis(RTIndex.table()) != :undefined do
+        :ets.delete(RTIndex.table())
+      end
+
+      :ok
+    end
+
+    test "reads answer :miss rather than raising", %{id: id} do
+      assert RTIndex.trip_updates(id, ["t1"], "s1") == :miss
+      assert RTIndex.trip_updates_by_suffix(id, ["t1"], "s1") == :miss
+      assert RTIndex.vehicles(id) == :miss
+      assert RTIndex.vehicles(id, ["t1"]) == :miss
+    end
+
+    test "writes are dropped rather than raising", %{id: id} do
+      assert RTIndex.put_trip_updates(id, [entity("t1", ["s1"])]) == :ok
+      assert RTIndex.put_vehicles(id, [%{vehicle_id: "v1", trip_id: "t1"}]) == :ok
     end
   end
 
