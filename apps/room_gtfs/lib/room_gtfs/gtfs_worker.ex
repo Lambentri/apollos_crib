@@ -589,6 +589,17 @@ defmodule RoomGtfs.Worker do
   def source_stats(id) do
     %{
       calendars:  Storage.count_calendars(id),
+      # The three numbers that say whether service-day filtering is working for
+      # this source, which a count of rows on its own does not.
+      #
+      #   calendar_dates    -- did calendar_dates.txt import at all
+      #   services_today    -- zero means the filter stands down entirely and
+      #                        the board shows every pattern, running or not
+      #   trips_no_service  -- trips kept because neither file mentions their
+      #                        service; a large share means the same thing
+      calendar_dates: Storage.count_calendar_dates(id),
+      services_today: services_today(id),
+      trips_no_service: Storage.count_trips_without_service(id),
       directions: Storage.count_directions(id),
       routes:     Storage.count_routes(id),
       shapes:     Storage.count_shapes(id),
@@ -597,6 +608,25 @@ defmodule RoomGtfs.Worker do
       trips:      Storage.count_trips(id),
       rt:         RoomGtfs.Worker.RT.stats(id),
     }
+  end
+
+  # In the source's own timezone: a board in Boston rolls over to the next
+  # service day at midnight there, not at midnight UTC, and for part of every
+  # day the two disagree about which services are running.
+  defp services_today(id) do
+    tz =
+      case Configuration.get_source!(:bare, id) do
+        %{config: %{tz: tz}} when is_binary(tz) -> tz
+        _otherwise -> "Etc/UTC"
+      end
+
+    tz
+    |> DateTime.now!()
+    |> DateTime.to_date()
+    |> then(&Storage.services_on(id, &1))
+    |> MapSet.size()
+  rescue
+    _ -> 0
   end
 end
 

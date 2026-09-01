@@ -274,6 +274,44 @@ defmodule RoomSanctum.Storage do
   end
 
   @doc """
+  How many of a source's trips run on a service neither calendar file mentions.
+
+  These are the trips the arrival filter keeps rather than hides, on the
+  grounds that not knowing when something runs is not the same as knowing it
+  does not. A large number here means the filter is mostly not filtering, which
+  is worth being able to see rather than infer from a board that looks wrong.
+  """
+  def count_trips_without_service(source_id) do
+    # Fully qualified: the Trip alias is introduced further down the file, and
+    # `from` does not resolve the module until this runs -- so the short name
+    # compiles here and fails at the first call.
+    from(t in RoomSanctum.Storage.GTFS.Trip,
+      as: :trip,
+      where: t.source_id == ^source_id,
+      where:
+        not exists(
+          from(c in Calendar,
+            where:
+              c.source_id == parent_as(:trip).source_id and
+                c.service_id == parent_as(:trip).service_id,
+            select: 1
+          )
+        ),
+      where:
+        not exists(
+          from(cd in CalendarDate,
+            where:
+              cd.source_id == parent_as(:trip).source_id and
+                cd.service_id == parent_as(:trip).service_id,
+            select: 1
+          )
+        ),
+      select: count(t.id)
+    )
+    |> Repo.one()
+  end
+
+  @doc """
   The service ids running on a date, as a MapSet.
 
   Both halves of the answer: the services whose calendar.txt row covers the

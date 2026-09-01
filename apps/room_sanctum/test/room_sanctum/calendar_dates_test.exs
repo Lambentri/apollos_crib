@@ -74,6 +74,53 @@ defmodule RoomSanctum.CalendarDatesTest do
     end
   end
 
+  describe "count_trips_without_service/1" do
+    alias RoomSanctum.Storage.GTFS.Trip
+
+    defp trip(source, service_id) do
+      Repo.insert!(%Trip{
+        source_id: source.id,
+        trip_id: "t-#{service_id}-#{System.unique_integer([:positive])}",
+        route_id: "r1",
+        service_id: service_id
+      })
+    end
+
+    test "counts the trips the arrival filter has to keep on faith", %{source: source} do
+      calendar(source, "known", [:tuesday], ~D[2026-08-31], ~D[2026-09-05])
+      trip(source, "known")
+      trip(source, "orphan-a")
+      trip(source, "orphan-b")
+
+      assert Storage.count_trips_without_service(source.id) == 2
+    end
+
+    test "an exception counts as knowing, even with no calendar row", %{source: source} do
+      exception(source, "by-exception", ~D[2026-09-01], 1)
+      trip(source, "by-exception")
+
+      assert Storage.count_trips_without_service(source.id) == 0
+    end
+
+    test "another source's trips are not counted", %{source: source} do
+      {:ok, other_user} =
+        Accounts.register_user(%{
+          email: "cnt#{System.unique_integer([:positive])}@example.com",
+          password: "hello world!hello world!"
+        })
+
+      {:ok, other} =
+        Configuration.create_source(%{
+          name: "U", notes: "", type: :gtfs, enabled: true, user_id: other_user.id,
+          config: %{"__type__" => "gtfs", "url" => "https://e.test/u.zip", "tz" => "UTC"}
+        })
+
+      trip(other, "theirs")
+
+      assert Storage.count_trips_without_service(source.id) == 0
+    end
+  end
+
   describe "services_on/2" do
     test "a service whose weekday flag is set, inside its date range", %{source: source} do
       # 2026-09-01 is a Tuesday.
