@@ -109,11 +109,7 @@ defmodule RoomGtfs.OccupancyTest do
 
   describe "schedule relationship" do
     defp merged(trip_rel, stop_rel) do
-      Worker.merge_schedule_relationship(
-        %{},
-        %{trip: %{schedule_relationship: trip_rel}},
-        %{schedule_relationship: stop_rel}
-      )
+      Worker.merge_schedule_relationship(%{}, trip_rel, %{schedule_relationship: stop_rel})
     end
 
     test "as published is not news" do

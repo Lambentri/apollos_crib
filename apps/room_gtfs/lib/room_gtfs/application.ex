@@ -16,7 +16,9 @@ defmodule RoomGtfs.Application do
   boot rather than lazily at the first decode.
 
   It also owns `RoomGtfs.FeedCache`, so that several sources pointing at one
-  realtime URL fetch it once between them. The per-source workers are not
+  realtime URL fetch it once between them, and `RoomGtfs.RTIndex`, the table
+  the realtime feeds are read out of -- owned here rather than by a worker so
+  that a worker restarting does not take its source's data with it. The per-source workers are not
   started here -- room_zeus does that, one per configured source.
   """
 
@@ -29,7 +31,7 @@ defmodule RoomGtfs.Application do
     # start callback, it is.
     :ok = Protobuf.load_extensions()
 
-    children = [RoomGtfs.FeedCache]
+    children = [RoomGtfs.FeedCache, RoomGtfs.RTIndex]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: RoomGtfs.Supervisor)
   end

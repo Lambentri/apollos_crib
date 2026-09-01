@@ -55,11 +55,76 @@ defmodule RoomGtfs.Worker do
     |> GenServer.cast(:update_realtime)
   end
 
-  def get_current_realtime(name, trips, stop) do
-#    IO.inspect({name, trips, stop})
-    "gtfs-rt#{name}"
-    |> via_tuple
-    |> GenServer.call({:query_realtime, trips, stop}, 30_000)
+  @doc """
+  The realtime trip updates for a stop, read rather than asked for.
+
+  This used to be a `GenServer.call` into the source's RT worker -- the same
+  process that fetches the feeds over HTTP -- so it queued behind those fetches
+  and behind every other caller. A stop lookup could take tens of seconds, and
+  the vision that asked for it gives up at thirty.
+
+  The table is written on each poll and read here directly. The call remains
+  for the window before a source has stored its first feed.
+  """
+  def get_current_realtime(name, trips, stop, config \\ nil) do
+    # The caller usually holds the source already. Reading it again here would
+    # put back one of the queries that taking the timezone as an argument
+    # removed.
+    config = config || source_config(name)
+
+    indexed =
+      case config do
+        %{rt_trip_id_suffix: true} -> RoomGtfs.RTIndex.trip_updates_by_suffix(name, trips, stop)
+        _otherwise -> RoomGtfs.RTIndex.trip_updates(name, trips, stop)
+      end
+
+    case indexed do
+      {:ok, updates} ->
+        updates
+
+      :miss ->
+        try do
+          "gtfs-rt#{name}"
+          |> via_tuple()
+          |> GenServer.call({:query_realtime, trips, stop}, 5_000)
+          |> Enum.map(&slim_entity/1)
+        catch
+          :exit, _ -> []
+        end
+    end
+  end
+
+  # The worker still replies with protobuf entities; the index speaks a smaller
+  # shape, and callers should only have to know one of them.
+  defp slim_entity(%{trip_update: tu}) do
+    stu = tu.stop_time_update
+
+    %{
+      trip_id: tu.trip.trip_id,
+      schedule_relationship: tu.trip.schedule_relationship,
+      timestamp: tu.timestamp,
+      stops: %{},
+      stop:
+        stu &&
+          %{
+            arrival: stu.arrival,
+            departure: stu.departure,
+            schedule_relationship: stu.schedule_relationship,
+            stop_time_properties: stu.stop_time_properties,
+            departure_occupancy_status: stu.departure_occupancy_status
+          }
+    }
+  end
+
+  # The suffix rule is a property of the source, and reading it here keeps the
+  # lookup out of the worker entirely.
+  defp source_config(name) do
+    case Configuration.get_source!(:bare, name) do
+      %{config: config} -> config
+      _otherwise -> %{}
+    end
+  rescue
+    _ -> %{}
   end
 
   def query_alerts(name, stop, route_ids) do
@@ -90,15 +155,27 @@ defmodule RoomGtfs.Worker do
   end
 
   def get_current_vehicle_positions(name) do
-    "gtfs-rt#{name}"
-    |> via_tuple
-    |> GenServer.call(:query_vehicle_positions, 30_000)
+    case RoomGtfs.RTIndex.vehicles(name) do
+      {:ok, vehicles} ->
+        vehicles
+
+      :miss ->
+        try do
+          "gtfs-rt#{name}" |> via_tuple() |> GenServer.call(:query_vehicle_positions, 5_000)
+        catch
+          :exit, _ -> []
+        end
+    end
   end
 
-  def get_current_vehicle_positions(name, trips, timeout \\ 30_000) do
-    "gtfs-rt#{name}"
-    |> via_tuple
-    |> GenServer.call({:query_vehicle_positions, trips}, timeout)
+  def get_current_vehicle_positions(name, trips, timeout \\ 5_000) do
+    case RoomGtfs.RTIndex.vehicles(name, trips) do
+      {:ok, vehicles} ->
+        vehicles
+
+      :miss ->
+        "gtfs-rt#{name}" |> via_tuple() |> GenServer.call({:query_vehicle_positions, trips}, timeout)
+    end
   end
 
   @doc """
@@ -157,7 +234,7 @@ defmodule RoomGtfs.Worker do
       _val ->
         trips = res |> Enum.map(fn x -> x.trip_id end)
 
-        case get_current_realtime(id, trips, query.stop) do
+        case get_current_realtime(id, trips, query.stop, inst.config) do
           [] ->
             res
 
@@ -170,19 +247,19 @@ defmodule RoomGtfs.Worker do
             res
             |> Enum.map(fn x ->
               case Enum.find(rtvals, fn v ->
-                     trip_id_match?(inst.config, x.trip_id, v.trip_update.trip.trip_id)
+                     trip_id_match?(inst.config, x.trip_id, v.trip_id)
                    end) do
                 nil ->
                   x
 
                 val ->
-                  stu = val.trip_update.stop_time_update
+                  stu = val.stop
                   time_event = stu && (stu.arrival || stu.departure)
 
                   x =
                     x
                     |> merge_occupancy(occupancy_for(inst.config, x.trip_id, stu, vehicles))
-                    |> merge_schedule_relationship(val.trip_update, stu)
+                    |> merge_schedule_relationship(val.schedule_relationship, stu)
                     |> merge_stop_properties(stu)
 
                   case time_event do
@@ -322,11 +399,9 @@ defmodule RoomGtfs.Worker do
   #
   # SCHEDULED is the proto default and means "as published", so it is left off
   # rather than recorded -- only a departure from the schedule is news.
-  def merge_schedule_relationship(arrival, trip_update, stu) do
-    trip = trip_update && trip_update.trip
-
+  def merge_schedule_relationship(arrival, trip_relationship, stu) do
     arrival
-    |> maybe_put(:trip_status, relationship(trip && trip.schedule_relationship))
+    |> maybe_put(:trip_status, relationship(trip_relationship))
     |> maybe_put(:stop_status, relationship(stu && stu.schedule_relationship))
   end
 
@@ -1230,11 +1305,15 @@ defmodule RoomGtfs.Worker.RT do
   # nothing they see.
   defp store_feed(state, :sa, feed), do: Map.put(state, :rt_sa, feed)
 
-  defp store_feed(state, :tu, feed), do: Map.put(state, :rt_tu, feed)
+  defp store_feed(state, :tu, feed) do
+    RoomGtfs.RTIndex.put_trip_updates(state.id, feed.entity)
+    Map.put(state, :rt_tu, feed)
+  end
 
   defp store_feed(state, :vp, feed) do
     state = state |> Map.put(:rt_vp, feed) |> ensure_stops()
     vehicles = vehicle_positions_from(feed, state.stops)
+    RoomGtfs.RTIndex.put_vehicles(state.id, vehicles)
 
     # The source page watches its own channel; the query pages watch the shared
     # one and sort out which vehicles are theirs.

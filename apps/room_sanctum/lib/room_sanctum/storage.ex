@@ -1318,6 +1318,75 @@ defmodule RoomSanctum.Storage do
     val
   end
 
+  @doc false
+  # Keep only the trips whose service actually runs on `date`, and be careful
+  # about what "actually" can be known.
+  #
+  # A stop's timetable holds every service pattern the feed publishes --
+  # weekday, Saturday, Sunday, and on MBTA a dozen dated variants of each -- so
+  # without this the board is mostly departures that will not happen, and the
+  # limit is spent on them. One stop there mixes twelve patterns.
+  #
+  # Two things stop this from being a filter that empties boards, and both are
+  # load-bearing rather than defensive dressing. Measured on the dev database,
+  # two of eight sources have no usable service data at all: one has 33,163
+  # trips and not a single calendar row, another has calendars that expired
+  # days ago.
+  #
+  #   * A service nothing says anything about is kept. Neither file mentioning
+  #     it means we do not know when it runs, and hiding it asserts something
+  #     we have not been told.
+  #
+  #   * A source with nothing running today is not filtered at all. That is a
+  #     feed whose service data has gone stale, and a board of possibly-wrong
+  #     times beats a blank one.
+  defp running_on(queryable, source_id, date) do
+    weekday = weekday_column(Date.day_of_week(date))
+
+    scheduled =
+      "gtfs_calendars"
+      |> where([c], c.source_id == ^source_id and c.start_date <= ^date and c.end_date >= ^date)
+      |> where([c], field(c, ^weekday) == 1)
+
+    exception = fn type ->
+      "gtfs_calendar_dates"
+      |> where([cd], cd.source_id == ^source_id and cd.date == ^date and cd.exception_type == ^type)
+    end
+
+    from([st, trip: t] in queryable,
+      where:
+        (exists(from(c in scheduled, where: c.service_id == parent_as(:trip).service_id, select: 1)) or
+           exists(
+             from(cd in exception.(1), where: cd.service_id == parent_as(:trip).service_id, select: 1)
+           ) or
+           not exists(
+             from(c in "gtfs_calendars",
+               where: c.source_id == ^source_id and c.service_id == parent_as(:trip).service_id,
+               select: 1
+             )
+           ) and
+             not exists(
+               from(cd in "gtfs_calendar_dates",
+                 where: cd.source_id == ^source_id and cd.service_id == parent_as(:trip).service_id,
+                 select: 1
+               )
+             ) or
+           not exists(from(c in scheduled, select: 1)) and
+             not exists(from(cd in exception.(1), select: 1))) and
+          not exists(
+            from(cd in exception.(2), where: cd.service_id == parent_as(:trip).service_id, select: 1)
+          )
+    )
+  end
+
+  defp weekday_column(1), do: :monday
+  defp weekday_column(2), do: :tuesday
+  defp weekday_column(3), do: :wednesday
+  defp weekday_column(4), do: :thursday
+  defp weekday_column(5), do: :friday
+  defp weekday_column(6), do: :saturday
+  defp weekday_column(7), do: :sunday
+
   defp conditional_where(queryable, source_id, stop_id, timestamp_time_hour, timestamp_time) do
 #    case timestamp_time < timestamp_time_hour do
 #      true ->
@@ -1430,6 +1499,7 @@ defmodule RoomSanctum.Storage do
       as: :trip,
       on: t.trip_id == st.trip_id and t.source_id == st.source_id
     )
+    |> running_on(source_id, DateTime.to_date(timestamp))
     |> join(:left, [st, trip: t], r in Route,
       as: :route,
       on: t.route_id == r.route_id and r.source_id == st.source_id
