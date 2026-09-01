@@ -39,7 +39,11 @@ defmodule RoomIcarus.Worker do
 
   def init(opts) do
     Periodic.start_link(
-      every: :timer.seconds(10),
+      # A backstop rather than a poll: source config changes are rare, and the
+      # workers that read them on a tight timer were the load that kept a
+      # ten-connection pool saturated. Nothing here needs to notice an edit
+      # within ten seconds.
+      every: :timer.seconds(60),
       run: fn -> RoomIcarus.Worker.refresh_db_cfg(opts[:name]) end,
       initial_delay: 0
     )

@@ -381,8 +381,14 @@ defmodule RoomGtfs.Worker do
 
   # etc
   def init(opts) do
+    Configuration.subscribe(:source, opts[:name])
+
     Periodic.start_link(
-      every: :timer.seconds(4),
+      # A backstop, not the mechanism: an edit to the source arrives by
+      # broadcast the moment it is written. This only catches a write that
+      # never went through Configuration -- a migration, or a hand at a psql
+      # prompt.
+      every: :timer.seconds(60),
       run: fn -> RoomGtfs.Worker.refresh_db_cfg(opts[:name]) end,
       initial_delay: 10
     )
@@ -448,6 +454,14 @@ defmodule RoomGtfs.Worker do
   def handle_cast(_msg, state) do
     {:noreply, state}
   end
+
+  # Told rather than asked: the same refresh, run when somebody edits the
+  # source instead of every four seconds in case they did.
+  def handle_info({:cfg_changed, :source, _id}, state) do
+    handle_cast(:refresh_db_cfg, state)
+  end
+
+  def handle_info(_msg, state), do: {:noreply, state}
 
   def handle_call({:query_realtime, trips, stop}, _from, state) do
     r =
@@ -537,8 +551,14 @@ defmodule RoomGtfs.Worker.RT do
   end
 
   def init(opts) do
+    Configuration.subscribe(:source, opts[:name])
+
     Periodic.start_link(
-      every: :timer.seconds(4),
+      # A backstop, not the mechanism: an edit to the source arrives by
+      # broadcast the moment it is written. This only catches a write that
+      # never went through Configuration -- a migration, or a hand at a psql
+      # prompt.
+      every: :timer.seconds(60),
       run: fn -> RoomGtfs.Worker.RT.refresh_db_cfg(opts[:name]) end,
       initial_delay: :timer.seconds(10)
     )
@@ -1019,14 +1039,22 @@ defmodule RoomGtfs.Worker.RT do
     do_update_realtime(state)
   end
 
+  # Told rather than asked: the same refresh, run when somebody edits the
+  # source instead of every four seconds in case they did.
+  def handle_info({:cfg_changed, :source, _id}, state) do
+    handle_cast(:refresh_db_cfg, state)
+  end
+
+  def handle_info(_msg, state), do: {:noreply, state}
+
   # Each kind keeps its own clock. Trip updates go stale in seconds; service
   # alerts change a few times a day, and polling them as often as vehicle
   # positions buys nothing and costs a request -- which matters where the feed
   # is metered, and is simply waste where it is not.
   #
   # Gated here rather than by rescheduling the Periodic, which cannot be changed
-  # once started and would have to be torn down and rebuilt whenever the config
-  # is refreshed -- every four seconds, as it happens.
+  # once started and would have to be torn down and rebuilt on every config
+  # refresh.
   defp due?(state, url, period) do
     case state |> Map.get(:rt_polled_at, %{}) |> Map.get(url) do
       nil -> true

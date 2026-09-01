@@ -16,8 +16,13 @@ defmodule RoomSanctum.Worker.Keryx do
     # Start the item cache
     {:ok, _cache_pid} = RoomSanctum.Worker.KeryxItemCache.start_link(keryx_id: opts[:id])
 
+    Configuration.subscribe(:keryx, opts[:id])
+
     Periodic.start_link(
-      every: :timer.seconds(4),
+      # A backstop, not the mechanism: config changes arrive by broadcast the
+      # moment they are written. This only catches a write that never went
+      # through Configuration -- a migration, or a hand at a psql prompt.
+      every: :timer.seconds(60),
       run: fn -> RoomSanctum.Worker.Keryx.refresh_db_cfg(opts[:id]) end,
       initial_delay: 10
     )
@@ -79,6 +84,12 @@ defmodule RoomSanctum.Worker.Keryx do
   end
 
   # Handle async task completion
+  # Told rather than asked: the same refresh, run when somebody edits the
+  # keryx instead of every four seconds in case they did.
+  def handle_info({:cfg_changed, :keryx, _id}, state) do
+    handle_cast(:refresh_db_cfg, state)
+  end
+
   def handle_info(:subscribe_control, state) do
     if state.keryx do
       control_topic = "/apollos/keryx/#{state.keryx.name}/control"

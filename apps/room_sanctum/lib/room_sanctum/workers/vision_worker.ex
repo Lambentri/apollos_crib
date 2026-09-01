@@ -15,8 +15,13 @@ defmodule RoomSanctum.Worker.Vision do
   def init(opts) do
     Process.flag(:trap_exit, true)
 
+    Configuration.subscribe(:vision, opts[:id])
+
     Periodic.start_link(
-      every: :timer.seconds(4),
+      # A backstop, not the mechanism: config changes arrive by broadcast the
+      # moment they are written. This only catches a write that never went
+      # through Configuration -- a migration, or a hand at a psql prompt.
+      every: :timer.seconds(60),
       run: fn -> RoomSanctum.Worker.Vision.refresh_db_cfg(opts[:id]) end,
       initial_delay: 10
     )
@@ -76,6 +81,12 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   # Handle async task completion
+  # Told rather than asked: the same refresh, run when somebody edits the
+  # vision instead of every four seconds in case they did.
+  def handle_info({:cfg_changed, :vision, _id}, state) do
+    handle_cast(:refresh_db_cfg, state)
+  end
+
   def handle_info({ref, queried_data}, state) do
     # Task completed successfully
     Process.demonitor(ref, [:flush])

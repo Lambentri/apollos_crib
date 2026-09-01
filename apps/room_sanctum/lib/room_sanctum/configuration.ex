@@ -46,6 +46,42 @@ defmodule RoomSanctum.Configuration do
   def get_source!(id), do: Repo.get!(Source, id) |> Repo.preload([:mailboxes, :webhooks])
 
   @doc """
+  Subscribe to config changes for one record, so a worker can be told rather
+  than asking.
+
+  Every worker used to re-read its own config row on a two-to-four second
+  timer, which is how a handful of sources kept a ten-connection pool
+  saturated: those short reads queued behind the long arrival joins, a
+  checkout timed out, the GenServer died, its supervisor restarted it, and the
+  VM eventually went down on restart intensity.
+
+  Nothing about that config changes on a timer. It changes when somebody edits
+  it, in this application, in a process that can simply say so. The timers
+  remain as a slow backstop for a write that never reaches this function -- a
+  migration, or a hand at a psql prompt -- rather than as the way news travels.
+  """
+  def subscribe(kind, id) do
+    Phoenix.PubSub.subscribe(RoomSanctum.PubSub, cfg_topic(kind, id))
+  end
+
+  defp cfg_topic(kind, id), do: "cfg:#{kind}:#{id}"
+
+  # Only a write that actually landed is worth announcing.
+  defp announce(result, kind)
+
+  defp announce({:ok, record} = result, kind) do
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      cfg_topic(kind, record.id),
+      {:cfg_changed, kind, record.id}
+    )
+
+    result
+  end
+
+  defp announce(result, _kind), do: result
+
+  @doc """
   Creates a source.
 
   ## Examples
@@ -90,9 +126,22 @@ defmodule RoomSanctum.Configuration do
 
   """
   def update_source(%Source{} = source, attrs) do
-    source
-    |> Source.changeset(attrs)
+    changeset = Source.changeset(source, attrs)
+
+    changeset
     |> Repo.update()
+    |> announce_source(changeset)
+  end
+
+  # `meta` is the workers' own bookkeeping -- last_run stamps, parcel tracking
+  # -- written on a timer by the very workers that would be told about it.
+  # Announcing those would have every worker re-read its config because one of
+  # them finished a refresh, which is the loop this exists to remove.
+  defp announce_source(result, changeset) do
+    case Map.keys(changeset.changes) do
+      [:meta] -> result
+      _otherwise -> announce(result, :source)
+    end
   end
 
   def update_source_config(%Source{} = source, attrs) do
@@ -155,7 +204,7 @@ defmodule RoomSanctum.Configuration do
 
   """
   def delete_source(%Source{} = source) do
-    Repo.delete(source)
+    source |> Repo.delete() |> announce(:source)
   end
 
   @doc """
@@ -363,12 +412,14 @@ defmodule RoomSanctum.Configuration do
     vision
     |> Vision.changeset(inj_fake_ids(attrs))
     |> Repo.update()
+    |> announce(:vision)
   end
 
   def update_vision_ni(%Vision{} = vision, attrs) do
     vision
     |> Vision.changeset(attrs)
     |> Repo.update()
+    |> announce(:vision)
   end
 
   # The form submits its queries as an index-keyed map and each one needs an id
@@ -614,6 +665,7 @@ defmodule RoomSanctum.Configuration do
     pythiae
     |> Pythiae.changeset(attrs)
     |> Repo.update()
+    |> announce(:pythiae)
   end
 
   @doc """
@@ -1036,6 +1088,7 @@ defmodule RoomSanctum.Configuration do
     keryx
     |> Keryx.changeset(attrs)
     |> Repo.update()
+    |> announce(:keryx)
   end
 
   @doc """

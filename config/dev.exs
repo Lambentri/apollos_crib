@@ -9,7 +9,12 @@ config :room_hermes,
        database: "room_sanctum_dev",
        show_sensitive_data_on_connection_error: true,
        port: 54321,
-       pool_size: 10
+       # Matched to prod's POOL_SIZE. The workers run on the same timers here
+       # as they do there -- every source and vision re-reading its config row
+       # every few seconds -- so a dev machine with a few sources configured
+       # hits the same queue timeouts, and they read as a broken app rather
+       # than as a small pool.
+       pool_size: 50
 
 # For development, we disable any cache and enable
 # debugging and code reloading.
@@ -75,7 +80,7 @@ config :room_sanctum,
        database: "room_sanctum_dev",
        port: 54321,
        show_sensitive_data_on_connection_error: true,
-       pool_size: 10,
+       pool_size: 50,
        types: RoomSanctum.PostgresTypes
 
 # For development, we disable any cache and enable

@@ -12,8 +12,13 @@ defmodule RoomSanctum.Worker.Pythiae do
   end
 
   def init(opts) do
+    Configuration.subscribe(:pythiae, opts[:id])
+
     Periodic.start_link(
-      every: :timer.seconds(2),
+      # A backstop, not the mechanism: config changes arrive by broadcast the
+      # moment they are written. This only catches a write that never went
+      # through Configuration -- a migration, or a hand at a psql prompt.
+      every: :timer.seconds(60),
       run: fn -> RoomSanctum.Worker.Pythiae.refresh_db_cfg(opts[:id]) end,
       initial_delay: 10
     )
@@ -109,6 +114,12 @@ defmodule RoomSanctum.Worker.Pythiae do
     end
 
     {:noreply, state |> Map.put(:vision, current)}
+  end
+
+  # Told rather than asked: the same refresh, run when somebody edits the
+  # pythiae instead of every two seconds in case they did.
+  def handle_info({:cfg_changed, :pythiae, _id}, state) do
+    handle_cast(:refresh_db_cfg, state)
   end
 
   defp condense(data, queries) do

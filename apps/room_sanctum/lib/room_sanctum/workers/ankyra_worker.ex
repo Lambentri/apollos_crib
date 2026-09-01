@@ -13,7 +13,10 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   def init(opts) do
     Periodic.start_link(
-      every: :timer.seconds(2),
+      # A rabbit user changes about never, and this was re-reading it every two
+      # seconds. No broadcast for it: it is written through Accounts rather
+      # than Configuration, so it is the one worker still genuinely polling.
+      every: :timer.seconds(60),
       run: fn -> RoomSanctum.Worker.Ankyra.refresh_db_cfg(opts[:id]) end,
       initial_delay: 10
     )
