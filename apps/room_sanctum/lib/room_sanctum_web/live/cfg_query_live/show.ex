@@ -1,4 +1,5 @@
 defmodule RoomSanctumWeb.QueryLive.Show do
+  alias RoomSanctumWeb.Live.Helpers.MapData
   use RoomSanctumWeb, :live_view_a
   import RoomSanctumWeb.LivePreview
   import RoomSanctumWeb.Components.QueryGeospatialMap
@@ -17,7 +18,10 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     end
     
     {:ok, socket 
-     |> assign(:preview, []) 
+     |> assign(:preview, [])
+     |> assign(:query_summaries, %{})
+     |> assign(:free_bikes, [])
+     |> assign(:gbfs_docks, []) 
      |> assign(:preview_mode, :raw)
      |> assign(:vehicle_positions, [])
      |> assign(:show_route_lines, false)
@@ -200,10 +204,17 @@ defmodule RoomSanctumWeb.QueryLive.Show do
           )
       end
 
+    query = socket.assigns.query
+
     {:noreply,
      socket
      |> assign(:preview, result)
-     |> assign(:nearby_stations, nearby_stations(socket.assigns.query))}
+     # The marker's popup says what the preview cards say, from the same
+     # condensed data and the same refresh.
+     |> assign(:query_summaries, MapData.summaries(query, result))
+     |> assign(:free_bikes, MapData.free_bikes_for(query, result))
+     |> assign(:gbfs_docks, MapData.stations_for(query, result))
+     |> assign(:nearby_stations, nearby_stations(query))}
   end
 
   # For an air quality query, the answer is one station -- so the neighbours

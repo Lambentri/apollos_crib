@@ -151,6 +151,21 @@ function watchTheme() {
 }
 
 /**
+ * Run `fn` whenever the theme changes, and return an unsubscribe.
+ *
+ * The tint keeps a registry of repaint callbacks and watches the document for
+ * both the attribute write and the picker's own event; anything else that has
+ * to restyle on a theme flip -- markers shaded by a value, whose ramp is
+ * anchored to the surface they sit on -- wants exactly the same signal rather
+ * than a second observer beside it.
+ */
+export function onThemeChange(fn) {
+    registry.add(fn)
+    watchTheme()
+    return () => registry.delete(fn)
+}
+
+/**
  * Add a basemap to `map` and wash it in the current theme colour.
  *
  * Returns a handle with `refresh()` (re-read the theme now) and `remove()`.

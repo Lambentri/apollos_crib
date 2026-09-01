@@ -100,19 +100,51 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         end)
 
       :gbfs ->
+        # A bike names its type by an id of the feed's own choosing -- Bay
+        # Wheels' e-bike is "2" -- so the types are resolved once for the list
+        # rather than every bike being labelled with a number.
+        vehicle_types = gbfs_vehicle_types(data)
+
         data
-        |> Enum.map(fn f ->
-          %{
-            name: f.name,
-            id: f.station_id,
-            avail: f.num_bikes_available,
-            avail_elec: f.num_ebikes_available,
-            avail_std: f.num_bikes_available - f.num_ebikes_available,
-            docks_avail: f.num_docks_available,
-            docks_disabled: f.num_docks_disabled,
-            capacity: f.capacity,
-            ebikes_info: f.ebikes_info |> Enum.map(fn eb -> %{name: eb.displayed_number, battery_pct: eb.battery_charge_percentage, range_mi_cons: eb.range_estimate.conservative_range_miles, range_me_est: eb.range_estimate.estimated_range_miles} end)
-          }
+        |> Enum.map(fn
+          # An area query answers with loose bikes rather than a dock, and a
+          # bike has none of a station's fields -- no name, no capacity,
+          # nothing to dock. Told apart by what came back rather than by the
+          # query, since the condenser is only ever handed the answer.
+          %{bike_id: bike_id} = b ->
+            %{
+              kind: :free_bike,
+              name: vehicle_label(vehicle_types, b) || bike_id,
+              id: bike_id,
+              lat: b.lat,
+              lon: b.lon,
+              range_m: b.current_range_meters,
+              fuel_pct: b.current_fuel_percent,
+              reserved: b.is_reserved,
+              disabled: b.is_disabled
+            }
+
+          f ->
+            %{
+              name: f.name,
+              id: f.station_id,
+              avail: f.num_bikes_available,
+              avail_elec: f.num_ebikes_available,
+              avail_std: f.num_bikes_available - f.num_ebikes_available,
+              docks_avail: f.num_docks_available,
+              docks_disabled: f.num_docks_disabled,
+              capacity: f.capacity,
+              ebikes_info:
+                f.ebikes_info
+                |> Enum.map(fn eb ->
+                  %{
+                    name: eb.displayed_number,
+                    battery_pct: eb.battery_charge_percentage,
+                    range_mi_cons: eb.range_estimate.conservative_range_miles,
+                    range_me_est: eb.range_estimate.estimated_range_miles
+                  }
+                end)
+            }
         end)
 
       :tidal ->
@@ -251,4 +283,26 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
       }
     }
   end
+
+  # The vehicle types behind a list of bikes, or an empty map for a list that
+  # holds none -- a station answer, or a source whose vehicle_types.json has
+  # not been read yet.
+  defp gbfs_vehicle_types(data) do
+    data
+    |> Enum.flat_map(fn
+      %{bike_id: _, source_id: source_id} when not is_nil(source_id) -> [source_id]
+      _ -> []
+    end)
+    |> Enum.uniq()
+    |> Enum.reduce(%{}, fn source_id, acc ->
+      Map.merge(acc, RoomSanctum.Storage.gbfs_vehicle_types(source_id))
+    end)
+  end
+
+  defp vehicle_label(vehicle_types, bike) do
+    vehicle_types
+    |> Map.get(Map.get(bike, :vehicle_type_id))
+    |> RoomSanctum.Storage.GBFS.V1.VehicleTypes.label()
+  end
+
 end

@@ -127,6 +127,12 @@ use PhoenixHTMLHelpers
     """
   end
 
+  # An area query answers with loose bikes, and with the docks in the radius
+  # when it was asked for those too -- so the two are told apart per entry
+  # rather than per list. A bike has no docks to report; what there is to say
+  # is what kind it is and how much of it is left.
+  defp free_bike?(entry), do: Map.get(entry, :kind) == :free_bike
+
   def p_gbfs(assigns) do
     ~H"""
     <%= for e <- @entries.data do %>
@@ -135,6 +141,21 @@ use PhoenixHTMLHelpers
         <h2 class="card-title">
           <p><i class="fa-solid fa-fw fa-bicycle"></i> <%= e.name %> </p>
         </h2>
+        <%= if free_bike?(e) do %>
+        <p>
+          <%= if e.fuel_pct do %>
+            <i class="fa-solid fa-battery-half fa-fw"></i>
+            <%= round(e.fuel_pct * 100) %>%
+          <% end %>
+          <%= if e.range_m do %>
+            <i class="fa-solid fa-road fa-fw"></i>
+            <%= Float.round(e.range_m / 1000, 1) %> km
+          <% end %>
+          <%= if e.reserved do %>
+            <span class="badge badge-sm">reserved</span>
+          <% end %>
+        </p>
+        <% else %>
         <p>
           <i class="fa-solid fa-bicycle fa-fw"></i> <%= e.avail_std %>
           <i class="fa-solid fa-bolt-lightning"></i>
@@ -142,6 +163,7 @@ use PhoenixHTMLHelpers
           <%= e.avail_elec %>
           <i class="fa-solid fa-square-parking fa-fw"></i> <%= e.capacity %>
         </p>
+        <% end %>
         </div>
       </div>
     <% end %>
@@ -159,14 +181,30 @@ use PhoenixHTMLHelpers
             <div class="flex justify-between">
               <div>
                 <span class="font-bold text-lg lg:text-4xl text-accent">
-                  <%= e.name |> String.split(" ") |> Enum.take(3) |> Enum.join(" ") %>
+                  <%= e.name |> to_string() |> String.split(" ") |> Enum.take(3) |> Enum.join(" ") %>
                 </span>
               </div>
+              <%!-- A loose bike has no docks to count; what it has is charge.
+                    Rendered per entry because an area query asked for docks
+                    answers with both kinds at once. --%>
+              <%= if free_bike?(e) do %>
+              <div class="lg:flex lg:gap-8">
+                <p :if={e.fuel_pct} class="lg:text-4xl">
+                  <i class="fa-solid fa-battery-half fa-fw"></i>
+                  <span class="text-accent"><%= round(e.fuel_pct * 100) %>%</span>
+                </p>
+                <p :if={e.range_m} class="lg:text-4xl">
+                  <i class="fa-solid fa-road fa-fw"></i>
+                  <span class="text-accent"><%= Float.round(e.range_m / 1000, 1) %> km</span>
+                </p>
+              </div>
+              <% else %>
               <div class="lg:flex lg:gap-8">
                 <p class="lg:text-4xl"><i class="fa-solid fa-bicycle fa-fw"></i> <span class="text-accent"><%= e.avail_std %></span></p>
                 <p class="lg:text-4xl"><i class="fa-solid fa-bolt-lightning fa-fw"></i> <span class="text-accent"><%= e.avail_elec %></span></p>
                 <p class="lg:text-4xl"><i class="fa-solid fa-square-parking fa-fw"></i> <span class="text-accent"><%= e.docks_avail %>/<%= e.capacity %></span></p>
               </div>
+              <% end %>
             </div>
           </div>
         </div>

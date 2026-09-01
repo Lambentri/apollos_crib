@@ -38,6 +38,16 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     default: nil,
     doc: "When set, station markers get a '+ query' action in their popup that pushes this event."
 
+  attr :query_summaries, :map,
+    default: %{},
+    doc: """
+    query_id => [%{label:, value:}], the lines a query's marker shows in its
+    popup. What the Basic preview cards show, from the same condenser -- see
+    RoomSanctumWeb.Live.Helpers.MapData.summaries/1. Without it a popup can
+    only report the coordinates, which is the one thing the marker's own
+    position has already said.
+    """
+
   attr :vehicle_positions, :list, default: []
   attr :free_bikes, :list, default: []
   attr :aircraft, :list, default: [],
@@ -111,7 +121,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   def query_geospatial_map(assigns) do
     assigns = 
       assigns 
-      |> assign(:map_queries, get_mappable_queries(assigns.queries))
+      |> assign(:map_queries, get_mappable_queries(assigns.queries, assigns.query_summaries))
       |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions, assigns.route_types))
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_aircraft, format_aircraft(assigns.aircraft))
@@ -229,6 +239,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               mode={Map.get(p, :mode)}
               vehicle-id={Map.get(p, :vehicle_id)}
               aircraft-class={Map.get(p, :aircraft_class)}
+              summary={summary_attr(Map.get(p, :summary))}
+              charge={Map.get(p, :charge)}
               id={"#{@id}-marker-#{p.id}"}
               data-has-query={
                 if Map.get(p, :type) == "station" &&
@@ -289,10 +301,22 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
             </div>
           <% end %>
           
+          <%!-- Bikes are shaded by how much charge is left in them, so the key
+                has to say what the shading means; a scale read off the map
+                alone is a guess. Empty to full, left to right, with the
+                neutral swatch for a bike whose feed reports neither charge nor
+                range. --%>
           <%= if length(@map_free_bikes) > 0 do %>
-            <div class="flex items-center">
-              <i class="fas fa-fw fa-bicycle mr-1 text-green-600"></i>
-              <span class="capitalize text-base-content/80">Free Bikes</span>
+            <div class="flex items-center gap-1">
+              <i class="fas fa-fw fa-bicycle text-green-600"></i>
+              <span class="text-base-content/80">Bikes</span>
+              <span class="inline-flex items-center gap-px ml-1" title="Charge: empty to full">
+                <span :for={step <- ~w(#22c55e #16a34a #15803d #14532d)}
+                      class="w-2 h-2 rounded-full"
+                      style={"background-color: #{step}"}></span>
+                <span class="w-2 h-2 rounded-full ml-1" style="background-color: #898781"
+                      title="Charge not reported"></span>
+              </span>
             </div>
           <% end %>
 
@@ -324,6 +348,12 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Straight concatenation plus Enum.take drops whole categories: with 570 free
   # bikes ahead of 635 stations, a 400 cap kept zero stations. Round-robin so
   # every kind is represented, and a short list (queries) is never crowded out.
+  # nil rather than "[]" for a query with nothing to say, so the attribute is
+  # absent and the popup keeps its old shape instead of rendering an empty box.
+  defp summary_attr(nil), do: nil
+  defp summary_attr([]), do: nil
+  defp summary_attr(lines), do: Jason.encode!(lines)
+
   def balanced_take(groups, limit) do
     groups
     |> Enum.reject(&(&1 == []))
@@ -372,7 +402,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   end
 
   # Helper function to get queries that have geospatial data
-  defp get_mappable_queries(queries) do
+  defp get_mappable_queries(queries, summaries) do
     # Debug log all incoming queries
 #    IO.inspect(length(queries), label: "Total queries received")
     
@@ -390,7 +420,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     
 #    IO.inspect(length(filtered), label: "Filtered mappable queries")
     
-    mapped = filtered |> Enum.map(&format_query_for_map/1)
+    mapped = filtered |> Enum.map(&format_query_for_map(&1, Map.get(summaries, &1.id, [])))
     
 #    IO.inspect(length(mapped), label: "Final mapped queries")
     
@@ -415,7 +445,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   end
 
   # Format query data for the JavaScript map component
-  defp format_query_for_map(query) do
+  defp format_query_for_map(query, summary) do
     {lat, lng} = extract_coordinates(query)
     
     # Debug log the coordinate extraction
@@ -439,7 +469,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       lng: lng,
       tint: tint,
       icon: get_icon(query.source.type),
-      notes: query.notes
+      notes: query.notes,
+      summary: summary
     }
   end
 
@@ -500,12 +531,21 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         end
 
       :gbfs ->
-        # For GBFS, get coordinates from the station or area-based free bike query  
+        # A station query is placed at its dock; an area query is placed at the
+        # foci it is drawn around, which is also where its radius is centred.
+        # Mode first: an area query still carries the stop_id field, it is just
+        # empty, and asking about the field rather than the mode sent every
+        # area query looking for a station called "".
         cond do
-          query.query && Map.has_key?(query.query, :stop_id) ->
+          query.query && Map.get(query.query, :mode) == :area ->
+            foci_coordinates(query)
+
+          query.query && Map.get(query.query, :stop_id) not in [nil, ""] ->
             get_gbfs_station_coordinates(query.source.id, query.query.stop_id)
+
           query.query && (Map.has_key?(query.query, :radius) || Map.has_key?(query.query, :point)) ->
             get_gbfs_free_bikes_in_area_coordinates(query.source.id, query.query)
+
           true ->
             false
         end
@@ -736,6 +776,11 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
   # Format free bikes for map display
   defp format_free_bikes(free_bikes) do
+    # A feed declares how far each of its vehicle types can go -- Bay Wheels
+    # says 76km for its e-bike -- which is a better ceiling to read a range
+    # against than any number chosen here. Resolved once for the list.
+    vehicle_types = vehicle_types_for(free_bikes)
+
     free_bikes
     |> Enum.filter(fn bike -> 
       (bike.point != nil) || (bike.lat != nil && bike.lon != nil)
@@ -760,13 +805,18 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
       # Calculate battery info if range is available
       {battery_level, battery_icon, battery_color} = get_battery_info(current_range_meters)
+      current_fuel_percent = Map.get(bike, :current_fuel_percent, nil)
+      type = Map.get(vehicle_types, vehicle_type_id)
+      charge = charge_of(current_fuel_percent, current_range_meters, full_range(type))
 
       %{
         id: "bike_#{bike.bike_id}",
         type: "free_bike",
         # Without a name the popup falls back to the literal word "Marker".
         # Bikes have no name upstream, so build a readable one from the id.
-        name: "Bike #{String.slice(to_string(bike.bike_id), 0, 8)}",
+        name:
+          RoomSanctum.Storage.GBFS.V1.VehicleTypes.label(type) ||
+            "Bike #{String.slice(to_string(bike.bike_id), 0, 8)}",
         bike_id: bike.bike_id,
         lat: lat,
         lng: lng,
@@ -777,21 +827,99 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         battery_level: battery_level,
         battery_icon: battery_icon,
         battery_color: battery_color,
+        # 0..100, what the marker is shaded by. Nil where the feed reports
+        # neither charge nor range, which draws the bike at full rather than
+        # inventing an empty one.
+        charge: charge,
+        summary: bike_summary(charge, current_range_meters, is_reserved, is_disabled),
         icon: "fa-bicycle" # bike icon
       }
     end)
   end
 
+  # How full the bike is, 0..100.
+  #
+  # current_fuel_percent where the feed sends it, and it is sent on two scales:
+  # GBFS specifies 0..1, and feeds send 0..100 anyway. A value above 1 can only
+  # be the second, and a fraction is read as the first -- which reads a genuine
+  # 1% as full, the one ambiguous value in the range and the one that matters
+  # least.
+  #
+  # Failing that, range as a fraction of what the vehicle type says it can do.
+  # @full_range_m is only the fallback for a feed that has not published its
+  # vehicle types yet -- roughly the furthest a bike in these feeds claims -- so
+  # a bike at that range draws full and anything beyond it clamps there rather
+  # than overflowing the ramp.
+  @full_range_m 60_000
+
+  defp charge_of(fuel_percent, _range, _full) when is_number(fuel_percent) do
+    percent = if fuel_percent <= 1.0, do: fuel_percent * 100, else: fuel_percent
+    percent |> max(0) |> min(100) |> round()
+  end
+
+  defp charge_of(_fuel_percent, range, full) when is_number(range) and is_number(full) and full > 0 do
+    (range / full * 100) |> max(0) |> min(100) |> round()
+  end
+
+  defp charge_of(_fuel_percent, _range, _full), do: nil
+
+  defp full_range(%{max_range_meters: max_range}) when is_number(max_range) and max_range > 0,
+    do: max_range
+
+  defp full_range(_type), do: @full_range_m
+
+  # One query for the list, and none at all for a map with no bikes on it.
+  defp vehicle_types_for([]), do: %{}
+
+  defp vehicle_types_for(free_bikes) do
+    free_bikes
+    |> Enum.map(&Map.get(&1, :source_id))
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.reduce(%{}, fn source_id, acc ->
+      Map.merge(acc, RoomSanctum.Storage.gbfs_vehicle_types(source_id))
+    end)
+  end
+
+  # The number behind the shade, so charge is never colour alone.
+  #
+  # Labelled with the same glyphs the preview card labels these numbers with --
+  # the battery at the level it is actually at, which get_battery_icon already
+  # decides for the card. A bike that cannot be ridden says so where its charge
+  # would be: an out-of-service bike's charge is not the thing you need to know
+  # about it.
+  defp bike_summary(charge, range, reserved, disabled) do
+    [
+      %{
+        icon: bike_state_icon(charge, reserved, disabled),
+        label: bike_state_label(charge, reserved, disabled),
+        value: charge && "#{charge}%"
+      },
+      %{icon: "road", label: "Range", value: is_number(range) && "#{Float.round(range / 1000, 1)} km"}
+    ]
+    |> Enum.reject(fn %{value: value} -> value in [nil, false, ""] end)
+  end
+
+  defp bike_state_icon(_charge, _reserved, true), do: "ban"
+  defp bike_state_icon(_charge, true, _disabled), do: "lock"
+  defp bike_state_icon(charge, _reserved, _disabled), do: get_battery_icon(charge) || "battery-half"
+
+  defp bike_state_label(_charge, _reserved, true), do: "Out of service"
+  defp bike_state_label(_charge, true, _disabled), do: "Reserved"
+  defp bike_state_label(_charge, _reserved, _disabled), do: "Charge"
+
   @doc """
   Calculate battery information from current_range_meters.
   
-  Divides range by 45000 to get approximate battery level percentage,
+  Divides range by the furthest range these feeds report to get an approximate
+  battery level percentage,
   then returns appropriate FontAwesome battery icon and color.
   
   Returns {battery_level_percent, icon_class, color}
   """
   def get_battery_info(current_range_meters) when is_number(current_range_meters) do
-    battery_level = (current_range_meters / 45000.0 * 100) |> Float.round(1)
+    battery_level = (current_range_meters / @full_range_m * 100) |> Float.round(1)
+
     
     {icon, color} = cond do
       battery_level < 10 -> {"fa-battery-empty", "black"}
@@ -923,6 +1051,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       # Add station status fields if available
       if status do
         station_data
+        # What the dock currently holds, for the popup -- which otherwise says
+        # only where the dock is, next to a button offering to query it.
+        |> Map.put(:summary, dock_summary(status, station))
         |> Map.put(:num_bikes_available, status.num_bikes_available)
         |> Map.put(:num_ebikes_available, status.num_ebikes_available)
         |> Map.put(:num_docks_available, status.num_docks_available)
@@ -935,6 +1066,57 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         station_data
       end
     end)
+  end
+
+  # A dock in the same label/value shape a query summary uses, so one popup
+  # renderer serves both.
+  # Laid out as the preview card lays a dock out: standard bikes, electric
+  # bikes, then how much of the dock is free -- each under the card's own glyph
+  # rather than a word.
+  defp dock_summary(status, station) do
+    bikes = Map.get(status, :num_bikes_available)
+    ebikes = Map.get(status, :num_ebikes_available)
+    docks = Map.get(status, :num_docks_available)
+    # Capacity is the dock's own, not the reading's: a status row from
+    # list_gbfs_station_status carries none, and "7 docks free" is a smaller
+    # thing to know than "7 of 35".
+    capacity = Map.get(status, :capacity) || Map.get(station, :capacity)
+
+    {state_icon, state_label} = dock_state(status)
+
+    [
+      %{
+        icon: state_icon || "bicycle",
+        label: state_label || "Bikes",
+        value: standard_bikes(bikes, ebikes)
+      },
+      %{icon: "bolt-lightning", label: "Electric bikes", value: ebikes && "#{ebikes}"},
+      %{
+        icon: "square-parking",
+        label: "Docks free",
+        value: docks && if(capacity, do: "#{docks} of #{capacity}", else: "#{docks}")
+      }
+    ]
+    |> Enum.reject(fn %{value: value} -> value in [nil, false, ""] end)
+  end
+
+  # The card counts standard bikes separately from electric ones, and so does
+  # this: 13 available with 10 electric is 3 ordinary bikes, which is the
+  # number you want if you cannot ride an electric one.
+  defp standard_bikes(nil, _ebikes), do: nil
+  defp standard_bikes(bikes, ebikes) when is_number(ebikes), do: "#{bikes - ebikes}"
+  defp standard_bikes(bikes, _ebikes), do: "#{bikes}"
+
+  # A dock that is installed, renting and returning is simply a working dock,
+  # and says nothing. One that is not takes over the leading row's glyph, so
+  # the state is seen before the counts under it are believed.
+  defp dock_state(status) do
+    cond do
+      Map.get(status, :is_installed) == false -> {"ban", "Not installed"}
+      Map.get(status, :is_renting) == false -> {"lock", "Not renting"}
+      Map.get(status, :is_returning) == false -> {"square-parking", "Not accepting returns"}
+      true -> {nil, nil}
+    end
   end
 
   # Get unique source types for the legend

@@ -4,7 +4,7 @@ import L from 'leaflet'
 // document cannot reach -- without this Leaflet's tiles have no positioning
 // rules and lay themselves out as a grid of loose images.
 import leafletCss from 'leaflet/dist/leaflet.css'
-import { addBasemap } from './basemap'
+import { addBasemap, isDarkTheme, onThemeChange } from './basemap'
 import { addFullscreenControl } from './fullscreen'
 
 const template = document.createElement('template');
@@ -44,6 +44,113 @@ template.innerHTML = `
     </div>
 `
 
+
+// How full a bike is, as depth of green.
+//
+// Sequential encoding: one hue, monotone lightness, so the reader sees "more"
+// without having to learn a key -- and green stays the bikes' own hue, which is
+// what tells them from the blue docks and amber queries beside them. Four steps
+// rather than a continuous scale: a shade is read by comparison with its
+// neighbours, and four are tellable apart where forty are not.
+//
+// Two ramps because the map has two surfaces. On a light basemap the scale runs
+// light-to-dark, empty to full; on a dark one it is anchored the other way, or
+// an empty bike would be a black dot on a black map. Each was checked against
+// the surface it renders on: every step holds its own against the basemap, and
+// the palest end still clears the 2:1 floor.
+const CHARGE_RAMP = {
+    light: ['#22c55e', '#16a34a', '#15803d', '#14532d'],
+    dark: ['#15803d', '#16a34a', '#22c55e', '#4ade80']
+}
+
+// A bike whose feed reports neither charge nor range. Neutral rather than a
+// step of the ramp: any green here is a claim about how full it is, and the
+// second step in particular would make an unknown bike indistinguishable from
+// a half-charged one.
+const NO_CHARGE_COLOR = '#898781'
+
+// The colour is never the only place the number lives -- the popup states the
+// charge and the range in words, and says neither for a bike that reports
+// neither.
+function chargeColor(charge, dark) {
+    const value = parseFloat(charge)
+    if (!isFinite(value)) return NO_CHARGE_COLOR
+
+    const ramp = dark ? CHARGE_RAMP.dark : CHARGE_RAMP.light
+    const step = Math.min(ramp.length - 1, Math.max(0, Math.floor((value / 100) * ramp.length)))
+    return ramp[step]
+}
+
+// The glyphs the preview cards label their numbers with, so a popup reads the
+// way the card for the same query reads.
+//
+// Codepoints rather than Font Awesome's own classes: the map draws inside a
+// shadow root, which the document's stylesheet cannot reach, and inlining
+// 138KB of Font Awesome CSS to reach a dozen icons is a poor trade. The
+// @font-face is document-level and font faces are not scoped to a tree, so the
+// family is available in here -- it is only the class rules that are not.
+// Taken from @fortawesome/fontawesome-free 6, solid.
+const ICON_GLYPHS = {
+    'bicycle': '\uf206',
+    'bolt-lightning': '\ue0b7',
+    'square-parking': '\uf540',
+    'battery-empty': '\uf244',
+    'battery-quarter': '\uf243',
+    'battery-half': '\uf242',
+    'battery-three-quarters': '\uf241',
+    'battery-full': '\uf240',
+    'road': '\uf018',
+    'clock': '\uf017',
+    'tower-broadcast': '\uf519',
+    'lungs': '\uf604',
+    'ban': '\uf05e',
+    'lock': '\uf023',
+    'train-tram': '\uf7da',
+    'train-subway': '\uf239',
+    'train': '\uf238',
+    'bus': '\uf207',
+    'bus-simple': '\uf55e',
+    'ferry': '\ue4ea',
+    'mountain': '\uf6fc',
+    'plane-up': '\ue22d',
+    'location-dot': '\uf3c5'
+}
+
+// The row's name, drawn as its glyph where there is one and as words where
+// there is not -- a route ("71 to Watertown") or a reading ("PM2.5") is the
+// data itself, not a label to be replaced by a picture.
+function rowLabel(line) {
+    const glyph = ICON_GLYPHS[String(line.icon || '').replace(/^fa-/, '')]
+
+    if (!glyph) return `<span class="text-gray-500">${escapeHtml(line.label)}</span>`
+
+    // The name still reaches a screen reader, and a hover still says it.
+    return `<span style="font-family:'Font Awesome 6 Free';font-weight:900;font-style:normal"
+                  class="text-gray-500" title="${escapeHtml(line.label)}"
+                  role="img" aria-label="${escapeHtml(line.label)}">${glyph}</span>`
+}
+
+// A glyph on the value rather than in place of the row's name: an arrival time
+// is a live one or a scheduled one, which is about the number, not about which
+// row it is on.
+function valueIcon(line) {
+    const glyph = ICON_GLYPHS[String(line.value_icon || '').replace(/^fa-/, '')]
+    if (!glyph) return ''
+
+    return `<span style="font-family:'Font Awesome 6 Free';font-weight:900;font-style:normal"
+                  class="text-gray-500 mr-1" aria-hidden="true">${glyph}</span>`
+}
+
+// Popup rows carry feed text -- a station name, a headsign -- straight from
+// the source, so it is escaped rather than interpolated.
+function escapeHtml(value) {
+    if (value === null || value === undefined) return ''
+    return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+}
 
 // Leaflet draws circles on canvas and nothing else, but a map holding several
 // offerings needs a third axis after fill (what kind of thing) and outline
@@ -282,6 +389,11 @@ class LeafletMap extends HTMLElement {
         });
         this.resizeObserver.observe(this.mapElement);
 
+        // The charge ramp is anchored to the surface it is drawn on, so a theme
+        // flip restyles the bikes rather than leaving a scale reading against
+        // its own background.
+        this.unwatchTheme = onThemeChange(() => this.repaintChargeMarkers());
+
         // After the initial setView, so it is not mistaken for a user move.
         this.watchForUserView();
         this.addResetViewControl();
@@ -401,6 +513,10 @@ class LeafletMap extends HTMLElement {
             this.basemap.remove();
             this.basemap = null;
         }
+        if (this.unwatchTheme) {
+            this.unwatchTheme();
+            this.unwatchTheme = null;
+        }
         // Likewise: it listens on the document, not on the map.
         if (this.fullscreen) {
             this.fullscreen.remove();
@@ -484,11 +600,33 @@ class LeafletMap extends HTMLElement {
             return this.addMarkerElement(markerEl);
         }
 
+        // A bike that has been ridden reports less charge; the shade is a style
+        // on the same canvas circle, so it does not need a new layer.
+        if (changedAttributes.has('charge') && existing.setStyle) {
+            existing.setStyle({
+                fillColor: chargeColor(markerEl.getAttribute('charge'), isDarkTheme(this))
+            });
+        }
+
         // The popup builds its content lazily, so a stale one only exists while
         // it is on screen.
         if (existing.isPopupOpen && existing.isPopupOpen()) {
             existing.setPopupContent(this.createPopupContent(markerEl));
         }
+    }
+
+    repaintChargeMarkers() {
+        if (!this.map) return;
+        const dark = isDarkTheme(this);
+
+        this.markerElements.forEach((markerEl, id) => {
+            const type = markerEl.getAttribute('type');
+            if (type !== 'free_bike' && type !== 'free-bike') return;
+            const marker = this.markers.get(id);
+            if (marker && marker.setStyle) {
+                marker.setStyle({ fillColor: chargeColor(markerEl.getAttribute('charge'), dark) });
+            }
+        });
     }
 
     // Turning the part of the icon that points somewhere, rather than building
@@ -784,9 +922,14 @@ class LeafletMap extends HTMLElement {
     }
 
     createFreeBikeMarker(lat, lng, markerEl) {
-        // Smaller markers for bikes
-        const color = this.getMarkerColor(markerEl);
-        
+        // Smaller markers for bikes, shaded by how much charge is left in them.
+        // A bike is always shaded by charge -- a missing attribute is the
+        // unknown case, which chargeColor draws as neutral rather than as a
+        // value it does not have.
+        const color = markerEl.getAttribute('type') === 'vehicle'
+            ? this.getMarkerColor(markerEl)
+            : chargeColor(markerEl.getAttribute('charge'), isDarkTheme(this));
+
         return L.circleMarker([lat, lng], {
             renderer: this.canvasRenderer,
             radius: 4,
@@ -920,21 +1063,49 @@ class LeafletMap extends HTMLElement {
         return colorMap[tint] || null;
     }
 
+    // What a query currently says, as the preview cards say it: the server
+    // condenses the same data into label/value lines and hands them over on the
+    // marker. Coordinates stay, but at the bottom and in small type -- a popup
+    // that leads with them is repeating what the marker's position already
+    // said.
+    summaryRows(markerEl) {
+        const raw = markerEl.getAttribute('summary');
+        if (!raw) return '';
+
+        let lines;
+        try {
+            lines = JSON.parse(raw);
+        } catch (e) {
+            return '';
+        }
+        if (!Array.isArray(lines) || lines.length === 0) return '';
+
+        return lines
+            .map(
+                (line) => `
+                <div class="flex justify-between gap-3 text-xs mb-1">
+                    ${rowLabel(line)}
+                    <span class="font-medium text-gray-800 text-right">${
+                        valueIcon(line)
+                    }${escapeHtml(line.value)}</span>
+                </div>`
+            )
+            .join('');
+    }
+
     createPopupContent(markerEl) {
         // Extract data from marker element attributes
         const name = markerEl.getAttribute('name') || 'Marker';
         const lat = markerEl.getAttribute('lat');
         const lng = markerEl.getAttribute('lng');
         const type = markerEl.getAttribute('type') || 'query';
-        
+        const summary = this.summaryRows(markerEl);
+
         // Get additional attributes based on type
         let content = `
             <div class="p-2 min-w-48">
                 <h3 class="font-semibold text-sm mb-2">${name}</h3>
-                <div class="text-xs text-gray-500 mb-2">
-                    <i class="fa-solid fa-location-dot mr-1"></i>
-                    ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}
-                </div>
+                ${summary}
         `;
 
         // Only rows we actually have. This used to print the vehicle-id and
@@ -960,7 +1131,13 @@ class LeafletMap extends HTMLElement {
                 row('Heading', markerEl.getAttribute('bearing'));
         }
 
-        content += `</div>`;
+        // Where it is, after what it says.
+        content += `
+                <div class="text-[10px] text-gray-400 mt-2">
+                    <i class="fa-solid fa-location-dot mr-1"></i>
+                    ${parseFloat(lat).toFixed(4)}, ${parseFloat(lng).toFixed(4)}
+                </div>
+            </div>`;
         // Opt-in: the marker element carries phx-click, so routing the button
         // through markerEl.click() reuses the forwarding that already exists
         // rather than reaching into LiveView from here.

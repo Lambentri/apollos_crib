@@ -78,6 +78,45 @@ defmodule RoomSanctumWeb.QueryPlacementTest do
     assert html =~ ~s(lat="42.3601")
   end
 
+  test "a gbfs area query is placed at its foci, not looked up as a station",
+       %{user: user, foci: foci} do
+    src = source(user, :gbfs, %{"__type__" => "gbfs", "url" => "https://e.test/gbfs.json", "lang" => "en"})
+
+    query =
+      Repo.insert!(%Configuration.Query{
+        name: "Bikes near home", notes: "", source_id: src.id, user_id: user.id, public: true,
+        query: %RoomSanctum.Configuration.Queries.GBFS{
+          mode: :area, foci_id: foci.id, radius: 500
+        }
+      })
+
+    html = render_queries([Configuration.get_query!(query.id)])
+
+    assert html =~ ~s(name="Bikes near home")
+    assert html =~ ~s(lat="42.3601")
+  end
+
+  test "a query's popup carries what it currently says, not only where it is",
+       %{user: user, foci: foci} do
+    src = source(user, :ephem, %{"__type__" => "ephem"})
+
+    {:ok, query} =
+      Configuration.create_query(%{
+        name: "Sun", notes: "", source_id: src.id, user_id: user.id,
+        query: %{"__type__" => "ephem", "foci_id" => foci.id}
+      })
+
+    html =
+      render_component(&query_geospatial_map/1,
+        queries: [Configuration.get_query!(query.id)],
+        query_summaries: %{query.id => [%{label: "Sunset", value: "19:42"}]},
+        id: "t"
+      )
+
+    assert html =~ "Sunset"
+    assert html =~ "19:42"
+  end
+
   test "a stop query is placed at the stop", %{user: user} do
     src = source(user, :gtfs, %{"__type__" => "gtfs", "url" => "https://e.test/g.zip", "tz" => "UTC"})
     Repo.insert!(%Stop{source_id: src.id, stop_id: "s1", stop_name: "Park St",

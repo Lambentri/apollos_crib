@@ -61,6 +61,20 @@ defmodule RoomGbfs.Worker do
     |> GenServer.cast(:update_realtime)
   end
 
+  # A station query answers with the dock; an area query answers with whatever
+  # is loose within its radius. Same source, same query struct, different
+  # question -- see RoomSanctum.Configuration.Queries.GBFS.
+  def query_stop(id, %{mode: :area} = query) do
+    bikes = Storage.free_bikes_near_foci(id, query.foci_id, query.radius)
+
+    # Docks second, so a mixed answer still leads with what is loose nearby --
+    # which is the thing an area query was asked about.
+    case Map.get(query, :include_docks) do
+      true -> bikes ++ Storage.stations_near_foci(id, query.foci_id, query.radius)
+      _ -> bikes
+    end
+  end
+
   def query_stop(id, query) do
     [Storage.get_current_information_for_bikestop(id, query.stop_id)]
   end

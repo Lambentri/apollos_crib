@@ -124,7 +124,10 @@
             queries={[@query]}
             vehicle_positions={@vehicle_positions}
             aircraft={aircraft_from_preview(@query.source && @query.source.type, @preview)}
-            stations={as_stations(@nearby_stations)}
+            free_bikes={@free_bikes}
+            query_summaries={@query_summaries}
+            stations={as_stations(@nearby_stations) ++ @gbfs_docks}
+            station_statuses={@gbfs_docks}
             queried_station_ids={Enum.take(@nearby_stations, 1) |> Enum.map(& &1.aqsid)}
             route_lines={if @show_route_lines, do: @route_lines, else: []}
             route_lines_event={if @query.source && @query.source.type == :gtfs, do: "toggle-route-lines"}

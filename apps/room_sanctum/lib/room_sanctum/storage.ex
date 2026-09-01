@@ -2526,6 +2526,89 @@ defmodule RoomSanctum.Storage do
     |> Repo.all()
   end
 
+  @doc """
+  A source's vehicle types, keyed by the id the feed refers to them by.
+
+  One query for a list of bikes rather than one per bike: a feed publishes a
+  handful of types and then points thousands of vehicles at them.
+  """
+  def gbfs_vehicle_types(source_id) do
+    from(v in VehicleTypes, where: v.source_id == ^source_id)
+    |> Repo.all()
+    |> Map.new(fn type -> {type.vehicle_type_id, type} end)
+  end
+
+  @doc """
+  Docking stations within `radius` metres of a foci, in the shape a station
+  query answers with -- so the condenser, the preview cards and the map all
+  read a dock found this way exactly as they read one asked for by id.
+
+  Metres via geography, as free_bikes_near_foci/3.
+  """
+  def stations_near_foci(source_id, foci_id, radius) do
+    case get_foci_by_id(foci_id) do
+      %{place: %Geo.Point{} = place} ->
+        from(st in StationStatus,
+          join: si in StationInfo,
+          on: si.station_id == st.station_id and si.source_id == st.source_id,
+          left_join: eb in EbikesAtStations,
+          on: eb.station_id == st.station_id,
+          where:
+            st.source_id == ^source_id and
+              fragment("ST_DWithin(?::geography, ?::geography, ?)", si.place, ^place, ^radius),
+          order_by: fragment("? <-> ?", si.place, ^place),
+          select: %{
+            is_installed: st.is_installed,
+            is_renting: st.is_renting,
+            is_returning: st.is_returning,
+            last_reported: st.last_reported,
+            num_bikes_available: st.num_bikes_available,
+            num_bikes_disabled: st.num_bikes_disabled,
+            num_docks_available: st.num_docks_available,
+            num_docks_disabled: st.num_docks_disabled,
+            num_ebikes_available: st.num_ebikes_available,
+            station_id: st.station_id,
+            station_status: st.station_status,
+            capacity: si.capacity,
+            lat: si.lat,
+            lon: si.lon,
+            place: si.place,
+            name: si.name,
+            short_name: si.short_name,
+            ebikes_info: eb.ebikes
+          }
+        )
+        |> Repo.all()
+
+      _ ->
+        []
+    end
+  end
+
+  @doc """
+  Free-floating bikes within `radius` metres of a foci.
+
+  Metres, via a cast to geography: `point` is a plain 4326 geometry, and
+  ST_DWithin on one of those measures in degrees -- a "500" meant as half a
+  kilometre would be most of a continent. Foci have been stored {lon, lat}
+  since they were normalised, so the point goes straight in.
+  """
+  def free_bikes_near_foci(source_id, foci_id, radius) do
+    case get_foci_by_id(foci_id) do
+      %{place: %Geo.Point{} = place} ->
+        from(f in FreeBikeStatus,
+          where:
+            fragment("ST_DWithin(?::geography, ?::geography, ?)", f.point, ^place, ^radius) and
+              f.source_id == ^source_id,
+          order_by: fragment("? <-> ?", f.point, ^place)
+        )
+        |> Repo.all()
+
+      _ ->
+        []
+    end
+  end
+
   def find_free_bikes_around_point(source_id, point, distance) do
     from(f in FreeBikeStatus,
       where: fragment("ST_DWithin(?, ?, ?)", f.point, ^point, ^distance)

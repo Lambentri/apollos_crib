@@ -74,9 +74,33 @@
   <% :gbfs -> %>
   <%= polymorphic_embed_inputs_for @form, :query, :gbfs, fn gbfs_form -> %>
   <div class="form-control">
+    <.input field={gbfs_form[:mode]} type="select" label="Mode"
+            options={[{"Station - one dock", "station"}, {"Area - loose bikes around a Foci", "area"}]} />
+  </div>
+
+  <div class="divider">Station mode</div>
+  <div class="form-control">
     <.input field={gbfs_form[:stop_id]} type="text" label="Stop Id" />
   </div>
   <.search_input field={gbfs_form[:stop_id]} id="search-2" type="gbfs" label="Station Search" results={@results} label_field={:name} value_field={:station_id} />
+
+  <div class="divider">Area mode</div>
+  <div class="form-control">
+    <.input field={gbfs_form[:foci_id]} type="select" label="Foci" options={@cfg_foci_sel} />
+  </div>
+  <div class="form-control">
+    <.input field={gbfs_form[:radius]} type="number" label="Radius (metres, 50-5000)" />
+    <p class="text-xs text-base-content/60 mt-1">
+      For a dockless system, which has no station to name. Bikes come back nearest first.
+    </p>
+  </div>
+  <div class="form-control">
+    <.input field={gbfs_form[:include_docks]} type="checkbox" label="Include the docks in the radius" />
+    <p class="text-xs text-base-content/60 mt-1">
+      On a system with both, answers with the stations inside the radius as well as the loose
+      bikes - the same shape a station query answers with, so they read the same everywhere.
+    </p>
+  </div>
   <% end %>
 
   <% :gtfs -> %>
