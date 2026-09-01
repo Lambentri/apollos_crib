@@ -96,6 +96,25 @@ config :room_sanctum, Oban,
        # buries Postgres. See RoomGtfs.ImportJob. Raising this trades database
        # load for getting through the feeds sooner.
        queues: [default: 10, webhooks: 20, emails: 20, gtfs_import: 1],
+       # Nothing rescued a job whose process died. A VM crash mid-import left
+       # the row in `executing` for good, and because ImportJob's uniqueness
+       # counts `executing` with no expiry, that one row blocked every future
+       # import of the feed -- the button on /cfg/offerings/work answered
+       # "already outstanding" for ever, and psql was the only way out.
+       #
+       # rescue_after is the part to get right. Lifeline decides a job is
+       # orphaned from how long ago it was attempted, not from whether it is
+       # actually running, so a value shorter than a real import starts a
+       # second one while the first is midway through truncating the same
+       # tables. Measured over fifteen completed imports the worst case was
+       # under two minutes and the average was thirty-three seconds; thirty
+       # minutes is fifteen times the worst of those, which leaves room for a
+       # feed much larger than any loaded so far and for a database having a
+       # worse day than that one was.
+       #
+       # Erring long costs little now that a stuck job can be cleared by hand
+       # on the queue page rather than waited out.
+       plugins: [{Oban.Plugins.Lifeline, rescue_after: :timer.minutes(30)}],
        repo: RoomSanctum.Repo
 config :messenger, smtp_opts: [[port: 2525]]
 
