@@ -25,6 +25,7 @@ defmodule RoomSanctumWeb.VehiclePopupTest do
       })
 
     Repo.insert!(%Route{source_id: source.id, route_id: "R38", route_type: "3",
+                        route_color: "BF2F38", route_text_color: "FFFFFF",
                         route_short_name: "38", route_long_name: "Geary"})
     Repo.insert!(%Trip{source_id: source.id, trip_id: "T1", route_id: "R38",
                        direction_id: 0, trip_headsign: "Geary + 33rd Avenue", service_id: "s"})
@@ -124,6 +125,29 @@ defmodule RoomSanctumWeb.VehiclePopupTest do
     test "no vehicles means no queries at all", %{sid: sid} do
       assert Storage.with_trip_context([], sid) == []
     end
+
+    test "the line's colour rides along with the rest of the context", %{sid: sid} do
+      [vehicle] = Storage.with_trip_context([vehicle(%{trip_id: "T1"})], sid)
+
+      # GTFS stores it bare; everything that draws one wants the hash.
+      assert vehicle.color == "#BF2F38"
+      assert vehicle.text_color == "#FFFFFF"
+    end
+
+    test "a vehicle matched by route rather than trip is coloured too", %{sid: sid} do
+      [vehicle] =
+        Storage.with_trip_context([vehicle(%{trip_id: "ADDED-3", route_id: "R38"})], sid)
+
+      assert vehicle.color == "#BF2F38"
+    end
+
+    test "a route with no colour published is left uncoloured", %{sid: sid} do
+      Repo.insert!(%Route{source_id: sid, route_id: "R99", route_type: "3"})
+
+      [vehicle] = Storage.with_trip_context([vehicle(%{trip_id: "X", route_id: "R99"})], sid)
+
+      assert vehicle.color == nil
+    end
   end
 
   describe "what the marker carries" do
@@ -142,6 +166,23 @@ defmodule RoomSanctumWeb.VehiclePopupTest do
       assert html =~ ~s(direction="Outbound")
       assert html =~ ~s(mode="Bus")
       assert html =~ ~s(vehicle-id="V1")
+    end
+
+    test "the marker carries the line's colour for the map to draw it in" do
+      html =
+        render_component(&query_geospatial_map/1,
+          queries: [],
+          vehicle_positions: [vehicle(%{color: "#BF2F38", text_color: "#FFFFFF"})]
+        )
+
+      assert html =~ ~s(route-color="#BF2F38")
+      assert html =~ ~s(route-text-color="#FFFFFF")
+    end
+
+    test "a feed that colours nothing leaves the marker to its default" do
+      html = render_component(&query_geospatial_map/1, queries: [], vehicle_positions: [vehicle(%{})])
+
+      refute html =~ "route-color="
     end
 
     test "the label says the route and where it is heading" do

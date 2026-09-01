@@ -438,14 +438,24 @@ defmodule RoomSanctum.Storage do
       """
       SELECT r.route_id,
              COALESCE(NULLIF(BTRIM(r.route_short_name), ''), r.route_long_name, r.route_id),
-             r.route_type
+             r.route_type,
+             r.route_color,
+             r.route_text_color
       FROM gtfs_routes r
       WHERE r.source_id = $1 AND r.route_id = ANY($2)
       """,
       [source_id, Enum.uniq(route_ids)]
     ).rows
-    |> Map.new(fn [route_id, route, route_type] ->
-      {route_id, %{route: route, dest: nil, direction: nil, mode: mode_label(route_type)}}
+    |> Map.new(fn [route_id, route, route_type, color, text_color] ->
+      {route_id,
+       %{
+         route: route,
+         dest: nil,
+         direction: nil,
+         mode: mode_label(route_type),
+         color: route_color(color),
+         text_color: route_color(text_color)
+       }}
     end)
   end
 
@@ -466,7 +476,9 @@ defmodule RoomSanctum.Storage do
              COALESCE(NULLIF(BTRIM(r.route_short_name), ''), r.route_long_name, r.route_id),
              NULLIF(BTRIM(t.trip_headsign), ''),
              d.direction,
-             r.route_type
+             r.route_type,
+             r.route_color,
+             r.route_text_color
       FROM gtfs_trips t
       JOIN gtfs_routes r ON r.source_id = t.source_id AND r.route_id = t.route_id
       LEFT JOIN gtfs_directions d
@@ -477,9 +489,16 @@ defmodule RoomSanctum.Storage do
       """,
       [source_id, Enum.uniq(trip_ids)]
     ).rows
-    |> Map.new(fn [trip_id, route, dest, direction, route_type] ->
+    |> Map.new(fn [trip_id, route, dest, direction, route_type, color, text_color] ->
       {trip_id,
-       %{route: route, dest: dest, direction: direction, mode: mode_label(route_type)}}
+       %{
+         route: route,
+         dest: dest,
+         direction: direction,
+         mode: mode_label(route_type),
+         color: route_color(color),
+         text_color: route_color(text_color)
+       }}
     end)
   end
 
@@ -1058,6 +1077,23 @@ defmodule RoomSanctum.Storage do
       limit: 1
     )
     |> Repo.one()
+  end
+
+  @doc """
+  The stops a list of ids names, as `stop_id => stop`.
+
+  One query for the lot. Realtime track assignments arrive as stop ids and are
+  resolved together, rather than a round trip per arrival on a board that may
+  be showing thirty of them.
+  """
+  def get_stops_by_ids(_source_id, []), do: %{}
+
+  def get_stops_by_ids(source_id, stop_ids) do
+    from(s in Stop,
+      where: s.source_id == ^source_id and s.stop_id in ^stop_ids
+    )
+    |> Repo.all()
+    |> Map.new(fn s -> {s.stop_id, s} end)
   end
 
   def get_gbfs_station_by_id(source_id, station_id) do

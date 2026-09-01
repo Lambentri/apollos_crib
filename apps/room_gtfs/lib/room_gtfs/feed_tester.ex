@@ -80,7 +80,10 @@ defmodule RoomGtfs.FeedTester do
     result
     |> Map.put(:entities, counts)
     |> Map.put(:total, length(feed.entity))
+    |> Map.put(:capabilities, capabilities(feed))
     |> check_empty(feed, counts, kinds)
+    |> check_incrementality(feed)
+    |> check_stop_identification(feed)
     |> check_age(feed)
     |> check_extensions(feed)
     |> check_agency(feed, source)
@@ -88,8 +91,13 @@ defmodule RoomGtfs.FeedTester do
     |> finish()
   end
 
-  defp check_empty(result, _feed, counts, kinds) do
+  defp check_empty(result, feed, counts, kinds) do
     cond do
+      # A differential feed saying nothing has changed since the last poll is a
+      # feed working correctly, not an empty one.
+      result.total == 0 and differential?(feed) ->
+        add(result, :info, "no changes in this delta")
+
       result.total == 0 ->
         add(result, :warn, "decoded, but carries no entities at all right now")
 
@@ -110,6 +118,83 @@ defmodule RoomGtfs.FeedTester do
           end
         end)
     end
+  end
+
+  # A differential feed is a stream of edits to a feed held open, not a
+  # snapshot -- so the message in front of you is not the feed, and its entity
+  # count says nothing about how much this source is carrying. Worth saying
+  # out loud, because every other number on this page is read as a total.
+  @doc false
+  def check_incrementality(result, feed) do
+    deleted = Enum.count(feed.entity, & &1.is_deleted)
+
+    case feed.header && feed.header.incrementality do
+      :DIFFERENTIAL ->
+        add(
+          result,
+          :info,
+          "differential: each message carries only what changed, and entities are held " <>
+            "between polls rather than replaced. What is listed here is this delta" <>
+            deleted_note(deleted) <> ", not the whole feed"
+        )
+
+      _otherwise when deleted > 0 ->
+        add(
+          result,
+          :warn,
+          "#{deleted} entities are marked deleted in a feed that calls itself a full " <>
+            "dataset -- a full dataset is already the whole truth, so these say nothing " <>
+            "and are being kept"
+        )
+
+      _otherwise ->
+        result
+    end
+  end
+
+  defp deleted_note(0), do: ""
+  defp deleted_note(1), do: ", one of them a deletion"
+  defp deleted_note(n), do: ", #{n} of them deletions"
+
+  # GTFS-RT lets a stop update name its stop by id, by position in the trip, or
+  # both. Live arrivals are matched by stop id alone, so a feed that only counts
+  # positions matches nothing at all: no live times, no error, no clue. The
+  # static schedule is what would have to be consulted to turn a sequence back
+  # into a stop, and nothing does that.
+  @doc false
+  def check_stop_identification(result, feed) do
+    stus =
+      feed.entity
+      |> Enum.filter(& &1.trip_update)
+      |> Enum.flat_map(& &1.trip_update.stop_time_update)
+
+    total = length(stus)
+    missing = Enum.count(stus, &(&1.stop_id in [nil, ""]))
+
+    cond do
+      total == 0 or missing == 0 ->
+        result
+
+      missing == total ->
+        add(
+          result,
+          :error,
+          "identifies stops only by their position in the trip, never by stop id -- " <>
+            "arrivals are matched on stop id, so nothing in this feed will ever match"
+        )
+
+      true ->
+        add(
+          result,
+          :warn,
+          "#{missing} of #{total} stop updates carry no stop id, only a position in the " <>
+            "trip -- those cannot be matched to a stop and are skipped"
+        )
+    end
+  end
+
+  defp differential?(feed) do
+    feed.header && feed.header.incrementality == :DIFFERENTIAL
   end
 
   defp check_age(result, feed) do
@@ -392,6 +477,127 @@ defmodule RoomGtfs.FeedTester do
   # that gets pasted into a chat window.
   defp display_url(url) do
     Regex.replace(~r/([?&](?:api_key|apikey|key|token)=)([^&]{4})[^&]*/i, url, "\\1\\2****")
+  end
+
+  @doc """
+  Which optional GTFS-RT fields this feed actually fills in.
+
+  Everything past a trip id and a time is optional in GTFS-RT, and feeds vary
+  enormously in how much of it they send -- MBTA populates per-carriage
+  occupancy and skipped stops but never a delay or a track assignment; another
+  agency does the reverse. Nothing announces this. You find out by building a
+  view against a field and seeing an empty column, which is a slow way to learn
+  that the feed was never going to say.
+
+  Reported as `%{field => %{present: n, of: total}}` per feed kind, counted over
+  what actually arrived rather than declared anywhere. A field nothing reports
+  is still listed, with a zero: "this feed does not do that" is the answer
+  worth having.
+  """
+  def capabilities(feed) do
+    tus = feed.entity |> Enum.filter(& &1.trip_update) |> Enum.map(& &1.trip_update)
+    vps = feed.entity |> Enum.filter(& &1.vehicle) |> Enum.map(& &1.vehicle)
+    alerts = feed.entity |> Enum.filter(& &1.alert) |> Enum.map(& &1.alert)
+    stus = Enum.flat_map(tus, & &1.stop_time_update)
+    events = stus |> Enum.map(&(&1.arrival || &1.departure)) |> Enum.reject(&is_nil/1)
+    carriages = Enum.flat_map(vps, &(&1.multi_carriage_details || []))
+    informed = Enum.flat_map(alerts, &(&1.informed_entity || []))
+
+    %{}
+    |> put_caps(stus, [
+      {"live occupancy (per stop)", &set?(&1.departure_occupancy_status)},
+      {"skipped stops", &(&1.schedule_relationship == :SKIPPED)},
+      {"track assignment", &(&1.stop_time_properties && set?(&1.stop_time_properties.assigned_stop_id))},
+      {"per-stop headsign", &(&1.stop_time_properties && set?(&1.stop_time_properties.stop_headsign))}
+    ])
+    |> put_caps(events, [
+      {"delay", &(&1.delay != nil)},
+      {"uncertainty", &(&1.uncertainty != nil)}
+    ])
+    |> put_caps(tus, [
+      {"cancelled / added trips", &(&1.trip.schedule_relationship not in [nil, :SCHEDULED])}
+    ])
+    |> put_caps(vps, [
+      {"occupancy", &set?(&1.occupancy_status)},
+      {"occupancy %", &(&1.occupancy_percentage != nil and &1.occupancy_percentage >= 0)},
+      {"per-carriage occupancy", &(&1.multi_carriage_details != [])},
+      {"congestion level", &set?(&1.congestion_level)},
+      {"position", &(&1.position != nil)},
+      {"bearing", &(&1.position && &1.position.bearing != nil)},
+      {"vehicle label", &(&1.vehicle && set?(&1.vehicle.label))}
+    ])
+    |> put_caps(carriages, [
+      {"carriage occupancy", &set?(&1.occupancy_status)}
+    ])
+    |> put_caps(alerts, [
+      {"alert headline", &said?(&1.header_text)},
+      {"alert detail", &said?(&1.description_text)},
+      {"alert effect", &set?(&1.effect)},
+      {"alert cause", &set?(&1.cause)},
+      {"alert severity", &set?(&1.severity_level)},
+      {"alert period", &(&1.active_period != [])},
+      {"alert link", &said?(&1.url)},
+      {"alert image", &(&1.image != nil)},
+      {"alert audio text", &said?(&1.tts_header_text)}
+    ])
+    # An alert only reaches a query if it names something the query knows
+    # about, and `query_alerts/3` matches on stop, route, or the whole agency.
+    # A feed that targets only by route will never raise an alert on a query
+    # that is watching one stop of it -- which is a property of the feed, not a
+    # bug, and is invisible until you go looking for the alert that never came.
+    |> put_caps(informed, [
+      {"targets stops", &said_id?(&1.stop_id)},
+      {"targets routes", &said_id?(&1.route_id)},
+      {"targets trips", &(&1.trip != nil)},
+      {"agency-wide", &agency_wide?/1}
+    ])
+  end
+
+  # An entity naming nothing but an agency -- or naming nothing at all -- is an
+  # alert about everything the source carries.
+  defp agency_wide?(entity) do
+    not said_id?(entity.stop_id) and not said_id?(entity.route_id) and entity.trip == nil and
+      entity.route_type == nil
+  end
+
+  defp said_id?(id), do: id not in [nil, ""]
+
+  # A translated string is a list of translations, so "present" means it
+  # actually carries one with something in it -- an empty envelope is a field
+  # the publisher wired up and never filled.
+  defp said?(nil), do: false
+
+  defp said?(%{translation: translations}) do
+    Enum.any?(translations, &(String.trim(&1.text || "") != ""))
+  end
+
+  defp said?(_other), do: false
+
+  # A field only counts as reported when it says something. NO_DATA_AVAILABLE
+  # is the feed declining to answer, which is what an absent field means too.
+  defp set?(nil), do: false
+  defp set?(""), do: false
+  defp set?(:NO_DATA_AVAILABLE), do: false
+  # The proto defaults for an alert's cause, effect and severity. A field left
+  # alone decodes to these, so they mean the publisher said nothing, not that
+  # the answer is "unknown".
+  defp set?(:UNKNOWN_CAUSE), do: false
+  defp set?(:UNKNOWN_EFFECT), do: false
+  defp set?(:UNKNOWN_SEVERITY), do: false
+  defp set?(_), do: true
+
+  # Counted only where there was something to count: a feed with no vehicles in
+  # it has nothing to say about bearings, and listing them all as 0 of 0 would
+  # read as a feed that refuses to give them.
+  defp put_caps(acc, [], _checks), do: acc
+
+  defp put_caps(acc, items, checks) do
+    total = length(items)
+
+    Enum.reduce(checks, acc, fn {label, check}, inner ->
+      present = Enum.count(items, fn item -> check.(item) == true end)
+      Map.put(inner, label, %{present: present, of: total})
+    end)
   end
 
   defp add(result, severity, message),

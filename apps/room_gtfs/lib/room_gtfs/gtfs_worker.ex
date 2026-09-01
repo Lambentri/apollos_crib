@@ -156,6 +156,11 @@ defmodule RoomGtfs.Worker do
             res
 
           rtvals ->
+            # How full the vehicle is may be reported per stop in the trip
+            # update, or only by the vehicle's own position report -- so the
+            # positions are fetched once here to fall back on.
+            vehicles = occupancy_vehicles(id, inst.config, trips)
+
             res
             |> Enum.map(fn x ->
               case Enum.find(rtvals, fn v ->
@@ -167,6 +172,13 @@ defmodule RoomGtfs.Worker do
                 val ->
                   stu = val.trip_update.stop_time_update
                   time_event = stu && (stu.arrival || stu.departure)
+
+                  x =
+                    x
+                    |> merge_occupancy(occupancy_for(inst.config, x.trip_id, stu, vehicles))
+                    |> merge_schedule_relationship(val.trip_update, stu)
+                    |> merge_stop_properties(stu)
+
                   case time_event do
                     nil ->
                       x
@@ -179,7 +191,191 @@ defmodule RoomGtfs.Worker do
                   end
               end
             end)
+            |> resolve_assigned_platforms(id)
         end
+    end
+  end
+
+  # The vehicle positions for the trips calling at a stop, or [] for a source
+  # that publishes none. Occupancy is the only thing wanted from them here, and
+  # a source with no vehicle feed still gets whatever the trip updates carry.
+  defp occupancy_vehicles(id, config, trips) do
+    case RoomGtfs.Worker.RT.rt_url_for(config, :vp) do
+      nil ->
+        []
+
+      _val ->
+        try do
+          get_current_vehicle_positions(id, trips)
+        catch
+          :exit, _ -> []
+        end
+    end
+  end
+
+  # An arrival says nothing about how full it is unless the feed did.
+  defp merge_occupancy(arrival, nil), do: arrival
+
+  defp merge_occupancy(arrival, %{status: status, pct: pct, carriages: carriages}) do
+    arrival
+    |> maybe_put(:occupancy, status)
+    |> maybe_put(:occupancy_pct, pct)
+    |> maybe_put(:carriages, presence(carriages))
+  end
+
+  # A key nothing was reported for is left off rather than set to nil, so that
+  # "the feed did not say" and "the feed said nothing is there" stay
+  # distinguishable further down.
+  defp maybe_put(map, _key, nil), do: map
+  defp maybe_put(map, key, value), do: Map.put(map, key, value)
+
+  defp presence([]), do: nil
+  defp presence(""), do: nil
+  defp presence(value), do: value
+
+  @doc false
+  # How full a vehicle is, as a GTFS-RT OccupancyStatus atom and, where the
+  # feed says so, a percentage. The trip update may report the status per stop;
+  # otherwise the vehicle's own position report says it for the whole trip, and
+  # only that carries a percentage. NO_DATA_AVAILABLE is the feed declining to
+  # answer, so it reads the same as an absent field -- NOT_ACCEPTING_PASSENGERS
+  # is a real answer and is kept.
+  def occupancy_for(config, scheduled_trip_id, stu, vehicles) do
+    vehicle =
+      Enum.find(vehicles, fn v ->
+        v.trip_id && trip_id_match?(config, scheduled_trip_id, v.trip_id)
+      end)
+
+    status =
+      occupancy_status(stu && stu.departure_occupancy_status) ||
+        occupancy_status(vehicle && Map.get(vehicle, :occupancy_status))
+
+    carriages = carriage_occupancy(vehicle)
+
+    case {status, carriages} do
+      {nil, []} ->
+        nil
+
+      {status, carriages} ->
+        %{
+          status: status,
+          pct: occupancy_pct(vehicle && Map.get(vehicle, :occupancy_percentage)),
+          carriages: carriages
+        }
+    end
+  end
+
+  @doc false
+  # A train reporting each carriage separately is the difference between "the
+  # train is full" and "walk to the back". Kept in the sequence the feed gives,
+  # because that is the order they are coupled in and the whole point is which
+  # end of the platform to stand at. A carriage the feed said nothing about
+  # stays in the list -- a gap in the middle of a train is itself worth
+  # drawing -- it simply has no occupancy.
+  def carriage_occupancy(nil), do: []
+
+  def carriage_occupancy(vehicle) do
+    vehicle
+    |> Map.get(:carriages)
+    |> List.wrap()
+    |> Enum.sort_by(&(&1.sequence || 0))
+    |> Enum.map(fn c ->
+      %{
+        id: c.id,
+        label: presence(c.label),
+        sequence: c.sequence,
+        occupancy: occupancy_status(c.occupancy_status),
+        occupancy_pct: occupancy_pct(c.occupancy_percentage)
+      }
+    end)
+  end
+
+  # -1 is the protobuf default standing in for "not reported".
+  defp occupancy_pct(pct) when is_integer(pct) and pct >= 0, do: pct
+  defp occupancy_pct(_), do: nil
+
+  @doc false
+  # Two different ways an arrival is not going to happen, and they are not the
+  # same thing: the trip may be cancelled outright, or it may be running fine
+  # and simply not calling here. Both used to draw as an ordinary arrival,
+  # which is the one wrong thing a departure board can do.
+  #
+  # SCHEDULED is the proto default and means "as published", so it is left off
+  # rather than recorded -- only a departure from the schedule is news.
+  def merge_schedule_relationship(arrival, trip_update, stu) do
+    trip = trip_update && trip_update.trip
+
+    arrival
+    |> maybe_put(:trip_status, relationship(trip && trip.schedule_relationship))
+    |> maybe_put(:stop_status, relationship(stu && stu.schedule_relationship))
+  end
+
+  defp relationship(nil), do: nil
+  defp relationship(:SCHEDULED), do: nil
+  defp relationship(rel) when is_atom(rel), do: rel
+  # A feed may send a number outside the enum this was generated against.
+  defp relationship(_), do: nil
+
+  @doc false
+  # What the feed says about this call specifically, rather than about the trip:
+  # the track it has been given, and a headsign that overrides the trip's own.
+  # A short-turn announces itself here -- the trip still says "Downtown" while
+  # this particular call says it terminates early.
+  def merge_stop_properties(arrival, nil), do: arrival
+
+  def merge_stop_properties(arrival, stu) do
+    props = Map.get(stu, :stop_time_properties)
+
+    arrival
+    |> maybe_put(:assigned_stop_id, props && presence(props.assigned_stop_id))
+    |> maybe_put(:stop_headsign, props && presence(props.stop_headsign))
+  end
+
+  # A track is announced as a stop id, which is an internal string nobody wants
+  # to read -- "127N" rather than "Track 3". The static feed knows what that
+  # stop is called, so the ids are resolved together in one query rather than
+  # one per arrival, and an id the static feed has never heard of is shown as
+  # itself rather than dropped.
+  defp resolve_assigned_platforms(arrivals, source_id) do
+    ids =
+      arrivals
+      |> Enum.map(&Map.get(&1, :assigned_stop_id))
+      |> Enum.reject(&is_nil/1)
+      |> Enum.uniq()
+
+    case ids do
+      [] ->
+        arrivals
+
+      ids ->
+        stops = Storage.get_stops_by_ids(source_id, ids)
+
+        Enum.map(arrivals, fn a ->
+          case Map.get(a, :assigned_stop_id) do
+            nil -> a
+            id -> Map.put(a, :assigned_platform, platform_label(Map.get(stops, id)) || id)
+          end
+        end)
+    end
+  end
+
+  defp platform_label(nil), do: nil
+
+  defp platform_label(stop) do
+    presence(stop.platform_code) || presence(stop.platform_name) || presence(stop.stop_name)
+  end
+
+  defp occupancy_status(nil), do: nil
+  defp occupancy_status(:NO_DATA_AVAILABLE), do: nil
+  defp occupancy_status(status) when is_atom(status), do: status
+
+  # A feed may send a number outside the enum the generated module knows; that
+  # is not an occupancy anyone can draw, so it reads as no answer.
+  defp occupancy_status(status) when is_integer(status) do
+    try do
+      TransitRealtime.VehiclePosition.OccupancyStatus.key(status) |> occupancy_status()
+    rescue
+      _ -> nil
     end
   end
 
@@ -473,12 +669,19 @@ defmodule RoomGtfs.Worker.RT do
         end)
         |> Enum.map(fn alert ->
           route_id = Enum.find_value(alert.informed_entity, fn e -> e.route_id end)
+
           %{
             effect:      alert.effect |> to_string(),
             cause:       alert.cause |> to_string(),
             header:      get_translation(alert.header_text),
             description: get_translation(alert.description_text),
             route_id:    route_id,
+            severity:    alert.severity_level |> to_string(),
+            # Whether the alert names this stop, as opposed to reaching it by
+            # naming the line it is on. "Elevator out here" and "delays on the
+            # Red Line" are both true of the stop and are not the same news.
+            stop_specific:
+              Enum.any?(alert.informed_entity, fn e -> e.stop_id != nil and e.stop_id == stop end)
           }
         end)
     end
@@ -605,6 +808,24 @@ defmodule RoomGtfs.Worker.RT do
 
   def vehicle_positions_from(_feed, _stops), do: []
 
+  # The occupancy of each carriage, as the feed sent it -- the enum values are
+  # left raw here, the same as the vehicle's own occupancy_status, and are
+  # normalised once where they are read.
+  defp carriage_details(v) do
+    v
+    |> Map.get(:multi_carriage_details)
+    |> List.wrap()
+    |> Enum.map(fn c ->
+      %{
+        id: c.id,
+        label: c.label,
+        sequence: c.carriage_sequence,
+        occupancy_status: c.occupancy_status,
+        occupancy_percentage: c.occupancy_percentage
+      }
+    end)
+  end
+
   defp place_vehicle(v, stops) do
     base = %{
       vehicle_id: v.vehicle && v.vehicle.id,
@@ -612,6 +833,9 @@ defmodule RoomGtfs.Worker.RT do
       route_id: v.trip && v.trip.route_id,
       stop_id: v.stop_id,
       current_status: v.current_status,
+      occupancy_status: v.occupancy_status,
+      occupancy_percentage: v.occupancy_percentage,
+      carriages: carriage_details(v),
       timestamp: v.timestamp
     }
 
@@ -901,8 +1125,13 @@ defmodule RoomGtfs.Worker.RT do
           # that means "the same URL is in all three fields by mistake", and
           # would say it about a correct configuration.
           sliced = slice(feed, entity_field(kind))
+
+          # Health records the delta, not the running total: what this poll
+          # actually received is the honest reading of whether the feed is
+          # alive, and a differential feed reporting "nothing changed" has
+          # genuinely received nothing.
           record_health(acc, kind, url, {:ok, sliced}, took)
-          store_feed(acc, kind, sliced)
+          store_feed(acc, kind, merge_feed(current_feed(acc, kind), sliced))
         end)
 
       {:error, error} ->
@@ -978,6 +1207,72 @@ defmodule RoomGtfs.Worker.RT do
 
   defp slice(feed, field) do
     %{feed | entity: Enum.filter(feed.entity, &Map.get(&1, field))}
+  end
+
+  defp current_feed(state, :sa), do: state.rt_sa
+  defp current_feed(state, :tu), do: state.rt_tu
+  defp current_feed(state, :vp), do: state.rt_vp
+
+  @doc """
+  What to hold after a poll, given what was held before it.
+
+  GTFS-RT publishes in one of two modes, and they mean opposite things by the
+  same message. A **full dataset** is a snapshot: what arrived is the whole
+  truth and replaces whatever was held. A **differential** feed is a stream of
+  edits against a feed held open -- each message carries only what changed,
+  entities are keyed by `FeedEntity.id`, and `is_deleted` means drop this one.
+
+  Replacing on every poll, which is what used to happen, is right for the first
+  and silently wrong for the second: everything not restated in the newest
+  delta disappears, so a differential source would show a handful of vehicles
+  and no explanation.
+
+  Order is kept stable -- entities already held stay where they were and new
+  ones join the end -- so that a feed does not appear to reshuffle itself on
+  every poll.
+
+  A differential message with nothing held yet is applied to an empty feed,
+  which is the only sensible reading: there is no earlier state to edit, so
+  what arrives is what there is, minus anything it deletes.
+  """
+  def merge_feed(previous, incoming) do
+    if differential?(incoming) do
+      %{incoming | entity: merge_entities(entities(previous), incoming.entity)}
+    else
+      incoming
+    end
+  end
+
+  defp differential?(feed) do
+    feed.header && feed.header.incrementality == :DIFFERENTIAL
+  end
+
+  defp entities(nil), do: []
+  defp entities(feed), do: feed.entity
+
+  defp merge_entities(held, delta) do
+    initial = {held |> Enum.map(& &1.id) |> Enum.reverse(), Map.new(held, &{&1.id, &1})}
+
+    # Folded in order, so a message that deletes an entity and then sends it
+    # again -- or sends it twice -- ends up with what it said last.
+    {order, current} =
+      Enum.reduce(delta, initial, fn entity, {order, current} ->
+        cond do
+          entity.is_deleted -> {order, Map.delete(current, entity.id)}
+          Map.has_key?(current, entity.id) -> {order, Map.put(current, entity.id, entity)}
+          true -> {[entity.id | order], Map.put(current, entity.id, entity)}
+        end
+      end)
+
+    order
+    |> Enum.reverse()
+    |> Enum.uniq()
+    |> Enum.flat_map(fn id ->
+      case Map.fetch(current, id) do
+        {:ok, entity} -> [entity]
+        :error -> []
+      end
+    end)
   end
 
 

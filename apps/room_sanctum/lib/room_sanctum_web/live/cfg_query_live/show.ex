@@ -22,7 +22,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:query_summaries, %{})
      |> assign(:free_bikes, [])
      |> assign(:gbfs_docks, []) 
-     |> assign(:preview_mode, :raw)
+     |> assign(:preview_mode, :basic)
+     |> assign(:preview_raw, true)
      |> assign(:vehicle_positions, [])
      |> assign(:show_route_lines, false)
      |> assign(:route_lines, [])
@@ -397,19 +398,34 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
   end
 
+  def handle_event("toggle-preview-raw", _params, socket) do
+    {:noreply, socket |> assign(:preview_raw, !socket.assigns.preview_raw)}
+  end
+
   defp page_title(:show), do: "Query Detail"
   defp page_title(:edit), do: "Modify Query"
 
+  # Raw is no longer a stop on the way round: it is a lens over whichever
+  # reading is showing, so the cycle is only the readings themselves.
   defp do_toggle(state) do
     case state do
-      :basic -> :raw
-      :raw -> :basic
+      :basic -> :plus
+      :plus -> :basic
     end
   end
+
+  # The raw view shows the condenser behind the mode you are in, so what you
+  # read as JSON is what the card above it was drawn from.
+  defp condense_for(:plus, data, key), do: condense_plus(data, key)
+  defp condense_for(_mode, data, key), do: condense(data, key)
 
   defp condense(data, {id, type}) do
     # For preview, use legacy format without query wrapping
     RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
+  end
+
+  defp condense_plus(data, {id, type}) do
+    RoomSanctum.Condenser.PlusMQTT.condense_data({id, type}, data)
   end
 
   defp page_title(:show), do: "Show Query"

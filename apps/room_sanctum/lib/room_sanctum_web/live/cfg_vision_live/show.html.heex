@@ -56,14 +56,66 @@
             </div>
             <div class="card card-compact w-full md:w-1/6 bg-base-100 shadow-xl m-2">
               <div class="card-body text-left">
-                <h3 class="card-title">Pythiae</h3>
-                <p>
-                  <%= for q <- @pythiae do %>
-                  <%= live_patch to: Routes.pythiae_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 float-left mx-2" do %>
-                  <%= q.name %>
+                <h3 class="card-title flex justify-between">
+                  Pythiae
+                  <%!-- Shown even with nothing to add to: that is when you want
+                        to make a pythiae, not when you are locked out of the
+                        panel. --%>
+                  <%= if @pythiae_sel do %>
+                    <span class="cursor-pointer" phx-click="toggle-pythiae-sel"><i class="fa-solid fa-minus"></i></span>
+                  <% else %>
+                    <span class="cursor-pointer" phx-click="toggle-pythiae-sel"><i class="fa-solid fa-plus"></i></span>
                   <% end %>
+                </h3>
+                <%= for q <- @pythiae do %>
+                  <div class="flex gap-2 mx-2 my-1">
+                    <%= live_patch to: Routes.pythiae_show_path(@socket, :show, q.id), class: "btn btn-primary gap-2 grow" do %>
+                      <%= q.name %>
+                    <% end %>
+                    <%!-- Only while the panel is open, so the usual view of
+                          "the pythiae showing this vision" stays a row of
+                          plain links. --%>
+                    <button
+                      :if={@pythiae_sel}
+                      type="button"
+                      class="btn btn-error btn-square shrink-0"
+                      phx-click="remove-from-pythiae"
+                      phx-value-pythiae={q.id}
+                      title={"Remove from #{q.name}"}
+                    >
+                      <i class="fa-solid fa-minus"></i>
+                    </button>
+                  </div>
                 <% end %>
-                </p>
+                <%= if @pythiae_sel do %>
+                  <%= if @avail_pythiae != [] do %>
+                    <h4 class="text-xl text-accent font-bold">Add to</h4>
+                    <%= for q <- @avail_pythiae do %>
+                      <div
+                        class="btn btn-secondary gap-2 mx-2 my-1"
+                        phx-click="add-to-pythiae"
+                        phx-value-pythiae={q.id}
+                      >
+                        <%= q.name %>
+                      </div>
+                    <% end %>
+                  <% end %>
+
+                  <h4 class="text-xl text-accent font-bold mt-4">Or a new one</h4>
+                  <%!-- Named for the vision by default, which is what a screen
+                        showing one vision almost always wants to be called --
+                        still a text box, for when it is not. --%>
+                  <form phx-submit="add-to-new-pythiae" class="flex flex-col gap-2">
+                    <input
+                      type="text"
+                      name="pythiae[name]"
+                      value={@vision.name}
+                      placeholder={@vision.name}
+                      class="input input-bordered input-sm w-full"
+                    />
+                    <button type="submit" class="btn btn-secondary btn-sm">Create</button>
+                  </form>
+                <% end %>
               </div>
             </div>
           </div>
@@ -117,10 +169,36 @@
                     <div class="flex-1 w-3/4">
                       &nbsp;
                     </div>
-                    <div class="flex-none w-20">
+                    <div class="flex-none flex gap-1">
+                      <%!-- Raw is a lens over the reading you are on rather than
+                            a reading of its own, so it toggles rather than
+                            joining the cycle. The map is not a reading of the
+                            condensed data, so it has nothing to show raw. --%>
+                      <%= if @preview_mode != :map do %>
+                        <button
+                          class={"btn btn-sm #{if @preview_raw, do: "btn-accent", else: "btn-ghost"}"}
+                          phx-click="toggle-preview-raw"
+                          title="the condensed data behind this view, as JSON"
+                        >
+                          <i class="fa-solid fa-code"></i>
+                        </button>
+                      <% end %>
                       <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
                     </div>
                   </div>
+                <%= if @preview_raw and @preview_mode != :map do %>
+                  <%= for {k, p} <- @preview do %>
+                  <div class="flex">
+                    <div class="w-16">
+                      <i class={"fas fa-fw fa-2xl #{get_icon(k |> elem(1))}"}></i>
+                    </div>
+                    <div class="w-7/8">
+                      <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
+                      <pre><%= condense_for(@preview_mode, k, p) |> Poison.encode!(pretty: true)%></pre>
+                    </div>
+                  </div>
+                  <% end %>
+                <% else %>
                 <%= case @preview_mode do %>
                 <%= :basic -> %>
                   <%= for {k, p} <- @preview do %>
@@ -148,17 +226,13 @@
                       <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
                     <% end %>
                   <% end %>
-                <% :raw -> %>
+                <% :plus -> %>
                   <%= for {k, p} <- @preview do %>
-                  <div class="flex">
-                    <div class="w-16">
-                      <i class={"fas fa-fw fa-2xl #{get_icon(k |> elem(1))}"}></i>
-                    </div>
-                    <div class="w-7/8">
+                    <div class="flex gap-2">
+                      <i class={"fas fa-fw fa-xl #{get_icon(k |> elem(1))}"}></i>
                       <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-                      <pre><%= condense(k, p) |> Poison.encode!(pretty: true)%></pre>
                     </div>
-                  </div>
+                    <.p_plus type={k |> elem(1)} entries={condense_plus(k, p) |> preview(k)} />
                   <% end %>
                 <% :map -> %>
                   <%!-- Where this vision's queries are. Anything with a place
@@ -182,6 +256,7 @@
                       legend={false}
                     />
                   <% end %>
+                <% end %>
                 <% end %>
               </div>
             </div>

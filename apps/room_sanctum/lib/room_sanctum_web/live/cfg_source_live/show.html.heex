@@ -325,6 +325,27 @@ gl_available_projects={@gitlab_available_projects}
                         <i class={"fa-solid fa-fw mt-0.5 #{rt_finding_icon(severity)}"}></i>
                         <span><%= message %></span>
                     </div>
+
+                    <%!-- What the feed actually fills in, as opposed to what
+                          GTFS-RT allows it to. Everything here is optional in
+                          the spec, and a feed says nothing about which parts it
+                          bothers with -- you would otherwise find out by
+                          building a view against a field and getting an empty
+                          column. --%>
+                    <div :if={rt_capabilities(group) != []} class="mt-2">
+                        <div class="text-xs uppercase opacity-60 mb-1">Reports</div>
+                        <div class="flex flex-wrap gap-1">
+                            <span
+                                :for={{label, present, of} <- rt_capabilities(group)}
+                                class={"badge badge-sm gap-1 #{rt_capability_class(present)}"}
+                                title={"#{present} of #{of}"}
+                            >
+                                <i class={"fa-solid fa-fw fa-2xs #{rt_capability_icon(present)}"}></i>
+                                <%= label %>
+                                <span class="opacity-70"><%= rt_capability_share(present, of) %></span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -23,6 +23,45 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     [item]
   end
 
+  @doc """
+  What a route is called and what colour it is, from the static feed.
+
+  Both are already sitting in the arrival row and cost nothing to carry. The
+  raw id is an internal string -- MBTA's "Orange" reads fine, NYCT's
+  "1" less so, and plenty of agencies use an opaque number -- while
+  `route_short_name` is what is written on the front of the vehicle. The id is
+  still published alongside this, because it is what anything downstream keys
+  on.
+
+  GTFS stores colours bare ("FFC72C"); CSS wants the hash, so it is added here
+  rather than at each of the places that draw one.
+  """
+  def route_presentation(route, route_id) do
+    # Read rather than matched: a feed mid-refresh, or a caller assembling a
+    # route by hand, can hand over a map with only some of these. A missing
+    # column is a route with no name and no colour, not a crash -- and the
+    # callers that draw this swallow exceptions, so raising here would blank a
+    # map popup rather than report anything.
+    %{
+      route_name:
+        presence(Map.get(route, :route_short_name)) ||
+          presence(Map.get(route, :route_long_name)) ||
+          route_id,
+      route_long: presence(Map.get(route, :route_long_name)),
+      color: hex(Map.get(route, :route_color)),
+      text_color: hex(Map.get(route, :route_text_color))
+    }
+  end
+
+  defp presence(nil), do: nil
+  defp presence(""), do: nil
+  defp presence(value), do: value
+
+  defp hex(nil), do: nil
+  defp hex(""), do: nil
+  defp hex("#" <> _ = color), do: color
+  defp hex(color), do: "#" <> color
+
   defp time(datestr) do
     datestr |> Timex.parse!("{ISO:Extended}") |> Timex.format!("%H:%M", :strftime)
   end
@@ -54,6 +93,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             destination: f.trip.trip_headsign,
             direction: f.trip.direction.direction,
             route: f.trip.route_id,
+            presentation: route_presentation(f.trip.route, f.trip.route_id),
             mode: f.trip.route.route_type |> gtfs_mode,
             tz: f.tz
           }
@@ -64,6 +104,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
                                  destination: dest,
                                  direction: dir,
                                  route: route,
+                                 presentation: presentation,
                                  mode: mode,
                                  tz: tz
                                },
@@ -78,6 +119,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
                 times: [time],
                 times_live: [livetime(time_live, tz)]
               }
+              |> Map.merge(presentation)
 
             refs ->
               %{

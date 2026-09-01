@@ -14,8 +14,21 @@ defmodule RoomSanctumWeb.VisionLive.Show do
 
   @impl true
   def handle_info(:update_sec, socket) do
-    pythiae = Configuration.get_pythiae(:vision, socket.assigns.vision_id)
-    {:noreply, socket |> assign(:pythiae, pythiae)}
+    {:noreply, socket |> assign_pythiae()}
+  end
+
+  # Both halves of the panel: the pythiae showing this vision, and the ones
+  # that could. Re-read together so adding to one moves it from the second
+  # list to the first without a reload.
+  defp assign_pythiae(socket) do
+    vision_id = String.to_integer(to_string(socket.assigns.vision_id))
+
+    socket
+    |> assign(:pythiae, Configuration.get_pythiae(:vision, vision_id))
+    |> assign(
+      :avail_pythiae,
+      Configuration.get_pythiae_nv(:vision, vision_id, socket.assigns.current_user.id)
+    )
   end
 
   @impl true
@@ -28,6 +41,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
      |> assign(:preview, [])
      |> assign(:queries, [])
      |> assign(:preview_mode, :basic)
+     |> assign(:preview_raw, false)
      |> assign(:aircraft, [])
      |> assign(:stations, [])
      |> assign(:station_statuses, [])
@@ -35,7 +49,9 @@ defmodule RoomSanctumWeb.VisionLive.Show do
      |> assign(:query_summaries, %{})
      |> assign(:queried_station_ids, [])
      |> assign(:vehicle_positions, [])
-     |> assign(:pythiae, [])}
+     |> assign(:pythiae, [])
+     |> assign(:avail_pythiae, [])
+     |> assign(:pythiae_sel, false)}
   end
 
   @impl true
@@ -86,11 +102,83 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     |> assign(:vehicle_positions, Enum.flat_map(queries, &MapData.vehicle_positions/1))
   end
 
+  # Raw is no longer a stop on the way round: it is a lens over whichever
+  # reading is showing, so the cycle is only the readings themselves.
   defp do_toggle(state) do
     case state do
-      :basic -> :raw
-      :raw -> :map
+      :basic -> :plus
+      :plus -> :map
       :map -> :basic
+    end
+  end
+
+  # The raw view shows the condenser behind the mode you are in, so what you
+  # read as JSON is what the cards above it were drawn from.
+  defp condense_for(:plus, key, data), do: condense_plus(key, data)
+  defp condense_for(_mode, key, data), do: condense(key, data)
+
+  def handle_event("toggle-pythiae-sel", _params, socket) do
+    {:noreply, socket |> assign(:pythiae_sel, !socket.assigns.pythiae_sel)}
+  end
+
+  def handle_event("add-to-pythiae", %{"pythiae" => id}, socket) do
+    id
+    |> Configuration.get_pythiae!()
+    |> show_vision(socket)
+  end
+
+  # Make a pythiae around this vision, for when the screen you want does not
+  # exist yet -- otherwise putting a vision on its first pythiae means leaving
+  # the page, making one, and coming back. The name is offered pre-filled with
+  # the vision's own, which is what it usually wants to be called.
+  def handle_event("add-to-new-pythiae", %{"pythiae" => %{"name" => name}}, socket) do
+    case String.trim(name) do
+      "" ->
+        {:noreply, put_flash(socket, :error, "Give the pythiae a name")}
+
+      name ->
+        vision_id = String.to_integer(to_string(socket.assigns.vision_id))
+
+        case Configuration.create_pythiae(%{
+               name: name,
+               user_id: socket.assigns.current_user.id,
+               ankyra: [],
+               visions: [vision_id],
+               # A pythiae with nothing current shows nothing, so the vision it
+               # was made for is the one it opens on.
+               curr_vision: vision_id
+             }) do
+          {:ok, _pythiae} ->
+            {:noreply, socket |> assign_pythiae() |> assign(:pythiae_sel, false)}
+
+          {:error, _changeset} ->
+            {:noreply, put_flash(socket, :error, "Could not create #{name}")}
+        end
+    end
+  end
+
+  def handle_event("remove-from-pythiae", %{"pythiae" => id}, socket) do
+    pythiae = Configuration.get_pythiae!(id)
+    vision_id = String.to_integer(to_string(socket.assigns.vision_id))
+    visions = (pythiae.visions || []) -- [vision_id]
+
+    # A pythiae pointing at a vision it no longer holds displays nothing, so
+    # the pointer moves with the list rather than being left dangling.
+    curr_vision =
+      case pythiae.curr_vision == vision_id do
+        true -> List.first(visions)
+        false -> pythiae.curr_vision
+      end
+
+    case Configuration.update_pythiae(pythiae, %{visions: visions, curr_vision: curr_vision}) do
+      {:ok, _pythiae} ->
+        {:noreply, assign_pythiae(socket)}
+
+      {:error, _changeset} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, "Could not remove this from #{pythiae.name}")
+         |> assign_pythiae()}
     end
   end
 
@@ -99,11 +187,47 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
   end
 
+  @impl true
+  def handle_event("toggle-preview-raw", _params, socket) do
+    {:noreply, socket |> assign(:preview_raw, !socket.assigns.preview_raw)}
+  end
+
+  # Adding is idempotent: the panel only offers pythiae this vision is not on,
+  # but a stale page can still send one it is.
+  defp show_vision(pythiae, socket) do
+    vision_id = String.to_integer(to_string(socket.assigns.vision_id))
+    existing = pythiae.visions || []
+
+    if vision_id in existing do
+      {:noreply, socket |> assign_pythiae() |> assign(:pythiae_sel, false)}
+    else
+      attrs = %{
+        visions: existing ++ [vision_id],
+        curr_vision: pythiae.curr_vision || vision_id
+      }
+
+      case Configuration.update_pythiae(pythiae, attrs) do
+        {:ok, _pythiae} ->
+          {:noreply, socket |> assign_pythiae() |> assign(:pythiae_sel, false)}
+
+        {:error, _changeset} ->
+          {:noreply,
+           socket
+           |> put_flash(:error, "Could not add this to #{pythiae.name}")
+           |> assign(:pythiae_sel, false)}
+      end
+    end
+  end
+
   defp page_title(:show), do: "Vision Detail"
   defp page_title(:edit), do: "Modify Vision"
 
   defp condense({id, type}, data) do
     RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
+  end
+
+  defp condense_plus({id, type}, data) do
+    RoomSanctum.Condenser.PlusMQTT.condense_data({id, type}, data)
   end
 
   defp get_icon(type) do

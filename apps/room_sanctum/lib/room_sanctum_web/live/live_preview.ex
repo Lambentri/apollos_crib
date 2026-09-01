@@ -70,13 +70,53 @@ use PhoenixHTMLHelpers
     end
   end
 
+  @doc """
+  A route drawn as the agency draws it.
+
+  The line's own colour, filled, with the agency's chosen text colour on top --
+  which is what `route_text_color` is for, and why the colour is not simply
+  applied to the text. Yellow-on-white is unreadable; yellow behind black is a
+  bus.
+
+  A feed that gives no colour falls back to the card's own styling, so this is
+  safe on every source whether or not those columns are filled in.
+  """
+  attr :entry, :map, required: true
+  attr :class, :string, default: ""
+
+  def route_badge(assigns) do
+    ~H"""
+    <span
+      class={"badge font-bold #{if route_style(@entry), do: "border-0"} #{@class}"}
+      style={route_style(@entry)}
+    >
+      <%= route_label(@entry) %>
+    </span>
+    """
+  end
+
+  # The raw id remains the fallback: a feed that fills in neither name column
+  # still says something, and so does anything condensed before names were
+  # carried.
+  defp route_label(entry), do: Map.get(entry, :route_name) || entry.route
+
+  defp route_style(entry) do
+    case Map.get(entry, :color) do
+      nil -> nil
+      color -> "background-color: #{color}; color: #{Map.get(entry, :text_color) || "#FFFFFF"};"
+    end
+  end
+
   def p_gtfs(assigns) do
     ~H"""
     <%= for e <- @entries.data do %>
       <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
         <div class="card-body text-left">
         <h2 class="card-title">
-          <p><i class={"fa-solid fa-fw #{gtfs_icon(e.mode)}"}></i> <%= e.route %> to <%= e.dest %></p>
+          <p class="flex items-center gap-2 flex-wrap">
+            <i class={"fa-solid fa-fw #{gtfs_icon(e.mode)}"}></i>
+            <.route_badge entry={e} /> to <%= e.dest %>
+          </p>
         </h2>
         <%= if Map.get(e, :times_live, []) != [] do %>
           <%= for t <- (e.times_live |> Enum.filter(fn t -> !is_nil(t) end )) do %>
@@ -93,6 +133,320 @@ use PhoenixHTMLHelpers
     """
   end
 
+  @doc """
+  How full a vehicle is, as three circles.
+
+  GTFS-RT says this as one of nine enum values, and the circles read as a
+  gauge: how many are filled is how full it is, and the colour is how much of a
+  problem that is. Green fills up to standing room, amber is crushed standing
+  room, red is full. A vehicle nobody may board is three grey outlines -- the
+  feed answered, and the answer is that this one is no use to you -- which is
+  why it is drawn rather than left blank. A feed that said nothing draws
+  nothing.
+  """
+  attr :status, :any, default: nil
+  attr :pct, :any, default: nil
+
+  def occupancy(assigns) do
+    assigns = assign(assigns, :dots, occupancy_dots(assigns[:status]))
+
+    ~H"""
+    <%= if @dots do %>
+      <span class="inline-flex items-center gap-0.5" title={occupancy_label(@status, @pct)}>
+        <%= for i <- 1..3 do %>
+          <i class={"#{if i <= @dots.filled, do: "fa-solid", else: "fa-regular"} fa-circle fa-2xs #{@dots.class}"}>
+          </i>
+        <% end %>
+      </span>
+    <% end %>
+    """
+  end
+
+  defp occupancy_dots(:EMPTY), do: %{filled: 0, class: "text-green-500"}
+  defp occupancy_dots(:MANY_SEATS_AVAILABLE), do: %{filled: 1, class: "text-green-500"}
+  defp occupancy_dots(:FEW_SEATS_AVAILABLE), do: %{filled: 2, class: "text-green-500"}
+  defp occupancy_dots(:STANDING_ROOM_ONLY), do: %{filled: 3, class: "text-green-500"}
+  defp occupancy_dots(:CRUSHED_STANDING_ROOM_ONLY), do: %{filled: 3, class: "text-amber-500"}
+  defp occupancy_dots(:FULL), do: %{filled: 3, class: "text-red-500"}
+  defp occupancy_dots(:NOT_ACCEPTING_PASSENGERS), do: %{filled: 0, class: "text-gray-400"}
+  defp occupancy_dots(:NOT_BOARDABLE), do: %{filled: 0, class: "text-gray-400"}
+  defp occupancy_dots(_), do: nil
+
+  defp occupancy_label(status, pct) do
+    words =
+      status
+      |> to_string()
+      |> String.downcase()
+      |> String.replace("_", " ")
+
+    case pct do
+      nil -> words
+      pct -> "#{words} (#{pct}%)"
+    end
+  end
+
+  @doc """
+  A train drawn carriage by carriage, each shaded by how full it is.
+
+  The whole-vehicle figure answers "can I get on"; this answers "where do I
+  stand", which is the question you actually have on a platform. Drawn left to
+  right in coupling order, so the strip is a picture of the train rather than a
+  list of numbers. A carriage the feed said nothing about is left hollow --
+  a gap in the middle of a train is worth seeing.
+  """
+  attr :carriages, :list, default: []
+
+  def carriages(assigns) do
+    ~H"""
+    <%= if @carriages != [] do %>
+      <span class="inline-flex items-center gap-px align-middle" title={carriages_label(@carriages)}>
+        <%= for c <- @carriages do %>
+          <span class={"inline-block w-2.5 h-3.5 rounded-sm #{carriage_class(c.occupancy)}"}></span>
+        <% end %>
+      </span>
+    <% end %>
+    """
+  end
+
+  # The same colours the circles use, as a fill: green while there is room,
+  # amber once it is crushed, red when it is full, grey for a carriage nobody
+  # may board. Within green it darkens as it fills, which is what makes one
+  # carriage pickable out of a strip of them at a glance.
+  defp carriage_class(:EMPTY), do: "bg-green-200"
+  defp carriage_class(:MANY_SEATS_AVAILABLE), do: "bg-green-400"
+  defp carriage_class(:FEW_SEATS_AVAILABLE), do: "bg-green-600"
+  defp carriage_class(:STANDING_ROOM_ONLY), do: "bg-green-800"
+  defp carriage_class(:CRUSHED_STANDING_ROOM_ONLY), do: "bg-amber-500"
+  defp carriage_class(:FULL), do: "bg-red-500"
+  defp carriage_class(:NOT_ACCEPTING_PASSENGERS), do: "bg-gray-400"
+  defp carriage_class(:NOT_BOARDABLE), do: "bg-gray-400"
+  defp carriage_class(_), do: "border border-gray-400"
+
+  defp carriages_label(carriages) do
+    carriages
+    |> Enum.map(fn c ->
+      name = c.label || (c.sequence && "car #{c.sequence}") || "car"
+
+      case c.occupancy do
+        nil -> "#{name}: no data"
+        status -> "#{name}: #{occupancy_label(status, c.occupancy_pct)}"
+      end
+    end)
+    |> Enum.join(", ")
+  end
+
+  @doc """
+  Whether an arrival is actually going to happen, and how to say so.
+
+  A cancelled trip and a skipped stop are different news -- the first is not
+  running, the second is running past you -- so they are not collapsed into one
+  word. Anything the feed did not flag is simply an arrival and gets no badge
+  at all.
+  """
+  def arrival_flag(%{trip_status: :CANCELED}), do: "cancelled"
+  def arrival_flag(%{trip_status: :DELETED}), do: "cancelled"
+  def arrival_flag(%{stop_status: :SKIPPED}), do: "not stopping"
+  def arrival_flag(%{trip_status: :ADDED}), do: "extra"
+  def arrival_flag(%{trip_status: :NEW}), do: "extra"
+  def arrival_flag(%{trip_status: :DUPLICATED}), do: "extra"
+  def arrival_flag(%{trip_status: :REPLACEMENT}), do: "replacement"
+  def arrival_flag(%{trip_status: :UNSCHEDULED}), do: "unscheduled"
+  def arrival_flag(%{stop_status: :UNSCHEDULED}), do: "unscheduled"
+  def arrival_flag(_), do: nil
+
+  # A time that is not going to be kept is struck through rather than removed:
+  # the rider came for that departure and needs to see it is gone, not find a
+  # gap where it was.
+  defp cancelled?(a), do: arrival_flag(a) in ["cancelled", "not stopping"]
+
+  defp flag_class(a) do
+    case cancelled?(a) do
+      true -> "badge-error"
+      false -> "badge-ghost"
+    end
+  end
+
+  # Seconds off schedule, said the way a departure board says it.
+  defp delay_label(delay) when delay > 0, do: "+#{div(delay, 60)}m late"
+  defp delay_label(delay) when delay < 0, do: "#{div(delay, 60)}m early"
+  defp delay_label(_), do: "on time"
+
+  @doc """
+  Alerts in force at a stop, said in a badge rather than a paragraph.
+
+  A board has room for "detour" and not for three sentences about it, so the
+  effect is the label and the whole text is the hover. Severity picks the
+  colour, because the difference between "lift out of service" and "no service"
+  is the entire point of showing it.
+  """
+  def alert_label(alert) do
+    case effect_words(Map.get(alert, :effect)) do
+      nil -> "alert"
+      words -> words
+    end
+  end
+
+  # GTFS-RT's UNKNOWN_EFFECT is the proto default -- the publisher said
+  # nothing, rather than saying the effect is unknown.
+  defp effect_words(effect) when effect in [nil, "", "UNKNOWN_EFFECT", "OTHER_EFFECT"], do: nil
+
+  defp effect_words(effect) do
+    effect |> to_string() |> String.downcase() |> String.replace("_", " ")
+  end
+
+  defp alert_class(alert) do
+    case Map.get(alert, :severity) do
+      "SEVERE" -> "badge-error"
+      "WARNING" -> "badge-warning"
+      "INFO" -> "badge-info"
+      _otherwise -> "badge-ghost"
+    end
+  end
+
+  # An alert naming this stop gets the stop's own glyph: "lift out of service
+  # here" and "delays along the line" are both true of the stop and are not the
+  # same news to somebody standing on it.
+  defp alert_icon(alert) do
+    case Map.get(alert, :stop_specific) do
+      true -> "fa-location-dot"
+      _otherwise -> "fa-triangle-exclamation"
+    end
+  end
+
+  defp alert_detail(alert) do
+    [Map.get(alert, :header), Map.get(alert, :description)]
+    |> Enum.map(&to_string/1)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join(" -- ")
+  end
+
+  # Basic's rule, kept: a route reporting live times shows those and only
+  # those, and one reporting none shows the schedule. A column mixing the two
+  # is a list of times that cannot be read against each other.
+  defp shown_arrivals(arrivals) do
+    case Enum.filter(arrivals, & &1.time_live) do
+      [] ->
+        arrivals
+        |> Enum.take(3)
+        |> Enum.map(&Map.merge(&1, %{shown: tsl(&1.time), live?: false}))
+
+      live ->
+        live |> Enum.map(&Map.merge(&1, %{shown: tsl(&1.time_live), live?: true}))
+    end
+  end
+
+  @doc """
+  The Plus read of a GTFS query: each arrival whole, rather than a column of
+  times. What the feed reported about that specific arrival -- how full, how
+  late, how sure -- sits on its own line, which is the entire reason Plus
+  exists as a mode of its own.
+  """
+  def x_gtfs(assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+      <div class="card card-compact w-full bg-primary text-primary-content shadow-xl mb-2">
+        <div class="card-body text-left">
+          <h2 class="card-title">
+            <p class="flex items-center gap-2 flex-wrap">
+              <i class={"fa-solid fa-fw #{gtfs_icon(e.mode)}"}></i>
+              <.route_badge entry={e} /> to <%= e.dest %>
+            </p>
+          </h2>
+          <%= for a <- shown_arrivals(e.arrivals) do %>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class={if cancelled?(a), do: "line-through opacity-60"}>
+                <%= if a.live? do %>
+                  <i class="fa-solid fa-tower-broadcast fa-fw"></i>
+                <% else %>
+                  <i class="fa-solid fa-clock fa-fw"></i>
+                <% end %>
+                <%= a.shown %>
+              </span>
+              <%= if arrival_flag(a) do %>
+                <span class={"badge badge-sm #{flag_class(a)}"}><%= arrival_flag(a) %></span>
+              <% end %>
+              <%= if a.delay && a.delay != 0 && !cancelled?(a) do %>
+                <span class="badge badge-sm"><%= delay_label(a.delay) %></span>
+              <% end %>
+              <%= if a.platform do %>
+                <span class="badge badge-outline badge-sm">
+                  <i class="fa-solid fa-fw fa-signs-post"></i> <%= a.platform %>
+                </span>
+              <% end %>
+              <.occupancy status={a.occupancy} pct={a.occupancy_pct} />
+              <.carriages carriages={a.carriages} />
+              <%= if a.uncertainty && a.uncertainty > 0 do %>
+                <span class="badge badge-ghost badge-sm">±<%= a.uncertainty %>s</span>
+              <% end %>
+              <%= if a.name do %>
+                <span class="badge badge-ghost badge-sm"><%= a.name %></span>
+              <% end %>
+              <%!-- 1 is yes and 2 is no in GTFS; 0 or absent means the feed
+                    never said, which is not the same as no. --%>
+              <%= if a.bikes == 1 do %>
+                <i class="fa-solid fa-fw fa-bicycle" title="bikes allowed"></i>
+              <% end %>
+              <%!-- Only when this call disagrees with the trip: a short-turn
+                    says so here while the trip still advertises the far end. --%>
+              <%= if a.headsign && a.headsign != e.dest do %>
+                <span class="text-sm opacity-80">→ <%= a.headsign %></span>
+              <% end %>
+            </div>
+          <% end %>
+          <%= if Map.get(e, :alerts) do %>
+            <div class="flex flex-wrap gap-1 mt-1">
+              <span
+                :for={al <- e.alerts}
+                class={"badge badge-sm gap-1 #{alert_class(al)}"}
+                title={alert_detail(al)}
+              >
+                <i class={"fa-solid fa-fw fa-2xs #{alert_icon(al)}"}></i>
+                <%= alert_label(al) %>
+              </span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+
+  @doc """
+  The Plus view for whichever type the query is.
+
+  Only some types have an extended read written for them; the rest show what
+  Basic shows, so switching to Plus never empties the page.
+  """
+  attr :entries, :map, required: true
+  attr :type, :atom, required: true
+
+  def p_plus(assigns) do
+    ~H"""
+    <%= case @type do %>
+      <% :gtfs -> %> <.x_gtfs entries={@entries} />
+      <% :gbfs -> %> <.p_gbfs entries={@entries} />
+      <% :tidal -> %> <.p_tidal entries={@entries} />
+      <% :weather -> %> <.p_weather entries={@entries} />
+      <% :aqi -> %> <.p_aqi entries={@entries} />
+      <% :ephem -> %> <.p_ephem entries={@entries} />
+      <% :calendar -> %> <.p_calendar entries={@entries} />
+      <% :cronos -> %> <.p_cronos entries={@entries} />
+      <% :gitlab -> %> <.p_gitlab entries={@entries} />
+      <% :github -> %> <.p_github entries={@entries} />
+      <% :drought -> %> <.p_drought entries={@entries} />
+      <% :pollen -> %> <.p_pollen entries={@entries} />
+      <% :icarus -> %> <.p_icarus entries={@entries} />
+      <% :mailbox -> %> <.p_mailbox entries={@entries} />
+      <% :treasury -> %> <.p_treasury entries={@entries} />
+      <% :bourse -> %> <.p_bourse entries={@entries} />
+      <% :packages -> %> <.p_packages entries={@entries} />
+      <% :const -> %> <.p_const entries={@entries} />
+      <% _ -> %>
+    <% end %>
+    """
+  end
+
   def i_gtfs(assigns) do
     ~H"""
     <%= for e <- @entries.data do %>
@@ -103,9 +457,7 @@ use PhoenixHTMLHelpers
           <div class="w-3/4 lg:w-11/12">
             <div class="flex justify-between">
               <div>
-                <span class="font-bold text-lg lg:text-4xl text-accent">
-                  <%= e.route %>
-                </span>
+                <.route_badge entry={e} class="badge-lg text-lg lg:text-4xl lg:py-6 lg:px-4 text-accent" />
                 <span class="uppercase text-secondary lg:text-2xl lg:font-bold"> <%= if e.dir do %> (<%= e.dir %>) <% end %> </span> <br />
                 <span class="lg:text-2xl"><%= e.dest %></span>
               </div>

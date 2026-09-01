@@ -865,6 +865,36 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
+  # Sorted by how much of the feed carries it, so what this source is good for
+  # reads off the front of the list and what it does not do sits at the end.
+  defp rt_capabilities(group) do
+    group
+    |> Map.get(:capabilities, %{})
+    |> Enum.map(fn {label, %{present: present, of: of}} -> {label, present, of} end)
+    |> Enum.sort_by(fn {label, present, of} -> {-share(present, of), label} end)
+  end
+
+  defp share(_present, 0), do: 0.0
+  defp share(present, of), do: present / of
+
+  defp rt_capability_class(0), do: "badge-ghost opacity-50"
+  defp rt_capability_class(_present), do: "badge-success"
+
+  defp rt_capability_icon(0), do: "fa-xmark"
+  defp rt_capability_icon(_present), do: "fa-check"
+
+  # A share rather than a raw count: "2529 of 27480" says less at a glance than
+  # "9%", and the exact numbers are on the hover.
+  defp rt_capability_share(0, _of), do: ""
+  defp rt_capability_share(present, of) when present == of, do: "all"
+
+  defp rt_capability_share(present, of) do
+    case round(share(present, of) * 100) do
+      0 -> "<1%"
+      pct -> "#{pct}%"
+    end
+  end
+
   def handle_event("add-tester", _params, socket) do
     {:noreply, socket |> assign(:tester, !socket.assigns.tester)}
   end

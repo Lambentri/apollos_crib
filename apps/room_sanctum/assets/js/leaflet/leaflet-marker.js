@@ -15,7 +15,7 @@ class LeafletMarker extends HTMLElement {
     }
 
     static get observedAttributes() { 
-        return ['lat', 'lng', 'name', 'type', 'tint', 'shape', 'bearing', 'route-type', 'aircraft-class', 'vehicle-id', 'route-id', 'selected', 'summary', 'charge']; 
+        return ['lat', 'lng', 'name', 'type', 'tint', 'shape', 'bearing', 'route-type', 'route-color', 'route-text-color', 'aircraft-class', 'vehicle-id', 'route-id', 'selected', 'summary', 'charge']; 
     }
 
     attributeChangedCallback(name, oldValue, newValue) {

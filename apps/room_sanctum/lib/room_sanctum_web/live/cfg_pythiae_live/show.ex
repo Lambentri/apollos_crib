@@ -26,7 +26,8 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
      |> assign(:foci, Configuration.list_focis({:user, socket.assigns.current_user.id}))
      |> assign(:ankyra, Accounts.list_users_rabbit({:user, socket.assigns.current_user.id}))
      |> assign(:preview, [])
-     |> assign(:preview_mode, :basic)}
+     |> assign(:preview_mode, :basic)
+     |> assign(:preview_raw, false)}
   end
 
   @impl true
@@ -50,18 +51,34 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     {:noreply, socket |> assign(:preview_mode, do_toggle(socket.assigns.preview_mode))}
   end
 
+  @impl true
+  def handle_event("toggle-preview-raw", _params, socket) do
+    {:noreply, socket |> assign(:preview_raw, !socket.assigns.preview_raw)}
+  end
+
+  # Raw is no longer a stop on the way round: it is a lens over whichever
+  # reading is showing, so the cycle is only the readings themselves.
   defp do_toggle(state) do
     case state do
-      :basic -> :raw
-      :raw -> :basic
+      :basic -> :plus
+      :plus -> :basic
     end
   end
+
+  # The raw view shows the condenser behind the mode you are in, so what you
+  # read as JSON is what the card above it was drawn from.
+  defp condense_for(:plus, key, data), do: condense_plus(key, data)
+  defp condense_for(_mode, key, data), do: condense(key, data)
 
   defp page_title(:show), do: "Show Pythiae"
   defp page_title(:edit), do: "Edit Pythiae"
 
   defp condense({id, type}, data) do
     RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
+  end
+
+  defp condense_plus({id, type}, data) do
+    RoomSanctum.Condenser.PlusMQTT.condense_data({id, type}, data)
   end
 
   defp get_icon(type) do

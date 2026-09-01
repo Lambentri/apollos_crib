@@ -14,6 +14,11 @@
               <i class={"fas fa-fw fa-md #{get_icon(k |> elem(1))}"}></i>
               <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
             </div>
+            <%!-- /p/pl reads the same board through Plus; /p/p is the board as
+                  it has always been. --%>
+            <%= if @live_action == :plus do %>
+              <.p_plus type={k |> elem(1)} entries={condense_plus(k, p) |> preview(k)} />
+            <% else %>
             <%= case k do %>
               <%= {_, :gtfs} -> %> <.p_gtfs entries={condense(k, p) |> preview(k)}> </.p_gtfs>
               <% {_, :gbfs} -> %> <.p_gbfs entries={condense(k, p) |> preview(k)}> </.p_gbfs>
@@ -33,6 +38,7 @@
               <% {_, :bourse} -> %> <.p_bourse entries={condense(k, p) |> preview(k)}> </.p_bourse>
               <% {_, :packages} -> %> <.p_packages entries={condense(k, p) |> preview(k)}> </.p_packages>
               <% {_, :const} -> %> <.p_const entries={condense(k, p) |> preview(k)}> </.p_const>
+            <% end %>
             <% end %>
             </div>
           </div>

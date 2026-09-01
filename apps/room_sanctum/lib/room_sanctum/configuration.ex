@@ -564,6 +564,23 @@ defmodule RoomSanctum.Configuration do
   end
 
   @doc """
+  The pythiae a vision is *not* on -- the ones it could be added to.
+
+  Scoped to the user, unlike its opposite number for visions
+  (`get_visions_nv/2`), which lists every vision in the database regardless of
+  who owns it. A pythiae is a screen on somebody's wall; offering to put your
+  vision on one belonging to someone else is not a feature.
+  """
+  def get_pythiae_nv(:vision, id, user_id) do
+    from(p in Pythiae,
+      where:
+        p.user_id == ^user_id and
+          (^id not in p.visions or is_nil(p.visions) or p.visions == [])
+    )
+    |> Repo.all()
+  end
+
+  @doc """
   Creates a pythiae.
 
   ## Examples

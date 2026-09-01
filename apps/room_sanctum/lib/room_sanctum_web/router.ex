@@ -36,6 +36,11 @@ defmodule RoomSanctumWeb.Router do
 
     live_session :public, root_layout: {RoomSanctumWeb.Layouts, :root_public} do
       live "/p/p/:name", PythiaeLive.Public, :show
+      # The same board, read the way Plus reads it -- occupancy, cancellations,
+      # tracks. Its own URL rather than a toggle: a public board is something
+      # you point a screen at and walk away from, so which reading it shows has
+      # to survive the page being reloaded by nobody.
+      live "/p/pl/:name", PythiaeLive.Public, :plus
       live "/p/s/c/:id", ScribusLive.Public, :show # color version
     end
     # The same vision as /p/p, drawn where its queries are rather than as a

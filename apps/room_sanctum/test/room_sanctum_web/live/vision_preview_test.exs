@@ -1,7 +1,10 @@
 defmodule RoomSanctumWeb.VisionPreviewTest do
   @moduledoc """
-  The vision preview cycles through its visualizers. The map is the third:
+  The vision preview cycles through its readings -- basic, plus, then the map,
   where the vision's queries actually are.
+
+  Raw is not one of them. It is a lens over whichever reading is showing, so it
+  toggles on its own button rather than making the cycle a lap of five.
   """
   use RoomSanctumWeb.ConnCase
 
@@ -44,12 +47,68 @@ defmodule RoomSanctumWeb.VisionPreviewTest do
     assert html =~ ">basic<"
   end
 
-  test "basic, then raw, then map, then round again", %{conn: conn, vision: vision} do
+  test "basic, then plus, then map, then round again", %{conn: conn, vision: vision} do
     {:ok, live, _html} = live(conn, Routes.vision_show_path(conn, :show, vision))
 
-    assert render_click(live, "toggle-preview-mode", %{}) =~ ">raw<"
+    assert render_click(live, "toggle-preview-mode", %{}) =~ ">plus<"
     assert render_click(live, "toggle-preview-mode", %{}) =~ ">map<"
     assert render_click(live, "toggle-preview-mode", %{}) =~ ">basic<"
+  end
+
+  describe "the raw lens" do
+    test "it is off to begin with, and is its own button", %{conn: conn, vision: vision} do
+      {:ok, _live, html} = live(conn, Routes.vision_show_path(conn, :show, vision))
+
+      assert html =~ ~s(phx-click="toggle-preview-raw")
+      assert html =~ "btn-ghost"
+    end
+
+    test "turning it on does not move you off the reading you are on", %{
+      conn: conn,
+      vision: vision
+    } do
+      {:ok, live, _html} = live(conn, Routes.vision_show_path(conn, :show, vision))
+
+      raw = render_click(live, "toggle-preview-raw", %{})
+
+      assert raw =~ ">basic<"
+      assert raw =~ "btn-accent"
+    end
+
+    test "it survives a change of reading, and turns off again", %{conn: conn, vision: vision} do
+      {:ok, live, _html} = live(conn, Routes.vision_show_path(conn, :show, vision))
+
+      render_click(live, "toggle-preview-raw", %{})
+      plus = render_click(live, "toggle-preview-mode", %{})
+
+      assert plus =~ ">plus<"
+      assert plus =~ "btn-accent"
+
+      assert render_click(live, "toggle-preview-raw", %{}) =~ "btn-ghost"
+    end
+
+    test "the map has no condensed data to read, so it offers no lens", %{
+      conn: conn,
+      vision: vision
+    } do
+      {:ok, live, _html} = live(conn, Routes.vision_show_path(conn, :show, vision))
+
+      render_click(live, "toggle-preview-mode", %{})
+      map = render_click(live, "toggle-preview-mode", %{})
+
+      assert map =~ ">map<"
+      refute map =~ ~s(phx-click="toggle-preview-raw")
+    end
+
+    test "a raw map is still a map, not a page of JSON", %{conn: conn, vision: vision} do
+      {:ok, live, _html} = live(conn, Routes.vision_show_path(conn, :show, vision))
+
+      render_click(live, "toggle-preview-raw", %{})
+      render_click(live, "toggle-preview-mode", %{})
+      map = render_click(live, "toggle-preview-mode", %{})
+
+      assert map =~ "Nothing to place yet"
+    end
   end
 
   test "the map says so rather than drawing an empty world", %{conn: conn, vision: vision} do

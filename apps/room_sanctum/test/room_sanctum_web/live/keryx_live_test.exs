@@ -1,5 +1,10 @@
 defmodule RoomSanctumWeb.KeryxLiveTest do
   use RoomSanctumWeb.ConnCase
+  # This file writes its paths as ~p, which ConnCase does not bring in. Without
+  # it the module fails to compile, and a compile error in one file takes the
+  # whole test/room_sanctum_web/live directory down with it -- fifteen files
+  # that silently stop running.
+  use RoomSanctumWeb, :verified_routes
 
   import Phoenix.LiveViewTest
   import RoomSanctum.ConfigurationFixtures

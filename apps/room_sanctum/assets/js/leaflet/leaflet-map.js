@@ -566,7 +566,7 @@ class LeafletMap extends HTMLElement {
     // the vehicle id -- is only ever read back out of the element when a popup
     // opens, so changing it needs no new layer.
     static get ICON_ATTRIBUTES() {
-        return new Set(['type', 'tint', 'shape', 'route-type', 'aircraft-class']);
+        return new Set(['type', 'tint', 'shape', 'route-type', 'route-color', 'route-text-color', 'aircraft-class']);
     }
 
     markerIdFor(markerEl) {
@@ -797,7 +797,8 @@ class LeafletMap extends HTMLElement {
                 this.getStrokeColor(markerEl),
                 isNaN(bearing) ? null : bearing,
                 LeafletMap.VEHICLE_KIND_BY_ROUTE_TYPE[markerEl.getAttribute('route-type')],
-                26
+                26,
+                this.getGlyphColor(markerEl)
             ),
             keyboard: false,
         }).bindPopup(() => this.createPopupContent(markerEl));
@@ -847,7 +848,7 @@ class LeafletMap extends HTMLElement {
     // A disc carrying the vehicle kind, with a pointer along the direction of
     // travel. The pointer rotates; the glyph deliberately does not, so it
     // stays readable whichever way the vehicle is heading.
-    createVehicleIcon(fill, stroke, bearing, kind, size) {
+    createVehicleIcon(fill, stroke, bearing, kind, size, glyphColor = '#ffffff') {
         const pointer =
             bearing === null
                 ? ''
@@ -855,7 +856,12 @@ class LeafletMap extends HTMLElement {
                             stroke-width="1.4" stroke-linejoin="round"
                             transform="rotate(${bearing} 12 12)" />`;
 
-        const glyph = LeafletMap.VEHICLE_GLYPHS[kind] || '';
+        // The glyphs are written against a white mark on a coloured disc, which
+        // is the right way round for almost every line colour. An agency that
+        // says otherwise -- a pale line wanting a dark mark -- is honoured by
+        // recolouring the mark; the parts drawn in currentColor stay the disc's
+        // own colour either way.
+        const glyph = (LeafletMap.VEHICLE_GLYPHS[kind] || '').replaceAll('#fff', glyphColor);
 
         return L.divIcon({
             className: 'leaflet-vehicle-icon',
@@ -1003,7 +1009,23 @@ class LeafletMap extends HTMLElement {
             'vehicle': '#dc2626',    // red
         };
 
+        // A transit vehicle wears its line's colour where the schedule
+        // publishes one: on a source carrying a dozen routes, one red for all
+        // of them says only "a vehicle". The red stays as the fallback for a
+        // feed that colours nothing.
+        const routeColor = markerEl.getAttribute('route-color');
+        if (routeColor && markerEl.getAttribute('type') === 'vehicle') return routeColor;
+
         return byType[markerEl.getAttribute('type') || 'query'] || '#6b7280';
+    }
+
+    // What to draw the glyph in. route_text_color exists precisely because a
+    // mark has to sit on top of the line colour and stay readable -- white on
+    // a yellow bus does not -- so where the agency states one, it wins.
+    getGlyphColor(markerEl) {
+        if (markerEl.getAttribute('type') !== 'vehicle') return '#ffffff';
+
+        return markerEl.getAttribute('route-text-color') || '#ffffff';
     }
 
     // Outline: the tint if one is set, otherwise white so the marker still

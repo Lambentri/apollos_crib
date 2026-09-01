@@ -554,8 +554,14 @@ const LeafletMap = {
   },
 
   createVehicleIcon(vehicle) {
-    // Use orange/red colors for vehicles to distinguish from query markers
-    const vehicleColor = '#FF6B35'; // Orange-red for vehicles
+    // The line's own colour where the static feed publishes one, so a source
+    // carrying a dozen routes reads as a dozen routes. The orange-red is the
+    // fallback for a feed that colours nothing, and is what every vehicle used
+    // to be.
+    const vehicleColor = vehicle.color || '#FF6B35';
+    // route_text_color exists precisely because a glyph has to sit on top of
+    // the line colour and stay readable -- white on a yellow bus does not.
+    const glyphColor = vehicle.text_color || '#FFFFFF';
     const bearing = vehicle.bearing || 0;
     
     // Create HTML for the vehicle icon with rotation
@@ -566,11 +572,11 @@ const LeafletMap = {
         height: 32px;
         border-radius: 8px;
         border: 2px solid white;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.4), inset 0 0 0 1px rgba(0,0,0,0.25);
         display: flex;
         align-items: center;
         justify-content: center;
-        color: white;
+        color: ${glyphColor};
         font-size: 14px;
         position: relative;
         transform: rotate(${bearing}deg);

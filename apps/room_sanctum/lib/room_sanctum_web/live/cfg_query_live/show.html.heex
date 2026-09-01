@@ -76,10 +76,30 @@
           <div class="flex-1 w-3/4">
             &nbsp;
           </div>
-          <div class="flex-none w-20">
+          <div class="flex-none flex gap-1">
+            <%!-- Raw is a lens over the reading you are on rather than a reading of
+                  its own, so it toggles rather than joining the cycle. --%>
+            <button
+              class={"btn btn-sm #{if @preview_raw, do: "btn-accent", else: "btn-ghost"}"}
+              phx-click="toggle-preview-raw"
+              title="the condensed data behind this view, as JSON"
+            >
+              <i class="fa-solid fa-code"></i>
+            </button>
             <button class="btn btn-secondary btn-sm" phx-click="toggle-preview-mode"><%= @preview_mode %></button>
           </div>
         </div>
+        <%= if @preview_raw do %>
+          <div class="flex">
+            <div class="w-16">
+              <i class={"fas fa-fw fa-2xl #{get_icon(@type)}"}></i>
+            </div>
+            <div class="w-7/8">
+              <span class="text-secondary font-bold"><%= @query.name %></span>
+              <pre><%= condense_for(@preview_mode, @preview, {@query.id, @type}) |> Poison.encode!(pretty: true)%></pre>
+            </div>
+          </div>
+        <% else %>
         <%= case @preview_mode do %>
         <%= :basic -> %>
           <%= case @type do %>
@@ -101,16 +121,12 @@
             <% :bourse -> %> <.p_bourse entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_bourse>
             <% :packages -> %> <.p_packages entries={preview(condense(@preview, {@query.id, @type}), {@query.id, @type})}> </.p_packages>
           <% end %>
-        <% :raw -> %>
-          <div class="flex">
-            <div class="w-16">
-              <i class={"fas fa-fw fa-2xl #{get_icon(@type)}"}></i>
-            </div>
-            <div class="w-7/8">
-              <span class="text-secondary font-bold"><%= @query.name %></span>
-              <pre><%= condense(@preview, {@query.id, @type}) |> Poison.encode!(pretty: true)%></pre>
-            </div>
-          </div>
+        <% :plus -> %>
+          <.p_plus
+            type={@type}
+            entries={preview(condense_plus(@preview, {@query.id, @type}), {@query.id, @type})}
+          />
+        <% end %>
         <% end %>
       </div>
     </div>

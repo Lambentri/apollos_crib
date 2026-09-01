@@ -242,6 +242,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               shape={Map.get(p, :shape)}
               bearing={Map.get(p, :bearing)}
               route-type={Map.get(p, :route_type)}
+              route-color={Map.get(p, :color)}
+              route-text-color={Map.get(p, :text_color)}
               route={Map.get(p, :route)}
               dest={Map.get(p, :dest)}
               direction={Map.get(p, :direction)}
@@ -711,6 +713,11 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         # Filled in from the static feed by the caller; a vehicle whose trip is
         # not in the schedule keeps its ids and says so rather than inventing.
         route: Map.get(vehicle, :route),
+        # The line's own colour, where the static feed gives one. The map draws
+        # every vehicle the same orange without it, which on a source carrying
+        # a dozen routes says only "a vehicle".
+        color: Map.get(vehicle, :color),
+        text_color: Map.get(vehicle, :text_color),
         dest: Map.get(vehicle, :dest),
         direction: Map.get(vehicle, :direction),
         mode: Map.get(vehicle, :mode),

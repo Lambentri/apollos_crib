@@ -16,6 +16,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
   end
 
   defp page_title(:show), do: "Show Pythiae"
+  defp page_title(:plus), do: "Show Pythiae +"
 
   @impl true
   def handle_params(%{"name" => name}, _, socket) do
@@ -25,7 +26,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
      |> assign(:pythiae, Configuration.get_pythiae!(:name, name))
      |> assign(:curr_vision, "Pending")
      |> assign(:preview, [])
-     |> assign(:preview_mode, :basic)}
+     |> assign(:preview_mode, socket.assigns.live_action)}
   end
 
   @impl true
@@ -44,6 +45,10 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
 
   defp condense({id, type}, data) do
     RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
+  end
+
+  defp condense_plus({id, type}, data) do
+    RoomSanctum.Condenser.PlusMQTT.condense_data({id, type}, data)
   end
 
   defp get_icon(type) do

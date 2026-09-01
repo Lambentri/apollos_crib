@@ -197,7 +197,7 @@ defmodule RoomSanctumWeb.Live.Helpers.MapData do
       # broadcast tower for a live arrival, the clock for the timetable, as the
       # card does.
       %{
-        label: "#{e.route} to #{e.dest}",
+        label: "#{Map.get(e, :route_name) || e.route} to #{e.dest}",
         value_icon: if(live != [], do: "tower-broadcast", else: "clock"),
         value: times |> Enum.take(2) |> Enum.map_join(", ", &to_string/1)
       }
