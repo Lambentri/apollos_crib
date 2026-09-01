@@ -48,6 +48,7 @@ window.Base64 = Base64;
 import L from 'leaflet'
 import 'leaflet-centermarker'
 import { addBasemap } from './leaflet/basemap'
+import { addFullscreenControl } from './leaflet/fullscreen'
 import LeafletMap from './hooks/leaflet_map.js'
 
 import LeafletMapBridge from './hooks/leaflet_map_bridge.js'
@@ -158,6 +159,7 @@ Hooks.mkMap = {
         centerMarker.addTo(map);
 
         addBasemap(map, { maxZoom: 19 });
+        addFullscreenControl(map);
 
         // Search functionality
         const searchInput = document.getElementById('location-search');
@@ -326,6 +328,7 @@ Hooks.mkTesterMap = {
         // marker.addTo(map);
 
         addBasemap(map, { maxZoom: 19 });
+        addFullscreenControl(map);
 
         this.handleEvent("add_marker", ({lat, lon}) => {
             const marker = L.marker(L.latLng(lat, lon))
@@ -365,6 +368,12 @@ Hooks.mkShowMap = {
         }
 
         addBasemap(map, { maxZoom: 19 });
+
+        // The show map is deliberately inert in the page -- it is an
+        // illustration next to the record, not something to explore. Filling
+        // the screen is the one moment that stops being true, so panning and
+        // zooming come back for as long as it lasts.
+        addFullscreenControl(map, { interactive: true });
     }
 }
 

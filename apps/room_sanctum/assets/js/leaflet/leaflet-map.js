@@ -5,6 +5,7 @@ import L from 'leaflet'
 // rules and lay themselves out as a grid of loose images.
 import leafletCss from 'leaflet/dist/leaflet.css'
 import { addBasemap } from './basemap'
+import { addFullscreenControl } from './fullscreen'
 
 const template = document.createElement('template');
 template.innerHTML = `
@@ -285,6 +286,11 @@ class LeafletMap extends HTMLElement {
         this.watchForUserView();
         this.addResetViewControl();
 
+        // The host, not the map container: the container lives in the shadow
+        // tree, and fullscreening it would take the map away from the element
+        // whose height it is sized against.
+        this.fullscreen = addFullscreenControl(this.map, { target: this });
+
         // One more pass after layout settles, for the first paint.
         requestAnimationFrame(() => this.map && this.map.invalidateSize({ animate: false }));
 
@@ -394,6 +400,11 @@ class LeafletMap extends HTMLElement {
         if (this.basemap) {
             this.basemap.remove();
             this.basemap = null;
+        }
+        // Likewise: it listens on the document, not on the map.
+        if (this.fullscreen) {
+            this.fullscreen.remove();
+            this.fullscreen = null;
         }
         if (this.map) {
             this.map.remove();

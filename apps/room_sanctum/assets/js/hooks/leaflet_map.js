@@ -7,6 +7,7 @@
 // L itself comes from the global the Leaflet UMD bundle installs; this one is
 // ours, so it has to be imported.
 import { addBasemap } from '../leaflet/basemap'
+import { addFullscreenControl } from '../leaflet/fullscreen'
 
 const LeafletMap = {
   mounted() {
@@ -66,6 +67,11 @@ const LeafletMap = {
       this.basemap.remove();
       this.basemap = null;
     }
+    // Same story: it holds document-level listeners of its own.
+    if (this.fullscreen) {
+      this.fullscreen.remove();
+      this.fullscreen = null;
+    }
   },
 
   initializeMap() {
@@ -105,6 +111,11 @@ const LeafletMap = {
 
     // Monochrome tiles, washed in the active theme colour.
     this.basemap = addBasemap(this.map, { maxZoom: 18 });
+
+    // this.el, not the map container: the container is absolutely positioned
+    // inside it, so fullscreening the container alone would leave it sized to
+    // an element still laid out at its old size.
+    this.fullscreen = addFullscreenControl(this.map, { target: this.el });
 
     // Initialize separate layer groups for queries, vehicles, free bikes, and stations
     this.queriesLayer = L.layerGroup().addTo(this.map);
