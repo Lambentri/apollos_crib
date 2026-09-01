@@ -128,31 +128,59 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   # Private helper to query all workers
+  # A vision's queries reach different workers over different networks, and
+  # asking them one after another spends the sum of their latencies. That
+  # matters because handle_cast(:query_workers) kills the previous task when
+  # the next tick arrives: one slow query does not merely arrive late, it
+  # destroys the whole round, including the answers that had already come back.
+  # In prod that showed up as a board with nothing on it and a steady three
+  # cancelled statements a minute -- the GTFS query was simply the one holding
+  # a database connection when the axe fell.
+  #
+  # Asked together, the round costs the slowest query rather than all of them,
+  # and a query that overruns yields nothing for itself alone.
+  @query_concurrency 4
+  @query_timeout_ms 10_000
+
   defp query_all_workers(vision_q) do
     vision_q
-    |> Enum.map(fn q ->
-      r =
-        try do
-          query_one(q)
-        rescue
-          e ->
-            Logger.warning(
-              "Query failed for #{inspect(q.source.type)} (#{q.source.id}): #{Exception.message(e)}"
-            )
+    |> Task.async_stream(&query_safely/1,
+      max_concurrency: @query_concurrency,
+      timeout: @query_timeout_ms,
+      on_timeout: :kill_task
+    )
+    |> Enum.zip(vision_q)
+    |> Enum.map(fn
+      {{:ok, result}, q} ->
+        {{q.id, q.source.type}, result}
 
-            []
-        catch
-          kind, reason ->
-            Logger.warning(
-              "Query #{kind} for #{inspect(q.source.type)} (#{q.source.id}): #{inspect(reason)}"
-            )
+      {{:exit, reason}, q} ->
+        # Its own failure, not everyone else's.
+        Logger.warning(
+          "Query gave up for #{inspect(q.source.type)} (#{q.source.id}): #{inspect(reason)}"
+        )
 
-            []
-        end
-
-      {{q.id, q.source.type}, r}
+        {{q.id, q.source.type}, []}
     end)
     |> Enum.into(%{})
+  end
+
+  defp query_safely(q) do
+    query_one(q)
+  rescue
+    e ->
+      Logger.warning(
+        "Query failed for #{inspect(q.source.type)} (#{q.source.id}): #{Exception.message(e)}"
+      )
+
+      []
+  catch
+    kind, reason ->
+      Logger.warning(
+        "Query #{kind} for #{inspect(q.source.type)} (#{q.source.id}): #{inspect(reason)}"
+      )
+
+      []
   end
 
   defp query_one(q) do
