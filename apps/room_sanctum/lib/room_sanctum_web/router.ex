@@ -65,6 +65,9 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/offerings", SourceLive.Index, :index
     live "/cfg/offerings/new", SourceLive.Index, :new
     live "/cfg/offerings/import", SourceLive.Index, :import
+    # What the import queue is doing across every feed, rather than one feed's
+    # bar. Ahead of the `:id` routes for the same reason "map" is.
+    live "/cfg/offerings/work", SourceLive.Work, :index
     # Ahead of the `:id` routes. Nothing below actually collides -- none of them
     # is three segments ending in a free value -- but "map" reading as an id is
     # exactly the kind of thing a later route would introduce quietly.

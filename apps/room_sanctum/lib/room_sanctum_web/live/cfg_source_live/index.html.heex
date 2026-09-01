@@ -15,6 +15,9 @@
     <% end %>
     
     <.itb icon="fa-upload" to={Routes.source_index_path(@socket, :import)} what="Import Offering"></.itb>
+    <%!-- One feed's progress bar lives on its own page; this is the queue
+          behind all of them. --%>
+    <.itb icon="fa-list-check" to={Routes.source_work_path(@socket, :index)} what="Import Queue"></.itb>
   </div>
 </div>
 

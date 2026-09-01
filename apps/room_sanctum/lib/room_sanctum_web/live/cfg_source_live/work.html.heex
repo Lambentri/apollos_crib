@@ -1,0 +1,143 @@
+<.itb icon="fa-chevron-left" to={Routes.source_index_path(@socket, :index)} what="Back"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2">Import Queue</h1>
+
+<div class="mx-4 py-2">
+  <p class="text-sm opacity-70 mb-2">
+    <%!-- The concurrency is the whole mechanism, so it is worth saying rather
+          than leaving to be inferred from feeds appearing to stall. --%>
+    GTFS static imports run one at a time. A feed that is waiting is waiting for
+    the one above it, not stuck.
+  </p>
+
+  <%!-- The running import gets the room, because it is the one thing on this
+        page that is changing while you watch it. --%>
+  <% running = active(@jobs, @progress, @names) %>
+
+  <div class="card card-compact w-full bg-base-100 shadow-xl my-2">
+    <div class="card-body">
+      <h3 class="card-title">Now running</h3>
+
+      <%= if running do %>
+        <div class="flex items-baseline gap-3">
+          <.link
+            navigate={Routes.source_show_path(@socket, :show, running.source_id)}
+            class="text-2xl font-bold text-accent"
+          >
+            <%= running.name || "source #{running.source_id}" %>
+          </.link>
+          <span class="opacity-70">
+            <%= if running.progress, do: step_label(running.progress.step), else: "starting" %>
+          </span>
+        </div>
+
+        <progress
+          class="progress progress-secondary w-full"
+          value={if running.progress, do: running.progress.value, else: 0}
+          max="100"
+        >
+        </progress>
+
+        <p class="text-sm opacity-70">
+          <%= if running.progress, do: "#{running.progress.value}%", else: "picked up, no progress reported yet" %>
+        </p>
+      <% else %>
+        <p class="text-sm opacity-70">Nothing is importing right now.</p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card card-compact w-full bg-base-100 shadow-xl my-2">
+    <div class="card-body">
+      <h3 class="card-title">Feeds</h3>
+
+      <div class="flex flex-wrap gap-2">
+        <%= for source <- @sources do %>
+          <div class="flex items-center gap-2 border border-base-300 rounded px-2 py-1">
+            <.link
+              navigate={Routes.source_show_path(@socket, :show, source.id)}
+              class="font-bold text-accent"
+            >
+              <%= source.name %>
+            </.link>
+
+            <%!-- Live progress for whichever feed is loading, from the same
+                  broadcasts the source page draws its bar from. Oban knows a
+                  job is executing; only this knows it is four files in. --%>
+            <%!-- The bar lives in the card above; here a feed only has to say
+                  whether it is the one running. --%>
+            <%= if running && running.source_id == source.id do %>
+              <span class="badge badge-info badge-sm">running</span>
+            <% else %>
+              <span class="text-xs opacity-50">idle</span>
+            <% end %>
+
+            <button
+              class="btn btn-xs btn-ghost"
+              phx-click="requeue"
+              phx-value-id={source.id}
+              title="Queue a static import for this feed"
+            >
+              <i class="fa-solid fa-rotate"></i>
+            </button>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-compact w-full bg-base-100 shadow-xl my-2">
+    <div class="card-body">
+      <h3 class="card-title">Jobs</h3>
+
+      <p :if={@jobs == []} class="text-sm opacity-70">
+        Nothing has been queued yet.
+      </p>
+
+      <div :if={@jobs != []} class="overflow-x-auto">
+        <table class="table table-compact w-full">
+          <thead>
+            <tr>
+              <th>Job</th>
+              <th>Feed</th>
+              <th>State</th>
+              <th>Try</th>
+              <th>Queued</th>
+              <th>Started</th>
+              <th>Finished</th>
+              <th>Error</th>
+            </tr>
+          </thead>
+          <tbody>
+            <%= for job <- @jobs do %>
+              <% {label, class} = state_label(job.state) %>
+              <% sid = source_id(job) %>
+              <tr>
+                <td class="font-mono text-xs opacity-60"><%= job.id %></td>
+                <td>
+                  <%= if sid && Map.get(@names, sid) do %>
+                    <.link navigate={Routes.source_show_path(@socket, :show, sid)} class="text-accent">
+                      <%= Map.get(@names, sid) %>
+                    </.link>
+                  <% else %>
+                    <%!-- A job whose source has since been deleted still has a
+                          history worth reading. --%>
+                    <span class="opacity-60">source <%= sid || "?" %></span>
+                  <% end %>
+                </td>
+                <td><span class={"badge badge-sm #{class}"}><%= label %></span></td>
+                <td class="text-xs opacity-70"><%= job.attempt %>/<%= job.max_attempts %></td>
+                <td class="text-xs opacity-70"><%= ago(job.inserted_at) %></td>
+                <td class="text-xs opacity-70"><%= ago(job.attempted_at) %></td>
+                <td class="text-xs opacity-70">
+                  <%= ago(job.completed_at || job.discarded_at) %>
+                </td>
+                <td class="text-xs text-error"><%= last_error(job.errors) %></td>
+              </tr>
+            <% end %>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
