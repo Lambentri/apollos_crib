@@ -47,6 +47,16 @@ defmodule RoomSanctumWeb.SourceWorkTest do
     id
   end
 
+  defp jobs_for(id) do
+    import Ecto.Query
+
+    from(j in "oban_jobs",
+      where: j.id == ^id,
+      select: %{id: j.id, state: j.state, args: j.args, attempted_at: j.attempted_at}
+    )
+    |> Repo.all()
+  end
+
   test "the page lists this user's feeds", %{conn: conn, source: source} do
     {:ok, _live, html} = live(conn, "/cfg/offerings/work")
 
@@ -175,6 +185,80 @@ defmodule RoomSanctumWeb.SourceWorkTest do
       send(live.pid, {:gtfs, to_string(source.id), :disabled})
 
       assert render(live) =~ source.name
+    end
+  end
+
+  describe "clearing a stuck job" do
+    alias RoomSanctumWeb.SourceLive.Work
+
+    defp executing_since(source_id, seconds_ago) do
+      at =
+        DateTime.utc_now()
+        |> DateTime.add(-seconds_ago)
+        |> DateTime.to_naive()
+        |> NaiveDateTime.truncate(:second)
+
+      job(source_id, "executing", %{attempt: 1, attempted_at: at})
+    end
+
+    test "a job running for a few minutes is not called stranded", %{source: source} do
+      id = executing_since(source.id, 300)
+      [job] = jobs_for(id)
+
+      refute Work.stranded?(job, %{})
+    end
+
+    test "an hour of silence is", %{source: source} do
+      id = executing_since(source.id, 7_200)
+      [job] = jobs_for(id)
+
+      assert Work.stranded?(job, %{})
+    end
+
+    test "a job still broadcasting is alive whatever the clock says", %{source: source} do
+      id = executing_since(source.id, 7_200)
+      [job] = jobs_for(id)
+
+      progress = %{to_string(source.id) => %{step: :stop_times, value: 40, at: DateTime.utc_now()}}
+
+      refute Work.stranded?(job, progress)
+    end
+
+    test "a job that is not executing is never stranded", %{source: source} do
+      id = job(source.id, "completed")
+      [job] = jobs_for(id)
+
+      refute Work.stranded?(job, %{})
+    end
+
+    test "the page warns when a feed is blocked by one", %{conn: conn, source: source} do
+      executing_since(source.id, 7_200)
+
+      {:ok, _live, html} = live(conn, "/cfg/offerings/work")
+
+      assert html =~ "marked running with nothing"
+      # Why it matters, not just that it happened.
+      assert html =~ "cannot be queued again"
+    end
+
+    test "clearing frees the feed", %{conn: conn, source: source} do
+      id = executing_since(source.id, 7_200)
+
+      {:ok, live, _html} = live(conn, "/cfg/offerings/work")
+      render_click(live, "clear", %{"id" => to_string(id)})
+
+      [job] = jobs_for(id)
+      # Cancelled is outside the states ImportJob's uniqueness counts, which is
+      # what lets the next import through.
+      assert job.state == "cancelled"
+    end
+
+    test "only executing jobs offer the button", %{conn: conn, source: source} do
+      job(source.id, "completed")
+
+      {:ok, _live, html} = live(conn, "/cfg/offerings/work")
+
+      refute html =~ ~s(phx-click="clear")
     end
   end
 

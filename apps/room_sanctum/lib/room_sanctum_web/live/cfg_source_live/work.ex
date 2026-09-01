@@ -80,15 +80,16 @@ defmodule RoomSanctumWeb.SourceLive.Work do
     end
   end
 
+
+  @impl true
+  def handle_info(_msg, socket), do: {:noreply, socket}
+
   defp mine?(socket, id) do
     case Integer.parse(to_string(id)) do
       {id, ""} -> Map.has_key?(socket.assigns.names, id)
       _otherwise -> false
     end
   end
-
-  @impl true
-  def handle_info(_msg, socket), do: {:noreply, socket}
 
   @impl true
   def handle_event("requeue", %{"id" => id}, socket) do
@@ -103,6 +104,64 @@ defmodule RoomSanctumWeb.SourceLive.Work do
         {:noreply, put_flash(socket, :error, "Could not queue that import")}
     end
   end
+
+  @doc """
+  Give up on a job that is running and is not.
+
+  Oban has no Lifeline plugin configured here, so nothing rescues a job whose
+  process died -- a VM crash mid-import leaves the row in `executing` for good.
+  That is not merely untidy: ImportJob's uniqueness covers `executing` with no
+  expiry, so the stuck row blocks every future import of that feed, and the
+  requeue button reports a conflict rather than doing anything.
+
+  Cancelling moves it to a state uniqueness does not count, which is what frees
+  the feed. It does not stop a genuinely running import -- if the process is
+  alive it is asked to stop, which for a bulk load in progress means the next
+  import starts from a truncate anyway.
+  """
+  @impl true
+  def handle_event("clear", %{"id" => id}, socket) do
+    case Oban.cancel_job(String.to_integer(id)) do
+      :ok ->
+        {:noreply,
+         socket
+         |> put_flash(:info, "Cleared. That feed can be queued again.")
+         |> load()}
+
+      _otherwise ->
+        {:noreply, put_flash(socket, :error, "Could not clear that job")}
+    end
+  end
+
+  @doc """
+  How long a job has been executing, and whether that has stopped being
+  plausible.
+
+  An import of a large feed genuinely takes many minutes and can go a long
+  while between broadcasts, so elapsed time alone is a weak signal and the
+  threshold is deliberately generous. Past it, the honest thing is to say the
+  job looks stranded and let someone who knows decide, rather than either
+  hiding the button or quietly killing real work.
+  """
+  @stranded_after_s 3_600
+
+  def stranded?(%{state: "executing"} = job, progress) do
+    not reporting?(job, progress) and elapsed(job.attempted_at) > @stranded_after_s
+  end
+
+  def stranded?(_job, _progress), do: false
+
+  # A job that has said something recently is alive whatever the clock says.
+  defp reporting?(job, progress) do
+    case source_id(job) do
+      nil -> false
+      id -> Map.has_key?(progress, to_string(id))
+    end
+  end
+
+  defp elapsed(nil), do: 0
+  defp elapsed(%NaiveDateTime{} = at), do: elapsed(DateTime.from_naive!(at, "Etc/UTC"))
+  defp elapsed(%DateTime{} = at), do: DateTime.diff(DateTime.utc_now(), at)
 
   defp load(socket) do
     sources =

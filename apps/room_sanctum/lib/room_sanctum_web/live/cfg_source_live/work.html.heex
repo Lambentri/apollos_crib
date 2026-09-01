@@ -41,6 +41,18 @@
         <p class="text-sm opacity-70">
           <%= if running.progress, do: "#{running.progress.value}%", else: "picked up, no progress reported yet" %>
         </p>
+
+        <%!-- A job whose process died sits in `executing` for ever, and the
+              card above would otherwise report it as work in progress
+              indefinitely. --%>
+        <% stuck = Enum.filter(@jobs, &stranded?(&1, @progress)) %>
+        <div :if={stuck != []} class="alert alert-warning mt-2 text-sm">
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <span>
+            <%= length(stuck) %> job<%= if length(stuck) > 1, do: "s" %> marked running with nothing
+            reported for over an hour. Until cleared, the feed cannot be queued again.
+          </span>
+        </div>
       <% else %>
         <p class="text-sm opacity-70">Nothing is importing right now.</p>
       <% end %>
@@ -106,6 +118,7 @@
               <th>Started</th>
               <th>Finished</th>
               <th>Error</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -133,6 +146,18 @@
                   <%= ago(job.completed_at || job.discarded_at) %>
                 </td>
                 <td class="text-xs text-error"><%= last_error(job.errors) %></td>
+                <td>
+                  <button
+                    :if={job.state == "executing"}
+                    class={"btn btn-xs #{if stranded?(job, @progress), do: "btn-warning", else: "btn-ghost"}"}
+                    phx-click="clear"
+                    phx-value-id={job.id}
+                    data-confirm="Clear this job? If the import is genuinely running it will be stopped."
+                    title="Give up on this job so the feed can be queued again"
+                  >
+                    clear
+                  </button>
+                </td>
               </tr>
             <% end %>
           </tbody>
