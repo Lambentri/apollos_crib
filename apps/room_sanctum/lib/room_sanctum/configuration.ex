@@ -46,6 +46,16 @@ defmodule RoomSanctum.Configuration do
   def get_source!(id), do: Repo.get!(Source, id) |> Repo.preload([:mailboxes, :webhooks])
 
   @doc """
+  The source row on its own, without the associations `get_source!/1` brings.
+
+  Those preloads are right for the pages that list a source's mailboxes and
+  webhooks, and are two wasted queries everywhere else -- which includes the
+  arrival lookup, where the only thing wanted is the config blob and the cost
+  is paid on every call.
+  """
+  def get_source!(:bare, id), do: Repo.get!(Source, id)
+
+  @doc """
   Subscribe to config changes for one record, so a worker can be told rather
   than asking.
 

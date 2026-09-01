@@ -251,6 +251,72 @@ defmodule RoomSanctum.Storage do
     Calendar.changeset(calendar, attrs)
   end
 
+  alias RoomSanctum.Storage.GTFS.CalendarDate
+
+  @doc """
+  The service exceptions for a source -- calendar_dates.txt.
+
+  For several feeds this is not a footnote to calendar.txt but the greater part
+  of the service definition: MBTA's bus services carry seven zero weekday flags
+  and name every day they run here instead.
+  """
+  def count_calendar_dates(source_id) do
+    Repo.one(from p in CalendarDate, where: p.source_id == ^source_id, select: count(p.id))
+  end
+
+  def truncate_calendar_date(source_id) do
+    from(p in CalendarDate, where: p.source_id == ^source_id)
+    |> Repo.delete_all(timeout: @gtfs_truncate_timeout)
+  end
+
+  def change_calendar_date(%CalendarDate{} = calendar_date, attrs \\ %{}) do
+    CalendarDate.changeset(calendar_date, attrs)
+  end
+
+  @doc """
+  The service ids running on a date, as a MapSet.
+
+  Both halves of the answer: the services whose calendar.txt row covers the
+  date and names that weekday, plus the ones added for it by exception, minus
+  the ones removed for it. A service can be defined entirely by exceptions --
+  every weekday flag zero -- so neither half alone is the answer.
+  """
+  def services_on(source_id, %Date{} = date) do
+    weekday = Date.day_of_week(date)
+
+    scheduled =
+      from(c in Calendar,
+        where:
+          c.source_id == ^source_id and c.start_date <= ^date and c.end_date >= ^date and
+            field(c, ^weekday_field(weekday)) == 1,
+        select: c.service_id
+      )
+      |> Repo.all()
+
+    exceptions =
+      from(cd in CalendarDate,
+        where: cd.source_id == ^source_id and cd.date == ^date,
+        select: {cd.service_id, cd.exception_type}
+      )
+      |> Repo.all()
+
+    added = for {id, t} <- exceptions, t == 1, do: id
+    removed = for {id, t} <- exceptions, t == 2, do: id
+
+    scheduled
+    |> MapSet.new()
+    |> MapSet.union(MapSet.new(added))
+    |> MapSet.difference(MapSet.new(removed))
+  end
+
+  defp weekday_field(1), do: :monday
+  defp weekday_field(2), do: :tuesday
+  defp weekday_field(3), do: :wednesday
+  defp weekday_field(4), do: :thursday
+  defp weekday_field(5), do: :friday
+  defp weekday_field(6), do: :saturday
+  defp weekday_field(7), do: :sunday
+
   alias RoomSanctum.Storage.GTFS.Direction
 
   @doc """
@@ -1308,10 +1374,29 @@ defmodule RoomSanctum.Storage do
 
   end
 
-  def get_upcoming_arrivals_for_stop(source_id, stop_id, limit \\ 16, timestamp \\ :now) do
-    source = Cfg.get_source!(source_id)
-    tz = source.config.tz
+  @doc """
+  The next arrivals at a stop, in the stop's own timezone.
 
+  `tz` is the source's, and the caller usually has it already -- the GTFS
+  worker holds the source in its state and has just read it again to decide
+  whether the feed has realtime. Looking it up here as well cost three more
+  queries per call, because `get_source!/1` preloads mailboxes and webhooks
+  onto a row we want one field from. Passing it in skips all of that; leaving
+  it out still works, and still pays for it.
+  """
+  def get_upcoming_arrivals_for_stop(source_id, stop_id, limit \\ 16, timestamp \\ :now, tz \\ nil)
+
+  def get_upcoming_arrivals_for_stop(source_id, stop_id, limit, timestamp, nil) do
+    get_upcoming_arrivals_for_stop(
+      source_id,
+      stop_id,
+      limit,
+      timestamp,
+      Cfg.get_source!(source_id).config.tz
+    )
+  end
+
+  def get_upcoming_arrivals_for_stop(source_id, stop_id, limit, timestamp, tz) do
     timestamp =
       case timestamp do
         :now -> DateTime.now!(tz)

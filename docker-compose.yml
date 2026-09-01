@@ -5,6 +5,12 @@ services:
     image: postgis/postgis:15-master
     ports:
       - "54321:5432"
+    # Two repos, a pool each, and both are opened as soon as the app starts --
+    # so the default ceiling of 100 is already most of the way spent before
+    # anything queries anything. Matching prod's 300 rather than picking a dev
+    # number, because the point of dev matching prod here is that a pool
+    # problem shows up in both places or neither.
+    command: postgres -c max_connections=300
     volumes:
       - pgdata:/var/lib/postgresql/data/
     environment:

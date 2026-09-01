@@ -95,10 +95,10 @@ defmodule RoomGtfs.Worker do
     |> GenServer.call(:query_vehicle_positions, 30_000)
   end
 
-  def get_current_vehicle_positions(name, trips) do
+  def get_current_vehicle_positions(name, trips, timeout \\ 30_000) do
     "gtfs-rt#{name}"
     |> via_tuple
-    |> GenServer.call({:query_vehicle_positions, trips}, 30_000)
+    |> GenServer.call({:query_vehicle_positions, trips}, timeout)
   end
 
   @doc """
@@ -138,8 +138,14 @@ defmodule RoomGtfs.Worker do
   end
 
   def query_stop(id, query) do
-    inst = Configuration.get_source!(id)
-    res = Storage.get_upcoming_arrivals_for_stop(id, query.stop) |> Storage.fix_arrival_times
+    # Bare: this wants the config blob, and nothing on this path reads the
+    # mailboxes and webhooks the preloading version fetches alongside it.
+    inst = Configuration.get_source!(:bare, id)
+    # The source is already in hand, so its timezone goes with the call rather
+    # than being looked up again inside it.
+    res =
+      Storage.get_upcoming_arrivals_for_stop(id, query.stop, 16, :now, inst.config.tz)
+      |> Storage.fix_arrival_times
 
     # Not `url_rt_tu` alone: a source whose trip updates arrive in a combined
     # feed has that field blank and its URL in url_rt_shared, and gating on the
@@ -196,9 +202,23 @@ defmodule RoomGtfs.Worker do
     end
   end
 
+  # How long to wait for vehicle positions before giving up on occupancy.
+  #
+  # Deliberately short. This is the second call query_stop makes to the same
+  # worker -- get_current_realtime is the first -- and that worker also fetches
+  # the feeds over HTTP, so the calls queue behind each other and behind the
+  # fetches. At the default 30s a busy worker made every arrival query take
+  # longer than the 30s tick of the vision that asked for it, so the vision
+  # killed its own task and got nothing at all, every cycle.
+  #
+  # Occupancy is a nice-to-have hanging off an answer that has to arrive.
+  # Waiting seconds for it, and losing the answer, is the wrong trade.
+  @occupancy_timeout_ms 2_000
+
   # The vehicle positions for the trips calling at a stop, or [] for a source
-  # that publishes none. Occupancy is the only thing wanted from them here, and
-  # a source with no vehicle feed still gets whatever the trip updates carry.
+  # that publishes none, or [] if they do not arrive promptly. A source with no
+  # vehicle feed -- or a worker too busy to answer right now -- still gets
+  # whatever the trip updates carry.
   defp occupancy_vehicles(id, config, trips) do
     case RoomGtfs.Worker.RT.rt_url_for(config, :vp) do
       nil ->
@@ -206,7 +226,7 @@ defmodule RoomGtfs.Worker do
 
       _val ->
         try do
-          get_current_vehicle_positions(id, trips)
+          get_current_vehicle_positions(id, trips, @occupancy_timeout_ms)
         catch
           :exit, _ -> []
         end
@@ -1372,12 +1392,12 @@ defmodule RoomGtfs.Worker.Static do
   alias RoomSanctum.Storage.GTFS
 
   # The files that get loaded, and the only ones file_to_atom/1 and
-  # file_to_order/1 accept. Everything else in a feed -- calendar_dates.txt,
-  # feed_info.txt, linked_datasets.txt -- is either handled separately or
-  # ignored.
+  # file_to_order/1 accept. Everything else in a feed -- feed_info.txt,
+  # linked_datasets.txt -- is either handled separately or ignored.
   @import_files ~w(
     agency.txt
     calendar.txt
+    calendar_dates.txt
     directions.txt
     routes.txt
     shapes.txt
@@ -1573,6 +1593,7 @@ end
     case type do
       :agencies -> RoomSanctum.Storage.truncate_agency(id)
       :calendars -> RoomSanctum.Storage.truncate_calendar(id)
+      :calendar_dates -> RoomSanctum.Storage.truncate_calendar_date(id)
       :directions -> RoomSanctum.Storage.truncate_direction(id)
       :routes -> RoomSanctum.Storage.truncate_route(id)
       :stops -> RoomSanctum.Storage.truncate_stop(id)
@@ -1587,6 +1608,7 @@ end
       case type do
         :agencies -> {:gtfs_agencies, [GTFS.Agency |> get_cols(cols_j_plus)], GTFS.Agency |> get_cols_pgtypes(cols_j_plus)}
         :calendars -> {:gtfs_calendars, [GTFS.Calendar |> get_cols(cols_j_plus)], GTFS.Calendar |> get_cols_pgtypes(cols_j_plus)}
+        :calendar_dates -> {:gtfs_calendar_dates, [GTFS.CalendarDate |> get_cols(cols_j_plus)], GTFS.CalendarDate |> get_cols_pgtypes(cols_j_plus)}
         :directions -> {:gtfs_directions, [GTFS.Direction |> get_cols(cols_j_plus)], GTFS.Direction |> get_cols_pgtypes(cols_j_plus)}
         :routes -> {:gtfs_routes, [GTFS.Route |> get_cols(cols_j_plus)], GTFS.Route |> get_cols_pgtypes(cols_j_plus)}
         :stops -> {:gtfs_stops, [GTFS.Stop |> get_cols(cols_j_plus)], GTFS.Stop |> get_cols_pgtypes(cols_j_plus)}
@@ -1880,6 +1902,9 @@ end
       "calendar.txt" ->
         :calendars
 
+      "calendar_dates.txt" ->
+        :calendar_dates
+
       "directions.txt" ->
         :directions
 
@@ -1911,12 +1936,13 @@ end
     case filename do
       "agency.txt" -> 3
       "calendar.txt" -> 4
-      "directions.txt" -> 5
-      "routes.txt" -> 6
-      "shapes.txt" -> 7
-      "stops.txt" -> 8
-      "stop_times.txt" -> 9
-      "trips.txt" -> 10
+      "calendar_dates.txt" -> 5
+      "directions.txt" -> 6
+      "routes.txt" -> 7
+      "shapes.txt" -> 8
+      "stops.txt" -> 9
+      "stop_times.txt" -> 10
+      "trips.txt" -> 11
     end
   end
 
@@ -2047,7 +2073,7 @@ end
               |> Enum.map(fn e ->
                 type = file_to_atom(e.file_name)
 
-                bcast(id, type, file_to_order(e.file_name), 11)
+                bcast(id, type, file_to_order(e.file_name), 12)
 
                 Unzip.file_stream!(unzip, e.file_name)
                 |> write_file(type, id, nil)
