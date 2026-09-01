@@ -76,6 +76,23 @@
             <%!-- Live progress for whichever feed is loading, from the same
                   broadcasts the source page draws its bar from. Oban knows a
                   job is executing; only this knows it is four files in. --%>
+            <%!-- Days since this feed last imported, and only once that has
+                  become worth saying. A feed that has stopped importing looks
+                  fine from everywhere else in the app: the board goes on
+                  showing yesterday's timetable, which looks like a timetable. --%>
+            <% stale = days_since_run(source) %>
+            <span
+              :if={stale}
+              class="badge badge-warning badge-sm"
+              title={
+                if stale == "N",
+                  do: "Never imported",
+                  else: "Last imported #{stale} days ago"
+              }
+            >
+              <%= stale %>
+            </span>
+
             <%!-- The bar lives in the card above; here a feed only has to say
                   whether it is the one running. --%>
             <%= if running && running.source_id == source.id do %>

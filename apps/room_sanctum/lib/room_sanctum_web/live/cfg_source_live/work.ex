@@ -244,6 +244,29 @@ defmodule RoomSanctumWeb.SourceLive.Work do
     end
   end
 
+  @doc """
+  How long a feed has gone without importing, when that has become worth
+  saying.
+
+  Returns a bare number of days, or "N" for a feed that has never run, or nil
+  while it is recent enough not to be interesting. Silent below the threshold
+  on purpose: a badge on every feed all the time is a badge nobody reads, and
+  the thing worth noticing is the one feed that has quietly stopped.
+
+  A stale feed is not obviously broken from anywhere else in the app -- the
+  board keeps showing yesterday's timetable, which looks like a timetable.
+  """
+  @stale_after_days 3
+
+  def days_since_run(%{meta: %{last_run: %DateTime{} = at}}) do
+    case DateTime.diff(DateTime.utc_now(), at, :day) do
+      days when days > @stale_after_days -> days
+      _recent -> nil
+    end
+  end
+
+  def days_since_run(_source), do: "N"
+
   @doc false
   def source_id(%{args: %{"source_id" => id}}) when is_integer(id), do: id
   def source_id(%{args: %{"source_id" => id}}) when is_binary(id), do: String.to_integer(id)

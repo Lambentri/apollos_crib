@@ -188,6 +188,59 @@ defmodule RoomSanctumWeb.SourceWorkTest do
     end
   end
 
+  describe "days since last run" do
+    alias RoomSanctumWeb.SourceLive.Work
+
+    # Written through update_source rather than update_source_meta: the latter
+    # merges onto the existing embed, and a source created without one has meta
+    # nil rather than empty.
+    defp ran_days_ago(source, days) do
+      at = DateTime.utc_now() |> DateTime.add(-days * 86_400) |> DateTime.truncate(:second)
+      {:ok, source} = Configuration.update_source(source, %{meta: %{last_run: at}})
+      source
+    end
+
+    test "a feed that has never imported says N", %{source: source} do
+      assert Work.days_since_run(source) == "N"
+    end
+
+    test "a recent import says nothing at all", %{source: source} do
+      # A badge on every feed all the time is a badge nobody reads.
+      assert Work.days_since_run(ran_days_ago(source, 1)) == nil
+      assert Work.days_since_run(ran_days_ago(source, 3)) == nil
+    end
+
+    test "past the threshold it says how many days", %{source: source} do
+      assert Work.days_since_run(ran_days_ago(source, 4)) == 4
+      assert Work.days_since_run(ran_days_ago(source, 30)) == 30
+    end
+
+    test "the chip is on the page, with the reason on hover", %{conn: conn, source: source} do
+      ran_days_ago(source, 7)
+
+      {:ok, _live, html} = live(conn, "/cfg/offerings/work")
+
+      assert html =~ "Last imported 7 days ago"
+      assert html =~ ~r/>\s*7\s*</
+    end
+
+    test "a never-run feed reads as never rather than as zero days", %{conn: conn} do
+      {:ok, _live, html} = live(conn, "/cfg/offerings/work")
+
+      assert html =~ "Never imported"
+      assert html =~ ~r/>\s*N\s*</
+    end
+
+    test "a feed imported today carries no chip", %{conn: conn, source: source} do
+      ran_days_ago(source, 0)
+
+      {:ok, _live, html} = live(conn, "/cfg/offerings/work")
+
+      refute html =~ "Never imported"
+      refute html =~ "Last imported"
+    end
+  end
+
   describe "clearing a stuck job" do
     alias RoomSanctumWeb.SourceLive.Work
 
