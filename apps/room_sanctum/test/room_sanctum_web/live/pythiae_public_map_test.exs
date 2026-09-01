@@ -40,6 +40,15 @@ defmodule RoomSanctumWeb.PythiaePublicMapTest do
     refute html =~ "mt-4 relative"
   end
 
+  test "the map gets the window, not a centred column", %{conn: conn, pythiae: pythiae} do
+    {:ok, _live, html} = live(conn, "/p/m/#{pythiae.name}")
+
+    # The :live layout wraps every other page in `container mx-auto`, which is
+    # a max-width: the map rendered as a boxed column with the window showing
+    # either side of it.
+    refute html =~ "container mx-auto"
+  end
+
   test "it names the pythiae, for a screen someone walks past", %{conn: conn, pythiae: pythiae} do
     {:ok, _live, html} = live(conn, "/p/m/#{pythiae.name}")
 

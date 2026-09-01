@@ -21,6 +21,10 @@ defmodule RoomSanctumWeb.PythiaeLive.PublicMap do
   def mount(_params, _session, socket) do
     if connected?(socket), do: Process.send_after(self(), :update, 500)
 
+    # No :live layout. Every other page in this app is wrapped in
+    # `<main class="container mx-auto">`, and Tailwind's `container` is a
+    # max-width -- which boxed the map into a centred column with the window
+    # showing either side of it. A page that is only a map wants the window.
     {:ok,
      socket
      |> assign(:queries, [])
@@ -31,7 +35,7 @@ defmodule RoomSanctumWeb.PythiaeLive.PublicMap do
      |> assign(:vehicle_positions, [])
      |> assign(:queried_station_ids, [])
      |> assign(:query_summaries, %{})
-     |> assign(:curr_vision, "Pending")}
+     |> assign(:curr_vision, "Pending"), layout: false}
   end
 
   @impl true
