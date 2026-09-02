@@ -7,6 +7,8 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
@@ -38,7 +40,13 @@ import kotlin.math.abs
  */
 class OverlayPanel(
     private val context: Context,
-    private val onScrollSettled: (Float) -> Unit
+    /**
+     * Where the page has got to, for the launcher to move its workspace in
+     * step. Called while this end drives -- a drag on the panel itself, or an
+     * animation -- and not while the launcher does, since it is already
+     * moving and the two would fight.
+     */
+    private val reportScroll: (Float) -> Unit
 ) {
 
     private val windowManager =
@@ -76,7 +84,7 @@ class OverlayPanel(
             }
         }
 
-        val root = FrameLayout(context).apply {
+        val root = PanelLayout(context).apply {
             // Explicitly: a FrameLayout child defaults to WRAP_CONTENT, and a
             // page that does not fill its window leaves the strips behind the
             // system bars showing whatever is under it.
@@ -171,7 +179,7 @@ class OverlayPanel(
     /** The launcher is dragging. Follow it exactly rather than animating. */
     fun onScroll(value: Float) {
         animator?.cancel()
-        apply(value.coerceIn(0f, 1f))
+        apply(value.coerceIn(0f, 1f), report = false)
     }
 
     /** The drag ended wherever it ended; settle to the nearer edge. */
@@ -197,29 +205,22 @@ class OverlayPanel(
     private fun animateTo(target: Float) {
         val from = progress
         if (abs(from - target) < 0.001f) {
-            onScrollSettled(target)
+            reportScroll(target)
             return
         }
         animator?.cancel()
         animator = ValueAnimator.ofFloat(from, target).apply {
             duration = SETTLE_MS
-            addUpdateListener { apply(it.animatedValue as Float) }
-            // Told at the end rather than throughout: the launcher moves its
-            // own workspace while it is driving, and echoing every frame back
-            // makes the two fight.
-            addListener(
-                object : android.animation.AnimatorListenerAdapter() {
-                    override fun onAnimationEnd(animation: android.animation.Animator) {
-                        onScrollSettled(target)
-                    }
-                }
-            )
+            // Reported throughout: this end is driving, so the launcher's
+            // workspace has to follow frame by frame or it jumps at the end.
+            addUpdateListener { apply(it.animatedValue as Float, report = true) }
             start()
         }
     }
 
-    private fun apply(value: Float) {
+    private fun apply(value: Float, report: Boolean) {
         progress = value
+        if (report) reportScroll(value)
         view?.let { panel ->
             panel.translationX = -width * (1f - value)
             panel.alpha = value
@@ -239,6 +240,70 @@ class OverlayPanel(
         if (updated != params.flags) {
             params.flags = updated
             runCatching { windowManager.updateViewLayout(panel, params) }
+        }
+    }
+
+    /**
+     * The page's own view, which knows how to be dragged shut.
+     *
+     * The launcher cannot do this for us: while the page is open our window
+     * covers the screen, so the launcher never sees the gesture. A horizontal
+     * drag here closes the page and is reported as it goes, which is what
+     * moves the launcher's workspace back into view underneath.
+     *
+     * Vertical drags are left alone -- the board scrolls.
+     */
+    private inner class PanelLayout(context: Context) : FrameLayout(context) {
+
+        private val slop = ViewConfiguration.get(context).scaledTouchSlop
+        private var downX = 0f
+        private var downY = 0f
+        private var dragging = false
+
+        override fun onInterceptTouchEvent(event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                    dragging = false
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    // Sideways, and more sideways than up: anything else is
+                    // the list scrolling and is none of our business.
+                    if (!dragging && abs(dx) > slop && abs(dx) > abs(dy)) {
+                        dragging = true
+                        return true
+                    }
+                }
+            }
+            return false
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    return true
+                }
+
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.x - downX
+                    // Dragging left closes; dragging right past open does
+                    // nothing, since there is nothing further to open onto.
+                    apply((1f + dx / width.coerceAtLeast(1)).coerceIn(0f, 1f), report = true)
+                    return true
+                }
+
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    dragging = false
+                    settle()
+                    return true
+                }
+            }
+            return dragging
         }
     }
 
