@@ -8,6 +8,11 @@ defmodule RoomSanctum.Worker.Vision do
 
   @registry :zeus
 
+  # Each query is asked on its own, so this is the cap on one of them rather
+  # than on a round of them.
+  @query_timeout_ms 10_000
+
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("vision" <> opts[:id]))
   end
@@ -32,7 +37,19 @@ defmodule RoomSanctum.Worker.Vision do
       initial_delay: 100
     )
 
-    {:ok, %{id: opts[:id], vision: nil, vision_q: [], data: %{}, query_task: nil}}
+    {:ok,
+     %{
+       id: opts[:id],
+       vision: nil,
+       vision_q: [],
+       # Answers, and when each one arrived. Held per query rather than as one
+       # map replaced wholesale, so a source that is slow or briefly broken
+       # costs only its own panel.
+       data: %{},
+       data_at: %{},
+       # ref => %{key:, task:, timer:} for the queries currently out.
+       inflight: %{}
+     }}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -64,20 +81,40 @@ defmodule RoomSanctum.Worker.Vision do
     {:noreply, state |> Map.put(:vision, v) |> Map.put(:vision_q, queries)}
   end
 
+  # One task per query, each reporting on its own.
+  #
+  # This used to be a single task producing the whole map, which meant the
+  # board did not move until the slowest source had answered, and the next
+  # tick killed the round outright if it had not -- throwing away the answers
+  # that had already come back. A source that is slow now costs its own panel
+  # and nothing else.
+  #
+  # A query still out from the last round is not asked again. That is the
+  # backpressure the brutal kill was standing in for, and unlike the kill it
+  # does not destroy work in progress.
   def handle_cast(:query_workers, state) do
-    # todo filter out things deemed irrelevant by various timers
-    # Cancel previous task if still running
-    if state.query_task && Process.alive?(state.query_task.pid) do
-      Task.shutdown(state.query_task, :brutal_kill)
-    end
+    outstanding = state.inflight |> Map.values() |> MapSet.new(& &1.key)
 
-    # Start async task to query workers
-    task =
-      Task.async(fn ->
-        query_all_workers(state.vision_q)
+    state =
+      Enum.reduce(state.vision_q, state, fn q, acc ->
+        key = {q.id, q.source.type}
+
+        if MapSet.member?(outstanding, key) do
+          Logger.debug("Vision #{state.id}: #{inspect(key)} still out, not asking again")
+          acc
+        else
+          start_query(acc, q, key)
+        end
       end)
 
-    {:noreply, state |> Map.put(:query_task, task)}
+    {:noreply, state}
+  end
+
+  defp start_query(state, q, key) do
+    task = Task.async(fn -> query_safely(q) end)
+    timer = Process.send_after(self(), {:query_overran, task.ref}, @query_timeout_ms)
+
+    put_in(state.inflight[task.ref], %{key: key, task: task, timer: timer})
   end
 
   # Handle async task completion
@@ -87,22 +124,65 @@ defmodule RoomSanctum.Worker.Vision do
     handle_cast(:refresh_db_cfg, state)
   end
 
-  def handle_info({ref, queried_data}, state) do
-    # Task completed successfully
-    Process.demonitor(ref, [:flush])
-    {:noreply, state |> Map.put(:data, queried_data)}
-  end
+  def handle_info({ref, result}, state) when is_reference(ref) do
+    case Map.fetch(state.inflight, ref) do
+      {:ok, %{key: key, timer: timer}} ->
+        Process.demonitor(ref, [:flush])
+        Process.cancel_timer(timer)
 
-  def handle_info({:DOWN, _ref, :process, _pid, _reason}, state) do
-    # Task crashed or was killed, keep previous data
-    {:noreply, state}
-  end
+        {:noreply,
+         state
+         |> put_in([:data, key], result)
+         |> put_in([:data_at, key], DateTime.utc_now())
+         |> update_in([:inflight], &Map.delete(&1, ref))}
 
-  def handle_info({:EXIT, pid, reason}, state) do
-    if state.query_task && state.query_task.pid == pid and reason != :normal do
-      Logger.warning("Vision query task crashed: #{inspect(reason)}; keeping previous data")
+      :error ->
+        {:noreply, state}
     end
+  end
 
+  # A query that overran. Shut it down, and leave what it answered last time
+  # where it is -- a board carrying times from two minutes ago is worth more
+  # than one carrying none, and blanking a panel because a source hiccuped is
+  # what this worker used to do.
+  def handle_info({:query_overran, ref}, state) do
+    case Map.fetch(state.inflight, ref) do
+      {:ok, %{key: key, task: task}} ->
+        Task.shutdown(task, :brutal_kill)
+
+        Logger.warning(
+          "Vision #{state.id}: #{inspect(key)} overran #{@query_timeout_ms}ms; keeping its last answer"
+        )
+
+        {:noreply, update_in(state, [:inflight], &Map.delete(&1, ref))}
+
+      :error ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_info({:DOWN, ref, :process, _pid, reason}, state) do
+    case Map.fetch(state.inflight, ref) do
+      {:ok, %{key: key, timer: timer}} ->
+        Process.cancel_timer(timer)
+
+        if reason != :normal do
+          Logger.warning(
+            "Vision #{state.id}: #{inspect(key)} died (#{inspect(reason)}); keeping its last answer"
+          )
+        end
+
+        {:noreply, update_in(state, [:inflight], &Map.delete(&1, ref))}
+
+      :error ->
+        {:noreply, state}
+    end
+  end
+
+  # Trapped exits from the query tasks. The {:DOWN, ...} clause above is what
+  # actually accounts for one ending; this only stops a task's exit from taking
+  # the worker with it.
+  def handle_info({:EXIT, _pid, _reason}, state) do
     {:noreply, state}
   end
 
@@ -117,6 +197,9 @@ defmodule RoomSanctum.Worker.Vision do
   def handle_call(:return_state, _from, state) do
     response = %{
       data: state.data,
+      # When each answer arrived, so a reader can say how old it is rather than
+      # presenting a stale panel as though it were current.
+      data_at: state.data_at,
       queries: state.vision_q,
       name: if(state.vision, do: state.vision.name, else: "Unknown")
     }
@@ -128,43 +211,6 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   # Private helper to query all workers
-  # A vision's queries reach different workers over different networks, and
-  # asking them one after another spends the sum of their latencies. That
-  # matters because handle_cast(:query_workers) kills the previous task when
-  # the next tick arrives: one slow query does not merely arrive late, it
-  # destroys the whole round, including the answers that had already come back.
-  # In prod that showed up as a board with nothing on it and a steady three
-  # cancelled statements a minute -- the GTFS query was simply the one holding
-  # a database connection when the axe fell.
-  #
-  # Asked together, the round costs the slowest query rather than all of them,
-  # and a query that overruns yields nothing for itself alone.
-  @query_concurrency 4
-  @query_timeout_ms 10_000
-
-  defp query_all_workers(vision_q) do
-    vision_q
-    |> Task.async_stream(&query_safely/1,
-      max_concurrency: @query_concurrency,
-      timeout: @query_timeout_ms,
-      on_timeout: :kill_task
-    )
-    |> Enum.zip(vision_q)
-    |> Enum.map(fn
-      {{:ok, result}, q} ->
-        {{q.id, q.source.type}, result}
-
-      {{:exit, reason}, q} ->
-        # Its own failure, not everyone else's.
-        Logger.warning(
-          "Query gave up for #{inspect(q.source.type)} (#{q.source.id}): #{inspect(reason)}"
-        )
-
-        {{q.id, q.source.type}, []}
-    end)
-    |> Enum.into(%{})
-  end
-
   defp query_safely(q) do
     query_one(q)
   rescue
