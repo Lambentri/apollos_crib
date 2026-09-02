@@ -218,17 +218,10 @@ private fun PreviewCard(preview: Preview) {
                             color = palette.dim
                         )
                     } else {
-                        // Three is what the Smartspace template shows; more
-                        // here would be a preview of something else.
-                        preview.rows.take(3).forEach { row -> BoardRow(row) }
-                        val extra = preview.rows.size - 3
-                        if (extra > 0) {
-                            Text(
-                                "+$extra more",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = palette.dim
-                            )
-                        }
+                        // Every row, not the three a Smartspace card has room
+                        // for. This screen scrolls, and "+1 more" is a worse
+                        // use of a line than the thing it is counting.
+                        preview.rows.forEach { row -> BoardRow(row) }
                     }
                 }
             }
