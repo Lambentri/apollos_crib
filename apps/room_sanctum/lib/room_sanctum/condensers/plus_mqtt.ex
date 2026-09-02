@@ -96,7 +96,7 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
   defp attach_alerts(routes, id, stop) do
     route_ids = routes |> Enum.map(& &1.route) |> Enum.uniq()
 
-    case RoomGtfs.Worker.query_alerts(id, stop, route_ids) do
+    case alerts_for(id, stop, route_ids) do
       [] ->
         routes
 
@@ -109,6 +109,20 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
           end
         end)
     end
+  end
+
+  # room_sanctum does not declare a dependency on room_gtfs -- the two only meet
+  # in the release -- so this is a call into a module that is present in
+  # production and absent anywhere the umbrella is loaded piecemeal. It also
+  # reaches a Registry that a shutting-down node has already stopped. Neither
+  # is a reason to take a page render down over a decoration.
+  defp alerts_for(id, stop, route_ids) do
+    RoomGtfs.Worker.query_alerts(id, stop, route_ids)
+  rescue
+    UndefinedFunctionError -> []
+    ArgumentError -> []
+  catch
+    :exit, _ -> []
   end
 
   defp stop_of(data) do
