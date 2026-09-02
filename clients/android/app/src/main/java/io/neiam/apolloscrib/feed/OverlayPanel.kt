@@ -3,6 +3,7 @@ package io.neiam.apolloscrib.feed
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.PixelFormat
+import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import android.view.Gravity
@@ -76,7 +77,16 @@ class OverlayPanel(
         }
 
         val root = FrameLayout(context).apply {
-            addView(content)
+            // Explicitly: a FrameLayout child defaults to WRAP_CONTENT, and a
+            // page that does not fill its window leaves the strips behind the
+            // system bars showing whatever is under it.
+            addView(
+                content,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.MATCH_PARENT,
+                    FrameLayout.LayoutParams.MATCH_PARENT
+                )
+            )
             // Off screen until the launcher says otherwise.
             alpha = 0f
         }
@@ -121,12 +131,34 @@ class OverlayPanel(
         gravity = Gravity.START or Gravity.TOP
         flags = WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS or
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
+            // Behind the status and navigation bars rather than between them.
+            // A window of this type is otherwise laid out inside the content
+            // area, and the wallpaper shows through the strips at top and
+            // bottom -- the page reads as a card floating on the home screen
+            // instead of as a page.
+            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+            // Without this the system paints its own opaque backgrounds for
+            // the status and navigation bars on top of the window -- the
+            // frame is already full screen, and the strips came out black
+            // anyway. Saying we draw them ourselves is what makes the page's
+            // own colour reach the edges. The GSA overlay controller sets the
+            // same flag for the same reason.
+            WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS or
             // Not focusable: the launcher keeps the key events, and this page
             // has nothing to type into.
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
             // Starts closed, so starts letting touches through to the launcher.
             WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
+        // Into the cutout too, so the notch area is the page's colour and not
+        // a black bar.
+        layoutInDisplayCutoutMode =
+            WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            // Draw behind the bars; the Scaffold inside still keeps the
+            // content itself clear of them.
+            fitInsetsTypes = 0
+        }
     }
 
     fun detach() {

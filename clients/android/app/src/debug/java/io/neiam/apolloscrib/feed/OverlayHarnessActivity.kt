@@ -25,6 +25,11 @@ import com.google.android.libraries.launcherclient.ILauncherOverlayCallback
  *
  * This does what a launcher does: binds the service, hands over its own window
  * token, and drives the scroll. Debug-only; it is a test rig, not a feature.
+ *
+ * The service keeps one panel and one callback, so while this is attached it
+ * has the overlay -- a launcher that binds meanwhile finds its page opening
+ * somewhere it cannot be seen. Only one thing attaches at a time in practice;
+ * force-stop the app between testing here and testing on a launcher.
  */
 class OverlayHarnessActivity : Activity() {
 
