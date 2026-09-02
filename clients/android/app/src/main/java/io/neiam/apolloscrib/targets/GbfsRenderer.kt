@@ -26,13 +26,19 @@ object GbfsRenderer : SourceRenderer {
         // for loose bikes the feed implies no order to preserve.
         val ordered = stations.sortedByDescending { it.avail ?: 0 }
 
+        val title = entry.label()
+        // A station query names the station and the query the same thing, so
+        // the row would repeat the card's own heading back at it -- and, being
+        // long, push the counts off the edge doing it.
+        val named = ordered.size > 1 || ordered.firstOrNull()?.name != title
+
         return listOf(
             Preview(
                 id = entry.key,
-                title = entry.label(),
+                title = title,
                 subtitle = summary(ordered),
                 iconRes = iconRes,
-                rows = ordered.map { row(it) },
+                rows = ordered.map { row(it, named = named) },
                 empty = "No bikes nearby"
             )
         )
@@ -43,10 +49,10 @@ object GbfsRenderer : SourceRenderer {
      * has only its charge. The web board stamps the same three things --
      * bikes, a bolt for the electric ones, and parking for the docks.
      */
-    private fun row(station: GbfsCondensed): Row = when {
+    private fun row(station: GbfsCondensed, named: Boolean): Row = when {
         station.isFreeBike() -> Row(
             iconRes = R.drawable.fa_bicycle,
-            text = station.name,
+            text = if (named) station.name else "",
             stamps = station.fuel_pct?.let {
                 listOf(Stamp(R.drawable.fa_battery_half, "${(it * 100).toInt()}%"))
             }.orEmpty()
@@ -54,7 +60,7 @@ object GbfsRenderer : SourceRenderer {
 
         else -> Row(
             iconRes = R.drawable.fa_bicycle,
-            text = station.name,
+            text = if (named) station.name else "",
             stamps = buildList {
                 val bikes = station.avail ?: 0
                 add(Stamp(R.drawable.fa_bicycle, "$bikes", flat = "${bikes}b"))

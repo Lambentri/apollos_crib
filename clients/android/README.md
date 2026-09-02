@@ -10,14 +10,33 @@ the Pythiae publishes on change and the phone redraws when it does.
 
 ## What it shows
 
+One Target per source type, added once per query you care about:
+
 | Target | Source | What it draws |
 | --- | --- | --- |
-| Transit | `gtfs` | The next departures from a stop, soonest route first, with a separate target for a severe or stop-specific alert |
-| Bikeshare | `gbfs` | Bikes and docks at a station, or loose bikes for an area query |
+| Transit | `gtfs` | Next departures from a stop, soonest route first, each time marked as realtime or scheduled; a severe or stop-specific alert gets its own card |
+| Bikeshare | `gbfs` | Bikes, e-bikes and docks at a station, or loose bikes for an area query |
 | Weather | `weather` | Current conditions at a focus |
+| Tides | `tidal` | High and low water, in the order the day happens rather than the order the feed sends |
+| Air quality | `aqi` | Whatever the monitor measured — nothing is assumed present |
+| Sun and moon | `ephem` | Sunrise, sunset, moonrise, moonset, and the phase |
+| Calendar | `calendar` | What is coming up, soonest first |
+| Pollen | `pollen` | Grass, trees and weeds, worst first, in-season only |
+| Drought | `drought` | Drought Monitor coverage, worst category with any of the area in it |
+| GitLab / GitHub | `gitlab`, `github` | Recent CI jobs and runs, pass or fail as the row's glyph |
+| Cronos, Packages, Constant | `cronos`, `packages`, `const` | Whatever the publisher sent: these are passthroughs, with no shape to render against |
 
-Each is added once per query: add the Transit target twice and you get two
-stops, each choosing its own query when Smartspacer opens the setup screen.
+Add the Transit target twice and you get two stops, each choosing its own query
+when Smartspacer opens the setup screen.
+
+### What is not here
+
+[`apollos-types`](https://github.com/neiam/apollos-types) is the source of truth
+for the wire format, and this client covers exactly the types it gives a shape
+to. apollos-crib also publishes `icarus`, `mailbox`, `treasury`, `bourse`,
+`hass` and `rideshare`, which the crate does not describe — so this cannot claim
+to read them. They are named at the foot of the board rather than dropped in
+silence. Adding one means adding it to the crate first.
 
 ## Setting it up
 

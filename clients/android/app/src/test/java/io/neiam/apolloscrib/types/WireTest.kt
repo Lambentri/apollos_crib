@@ -61,13 +61,16 @@ class WireTest {
     }
 
     @Test
-    fun `a source with no renderer is dropped rather than failing the board`() {
+    fun `a source with no shape is dropped rather than failing the board`() {
+        // `bourse` is published by apollos-crib but has no type in the
+        // apollos-types crate, so this client does not claim to read it.
         val payload = """
-            {"gtfs-12": [], "cronos-3": [{"anything": true}], "gbfs-7": []}
+            {"gtfs-12": [], "bourse-3": [{"anything": true}], "gbfs-7": []}
         """.trimIndent()
 
         val types = Wire.parse(payload).map { it.type }
         assertEquals(listOf(SourceType.Gtfs, SourceType.Gbfs), types)
+        assertEquals(listOf("bourse"), Wire.unsupported(payload))
     }
 
     @Test

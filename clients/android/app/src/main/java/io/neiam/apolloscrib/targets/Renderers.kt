@@ -158,13 +158,51 @@ object Targets {
     val renderers: List<SourceRenderer> = listOf(
         GtfsRenderer,
         GbfsRenderer,
-        WeatherRenderer
+        WeatherRenderer,
+        TidalRenderer,
+        AqiRenderer,
+        EphemRenderer,
+        CalendarRenderer,
+        PollenRenderer,
+        DroughtRenderer,
+        GitlabRenderer,
+        GithubRenderer,
+        // The passthroughs, drawn from whatever arrived.
+        GenericRenderer(
+            type = SourceType.Cronos,
+            iconRes = io.neiam.apolloscrib.R.drawable.fa_clock,
+            label = "Apollo's Crib: Cronos",
+            description = "A Cronos query from one of your visions"
+        ),
+        GenericRenderer(
+            type = SourceType.Packages,
+            iconRes = io.neiam.apolloscrib.R.drawable.fa_envelopes_bulk,
+            label = "Apollo's Crib: Packages",
+            description = "Package tracking from one of your visions"
+        ),
+        GenericRenderer(
+            type = SourceType.Const,
+            iconRes = io.neiam.apolloscrib.R.drawable.fa_circle_info,
+            label = "Apollo's Crib: Constant",
+            description = "A fixed value from one of your visions"
+        )
     )
 
     private val providers: List<Class<out ApollosTargetProvider>> = listOf(
         GtfsTargetProvider::class.java,
         GbfsTargetProvider::class.java,
-        WeatherTargetProvider::class.java
+        WeatherTargetProvider::class.java,
+        TidalTargetProvider::class.java,
+        AqiTargetProvider::class.java,
+        EphemTargetProvider::class.java,
+        CalendarTargetProvider::class.java,
+        PollenTargetProvider::class.java,
+        DroughtTargetProvider::class.java,
+        GitlabTargetProvider::class.java,
+        GithubTargetProvider::class.java,
+        CronosTargetProvider::class.java,
+        PackagesTargetProvider::class.java,
+        ConstTargetProvider::class.java
     )
 
     fun rendererFor(type: SourceType): SourceRenderer? =

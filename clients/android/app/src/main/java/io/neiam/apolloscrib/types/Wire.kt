@@ -107,14 +107,33 @@ data class QueryInfo(
 )
 
 /**
- * The source types apollos-crib publishes under. Only the ones with a renderer
- * are listed: [Wire.parse] drops the rest, so adding support for one is adding
- * it here plus a renderer.
+ * The source types apollos-crib publishes under.
+ *
+ * These are the ones `apollos-types` gives a shape to, which is the line this
+ * client draws: the crate is the source of truth for the wire format, and a
+ * type it does not describe is one this cannot claim to read. [Wire.parse]
+ * drops anything else, and the board names what it dropped.
+ *
+ * Adding one is: a type in this package, an entry here, a renderer, a provider
+ * and a manifest entry.
  */
 enum class SourceType(val wire: String, val label: String) {
     Gtfs("gtfs", "Transit"),
     Gbfs("gbfs", "Bikeshare"),
-    Weather("weather", "Weather");
+    Weather("weather", "Weather"),
+    Tidal("tidal", "Tides"),
+    Aqi("aqi", "Air quality"),
+    Ephem("ephem", "Sun and moon"),
+    Calendar("calendar", "Calendar"),
+    Pollen("pollen", "Pollen"),
+    Drought("drought", "Drought"),
+    Gitlab("gitlab", "GitLab"),
+    Github("github", "GitHub"),
+    // Passthroughs: the condenser does not normalise these, and neither does
+    // the crate. Drawn generically, from whatever the publisher sent.
+    Cronos("cronos", "Cronos"),
+    Packages("packages", "Packages"),
+    Const("const", "Constant");
 
     companion object {
         fun of(wire: String): SourceType? = entries.firstOrNull { it.wire == wire }

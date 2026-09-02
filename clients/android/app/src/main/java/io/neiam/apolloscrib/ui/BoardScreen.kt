@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.neiam.apolloscrib.data.VisionStore
@@ -244,7 +245,18 @@ private fun BoardRow(row: io.neiam.apolloscrib.targets.Row) {
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Glyph(row.iconRes, size = 16.dp, tint = palette.dim)
-        Text(row.text, style = MaterialTheme.typography.bodyMedium)
+        if (row.text.isNotEmpty()) {
+            // The stamps are the numbers; the text is what they are about. A
+            // long station name should lose its tail rather than push the
+            // counts off the card.
+            Text(
+                row.text,
+                style = MaterialTheme.typography.bodyMedium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false)
+            )
+        }
         row.stamps.forEach { stamp ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,

@@ -92,5 +92,115 @@
             </intent-filter>
         </provider>
 
+        <provider
+            android:name=".targets.TidalTargetProvider"
+            android:authorities="${applicationId}.target.tidal"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.AqiTargetProvider"
+            android:authorities="${applicationId}.target.aqi"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.EphemTargetProvider"
+            android:authorities="${applicationId}.target.ephem"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.CalendarTargetProvider"
+            android:authorities="${applicationId}.target.calendar"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.PollenTargetProvider"
+            android:authorities="${applicationId}.target.pollen"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.DroughtTargetProvider"
+            android:authorities="${applicationId}.target.drought"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.GitlabTargetProvider"
+            android:authorities="${applicationId}.target.gitlab"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.GithubTargetProvider"
+            android:authorities="${applicationId}.target.github"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.CronosTargetProvider"
+            android:authorities="${applicationId}.target.cronos"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.PackagesTargetProvider"
+            android:authorities="${applicationId}.target.packages"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
+        <provider
+            android:name=".targets.ConstTargetProvider"
+            android:authorities="${applicationId}.target.const"
+            android:permission="com.kieronquinn.app.smartspacer.permission.ACCESS_SMARTSPACER_TARGETS"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.kieronquinn.app.smartspacer.TARGET" />
+            </intent-filter>
+        </provider>
+
     </application>
 </manifest>

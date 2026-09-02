@@ -146,7 +146,10 @@ class RendererTest {
             card.rows.single().stamps.map { it.iconRes }
         )
         assertEquals(listOf("8b", "1e", "7d"), card.rows.single().stamps.map { it.flat })
-        assertEquals(listOf("Teele Square 8b 1e 7d"), card.items)
+        // The station and the query are called the same thing here, so the row
+        // does not say it again under a heading that already does.
+        assertEquals("", card.rows.single().text)
+        assertEquals(listOf("8b 1e 7d"), card.items)
     }
 
     @Test
@@ -163,6 +166,7 @@ class RendererTest {
         )
         val card = previews.single()
         assertEquals("2 bikes nearby", card.subtitle)
+        // More than one, so each is named.
         assertEquals(listOf("E-bike 4821 62%", "E-bike 1102 31%"), card.items)
         // A loose bike has a charge, not a dock to be returned to.
         assertEquals(
