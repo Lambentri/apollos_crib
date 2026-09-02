@@ -105,3 +105,21 @@ The palette and typography are lifted from the DMS Android app: the same OKLCh
 themes ("Her", "After Dark", "Forest" ...) that the Scribus public routes render
 under, and B612 for text. The Smartspace targets themselves are drawn by the
 launcher and are not ours to type.
+
+The board's glyphs are the ones the web board draws -- a bus for a bus, a
+subway for a subway, a broadcast tower on a time the feed gave and a clock on
+one the timetable did, a pin on an alert that names your stop. They are not
+lookalikes: `tools/fa_to_vector.py` reads the Font Awesome metadata already
+vendored at `clients/lilygo4.7/fontawesome-free-6.2.0-desktop` -- the same
+source `RoomSanctumWeb.IconHelpers` and `live_preview.ex` name -- and emits the
+same paths as Android drawables. Regenerate with:
+
+```sh
+python3 tools/fa_to_vector.py
+```
+
+Font Awesome Free icons are CC BY 4.0; the vendored `LICENSE.txt` covers them.
+
+A Smartspace list row is plain text, so the glyphs are the app's alone. Rows
+carry a text form for that surface -- `8b 1e 7d` rather than `8 1 7`, which is
+not a number of bikes, e-bikes and docks to anybody reading it.

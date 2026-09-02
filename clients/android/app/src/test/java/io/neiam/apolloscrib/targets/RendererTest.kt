@@ -1,5 +1,6 @@
 package io.neiam.apolloscrib.targets
 
+import io.neiam.apolloscrib.R
 import io.neiam.apolloscrib.types.Wire
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -35,6 +36,9 @@ class RendererTest {
         // 87 leaves first, so it leads -- publisher order says nothing.
         assertEquals("87 at 08:05", board.subtitle)
         assertEquals(listOf("87 Lechmere 08:05 08:35", "89 Sullivan 08:20 08:50"), board.items)
+        // A bus looks like a bus, and a scheduled time like a timetable.
+        assertEquals(R.drawable.fa_bus, board.rows.first().iconRes)
+        assertTrue(board.rows.first().stamps.all { it.iconRes == R.drawable.fa_clock })
     }
 
     @Test
@@ -47,7 +51,13 @@ class RendererTest {
                 """.trimIndent()
             )
         )
-        assertEquals("87 at 08:07 · live", previews.single().subtitle)
+        val preview = previews.single()
+        assertEquals("87 at 08:07 · live", preview.subtitle)
+        // The tower is the claim that this came from the feed, not the timetable.
+        assertEquals(
+            listOf(R.drawable.fa_tower_broadcast),
+            preview.rows.single().stamps.map { it.iconRes }
+        )
     }
 
     @Test
@@ -67,6 +77,9 @@ class RendererTest {
         assertEquals(2, previews.size)
         assertEquals("Red Line suspended", previews.first().title)
         assertEquals(Preview.Style.Basic, previews.first().style)
+        assertEquals(R.drawable.fa_triangle_exclamation, previews.first().iconRes)
+        // The board behind it is a subway, and says so.
+        assertEquals(R.drawable.fa_train_subway, previews.last().iconRes)
     }
 
     @Test
@@ -97,6 +110,8 @@ class RendererTest {
         )
         assertEquals(2, previews.size)
         assertEquals("Escalator closure", previews.first().title)
+        // A pin rather than a warning triangle: this one is about the stop.
+        assertEquals(R.drawable.fa_location_dot, previews.first().iconRes)
     }
 
     @Test
@@ -106,7 +121,7 @@ class RendererTest {
         )
         val board = previews.single()
         assertEquals("Curtis St", board.title)
-        assertTrue(board.items.isEmpty())
+        assertTrue(board.rows.isEmpty())
         assertEquals("Nothing due", board.empty)
     }
 
@@ -124,7 +139,14 @@ class RendererTest {
         )
         val card = previews.single()
         assertEquals("8 bikes · 1 electric", card.subtitle)
-        assertEquals(listOf("Teele Square 8b 7d"), card.items)
+        // Bikes, e-bikes, docks -- each behind its own glyph, and still
+        // readable where the glyphs cannot go.
+        assertEquals(
+            listOf(R.drawable.fa_bicycle, R.drawable.fa_bolt_lightning, R.drawable.fa_square_parking),
+            card.rows.single().stamps.map { it.iconRes }
+        )
+        assertEquals(listOf("8b", "1e", "7d"), card.rows.single().stamps.map { it.flat })
+        assertEquals(listOf("Teele Square 8b 1e 7d"), card.items)
     }
 
     @Test
@@ -142,6 +164,11 @@ class RendererTest {
         val card = previews.single()
         assertEquals("2 bikes nearby", card.subtitle)
         assertEquals(listOf("E-bike 4821 62%", "E-bike 1102 31%"), card.items)
+        // A loose bike has a charge, not a dock to be returned to.
+        assertEquals(
+            listOf(R.drawable.fa_battery_half),
+            card.rows.first().stamps.map { it.iconRes }
+        )
     }
 
     @Test

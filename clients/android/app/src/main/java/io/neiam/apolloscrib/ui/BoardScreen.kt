@@ -25,6 +25,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import io.neiam.apolloscrib.data.VisionStore
 import io.neiam.apolloscrib.mqtt.AnkyraClient
@@ -192,19 +193,15 @@ private fun StatusHeader(
 
 /**
  * One card, drawn from the same description the Smartspace target is built
- * from -- title, supporting line, and up to three rows.
+ * from -- and, where the Smartspace templates only take strings, with the
+ * glyphs the web board uses.
  */
 @Composable
 private fun PreviewCard(preview: Preview) {
     val palette = LocalAppTheme.current
     Card(Modifier.fillMaxWidth()) {
         Row(Modifier.padding(16.dp)) {
-            Icon(
-                painter = painterResource(preview.iconRes),
-                contentDescription = null,
-                modifier = Modifier.size(28.dp),
-                tint = palette.primary
-            )
+            Glyph(preview.iconRes, size = 28.dp, tint = palette.primary)
             Spacer(Modifier.width(12.dp))
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(preview.title, style = MaterialTheme.typography.titleMedium)
@@ -213,7 +210,7 @@ private fun PreviewCard(preview: Preview) {
                 }
                 if (preview.style == Preview.Style.List) {
                     Spacer(Modifier.width(4.dp))
-                    if (preview.items.isEmpty()) {
+                    if (preview.rows.isEmpty()) {
                         Text(
                             preview.empty,
                             style = MaterialTheme.typography.bodyMedium,
@@ -222,10 +219,8 @@ private fun PreviewCard(preview: Preview) {
                     } else {
                         // Three is what the Smartspace template shows; more
                         // here would be a preview of something else.
-                        preview.items.take(3).forEach { item ->
-                            Text(item, style = MaterialTheme.typography.bodyMedium)
-                        }
-                        val extra = preview.items.size - 3
+                        preview.rows.take(3).forEach { row -> BoardRow(row) }
+                        val extra = preview.rows.size - 3
                         if (extra > 0) {
                             Text(
                                 "+$extra more",
@@ -238,6 +233,47 @@ private fun PreviewCard(preview: Preview) {
             }
         }
     }
+}
+
+/** `[bus] 87 Arlington Center  [tower] 15:33  [clock] 15:56` */
+@Composable
+private fun BoardRow(row: io.neiam.apolloscrib.targets.Row) {
+    val palette = LocalAppTheme.current
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        Glyph(row.iconRes, size = 16.dp, tint = palette.dim)
+        Text(row.text, style = MaterialTheme.typography.bodyMedium)
+        row.stamps.forEach { stamp ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(3.dp)
+            ) {
+                // A time from the feed and a time from the timetable are not
+                // the same claim, and the glyph is what says which. Matched
+                // to the row's own glyph: the broadcast tower is a thin mast
+                // between two arcs, and below 16 it reads as a quote mark
+                // rather than as an aerial.
+                Glyph(stamp.iconRes, size = 16.dp, tint = palette.accent)
+                Text(
+                    stamp.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = palette.accent
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun Glyph(res: Int, size: Dp, tint: Color) {
+    Icon(
+        painter = painterResource(res),
+        contentDescription = null,
+        modifier = Modifier.size(size),
+        tint = tint
+    )
 }
 
 private fun clock(at: Long): String = DateFormat.getTimeInstance().format(Date(at))

@@ -15,7 +15,7 @@ import kotlin.math.roundToInt
 object WeatherRenderer : SourceRenderer {
 
     override val type = SourceType.Weather
-    override val iconRes = R.drawable.ic_weather
+    override val iconRes = R.drawable.fa_cloud_sun
     override val label = "Apollo's Crib: Weather"
     override val description = "Conditions at a focus in one of your visions"
 

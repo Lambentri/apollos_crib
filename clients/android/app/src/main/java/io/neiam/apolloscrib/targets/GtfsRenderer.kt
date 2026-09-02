@@ -1,6 +1,7 @@
 package io.neiam.apolloscrib.targets
 
 import io.neiam.apolloscrib.R
+import io.neiam.apolloscrib.types.AlertCondensed
 import io.neiam.apolloscrib.types.GtfsCondensed
 import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.types.VisionEntry
@@ -19,7 +20,7 @@ import io.neiam.apolloscrib.types.VisionEntry
 object GtfsRenderer : SourceRenderer {
 
     override val type = SourceType.Gtfs
-    override val iconRes = R.drawable.ic_transit
+    override val iconRes = R.drawable.fa_bus_simple
     override val label = "Apollo's Crib: Transit"
     override val description = "Next departures from a stop in one of your visions"
 
@@ -34,19 +35,33 @@ object GtfsRenderer : SourceRenderer {
             id = entry.key,
             title = entry.label(),
             subtitle = summary(soonest),
-            iconRes = iconRes,
-            items = soonest.map { line(it) },
+            // The stop's own glyph is whatever mostly calls there -- a bus
+            // stop and a subway platform should not look alike.
+            iconRes = modeIcon(soonest.firstOrNull()?.mode),
+            rows = soonest.map { row(it) },
             empty = "Nothing due"
         )
 
         return listOfNotNull(alert(entry, routes)) + board
     }
 
-    /** `14 → Heath St 08:00` -- the template truncates around 25 characters. */
-    private fun line(route: GtfsCondensed): String {
-        val next = route.departures().take(2).joinToString(" ") { it.asClockTime() }
-        return "${route.displayName()} ${route.dest} $next"
-    }
+    /**
+     * `[bus] 87 Arlington Center [tower] 15:33 [clock] 15:56` -- each time
+     * stamped with where it came from, as the web board stamps them. Two
+     * departures: a third rarely fits the width, and the row after it is
+     * another route the rider might take instead.
+     */
+    private fun row(route: GtfsCondensed): Row = Row(
+        iconRes = modeIcon(route.mode),
+        text = "${route.displayName()} ${route.dest}",
+        stamps = route.times.indices.take(2).map { index ->
+            val live = route.times_live?.getOrNull(index)
+            Stamp(
+                iconRes = if (live != null) R.drawable.fa_tower_broadcast else R.drawable.fa_clock,
+                text = (live ?: route.times[index]).asClockTime()
+            )
+        }
+    )
 
     /** The one thing worth putting on the second line: what leaves first. */
     private fun summary(routes: List<GtfsCondensed>): String? {
@@ -69,9 +84,29 @@ object GtfsRenderer : SourceRenderer {
             id = "${entry.key}-alert",
             title = lead.header ?: lead.effect.humanise(),
             subtitle = entry.label(),
-            iconRes = R.drawable.ic_alert,
+            iconRes = alertIcon(lead),
             style = Preview.Style.Basic
         )
+    }
+
+    /** A pin when the alert is about this stop, as the web board does it. */
+    private fun alertIcon(alert: AlertCondensed): Int =
+        if (alert.stop_specific == true) R.drawable.fa_location_dot
+        else R.drawable.fa_triangle_exclamation
+
+    /** The same mapping live_preview.ex uses, so a route looks like itself. */
+    private fun modeIcon(mode: String?): Int = when (mode) {
+        "Bus" -> R.drawable.fa_bus
+        "Trolleybus" -> R.drawable.fa_bus_simple
+        "Subway" -> R.drawable.fa_train_subway
+        "Rail" -> R.drawable.fa_train
+        "LightRail" -> R.drawable.fa_train_tram
+        "Ferry" -> R.drawable.fa_ferry
+        "CableCar", "Gondola" -> R.drawable.fa_cable_car
+        "Funicular" -> R.drawable.fa_mountain
+        // Monorail has no glyph of its own in the free set, and a tram reads
+        // closer than the web's stand-in does.
+        else -> R.drawable.fa_train_tram
     }
 
     /** GTFS-RT spells its enums `NO_SERVICE`. */

@@ -26,12 +26,43 @@ data class Preview(
     val title: String,
     val subtitle: String?,
     val iconRes: Int,
-    val items: List<String> = emptyList(),
+    val rows: List<Row> = emptyList(),
     val empty: String = "Nothing to show",
     val style: Style = Style.List
 ) {
     enum class Style { Basic, List }
+
+    /** The rows as the Smartspace template wants them: one line of text each. */
+    val items: List<String> get() = rows.map { it.flat() }
 }
+
+/**
+ * One line of a card: a leading glyph, what it is, and any number of stamped
+ * values after it.
+ *
+ * The shape the web board draws -- a bus for a bus, then each departure behind
+ * a broadcast tower if the feed gave it and a clock if the timetable did. The
+ * Smartspace templates take one icon for a whole list and plain strings for
+ * its rows, so there [flat] is what shows; in the app, where there is room,
+ * the icons are drawn.
+ */
+data class Row(
+    val iconRes: Int,
+    val text: String,
+    val stamps: List<Stamp> = emptyList()
+) {
+    fun flat(): String =
+        (listOf(text) + stamps.map { it.flat }).joinToString(" ").trim()
+}
+
+/**
+ * A value with a glyph saying what it counts.
+ *
+ * [flat] is the same value for somewhere the glyph cannot go -- a Smartspace
+ * list row is plain text, and "8 1 7" is not a number of bikes, a number of
+ * e-bikes and a number of docks to anybody reading it.
+ */
+data class Stamp(val iconRes: Int, val text: String, val flat: String = text)
 
 /**
  * What one source type looks like.

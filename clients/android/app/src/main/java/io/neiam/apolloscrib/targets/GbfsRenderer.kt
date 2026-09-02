@@ -15,7 +15,7 @@ import io.neiam.apolloscrib.types.VisionEntry
 object GbfsRenderer : SourceRenderer {
 
     override val type = SourceType.Gbfs
-    override val iconRes = R.drawable.ic_bike
+    override val iconRes = R.drawable.fa_bicycle
     override val label = "Apollo's Crib: Bikeshare"
     override val description = "Bikes and docks at a station in one of your visions"
 
@@ -32,22 +32,40 @@ object GbfsRenderer : SourceRenderer {
                 title = entry.label(),
                 subtitle = summary(ordered),
                 iconRes = iconRes,
-                items = ordered.map { line(it) },
+                rows = ordered.map { row(it) },
                 empty = "No bikes nearby"
             )
         )
     }
 
-    private fun line(station: GbfsCondensed): String = when {
-        station.isFreeBike() -> {
-            val charge = station.fuel_pct?.let { " ${(it * 100).toInt()}%" }.orEmpty()
-            "${station.name}$charge"
-        }
-        else -> {
-            val bikes = station.avail ?: 0
-            val docks = station.docks_avail ?: 0
-            "${station.name} ${bikes}b ${docks}d"
-        }
+    /**
+     * A dock counts what is in it and what is free to return to; a loose bike
+     * has only its charge. The web board stamps the same three things --
+     * bikes, a bolt for the electric ones, and parking for the docks.
+     */
+    private fun row(station: GbfsCondensed): Row = when {
+        station.isFreeBike() -> Row(
+            iconRes = R.drawable.fa_bicycle,
+            text = station.name,
+            stamps = station.fuel_pct?.let {
+                listOf(Stamp(R.drawable.fa_battery_half, "${(it * 100).toInt()}%"))
+            }.orEmpty()
+        )
+
+        else -> Row(
+            iconRes = R.drawable.fa_bicycle,
+            text = station.name,
+            stamps = buildList {
+                val bikes = station.avail ?: 0
+                add(Stamp(R.drawable.fa_bicycle, "$bikes", flat = "${bikes}b"))
+                val electric = station.avail_elec ?: 0
+                if (electric > 0) {
+                    add(Stamp(R.drawable.fa_bolt_lightning, "$electric", flat = "${electric}e"))
+                }
+                val docks = station.docks_avail ?: 0
+                add(Stamp(R.drawable.fa_square_parking, "$docks", flat = "${docks}d"))
+            }
+        )
     }
 
     private fun summary(stations: List<GbfsCondensed>): String? {
