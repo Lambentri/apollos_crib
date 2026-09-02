@@ -29,6 +29,20 @@ class AnkyraClient(
 
     private var client: Mqtt3AsyncClient? = null
 
+    /**
+     * Which connection attempt is the live one.
+     *
+     * A replaced client goes on firing its listeners: HiveMQ reconnects on its
+     * own, and tearing one down produces a disconnect event that arrives after
+     * its replacement has already connected. Both write the same state, so the
+     * late one wins and the screen sits on "Connecting" while payloads arrive.
+     * Every listener checks it still belongs to the current attempt.
+     *
+     * Written from the main thread, read from HiveMQ's -- hence volatile.
+     */
+    @Volatile
+    private var generation = 0
+
     fun connect() {
         if (!settings.isConfigured) {
             onState(State.Failed)
@@ -36,6 +50,8 @@ class AnkyraClient(
         }
         disconnect()
         onState(State.Connecting)
+
+        val attempt = ++generation
 
         val built = MqttClient.builder()
             .useMqttVersion3()
@@ -52,12 +68,15 @@ class AnkyraClient(
                 // reconnect to carry the old one. A repeat subscription to the
                 // same filter replaces it at the broker, so this costs nothing
                 // and removes the case where we are connected and deaf.
-                client?.let { subscribe(it) }
+                if (attempt == generation) client?.let { subscribe(it, attempt) }
             }
             .addDisconnectedListener { context ->
-                onState(
-                    if (context.reconnector.isReconnect) State.Connecting else State.Disconnected
-                )
+                if (attempt == generation) {
+                    onState(
+                        if (context.reconnector.isReconnect) State.Connecting
+                        else State.Disconnected
+                    )
+                }
             }
             .apply { if (settings.useTls) sslWithDefaultConfig() }
             .buildAsync()
@@ -80,7 +99,7 @@ class AnkyraClient(
             }
             .send()
             .whenComplete { _, error ->
-                if (error != null) {
+                if (error != null && attempt == generation) {
                     // Not fatal: the reconnector keeps trying, and the
                     // listeners above will say so when one lands.
                     Log.w(TAG, "connect failed", error)
@@ -91,7 +110,7 @@ class AnkyraClient(
             }
     }
 
-    private fun subscribe(client: Mqtt3AsyncClient) {
+    private fun subscribe(client: Mqtt3AsyncClient, attempt: Int) {
         client.subscribeWith()
             .topicFilter(settings.topic)
             // QoS 0, matching the queue name Ankyra looks for when it counts
@@ -103,6 +122,7 @@ class AnkyraClient(
             }
             .send()
             .whenComplete { _, error ->
+                if (attempt != generation) return@whenComplete
                 if (error != null) {
                     Log.w(TAG, "subscribe failed", error)
                     onState(State.Failed)
@@ -113,6 +133,9 @@ class AnkyraClient(
     }
 
     fun disconnect() {
+        // Retires the current attempt, so whatever the old client says on its
+        // way out lands after its own generation has passed and is ignored.
+        generation++
         client?.let { existing ->
             runCatching { existing.disconnect() }
         }
