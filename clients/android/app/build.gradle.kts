@@ -36,6 +36,9 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
     packaging {
         resources {
             excludes += "META-INF/INDEX.LIST"
@@ -60,5 +63,8 @@ dependencies {
 
     debugImplementation(libs.androidx.compose.ui.tooling)
     testImplementation(libs.junit)
+    // Pairing parses an android.net.Uri; Robolectric is what makes that a
+    // unit test rather than an instrumented one.
+    testImplementation(libs.robolectric)
     testImplementation(libs.kotlinx.serialization.json)
 }

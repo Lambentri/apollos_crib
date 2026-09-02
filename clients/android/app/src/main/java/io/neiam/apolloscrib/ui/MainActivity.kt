@@ -39,12 +39,15 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.text.KeyboardOptions
+import io.neiam.apolloscrib.data.Pairing
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
 import io.neiam.apolloscrib.ui.theme.CribTheme
 import io.neiam.apolloscrib.ui.theme.LocalAppTheme
 import io.neiam.apolloscrib.ui.theme.appThemeByKey
 import io.neiam.apolloscrib.data.VisionStore
+import android.content.Intent
+import android.widget.Toast
 import io.neiam.apolloscrib.mqtt.AnkyraClient
 import io.neiam.apolloscrib.mqtt.AnkyraService
 import java.text.DateFormat
@@ -58,10 +61,18 @@ import java.util.Date
  */
 class MainActivity : ComponentActivity() {
 
+    /**
+     * Bumped when a pairing link lands, so the fields below re-read what it
+     * wrote rather than keeping what the user was looking at.
+     */
+    private val paired = mutableStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val settings = Settings(this)
         val store = VisionStore(this)
+
+        pair(intent, settings)
 
         setContent {
             var themeKey by remember { mutableStateOf(settings.themeKey) }
@@ -71,6 +82,7 @@ class MainActivity : ComponentActivity() {
                         modifier = Modifier.fillMaxSize().padding(padding),
                         settings = settings,
                         store = store,
+                        pairingKey = paired.value,
                         themeKey = themeKey,
                         onThemeChange = {
                             settings.themeKey = it
@@ -85,6 +97,27 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
+    // singleTop, so a scan while the app is already open arrives here rather
+    // than as a second copy of the activity.
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pair(intent, Settings(this))
+    }
+
+    /**
+     * Take a pairing link, if this intent is one, and connect on it. Said out
+     * loud: a scan that silently rewrote the connection would be indistinguishable
+     * from one that did nothing.
+     */
+    private fun pair(intent: Intent?, settings: Settings) {
+        val pairing = Pairing.from(intent?.data) ?: return
+        pairing.applyTo(settings)
+        paired.value = paired.value + 1
+        AnkyraService.start(this)
+        Toast.makeText(this, "Paired with ${pairing.topic}", Toast.LENGTH_LONG).show()
+    }
 }
 
 @Composable
@@ -92,19 +125,21 @@ private fun ConnectionScreen(
     modifier: Modifier = Modifier,
     settings: Settings,
     store: VisionStore,
+    pairingKey: Int,
     themeKey: String,
     onThemeChange: (String) -> Unit,
     onConnect: () -> Unit,
     onDisconnect: () -> Unit
 ) {
-    var host by remember { mutableStateOf(settings.host) }
-    var port by remember { mutableStateOf(settings.port.toString()) }
-    var username by remember { mutableStateOf(settings.username) }
-    var password by remember { mutableStateOf(settings.password) }
-    var topic by remember { mutableStateOf(settings.topic) }
-    var tls by remember { mutableStateOf(settings.useTls) }
+    var host by remember(pairingKey) { mutableStateOf(settings.host) }
+    var port by remember(pairingKey) { mutableStateOf(settings.port.toString()) }
+    var username by remember(pairingKey) { mutableStateOf(settings.username) }
+    var password by remember(pairingKey) { mutableStateOf(settings.password) }
+    var topic by remember(pairingKey) { mutableStateOf(settings.topic) }
+    var tls by remember(pairingKey) { mutableStateOf(settings.useTls) }
 
     val state by AnkyraService.connectionState.collectAsState()
+    val boards by VisionStore.boards.collectAsState()
 
     // Android 13+ will not show the service's notification without this, and
     // the service is the connection -- so it is asked for here rather than
@@ -205,13 +240,14 @@ private fun ConnectionScreen(
                         else -> palette.dim
                     }
                 )
-                val last = store.lastUpdated()
+                // Keyed on the board count so a new payload redraws this card.
+                val last = remember(boards) { store.lastUpdated() }
                 Text(
                     if (last == null) "No board received yet"
                     else "Last board ${DateFormat.getTimeInstance().format(Date(last))}",
                     style = MaterialTheme.typography.bodySmall
                 )
-                val entries = store.entries()
+                val entries = remember(boards) { store.entries() }
                 if (entries.isNotEmpty()) {
                     Text(
                         "${entries.size} queries: " +

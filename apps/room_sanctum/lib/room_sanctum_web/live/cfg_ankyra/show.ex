@@ -9,7 +9,10 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
       Phoenix.PubSub.subscribe(RoomSanctum.PubSub, RoomSanctum.Worker.Ankyra.topic(id))
     end
 
-    {:ok, assign(socket, :consumer_count, nil)}
+    {:ok,
+     socket
+     |> assign(:consumer_count, nil)
+     |> assign(:broker, default_broker())}
   end
 
   @impl true
@@ -17,7 +20,8 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
     {:noreply,
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
-     |> assign(:ankyra, Accounts.get_rabbit_user!(id))}
+     |> assign(:ankyra, Accounts.get_rabbit_user!(id))
+     |> then(&assign_pairing(&1, &1.assigns.broker))}
   end
 
   @impl true
@@ -51,6 +55,85 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
     new_list = Enum.reject(ankyra.client_ids, &(&1 == client_id))
     {:ok, updated} = Accounts.update_rabbit_user(ankyra, %{client_ids: new_list})
     {:noreply, assign(socket, :ankyra, updated)}
+  end
+
+  # The broker's address is not the app's: the phone reaches RabbitMQ directly,
+  # and where that is depends on how the cluster is exposed. Configured where
+  # it is known, corrected here where it is not, without a deploy.
+  def handle_event("set-broker", %{"host" => host, "port" => port} = params, socket) do
+    broker = %{
+      host: String.trim(host),
+      port: parse_port(port),
+      tls: params["tls"] == "on"
+    }
+
+    {:noreply, assign_pairing(socket, broker)}
+  end
+
+  defp assign_pairing(socket, broker) do
+    uri = pairing_uri(socket.assigns.ankyra, broker)
+
+    socket
+    |> assign(:broker, broker)
+    |> assign(:pairing_uri, uri)
+    |> assign(:pairing_qr, qr_svg(uri))
+  end
+
+  @doc """
+  Everything a client needs to subscribe, as one link.
+
+  A custom scheme rather than a payload the app has to be pointed at: the
+  phone's own camera resolves it, so pairing is scan-and-open with no scanner
+  in the client and no five fields retyped by hand.
+  """
+  def pairing_uri(ankyra, broker) do
+    query =
+      URI.encode_query(%{
+        "host" => broker.host,
+        "port" => broker.port,
+        "user" => ankyra.username,
+        "pass" => ankyra.password,
+        "topic" => ankyra.topic,
+        "tls" => if(broker.tls, do: "1", else: "0")
+      })
+
+    "apolloscrib://ankyra?" <> query
+  end
+
+  defp qr_svg(uri) do
+    uri
+    |> EQRCode.encode()
+    |> EQRCode.svg(background_color: "#ffffff", color: "#000000", viewbox: true)
+    |> strip_xml_prolog()
+  end
+
+  # eqrcode writes a standalone SVG document, prolog and all. Inline in HTML
+  # that prolog is not markup, and browsers render it as text above the code.
+  defp strip_xml_prolog(svg) do
+    String.replace(svg, ~r/\A\s*<\?xml[^>]*\?>\s*/, "")
+  end
+
+  defp default_broker do
+    configured = Application.get_env(:room_sanctum, :mqtt, [])
+
+    %{
+      # The app's own hostname is the best guess available and is right
+      # whenever the broker sits behind the same name.
+      host: Keyword.get(configured, :host) || endpoint_host(),
+      port: Keyword.get(configured, :port, 1883),
+      tls: Keyword.get(configured, :tls, false)
+    }
+  end
+
+  defp endpoint_host do
+    RoomSanctumWeb.Endpoint.config(:url)[:host] || "localhost"
+  end
+
+  defp parse_port(port) do
+    case Integer.parse(to_string(port)) do
+      {n, _} when n > 0 and n < 65_536 -> n
+      _ -> 1883
+    end
   end
 
   defp page_title(:show), do: "Ankyra Detail"

@@ -68,6 +68,9 @@ defmodule RoomSanctum.MixProject do
       {:telemetry_poller, "~> 1.0"},
       {:gettext, "~> 0.18"},
       {:jason, "~> 1.2"},
+      # Pairing an Ankyra with a phone: the show page draws its connection as a
+      # QR rather than five fields to retype. Pure Elixir, SVG out, no ports.
+      {:eqrcode, "~> 0.2"},
       {:plug_cowboy, "~> 2.5"},
       {:timex, "~> 3.7.8"},
       {:poison, "~> 5.0", override: true},

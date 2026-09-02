@@ -4,6 +4,8 @@ import android.content.Context
 import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.types.VisionEntry
 import io.neiam.apolloscrib.types.Wire
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import java.io.File
 
 /**
@@ -26,6 +28,10 @@ class VisionStore(context: Context) {
         val temp = File(file.parentFile, "$FILE_NAME.tmp")
         temp.writeText(payload)
         temp.renameTo(file)
+        // The Targets re-read on every call, so they need no telling. The
+        // settings screen is the one reader that stays on screen across a
+        // tick, and it has to be told the file underneath it has moved.
+        revision.value = revision.value + 1
     }
 
     fun entries(): List<VisionEntry> {
@@ -51,6 +57,14 @@ class VisionStore(context: Context) {
     }
 
     companion object {
+        /**
+         * Bumped on every board that lands, for anything holding a composition
+         * open over one. Process-local, which is all that is needed: the
+         * service that writes and the screen that watches are the same process.
+         */
+        val revision = MutableStateFlow(0L)
+        val boards: StateFlow<Long> get() = revision
+
         private const val FILE_NAME = "vision.json"
         private const val STALE_AFTER_MS = 30 * 60 * 1000L
     }

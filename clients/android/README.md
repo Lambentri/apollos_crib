@@ -21,10 +21,18 @@ stops, each choosing its own query when Smartspacer opens the setup screen.
 
 ## Setting it up
 
-1. In Apollo's Crib, go to `cfg/ankyra` and note the rabbit user's **username**,
-   **password** and **topic**. Leave auto-registration on, or add the client id
-   the app shows you to that Ankyra's client ids -- the broker will refuse the
-   connection otherwise, and Ankyra counts its consumers by that id.
+1. In Apollo's Crib, open the Ankyra at `cfg/ankyra/<id>` and scan the **Pair a
+   Client** QR with the phone's camera. It carries the credentials, the topic
+   and the broker address as an `apolloscrib://ankyra` link, which this app
+   handles -- nothing is retyped and there is no scanner in here to break.
+   Check the broker host on that page first: it is where the phone reaches
+   RabbitMQ, which is not necessarily where the app is.
+
+   Failing that, copy the username, password and topic across by hand.
+
+   Either way, leave auto-registration on, or add the client id the app shows
+   you to that Ankyra's client ids -- the broker will refuse the connection
+   otherwise, and Ankyra counts its consumers by that id.
 2. Point a Pythiae at the vision you want and give it that Ankyra.
 3. Install this app, fill in the broker host, port (1883 for the RabbitMQ MQTT
    plugin) and those credentials, and connect. The screen shows the queries as

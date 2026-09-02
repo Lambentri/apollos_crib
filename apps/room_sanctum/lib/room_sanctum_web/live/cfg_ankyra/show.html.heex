@@ -54,6 +54,61 @@
   </div>
   <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
     <div class="card-body">
+      <h3 class="card-title">Pair a Client</h3>
+      <p class="text-sm opacity-70">
+        Scan with the phone's camera. The link carries this Ankyra's credentials
+        and topic, so nothing is retyped — Apollo's Crib for Android opens it and
+        connects. The broker's address is not the app's, so check it here.
+      </p>
+      <div class="flex flex-wrap items-start gap-4">
+        <div class="bg-white p-3 rounded-xl shrink-0 w-64 [&>svg]:w-full [&>svg]:h-auto">
+          <%= Phoenix.HTML.raw(@pairing_qr) %>
+        </div>
+        <div class="flex-1 min-w-[18rem]">
+          <form phx-change="set-broker" class="flex flex-wrap gap-2 items-end">
+            <label class="form-control">
+              <span class="label-text">Broker host</span>
+              <input
+                type="text"
+                name="host"
+                value={@broker.host}
+                class="input input-bordered input-sm font-mono"
+                autocomplete="off"
+              />
+            </label>
+            <label class="form-control">
+              <span class="label-text">Port</span>
+              <input
+                type="number"
+                name="port"
+                value={@broker.port}
+                class="input input-bordered input-sm w-24 font-mono"
+              />
+            </label>
+            <label class="label cursor-pointer gap-2">
+              <span class="label-text">TLS</span>
+              <input type="checkbox" name="tls" class="toggle toggle-accent toggle-sm" checked={@broker.tls} />
+            </label>
+          </form>
+          <pre class="mt-3 text-xs whitespace-pre-wrap break-all opacity-70"><%= @pairing_uri %></pre>
+          <%= if @ankyra.auto_register_clients do %>
+            <p class="text-sm opacity-70 mt-2">
+              The client registers its own id on first connect.
+            </p>
+          <% else %>
+            <p class="text-sm text-warning mt-2">
+              <i class="fas fa-fw fa-triangle-exclamation"></i>
+              Auto-register is off — add the client's id below, or its first
+              connection will be refused.
+            </p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+    <div class="card-body">
       <div class="flex items-center justify-between">
         <h3 class="card-title">Allowed Client IDs</h3>
         <label class="label cursor-pointer gap-2">
