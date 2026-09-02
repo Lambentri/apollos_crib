@@ -49,7 +49,8 @@ import java.util.Date
 fun BoardScreen(
     modifier: Modifier = Modifier,
     store: VisionStore,
-    onEditConnection: () -> Unit
+    /** Null where the board is read-only -- the launcher's feed page. */
+    onEditConnection: (() -> Unit)?
 ) {
     val boards by VisionStore.boards.collectAsState()
     val state by AnkyraService.connectionState.collectAsState()
@@ -124,13 +125,15 @@ fun BoardScreen(
             }
         }
 
-        item {
-            Text(
-                "Add these as Targets from Smartspacer: Targets, then Apollo's Crib. " +
-                    "Each one asks which query it should show.",
-                style = MaterialTheme.typography.bodySmall,
-                color = LocalAppTheme.current.dim
-            )
+        if (onEditConnection != null) {
+            item {
+                Text(
+                    "Add these as Targets from Smartspacer: Targets, then Apollo's Crib. " +
+                        "Each one asks which query it should show.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = LocalAppTheme.current.dim
+                )
+            }
         }
     }
 }
@@ -140,7 +143,7 @@ private fun StatusHeader(
     state: AnkyraClient.State,
     lastUpdated: Long?,
     stale: Boolean,
-    onEditConnection: () -> Unit
+    onEditConnection: (() -> Unit)?
 ) {
     val palette = LocalAppTheme.current
     Row(
@@ -182,11 +185,13 @@ private fun StatusHeader(
                     else -> palette.dim
                 }
             )
-            TextButton(
-                onClick = onEditConnection,
-                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
-            ) {
-                Text("Connection", style = MaterialTheme.typography.bodySmall)
+            onEditConnection?.let { edit ->
+                TextButton(
+                    onClick = edit,
+                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                ) {
+                    Text("Connection", style = MaterialTheme.typography.bodySmall)
+                }
             }
         }
     }

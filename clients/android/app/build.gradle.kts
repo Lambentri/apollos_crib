@@ -35,6 +35,9 @@ android {
     }
     buildFeatures {
         compose = true
+        // The launcher overlay interface is AIDL, and AGP leaves that off by
+        // default now.
+        aidl = true
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true

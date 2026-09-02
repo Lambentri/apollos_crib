@@ -50,6 +50,23 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- The board as a launcher's page to the left of the home screen.
+             Launchers implementing Google's "minus one" gesture look for this
+             action and this scheme; the api version tells the client which
+             attach call to use. -->
+        <service
+            android:name=".feed.FeedOverlayService"
+            android:exported="true"
+            android:enabled="true">
+            <intent-filter>
+                <action android:name="com.android.launcher3.WINDOW_OVERLAY" />
+                <data android:scheme="app" />
+            </intent-filter>
+            <meta-data
+                android:name="service.api.version"
+                android:value="7" />
+        </service>
+
         <receiver
             android:name=".mqtt.BootReceiver"
             android:exported="true">

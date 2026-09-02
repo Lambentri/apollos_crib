@@ -68,6 +68,34 @@ The connection is a foreground service with an ongoing notification. That is
 what an always-open socket costs on Android; the alternative is polling, which
 this deliberately does not do.
 
+## As a launcher's feed page
+
+Launchers that implement Google's "minus one" gesture -- the page to the left
+of the home screen -- bind a service exposing `ILauncherOverlay` and hand it
+their own window token. `feed/FeedOverlayService` is that service, so the board
+is available as the feed page with nothing else installed.
+
+The page is read-only by construction: it draws the same board the app does and
+offers no way into the settings. A page you can swipe onto by accident should
+not be able to change anything.
+
+**Launchers check the provider's signature.** Lawnchair keeps a list in
+`FeedBridge.initializeWhitelist`, keyed by package name and by
+`Signature.hashCode()` -- an unlisted package is filtered out of the picker
+before you ever see it. The Connection screen reports this build's hash for
+that reason; it differs per keystore, so a debug build's is not a release
+build's.
+
+Three ways past it, in the order they are worth trying:
+
+1. **A debug build of the launcher.** Lawnchair's `BridgeInfo.isSigned()`
+   returns true unconditionally when `BuildConfig.DEBUG`, so a locally built
+   Lawnchair accepts any provider. This is the way to test.
+2. **Get listed.** One line in Lawnchair's whitelist, package plus hash.
+3. **`pref_ignoreFeedWhitelist`.** Real, but it lives in Lawnchair's debug
+   menu, whose own enable switch lives inside the debug menu -- so there is no
+   way to reach it from a release build.
+
 ## Building
 
 ```sh

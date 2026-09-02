@@ -39,7 +39,9 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalContext
 import io.neiam.apolloscrib.data.Pairing
+import io.neiam.apolloscrib.feed.FeedProvider
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
 import io.neiam.apolloscrib.ui.theme.CribTheme
@@ -218,6 +220,15 @@ private fun ConnectionScreen(
         }
 
         Text("Client id: ${settings.clientId}", style = MaterialTheme.typography.bodySmall)
+        // Only of interest to somebody wiring this up as a launcher feed, but
+        // that is exactly who cannot get it any other way.
+        FeedProvider.signatureHash(LocalContext.current)?.let { hash ->
+            Text(
+                "Feed signature: $hash",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalAppTheme.current.dim
+            )
+        }
 
         Button(
             onClick = {
