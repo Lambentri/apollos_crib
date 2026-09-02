@@ -241,6 +241,23 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   # "Weather at Home" reads better in a list of queries than "Home" alone,
   # which is what the map's + query produces for a stop.
+  # The realtime figures are a map of maps, one per feed kind, flattened so the
+  # card can list them. A kind that could not be reached comes back as an atom
+  # rather than a map, and so does the whole reply when the RT worker itself is
+  # not answering -- neither should take the stats card down.
+  defp flatten_rt_stats(rt) when is_map(rt) do
+    rt
+    |> Enum.flat_map(fn {feed, info} ->
+      case info do
+        m when is_map(m) -> Enum.map(m, fn {k, v} -> {:"#{feed}_#{k}", v} end)
+        other -> [{feed, other}]
+      end
+    end)
+    |> Map.new()
+  end
+
+  defp flatten_rt_stats(other), do: %{realtime: other || :unavailable}
+
   defp query_name_for(type, %{name: name}), do: "#{String.capitalize(to_string(type))} at #{name}"
   defp query_name_for(type, _foci), do: to_string(type)
 
@@ -837,16 +854,15 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     stats =
       case type do
         "gtfs" ->
-          stats = RoomGtfs.Worker.source_stats(id)
-          rt_flat = stats.rt
-            |> Enum.flat_map(fn {feed, info} ->
-              case info do
-                m when is_map(m) -> Enum.map(m, fn {k, v} -> {:"#{feed}_#{k}", v} end)
-                other            -> [{feed, other}]
-              end
-            end)
-            |> Map.new()
-          %{gtfs: Map.delete(stats, :rt), rt: rt_flat}
+          case RoomGtfs.Worker.source_stats(id) do
+            # Somebody else is already counting. The numbers land on the next
+            # press rather than after several seconds of waiting for theirs.
+            %{gathering: true} ->
+              %{gtfs: %{counting: "in progress, try again in a moment"}}
+
+            stats ->
+              %{gtfs: Map.delete(stats, :rt), rt: flatten_rt_stats(Map.get(stats, :rt))}
+          end
         "gbfs" -> %{gbfs: RoomGbfs.Worker.source_stats(id), system: RoomGbfs.Worker.sys_info_as_stats(id), free: RoomGbfs.Worker.free_stats(id)}
         _otherwise -> %{}
       end

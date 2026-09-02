@@ -606,29 +606,70 @@ defmodule RoomGtfs.Worker do
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
+  @doc """
+  The row counts behind a source, for the stats card.
+
+  Every one of these is an exact `count(*)` over a table filtered to one
+  source, and two of those tables hold millions of rows -- five million stop
+  times and half a million shape points for one MBTA feed. Asked one after
+  another that is several seconds of database work before anything renders,
+  which is what made the button time out.
+
+  So: asked together, and the answer held for a minute. They change when a feed
+  imports and not otherwise, so the worst a stale one can be is a count from
+  before the import currently running -- which the queue page is there to show.
+  """
   def source_stats(id) do
-    %{
-      calendars:  Storage.count_calendars(id),
-      # The three numbers that say whether service-day filtering is working for
-      # this source, which a count of rows on its own does not.
-      #
-      #   calendar_dates    -- did calendar_dates.txt import at all
-      #   services_today    -- zero means the filter stands down entirely and
-      #                        the board shows every pattern, running or not
-      #   trips_no_service  -- trips kept because neither file mentions their
-      #                        service; a large share means the same thing
-      calendar_dates: Storage.count_calendar_dates(id),
-      services_today: services_today(id),
-      trips_no_service: Storage.count_trips_without_service(id),
-      directions: Storage.count_directions(id),
-      routes:     Storage.count_routes(id),
-      shapes:     Storage.count_shapes(id),
-      stops:      Storage.count_stops(id),
-      stop_times: Storage.count_stop_times(id),
-      trips:      Storage.count_trips(id),
-      rt:         RoomGtfs.Worker.RT.stats(id),
-    }
+    case RoomSanctum.QueryCache.fetch({:source_stats, id}, fn -> gather_stats(id) end, 60_000) do
+      {:ok, stats} -> stats
+      # Someone else is already gathering them. Saying so beats waiting several
+      # seconds to say the same thing.
+      :busy -> %{gathering: true}
+    end
   end
+
+  @stat_names [
+    :calendars,
+    :calendar_dates,
+    :services_today,
+    :trips_no_service,
+    :directions,
+    :routes,
+    :shapes,
+    :stops,
+    :stop_times,
+    :trips,
+    :rt
+  ]
+
+  defp gather_stats(id) do
+    [
+      fn -> Storage.count_calendars(id) end,
+      fn -> Storage.count_calendar_dates(id) end,
+      fn -> services_today(id) end,
+      fn -> Storage.count_trips_without_service(id) end,
+      fn -> Storage.count_directions(id) end,
+      fn -> Storage.count_routes(id) end,
+      fn -> Storage.count_shapes(id) end,
+      fn -> Storage.count_stops(id) end,
+      fn -> Storage.count_stop_times(id) end,
+      fn -> Storage.count_trips(id) end,
+      fn -> RoomGtfs.Worker.RT.stats(id) end
+    ]
+    |> Task.async_stream(& &1.(),
+      max_concurrency: 4,
+      timeout: 20_000,
+      on_timeout: :kill_task
+    )
+    |> Enum.zip(@stat_names)
+    |> Enum.map(fn
+      {{:ok, value}, name} -> {name, value}
+      # One count that will not answer should not cost the other ten.
+      {{:exit, _reason}, name} -> {name, :unavailable}
+    end)
+    |> Enum.into(%{})
+  end
+
 
   # In the source's own timezone: a board in Boston rolls over to the next
   # service day at midnight there, not at midnight UTC, and for part of every
