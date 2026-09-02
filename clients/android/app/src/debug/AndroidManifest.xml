@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <!-- A stand-in launcher for testing the feed overlay. Debug only:
+             this manifest is not merged into a release build. -->
+        <activity
+            android:name=".feed.OverlayHarnessActivity"
+            android:exported="true"
+            android:label="Overlay harness" />
+    </application>
+</manifest>

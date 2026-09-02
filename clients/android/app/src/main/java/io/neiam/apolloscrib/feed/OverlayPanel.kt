@@ -4,6 +4,7 @@ import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.PixelFormat
 import android.os.IBinder
+import android.util.Log
 import android.view.Gravity
 import android.view.View
 import android.view.WindowManager
@@ -89,19 +90,31 @@ class OverlayPanel(
             windowManager.addView(root, layoutParams(token))
             view = root
             root.translationX = -width.toFloat()
-        }.onFailure { host.moveTo(Lifecycle.State.CREATED) }
+        }.onFailure {
+            // Loudly: a window that will not attach is the whole feature
+            // failing, and it fails silently otherwise -- the launcher goes on
+            // scrolling a page that is not there.
+            Log.e(TAG, "could not attach the overlay window", it)
+            host.moveTo(Lifecycle.State.CREATED)
+        }
     }
 
     /**
-     * A child of the launcher's window.
+     * A window belonging to the launcher's activity.
      *
-     * `TYPE_APPLICATION_PANEL` plus the launcher's token is the whole trick:
-     * without the token this is a window a service is not allowed to add, and
-     * with it the window manager treats it as belonging to the launcher.
+     * The token is the whole trick: without it this is a window a service is
+     * not allowed to add at all, and with it the window manager treats it as
+     * the launcher's own.
+     *
+     * `TYPE_APPLICATION` rather than a sub-window type. What a launcher hands
+     * over is `window.attributes.token`, which is its activity's app token,
+     * and the sub-window types want the *window* token of a parent window --
+     * ask for one with the other and the window manager refuses with
+     * "Attempted to add window with token that is not a window".
      */
     private fun layoutParams(token: IBinder?) = WindowManager.LayoutParams().apply {
         this.token = token
-        type = WindowManager.LayoutParams.TYPE_APPLICATION_PANEL
+        type = WindowManager.LayoutParams.TYPE_APPLICATION
         width = WindowManager.LayoutParams.MATCH_PARENT
         height = WindowManager.LayoutParams.MATCH_PARENT
         format = PixelFormat.TRANSLUCENT
@@ -110,7 +123,9 @@ class OverlayPanel(
             WindowManager.LayoutParams.FLAG_HARDWARE_ACCELERATED or
             // Not focusable: the launcher keeps the key events, and this page
             // has nothing to type into.
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+            // Starts closed, so starts letting touches through to the launcher.
+            WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
         softInputMode = WindowManager.LayoutParams.SOFT_INPUT_ADJUST_NOTHING
     }
 
@@ -177,9 +192,26 @@ class OverlayPanel(
             panel.translationX = -width * (1f - value)
             panel.alpha = value
         }
+        // The window is full screen whatever the content is doing, so a closed
+        // panel goes on swallowing every touch meant for the home screen
+        // unless it is made untouchable. Translating the view off screen does
+        // not move the window.
+        setTouchable(value > 0f)
+    }
+
+    private fun setTouchable(touchable: Boolean) {
+        val panel = view ?: return
+        val params = panel.layoutParams as? WindowManager.LayoutParams ?: return
+        val flag = WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+        val updated = if (touchable) params.flags and flag.inv() else params.flags or flag
+        if (updated != params.flags) {
+            params.flags = updated
+            runCatching { windowManager.updateViewLayout(panel, params) }
+        }
     }
 
     companion object {
+        private const val TAG = "OverlayPanel"
         private const val SETTLE_MS = 200L
     }
 }

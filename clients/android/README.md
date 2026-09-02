@@ -86,15 +86,27 @@ before you ever see it. The Connection screen reports this build's hash for
 that reason; it differs per keystore, so a debug build's is not a release
 build's.
 
-Three ways past it, in the order they are worth trying:
+There is no way past it from a stock build. `CustomBridgeInfo.isSigned()` is
+`ignoreWhitelist || (signatureHash != -1 && super.isSigned())`, and an unlisted
+package has `signatureHash == -1` -- so the `BuildConfig.DEBUG` shortcut inside
+`super.isSigned()` never applies to one, and a debug build of the launcher is
+no help by itself. `pref_ignoreFeedWhitelist` is the only lever, and it lives
+in a debug menu whose own enable switch lives inside that debug menu.
 
-1. **A debug build of the launcher.** Lawnchair's `BridgeInfo.isSigned()`
-   returns true unconditionally when `BuildConfig.DEBUG`, so a locally built
-   Lawnchair accepts any provider. This is the way to test.
-2. **Get listed.** One line in Lawnchair's whitelist, package plus hash.
-3. **`pref_ignoreFeedWhitelist`.** Real, but it lives in Lawnchair's debug
-   menu, whose own enable switch lives inside the debug menu -- so there is no
-   way to reach it from a release build.
+So testing means a launcher built with this package listed. One line, next to
+the entry Neo Feed already has:
+
+```kotlin
+whitelist["io.neiam.apolloscrib"] = getSignatureHash(context, "io.neiam.apolloscrib")
+```
+
+`getSignatureHash` reads the hash off whatever is installed, so it matches a
+debug build and a release one without either being written down.
+
+Failing a launcher, `feed/OverlayHarnessActivity` in the debug build does what
+a launcher does -- binds the service, hands over its own window token, drives
+the scroll. It is how the window attach was got working, and it does not need
+anybody's whitelist.
 
 ## Building
 
