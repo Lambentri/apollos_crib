@@ -62,19 +62,23 @@ fun BoardScreen(
     val lastUpdated = remember(boards) { store.lastUpdated() }
     val stale = remember(boards) { store.isStale() }
 
-    LazyColumn(
-        modifier = modifier.fillMaxSize().padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        item {
-            StatusHeader(
-                state = state,
-                lastUpdated = lastUpdated,
-                stale = stale,
-                onEditConnection = onEditConnection
-            )
-        }
+    Column(modifier = modifier.fillMaxSize()) {
+        // Outside the list rather than its first row: what the connection is
+        // doing should not scroll away, since it is the thing that tells you
+        // whether the board under it is worth reading.
+        StatusHeader(
+            state = state,
+            lastUpdated = lastUpdated,
+            stale = stale,
+            onEditConnection = onEditConnection,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
+        )
 
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         if (entries.isEmpty()) {
             item {
                 Card(Modifier.fillMaxWidth()) {
@@ -135,6 +139,7 @@ fun BoardScreen(
                 )
             }
         }
+        }
     }
 }
 
@@ -143,11 +148,12 @@ private fun StatusHeader(
     state: AnkyraClient.State,
     lastUpdated: Long?,
     stale: Boolean,
-    onEditConnection: (() -> Unit)?
+    onEditConnection: (() -> Unit)?,
+    modifier: Modifier = Modifier
 ) {
     val palette = LocalAppTheme.current
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
     ) {
         // The name, and when the board it is showing arrived. What the screen
