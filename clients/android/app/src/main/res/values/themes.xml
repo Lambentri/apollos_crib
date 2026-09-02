@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose draws everything; this exists so the activities have a
+         starting window that is not the platform default action bar. -->
+    <style name="Theme.ApollosCrib" parent="android:Theme.Material.NoActionBar" />
+</resources>

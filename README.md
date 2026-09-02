@@ -22,6 +22,18 @@ Visions are interpreted by the Pythiae who forward them to clients via Ankyra.
 Foci are anchors for querying in physical space
 Plani can be configured to provide the equivalent to an unanchored Foci updated via Ankyra 
 
+## Clients
+
+Ankyra clients subscribe to a rabbit user's MQTT topic and draw whatever the
+Pythiae publishes to it.
+
+- [`clients/lilygo4.7`](clients/lilygo4.7) — a LilyGo 4.7" e-paper panel, MicroPython
+- [`clients/android`](clients/android) — a [Smartspacer](https://github.com/KieronQuinn/Smartspacer)
+  plugin putting a vision on the Android home and lock screen
+
+[`apollos-types`](https://github.com/neiam/apollos-types) is the source of truth
+for the published wire format.
+
 ## Public Demo
 
 The public demo instance https://ac.gmp.io/ is here, and the landing data displays queries for various entities around 
