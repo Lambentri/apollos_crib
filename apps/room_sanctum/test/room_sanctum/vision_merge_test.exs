@@ -18,10 +18,12 @@ defmodule RoomSanctum.VisionMergeTest do
 
   defp state(attrs \\ %{}) do
     Map.merge(
-      %{id: "9", vision: nil, vision_q: [], data: %{}, data_at: %{}, inflight: %{}},
+      %{id: "9", vision: nil, vision_q: [], data: %{}, data_at: %{}, inflight: %{}, pending: []},
       attrs
     )
   end
+
+  defp query(id, type), do: %{id: id, source: %{id: id, type: type}, query: %{}}
 
   defp outstanding(key) do
     ref = make_ref()
@@ -114,6 +116,79 @@ defmodule RoomSanctum.VisionMergeTest do
       {:noreply, s} = Vision.handle_info({:DOWN, make_ref(), :process, self(), :killed}, s0)
 
       assert Map.has_key?(s.inflight, ref)
+    end
+  end
+
+  describe "how many go out at once" do
+    # Asking every query together emptied the database pool: six visions of
+    # seventeen queries each, every thirty seconds, against fifteen
+    # connections. Nothing could get one inside the cap, so every query
+    # overran and every panel fell back to its previous answer -- a board that
+    # had stopped updating at all.
+    test "only a couple leave at once; the rest queue" do
+      queries = for n <- 1..8, do: query(n, :gtfs)
+
+      {:noreply, s} = Vision.handle_cast(:query_workers, state(%{vision_q: queries}))
+
+      assert map_size(s.inflight) == 2
+      assert length(s.pending) == 6
+
+      for %{task: task} <- Map.values(s.inflight), do: Task.shutdown(task, :brutal_kill)
+    end
+
+    test "an answer coming back lets the next one go" do
+      queries = for n <- 1..8, do: query(n, :gtfs)
+      {:noreply, s} = Vision.handle_cast(:query_workers, state(%{vision_q: queries}))
+
+      {ref, entry} = s.inflight |> Enum.at(0)
+      {:noreply, s} = Vision.handle_info({ref, [:done]}, s)
+
+      # Still two out, one fewer waiting: the slot was refilled.
+      assert map_size(s.inflight) == 2
+      assert length(s.pending) == 5
+      assert s.data[{entry.key |> elem(0), :gtfs}] == [:done]
+
+      for %{task: task} <- Map.values(s.inflight), do: Task.shutdown(task, :brutal_kill)
+    end
+
+    test "a query that overran also frees its slot" do
+      queries = for n <- 1..8, do: query(n, :gtfs)
+      {:noreply, s} = Vision.handle_cast(:query_workers, state(%{vision_q: queries}))
+
+      {ref, _entry} = s.inflight |> Enum.at(0)
+      {:noreply, s} = Vision.handle_info({:query_overran, ref}, s)
+
+      assert map_size(s.inflight) == 2
+      assert length(s.pending) == 5
+
+      for %{task: task} <- Map.values(s.inflight), do: Task.shutdown(task, :brutal_kill)
+    end
+
+    test "a query already out or queued is not asked twice" do
+      queries = for n <- 1..8, do: query(n, :gtfs)
+      s0 = state(%{vision_q: queries})
+
+      {:noreply, s} = Vision.handle_cast(:query_workers, s0)
+      # The next tick arrives while the first round is still draining.
+      {:noreply, s} = Vision.handle_cast(:query_workers, %{s | vision_q: queries})
+
+      assert map_size(s.inflight) == 2
+      assert length(s.pending) == 6
+
+      for %{task: task} <- Map.values(s.inflight), do: Task.shutdown(task, :brutal_kill)
+    end
+
+    test "a query added to the vision since the last round does get asked" do
+      queries = for n <- 1..8, do: query(n, :gtfs)
+      {:noreply, s} = Vision.handle_cast(:query_workers, state(%{vision_q: queries}))
+
+      grown = queries ++ [query(99, :tidal)]
+      {:noreply, s} = Vision.handle_cast(:query_workers, %{s | vision_q: grown})
+
+      assert length(s.pending) == 7
+      assert {99, :tidal} in Enum.map(s.pending, &{&1.id, &1.source.type})
+
+      for %{task: task} <- Map.values(s.inflight), do: Task.shutdown(task, :brutal_kill)
     end
   end
 

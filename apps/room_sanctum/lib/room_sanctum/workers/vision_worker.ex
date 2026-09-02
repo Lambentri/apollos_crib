@@ -12,6 +12,20 @@ defmodule RoomSanctum.Worker.Vision do
   # than on a round of them.
   @query_timeout_ms 10_000
 
+  # How many of a vision's queries may be out at once.
+  #
+  # Asking them all together looked like the obvious way to stop waiting on the
+  # slowest, and it emptied the database pool: six visions of seventeen queries
+  # each, every thirty seconds, against fifteen connections. Nothing could get
+  # one inside the ten second cap, so every query overran and every panel fell
+  # back to its previous answer -- a board that had stopped updating entirely,
+  # reported as thirteen hundred overruns in five minutes.
+  #
+  # Two at a time per vision, with the rest queued behind them. The answers
+  # still land one by one, which is what made this worth doing; they simply do
+  # not all leave at once.
+  @max_inflight 2
+
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("vision" <> opts[:id]))
@@ -47,8 +61,10 @@ defmodule RoomSanctum.Worker.Vision do
        # costs only its own panel.
        data: %{},
        data_at: %{},
-       # ref => %{key:, task:, timer:} for the queries currently out.
-       inflight: %{}
+       # ref => %{key:, task:, timer:} for the queries currently out, and the
+       # ones waiting for a slot.
+       inflight: %{},
+       pending: []
      }}
   end
 
@@ -93,28 +109,37 @@ defmodule RoomSanctum.Worker.Vision do
   # backpressure the brutal kill was standing in for, and unlike the kill it
   # does not destroy work in progress.
   def handle_cast(:query_workers, state) do
-    outstanding = state.inflight |> Map.values() |> MapSet.new(& &1.key)
+    outstanding =
+      state.inflight
+      |> Map.values()
+      |> Enum.map(& &1.key)
+      |> Enum.concat(Enum.map(state.pending, &query_key/1))
+      |> MapSet.new()
 
-    state =
-      Enum.reduce(state.vision_q, state, fn q, acc ->
-        key = {q.id, q.source.type}
+    # A query still out, or still queued, from the last round is not asked
+    # again. That is the backpressure the brutal kill used to stand in for, and
+    # unlike the kill it does not destroy work in progress.
+    fresh = Enum.reject(state.vision_q, &MapSet.member?(outstanding, query_key(&1)))
 
-        if MapSet.member?(outstanding, key) do
-          Logger.debug("Vision #{state.id}: #{inspect(key)} still out, not asking again")
-          acc
-        else
-          start_query(acc, q, key)
-        end
-      end)
-
-    {:noreply, state}
+    {:noreply, %{state | pending: state.pending ++ fresh} |> fill_slots()}
   end
 
-  defp start_query(state, q, key) do
+  defp query_key(q), do: {q.id, q.source.type}
+
+  defp fill_slots(state) do
+    cond do
+      map_size(state.inflight) >= @max_inflight -> state
+      state.pending == [] -> state
+      true -> state |> take_next() |> fill_slots()
+    end
+  end
+
+  defp take_next(%{pending: [q | rest]} = state) do
     task = Task.async(fn -> query_safely(q) end)
     timer = Process.send_after(self(), {:query_overran, task.ref}, @query_timeout_ms)
 
-    put_in(state.inflight[task.ref], %{key: key, task: task, timer: timer})
+    %{state | pending: rest}
+    |> put_in([:inflight, task.ref], %{key: query_key(q), task: task, timer: timer})
   end
 
   # Handle async task completion
@@ -134,7 +159,8 @@ defmodule RoomSanctum.Worker.Vision do
          state
          |> put_in([:data, key], result)
          |> put_in([:data_at, key], DateTime.utc_now())
-         |> update_in([:inflight], &Map.delete(&1, ref))}
+         |> update_in([:inflight], &Map.delete(&1, ref))
+         |> fill_slots()}
 
       :error ->
         {:noreply, state}
@@ -154,7 +180,7 @@ defmodule RoomSanctum.Worker.Vision do
           "Vision #{state.id}: #{inspect(key)} overran #{@query_timeout_ms}ms; keeping its last answer"
         )
 
-        {:noreply, update_in(state, [:inflight], &Map.delete(&1, ref))}
+        {:noreply, state |> update_in([:inflight], &Map.delete(&1, ref)) |> fill_slots()}
 
       :error ->
         {:noreply, state}
@@ -172,7 +198,7 @@ defmodule RoomSanctum.Worker.Vision do
           )
         end
 
-        {:noreply, update_in(state, [:inflight], &Map.delete(&1, ref))}
+        {:noreply, state |> update_in([:inflight], &Map.delete(&1, ref)) |> fill_slots()}
 
       :error ->
         {:noreply, state}
