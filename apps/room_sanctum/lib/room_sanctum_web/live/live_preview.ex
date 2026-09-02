@@ -27,18 +27,40 @@ use PhoenixHTMLHelpers
     end
   end
 
-  defp moon_icon(phase) do
-    case phase do
-      :new_moon -> "🌕"
-      :waxing_crescent -> "🌖"
-      :first_quarter -> "🌗"
-      :waxing_gibbous -> "🌘"
-      :full_moon -> "🌑"
-      :waning_gibbous -> "🌒"
-      :third_quarter -> "🌓"
-      :waning_crescent -> "🌔"
+  @moon_phases [
+    new_moon: "🌑",
+    waxing_crescent: "🌒",
+    first_quarter: "🌓",
+    waxing_gibbous: "🌔",
+    full_moon: "🌕",
+    waning_gibbous: "🌖",
+    third_quarter: "🌗",
+    waning_crescent: "🌘"
+  ]
+
+  # The moon as a character.
+  #
+  # Northern-hemisphere shapes, waxing from the right: new is dark, full is
+  # lit, and the quarters are lit on the side the light is coming from. The
+  # mapping this replaces was rotated by four -- a new moon drew a full disc
+  # and a full moon drew a dark one.
+  #
+  # Solarex hands back an atom; anything that has been through JSON is a
+  # string, so both are read. A phase nobody recognises draws nothing rather
+  # than raising: this is called from a board somebody is looking at, and a
+  # missing glyph is a better outcome than a blank card.
+  defp moon_icon(phase) when is_atom(phase) do
+    Keyword.get(@moon_phases, phase, "")
+  end
+
+  defp moon_icon(phase) when is_binary(phase) do
+    case Enum.find(@moon_phases, fn {name, _} -> Atom.to_string(name) == phase end) do
+      {_name, glyph} -> glyph
+      nil -> ""
     end
   end
+
+  defp moon_icon(_phase), do: ""
 
   def tsl(%Time{} = t), do: tsl(t |> Time.to_string)
   def tsl(st), do: st |> String.slice(0,5)
