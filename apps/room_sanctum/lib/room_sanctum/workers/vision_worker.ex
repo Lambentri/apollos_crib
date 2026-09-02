@@ -10,7 +10,19 @@ defmodule RoomSanctum.Worker.Vision do
 
   # Each query is asked on its own, so this is the cap on one of them rather
   # than on a round of them.
-  @query_timeout_ms 10_000
+  #
+  # Ten seconds was too tight and made things worse rather than safer. GTFS
+  # arrival lookups against prod's data take on the order of ten seconds -- the
+  # same slowness that used to blow the thirty second tick when a round asked
+  # three of them one after another -- so a ten second cap turned "sometimes
+  # completes" into "never completes", and every panel sat on its previous
+  # answer for ever.
+  #
+  # Just under the tick instead: a query gets essentially the whole interval,
+  # and the cap goes back to being a guard against a source that has genuinely
+  # hung rather than a limit real work runs into. It is not a fix for the
+  # slowness, which wants finding with an EXPLAIN against prod.
+  @query_timeout_ms 25_000
 
   # How many of a vision's queries may be out at once.
   #
