@@ -40,6 +40,25 @@ object Wire {
         return root.mapNotNull { (key, value) -> entry(key, value) }
     }
 
+    /**
+     * The source types in a payload that this build has no renderer for.
+     *
+     * Reported rather than swallowed: a vision of eight queries drawing five
+     * cards is otherwise indistinguishable from three of them being broken.
+     */
+    fun unsupported(payload: String): List<String> {
+        val root = runCatching { json.parseToJsonElement(payload).jsonObject }.getOrNull()
+            ?: return emptyList()
+        return root.keys
+            .mapNotNull { key ->
+                val dash = key.lastIndexOf('-')
+                if (dash <= 0) null else key.substring(0, dash)
+            }
+            .filter { SourceType.of(it) == null }
+            .distinct()
+            .sorted()
+    }
+
     private fun entry(key: String, value: JsonElement): VisionEntry? {
         // "gtfs-12" -- the id is everything after the last dash, since no
         // source type contains one but nothing guarantees that forever.

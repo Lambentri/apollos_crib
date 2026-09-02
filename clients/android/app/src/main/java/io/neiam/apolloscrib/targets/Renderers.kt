@@ -14,12 +14,32 @@ import io.neiam.apolloscrib.ui.MainActivity
 import android.graphics.drawable.Icon as AndroidIcon
 
 /**
- * What one query's answer looks like on the Smartspace.
+ * What one query's answer says, before anything decides where to draw it.
  *
- * A renderer knows one source type and nothing about MQTT, storage or
- * Smartspacer's provider plumbing -- [ApollosTargetProvider] holds all of
- * that. Supporting a new source is a type in `types/`, a renderer here, an
- * entry in [Targets] and four lines of manifest.
+ * A renderer produces these; [RenderContext.target] turns one into a
+ * Smartspacer target, and the app's own board draws the same thing as a card.
+ * One description, two surfaces -- so the card on the phone's home screen and
+ * the card in the app cannot drift apart.
+ */
+data class Preview(
+    val id: String,
+    val title: String,
+    val subtitle: String?,
+    val iconRes: Int,
+    val items: List<String> = emptyList(),
+    val empty: String = "Nothing to show",
+    val style: Style = Style.List
+) {
+    enum class Style { Basic, List }
+}
+
+/**
+ * What one source type looks like.
+ *
+ * A renderer knows its source and nothing about MQTT, storage or Smartspacer's
+ * provider plumbing -- [ApollosTargetProvider] holds all of that. Supporting a
+ * new source is a type in `types/`, a renderer here, an entry in [Targets] and
+ * four lines of manifest.
  */
 interface SourceRenderer {
     val type: SourceType
@@ -29,7 +49,14 @@ interface SourceRenderer {
     val label: String
     val description: String
 
-    fun render(ctx: RenderContext, entry: VisionEntry): List<SmartspaceTarget>
+    fun preview(entry: VisionEntry): List<Preview>
+
+    /**
+     * Smartspacer targets for this entry. Every renderer wants the same
+     * mapping, so none of them writes it.
+     */
+    fun render(ctx: RenderContext, entry: VisionEntry): List<SmartspaceTarget> =
+        preview(entry).map { ctx.target(it) }
 }
 
 /**
@@ -53,43 +80,29 @@ class RenderContext(
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     )
 
-    /**
-     * A list target, the shape most of these want: a heading, a supporting
-     * line, and up to three rows underneath.
-     */
-    fun list(
-        id: String,
-        title: String,
-        subtitle: String?,
-        iconRes: Int,
-        items: List<String>,
-        empty: String
-    ): SmartspaceTarget = TargetTemplate.ListItems(
-        id = "$idPrefix$id",
-        componentName = componentName,
-        context = context,
-        title = Text(title),
-        subtitle = subtitle?.let { Text(withStaleness(it)) },
-        icon = icon(iconRes),
-        listItems = items.take(MAX_LIST_ITEMS).map { Text(it) },
-        listIcon = icon(iconRes),
-        emptyListMessage = Text(empty),
-        onClick = openApp()
-    ).create()
+    fun target(preview: Preview): SmartspaceTarget = when (preview.style) {
+        Preview.Style.List -> TargetTemplate.ListItems(
+            id = "$idPrefix${preview.id}",
+            componentName = componentName,
+            context = context,
+            title = Text(preview.title),
+            subtitle = preview.subtitle?.let { Text(withStaleness(it)) },
+            icon = icon(preview.iconRes),
+            listItems = preview.items.take(MAX_LIST_ITEMS).map { Text(it) },
+            listIcon = icon(preview.iconRes),
+            emptyListMessage = Text(preview.empty),
+            onClick = openApp()
+        ).create()
 
-    fun basic(
-        id: String,
-        title: String,
-        subtitle: String?,
-        iconRes: Int
-    ): SmartspaceTarget = TargetTemplate.Basic(
-        id = "$idPrefix$id",
-        componentName = componentName,
-        title = Text(title),
-        subtitle = subtitle?.let { Text(withStaleness(it)) },
-        icon = icon(iconRes),
-        onClick = openApp()
-    ).create()
+        Preview.Style.Basic -> TargetTemplate.Basic(
+            id = "$idPrefix${preview.id}",
+            componentName = componentName,
+            title = Text(preview.title),
+            subtitle = preview.subtitle?.let { Text(withStaleness(it)) },
+            icon = icon(preview.iconRes),
+            onClick = openApp()
+        ).create()
+    }
 
     /**
      * Said on the subtitle rather than by hiding the target. A board that has
@@ -125,6 +138,12 @@ object Targets {
 
     fun rendererFor(type: SourceType): SourceRenderer? =
         renderers.firstOrNull { it.type == type }
+
+    /** What one entry says, for anything drawing it outside Smartspacer. */
+    fun preview(entry: VisionEntry): List<Preview> =
+        rendererFor(entry.type)?.let { renderer ->
+            runCatching { renderer.preview(entry) }.getOrDefault(emptyList())
+        }.orEmpty()
 
     /** Tell Smartspacer every one of our Targets has something new to say. */
     fun notifyAll(context: Context) {

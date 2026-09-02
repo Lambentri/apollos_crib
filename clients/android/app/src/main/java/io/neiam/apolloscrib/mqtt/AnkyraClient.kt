@@ -43,6 +43,22 @@ class AnkyraClient(
             .serverHost(settings.host)
             .serverPort(settings.port)
             .automaticReconnectWithDefaultConfig()
+            // The connection outlives the call that opened it: HiveMQ
+            // reconnects on its own, and a state read only from the callbacks
+            // below would still be saying "not connected" while payloads
+            // arrived. These follow the connection itself.
+            .addConnectedListener {
+                // Subscribing again on every connect rather than trusting the
+                // reconnect to carry the old one. A repeat subscription to the
+                // same filter replaces it at the broker, so this costs nothing
+                // and removes the case where we are connected and deaf.
+                client?.let { subscribe(it) }
+            }
+            .addDisconnectedListener { context ->
+                onState(
+                    if (context.reconnector.isReconnect) State.Connecting else State.Disconnected
+                )
+            }
             .apply { if (settings.useTls) sslWithDefaultConfig() }
             .buildAsync()
         client = built
@@ -65,11 +81,13 @@ class AnkyraClient(
             .send()
             .whenComplete { _, error ->
                 if (error != null) {
+                    // Not fatal: the reconnector keeps trying, and the
+                    // listeners above will say so when one lands.
                     Log.w(TAG, "connect failed", error)
                     onState(State.Failed)
-                } else {
-                    subscribe(built)
                 }
+                // The success path is the connected listener's -- it also runs
+                // for every reconnect after this one.
             }
     }
 

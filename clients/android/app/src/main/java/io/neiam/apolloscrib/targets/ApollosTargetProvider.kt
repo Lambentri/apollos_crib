@@ -66,11 +66,14 @@ abstract class ApollosTargetProvider : SmartspacerTargetProvider() {
             store.lastUpdated() == null -> "Waiting for the first board"
             else -> "Tap to choose a query"
         }
-        return ctx.basic(
-            id = "setup",
-            title = renderer.label,
-            subtitle = subtitle,
-            iconRes = renderer.iconRes
+        return ctx.target(
+            Preview(
+                id = "setup",
+                title = renderer.label,
+                subtitle = subtitle,
+                iconRes = renderer.iconRes,
+                style = Preview.Style.Basic
+            )
         )
     }
 

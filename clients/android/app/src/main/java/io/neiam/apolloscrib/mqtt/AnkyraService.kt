@@ -53,9 +53,8 @@ class AnkyraService : Service() {
                 settings = settings,
                 onMessage = ::onPayload,
                 onState = ::onState
-            )
+            ).also { it.connect() }
         }
-        client?.connect()
         // Sticky: if Android kills this for memory, the board should come back
         // when there is room again, without the user opening the app.
         return START_STICKY
@@ -72,6 +71,9 @@ class AnkyraService : Service() {
 
     private fun onState(newState: AnkyraClient.State) {
         state.value = newState
+        // Proof the settings are right, which is what licenses reconnecting on
+        // a later launch without asking.
+        if (newState == AnkyraClient.State.Connected) settings.hasConnected = true
         // The notification is the only place a connection problem is visible,
         // since the Targets themselves fall back to the stored board.
         runCatching {
@@ -146,6 +148,19 @@ class AnkyraService : Service() {
         fun start(context: Context) {
             if (!Settings(context).isConfigured) return
             context.startForegroundService(Intent(context, AnkyraService::class.java))
+        }
+
+        /**
+         * Reconnect on launch, if this connection has worked before.
+         *
+         * START_STICKY covers the service being killed while the phone stays
+         * up; this covers everything else -- a reboot the receiver missed, a
+         * force-stop, an app update. Cheap when the service is already
+         * running: [onStartCommand] finds a live client and leaves it alone.
+         */
+        fun resume(context: Context) {
+            val settings = Settings(context)
+            if (settings.isConfigured && settings.hasConnected) start(context)
         }
 
         fun stop(context: Context) {

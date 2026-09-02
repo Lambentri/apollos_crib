@@ -43,6 +43,12 @@ class VisionStore(context: Context) {
 
     fun entry(key: String): VisionEntry? = entries().firstOrNull { it.key == key }
 
+    /** Source types on the board that this build cannot draw. */
+    fun unsupported(): List<String> {
+        val payload = runCatching { file.readText() }.getOrNull() ?: return emptyList()
+        return runCatching { Wire.unsupported(payload) }.getOrDefault(emptyList())
+    }
+
     /** When the stored payload last arrived, or null if nothing ever has. */
     fun lastUpdated(): Long? = file.takeIf { it.exists() }?.lastModified()
 

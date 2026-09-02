@@ -65,6 +65,18 @@ class Settings(context: Context) {
         get() = host.isNotEmpty() && topic.isNotEmpty()
 
     /**
+     * Whether this connection has ever actually worked.
+     *
+     * Set the first time a subscription lands, and the licence to reconnect
+     * without being asked. Configured is not the same thing: a typed-in host
+     * that has never answered should not have the app dialling it on every
+     * launch.
+     */
+    var hasConnected: Boolean
+        get() = prefs.getBoolean(KEY_HAS_CONNECTED, false)
+        set(value) = prefs.edit { putBoolean(KEY_HAS_CONNECTED, value) }
+
+    /**
      * The entry key (`"gtfs-12"`) a given Target instance shows, chosen in the
      * configuration activity Smartspacer opens. Null means "not chosen yet",
      * which the providers render as a prompt rather than as nothing.
@@ -99,6 +111,7 @@ class Settings(context: Context) {
         private const val KEY_TOPIC = "topic"
         private const val KEY_TLS = "tls"
         private const val KEY_THEME = "theme"
+        private const val KEY_HAS_CONNECTED = "has_connected"
         private const val KEY_CLIENT_ID = "client_id"
         private const val KEY_BINDING_PREFIX = "binding_"
         private const val KEY_DISMISSED = "dismissed"

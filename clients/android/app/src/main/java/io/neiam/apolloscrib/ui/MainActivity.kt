@@ -73,26 +73,43 @@ class MainActivity : ComponentActivity() {
         val store = VisionStore(this)
 
         pair(intent, settings)
+        // A board the user set up once should be live by the time they have
+        // finished opening the app.
+        AnkyraService.resume(this)
 
         setContent {
             var themeKey by remember { mutableStateOf(settings.themeKey) }
+            // The connection is setup, not the app. Once there is one, the
+            // board is what the app is for; the form is a page you go back to.
+            var editing by remember(paired.value) { mutableStateOf(!settings.isConfigured) }
+
             CribTheme(theme = appThemeByKey(themeKey)) {
                 Scaffold { padding ->
-                    ConnectionScreen(
-                        modifier = Modifier.fillMaxSize().padding(padding),
-                        settings = settings,
-                        store = store,
-                        pairingKey = paired.value,
-                        themeKey = themeKey,
-                        onThemeChange = {
-                            settings.themeKey = it
-                            themeKey = it
-                        },
-                        onConnect = {
-                            AnkyraService.start(this)
-                        },
-                        onDisconnect = { AnkyraService.stop(this) }
-                    )
+                    val modifier = Modifier.fillMaxSize().padding(padding)
+                    if (editing) {
+                        ConnectionScreen(
+                            modifier = modifier,
+                            settings = settings,
+                            pairingKey = paired.value,
+                            themeKey = themeKey,
+                            onThemeChange = {
+                                settings.themeKey = it
+                                themeKey = it
+                            },
+                            onConnect = {
+                                AnkyraService.start(this)
+                                editing = false
+                            },
+                            onDisconnect = { AnkyraService.stop(this) },
+                            onDone = { editing = false }.takeIf { settings.isConfigured }
+                        )
+                    } else {
+                        BoardScreen(
+                            modifier = modifier,
+                            store = store,
+                            onEditConnection = { editing = true }
+                        )
+                    }
                 }
             }
         }
@@ -124,12 +141,13 @@ class MainActivity : ComponentActivity() {
 private fun ConnectionScreen(
     modifier: Modifier = Modifier,
     settings: Settings,
-    store: VisionStore,
     pairingKey: Int,
     themeKey: String,
     onThemeChange: (String) -> Unit,
     onConnect: () -> Unit,
-    onDisconnect: () -> Unit
+    onDisconnect: () -> Unit,
+    /** Null before there is a connection to go back to. */
+    onDone: (() -> Unit)?
 ) {
     var host by remember(pairingKey) { mutableStateOf(settings.host) }
     var port by remember(pairingKey) { mutableStateOf(settings.port.toString()) }
@@ -137,9 +155,6 @@ private fun ConnectionScreen(
     var password by remember(pairingKey) { mutableStateOf(settings.password) }
     var topic by remember(pairingKey) { mutableStateOf(settings.topic) }
     var tls by remember(pairingKey) { mutableStateOf(settings.useTls) }
-
-    val state by AnkyraService.connectionState.collectAsState()
-    val boards by VisionStore.boards.collectAsState()
 
     // Android 13+ will not show the service's notification without this, and
     // the service is the connection -- so it is asked for here rather than
@@ -223,41 +238,6 @@ private fun ConnectionScreen(
             Text("Disconnect")
         }
 
-        Card(modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                val palette = LocalAppTheme.current
-                Text(
-                    when (state) {
-                        AnkyraClient.State.Connected -> "Connected"
-                        AnkyraClient.State.Connecting -> "Connecting"
-                        AnkyraClient.State.Failed -> "Connection failed"
-                        AnkyraClient.State.Disconnected -> "Not connected"
-                    },
-                    style = MaterialTheme.typography.titleMedium,
-                    color = when (state) {
-                        AnkyraClient.State.Connected -> palette.liveGreen
-                        AnkyraClient.State.Failed -> MaterialTheme.colorScheme.error
-                        else -> palette.dim
-                    }
-                )
-                // Keyed on the board count so a new payload redraws this card.
-                val last = remember(boards) { store.lastUpdated() }
-                Text(
-                    if (last == null) "No board received yet"
-                    else "Last board ${DateFormat.getTimeInstance().format(Date(last))}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                val entries = remember(boards) { store.entries() }
-                if (entries.isNotEmpty()) {
-                    Text(
-                        "${entries.size} queries: " +
-                            entries.joinToString(", ") { it.label() },
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
-            }
-        }
-
         Text("Theme", style = MaterialTheme.typography.titleMedium)
         Row(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
@@ -279,10 +259,10 @@ private fun ConnectionScreen(
             }
         }
 
-        Text(
-            "Add the Targets from Smartspacer's own settings -- Targets, then " +
-                "Apollo's Crib. Each one asks which query it should show.",
-            style = MaterialTheme.typography.bodySmall
-        )
+        onDone?.let {
+            OutlinedButton(onClick = it, modifier = Modifier.fillMaxWidth()) {
+                Text("Back to the board")
+            }
+        }
     }
 }

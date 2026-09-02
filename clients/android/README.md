@@ -39,6 +39,12 @@ stops, each choosing its own query when Smartspacer opens the setup screen.
    they arrive.
 4. In Smartspacer: Targets, add, Apollo's Crib. Pick the query the target shows.
 
+Once there is a working connection the app opens on the board rather than the
+form: every query in the vision, drawn from the same description its Smartspace
+card is built from, updating as payloads land. What is on that screen is what a
+Target added for that query will say. The connection is behind *Connection* in
+the corner, and reconnects by itself on launch once it has worked once.
+
 The connection is a foreground service with an ongoing notification. That is
 what an always-open socket costs on Android; the alternative is polling, which
 this deliberately does not do.

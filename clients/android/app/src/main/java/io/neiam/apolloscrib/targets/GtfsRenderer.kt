@@ -1,8 +1,6 @@
 package io.neiam.apolloscrib.targets
 
-import com.kieronquinn.app.smartspacer.sdk.model.SmartspaceTarget
 import io.neiam.apolloscrib.R
-import io.neiam.apolloscrib.types.AlertCondensed
 import io.neiam.apolloscrib.types.GtfsCondensed
 import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.types.VisionEntry
@@ -10,12 +8,12 @@ import io.neiam.apolloscrib.types.VisionEntry
 /**
  * A stop, as a departure board.
  *
- * One target for the stop rather than one per route: a Smartspace shows a
- * single card at a time and cycles, so a stop split across five targets is a
- * stop the user sees a fifth of. The routes leaving soonest win the three
- * lines the template gives.
+ * One card for the stop rather than one per route: a Smartspace shows a single
+ * card at a time and cycles, so a stop split across five targets is a stop the
+ * user sees a fifth of. The routes leaving soonest win the three lines the
+ * template gives.
  *
- * A severe alert gets a target of its own, ahead of the times -- "the line is
+ * A severe alert gets a card of its own, ahead of the times -- "the line is
  * suspended" is not a footnote on a list of departures that are not happening.
  */
 object GtfsRenderer : SourceRenderer {
@@ -25,26 +23,14 @@ object GtfsRenderer : SourceRenderer {
     override val label = "Apollo's Crib: Transit"
     override val description = "Next departures from a stop in one of your visions"
 
-    override fun render(ctx: RenderContext, entry: VisionEntry): List<SmartspaceTarget> {
+    override fun preview(entry: VisionEntry): List<Preview> {
         val routes = entry.decode<List<GtfsCondensed>>().orEmpty()
-        if (routes.isEmpty()) {
-            return listOf(
-                ctx.list(
-                    id = entry.key,
-                    title = entry.label(),
-                    subtitle = null,
-                    iconRes = iconRes,
-                    items = emptyList(),
-                    empty = "Nothing due"
-                )
-            )
-        }
 
         // Soonest first. The publisher orders departures within a route but
         // says nothing about the order of the routes themselves.
         val soonest = routes.sortedBy { it.departures().firstOrNull() ?: "99:99" }
 
-        val board = ctx.list(
+        val board = Preview(
             id = entry.key,
             title = entry.label(),
             subtitle = summary(soonest),
@@ -53,7 +39,7 @@ object GtfsRenderer : SourceRenderer {
             empty = "Nothing due"
         )
 
-        return listOfNotNull(alertTarget(ctx, entry, routes)) + board
+        return listOfNotNull(alert(entry, routes)) + board
     }
 
     /** `14 → Heath St 08:00` -- the template truncates around 25 characters. */
@@ -75,19 +61,16 @@ object GtfsRenderer : SourceRenderer {
      * severe, plus anything naming this stop specifically -- a lift out of
      * service is stop news even when the line is running fine.
      */
-    private fun alertTarget(
-        ctx: RenderContext,
-        entry: VisionEntry,
-        routes: List<GtfsCondensed>
-    ): SmartspaceTarget? {
+    private fun alert(entry: VisionEntry, routes: List<GtfsCondensed>): Preview? {
         val alerts = routes.flatMap { it.alerts.orEmpty() }.distinctBy { it.header ?: it.effect }
-        val worth = alerts.filter { it.severity == "SEVERE" || it.stop_specific == true }
-        val lead = worth.firstOrNull() ?: return null
-        return ctx.basic(
+        val lead = alerts.firstOrNull { it.severity == "SEVERE" || it.stop_specific == true }
+            ?: return null
+        return Preview(
             id = "${entry.key}-alert",
             title = lead.header ?: lead.effect.humanise(),
             subtitle = entry.label(),
-            iconRes = R.drawable.ic_alert
+            iconRes = R.drawable.ic_alert,
+            style = Preview.Style.Basic
         )
     }
 

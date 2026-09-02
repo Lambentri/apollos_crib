@@ -1,6 +1,5 @@
 package io.neiam.apolloscrib.targets
 
-import com.kieronquinn.app.smartspacer.sdk.model.SmartspaceTarget
 import io.neiam.apolloscrib.R
 import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.types.VisionEntry
@@ -20,7 +19,7 @@ object WeatherRenderer : SourceRenderer {
     override val label = "Apollo's Crib: Weather"
     override val description = "Conditions at a focus in one of your visions"
 
-    override fun render(ctx: RenderContext, entry: VisionEntry): List<SmartspaceTarget> {
+    override fun preview(entry: VisionEntry): List<Preview> {
         val current = entry.decode<List<WeatherCondensed>>()?.firstOrNull()
             ?: return emptyList()
 
@@ -29,11 +28,12 @@ object WeatherRenderer : SourceRenderer {
             .ifEmpty { entry.label() }
 
         return listOf(
-            ctx.basic(
+            Preview(
                 id = entry.key,
                 title = title,
                 subtitle = current.name ?: entry.label(),
-                iconRes = iconRes
+                iconRes = iconRes,
+                style = Preview.Style.Basic
             )
         )
     }

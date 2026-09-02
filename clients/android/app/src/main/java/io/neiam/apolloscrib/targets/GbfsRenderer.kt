@@ -1,6 +1,5 @@
 package io.neiam.apolloscrib.targets
 
-import com.kieronquinn.app.smartspacer.sdk.model.SmartspaceTarget
 import io.neiam.apolloscrib.R
 import io.neiam.apolloscrib.types.GbfsCondensed
 import io.neiam.apolloscrib.types.SourceType
@@ -20,15 +19,15 @@ object GbfsRenderer : SourceRenderer {
     override val label = "Apollo's Crib: Bikeshare"
     override val description = "Bikes and docks at a station in one of your visions"
 
-    override fun render(ctx: RenderContext, entry: VisionEntry): List<SmartspaceTarget> {
+    override fun preview(entry: VisionEntry): List<Preview> {
         val stations = entry.decode<List<GbfsCondensed>>().orEmpty()
 
-        // Emptiest-of-what-you-want first: for docks that is most bikes, for
-        // loose bikes there is no order the feed implies, so leave them be.
+        // Most bikes first: for a dock that is the one worth walking to, and
+        // for loose bikes the feed implies no order to preserve.
         val ordered = stations.sortedByDescending { it.avail ?: 0 }
 
         return listOf(
-            ctx.list(
+            Preview(
                 id = entry.key,
                 title = entry.label(),
                 subtitle = summary(ordered),
