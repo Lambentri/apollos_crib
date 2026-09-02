@@ -19,6 +19,8 @@ defmodule RoomSanctum.Application do
       # Start a worker by calling: RoomSanctum.Worker.start_link(arg)
       # {RoomSanctum.Worker, arg}
       {Oban, Application.fetch_env!(:room_sanctum, Oban)},
+      # One answer per query, shared by every vision that wants it.
+      RoomSanctum.QueryCache,
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

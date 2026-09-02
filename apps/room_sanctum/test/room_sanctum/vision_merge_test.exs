@@ -38,7 +38,7 @@ defmodule RoomSanctum.VisionMergeTest do
       {ref, entry} = outstanding(@key)
       before = DateTime.utc_now()
 
-      {:noreply, s} = Vision.handle_info({ref, [:arrival]}, state(%{inflight: %{ref => entry}}))
+      {:noreply, s} = Vision.handle_info({ref, {:ok, [:arrival]}}, state(%{inflight: %{ref => entry}}))
 
       assert s.data[@key] == [:arrival]
       assert DateTime.compare(s.data_at[@key], before) != :lt
@@ -53,7 +53,7 @@ defmodule RoomSanctum.VisionMergeTest do
 
       {:noreply, s} =
         Vision.handle_info(
-          {ref, [:arrival]},
+          {ref, {:ok, [:arrival]}},
           state(%{data: existing, data_at: at, inflight: %{ref => entry}})
         )
 
@@ -64,7 +64,7 @@ defmodule RoomSanctum.VisionMergeTest do
     end
 
     test "an answer nobody is waiting for is ignored" do
-      {:noreply, s} = Vision.handle_info({make_ref(), [:stray]}, state())
+      {:noreply, s} = Vision.handle_info({make_ref(), {:ok, [:stray]}}, state())
 
       assert s.data == %{}
     end
@@ -141,7 +141,7 @@ defmodule RoomSanctum.VisionMergeTest do
       {:noreply, s} = Vision.handle_cast(:query_workers, state(%{vision_q: queries}))
 
       {ref, entry} = s.inflight |> Enum.at(0)
-      {:noreply, s} = Vision.handle_info({ref, [:done]}, s)
+      {:noreply, s} = Vision.handle_info({ref, {:ok, [:done]}}, s)
 
       # Still two out, one fewer waiting: the slot was refilled.
       assert map_size(s.inflight) == 2

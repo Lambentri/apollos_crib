@@ -147,7 +147,7 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   defp take_next(%{pending: [q | rest]} = state) do
-    task = Task.async(fn -> query_safely(q) end)
+    task = Task.async(fn -> query_cached(q) end)
     timer = Process.send_after(self(), {:query_overran, task.ref}, @query_timeout_ms)
 
     %{state | pending: rest}
@@ -161,7 +161,7 @@ defmodule RoomSanctum.Worker.Vision do
     handle_cast(:refresh_db_cfg, state)
   end
 
-  def handle_info({ref, result}, state) when is_reference(ref) do
+  def handle_info({ref, outcome}, state) when is_reference(ref) do
     case Map.fetch(state.inflight, ref) do
       {:ok, %{key: key, timer: timer}} ->
         Process.demonitor(ref, [:flush])
@@ -169,8 +169,7 @@ defmodule RoomSanctum.Worker.Vision do
 
         {:noreply,
          state
-         |> put_in([:data, key], result)
-         |> put_in([:data_at, key], DateTime.utc_now())
+         |> record(key, outcome)
          |> update_in([:inflight], &Map.delete(&1, ref))
          |> fill_slots()}
 
@@ -178,6 +177,7 @@ defmodule RoomSanctum.Worker.Vision do
         {:noreply, state}
     end
   end
+
 
   # A query that overran. Shut it down, and leave what it answered last time
   # where it is -- a board carrying times from two minutes ago is worth more
@@ -228,6 +228,25 @@ defmodule RoomSanctum.Worker.Vision do
     {:noreply, state}
   end
 
+  # Another vision was already fetching this one. Nothing arrived, so nothing
+  # is written -- the panel keeps what it had, and picks up the shared answer
+  # on the next round.
+  defp record(state, _key, :skip), do: state
+
+  defp record(state, key, {:ok, result}) do
+    state
+    |> put_in([:data, key], result)
+    |> put_in([:data_at, key], DateTime.utc_now())
+  end
+
+  # Anything else is a task that did not return what this expects. Keeping the
+  # previous answer is the same choice made everywhere else here, and is better
+  # than a match error taking the worker down over one odd reply.
+  defp record(state, key, other) do
+    Logger.warning("Vision #{state.id}: #{inspect(key)} answered #{inspect(other)}; ignoring")
+    state
+  end
+
   def handle_cast(_msg, state) do
     {:noreply, state}
   end
@@ -249,6 +268,19 @@ defmodule RoomSanctum.Worker.Vision do
   end
 
   # Private helper to query all workers
+  # Through the cache, so a query wanted by several visions is run once.
+  #
+  # `:busy` means another vision is fetching this very query right now. There
+  # is nothing useful to do with that except carry on with the answer we
+  # already have -- which is the same thing this worker does for a query that
+  # was slow or broken, and is why waiting would be the wrong move.
+  defp query_cached(q) do
+    case RoomSanctum.QueryCache.fetch({q.id, q.source.type}, fn -> query_safely(q) end) do
+      {:ok, result} -> {:ok, result}
+      :busy -> :skip
+    end
+  end
+
   defp query_safely(q) do
     query_one(q)
   rescue
