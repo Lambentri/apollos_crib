@@ -1617,12 +1617,16 @@ defmodule RoomSanctum.Storage do
         tz: ^tz
       }
     )
-    # Ecto's default of 15s was cancelling arrival lookups that the caller was
-    # perfectly willing to wait for -- the vision allows a query 25s -- and a
-    # cancelled statement raises, which used to publish "nothing is coming" on
-    # the strength of a timeout. The layers now agree; the lookups being this
-    # slow at all is a separate problem.
-    |> Repo.all(timeout: 20_000)
+    # The layers have to agree about how long this may take, or a statement the
+    # caller is still waiting for gets cancelled underneath it -- and a
+    # cancelled statement raises, which once published "nothing is coming" on
+    # the strength of a timeout.
+    #
+    # This was 20s while the lookup took ten to twenty, which it did only
+    # because prod was missing the index for it. Rebuilt, the same query takes
+    # two milliseconds. Ecto's default is fine again, and the vision's own cap
+    # sits above it.
+    |> Repo.all()
 
     #    q =
     #      from st in StopTime,

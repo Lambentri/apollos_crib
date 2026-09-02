@@ -11,18 +11,18 @@ defmodule RoomSanctum.Worker.Vision do
   # Each query is asked on its own, so this is the cap on one of them rather
   # than on a round of them.
   #
-  # Ten seconds was too tight and made things worse rather than safer. GTFS
-  # arrival lookups against prod's data take on the order of ten seconds -- the
-  # same slowness that used to blow the thirty second tick when a round asked
-  # three of them one after another -- so a ten second cap turned "sometimes
-  # completes" into "never completes", and every panel sat on its previous
-  # answer for ever.
+  # This was briefly 25 seconds, which was right while an arrival lookup took
+  # ten to twenty. It did, because prod had been running for four days without
+  # the index those lookups need -- a CREATE INDEX CONCURRENTLY interrupted
+  # partway leaves an index Postgres will not use, and the migration that
+  # created it was recorded as applied, so nothing ever retried. With the index
+  # rebuilt the same lookup takes two milliseconds.
   #
-  # Just under the tick instead: a query gets essentially the whole interval,
-  # and the cap goes back to being a guard against a source that has genuinely
-  # hung rather than a limit real work runs into. It is not a fix for the
-  # slowness, which wants finding with an EXPLAIN against prod.
-  @query_timeout_ms 25_000
+  # So back to ten. A cap wants to be far enough above real work not to cut it
+  # off, and near enough that a source which has genuinely hung is noticed
+  # rather than tying up a slot for half a minute. Ten is five thousand times
+  # the work it is guarding.
+  @query_timeout_ms 10_000
 
   # How many of a vision's queries may be out at once.
   #
