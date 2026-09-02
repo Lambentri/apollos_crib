@@ -192,6 +192,41 @@ defmodule RoomSanctum.VisionMergeTest do
     end
   end
 
+  describe "an empty answer versus no answer" do
+    test "a genuinely empty result is written" do
+      {ref, entry} = outstanding(@key)
+
+      s0 = state(%{data: %{@key => [:yesterday]}, inflight: %{ref => entry}})
+      {:noreply, s} = Vision.handle_info({ref, {:ok, []}}, s0)
+
+      # Nothing calls at this stop in the next hour is a real answer.
+      assert s.data[@key] == []
+    end
+
+    test "a query that raised keeps what it had" do
+      {ref, entry} = outstanding(@key)
+
+      s0 = state(%{data: %{@key => [:yesterday]}, inflight: %{ref => entry}})
+      {:noreply, s} = Vision.handle_info({ref, :skip}, s0)
+
+      # Returning [] here published "nothing is coming" on the strength of a
+      # database timeout.
+      assert s.data[@key] == [:yesterday]
+      assert s.inflight == %{}
+    end
+
+    test "a skip does not move the timestamp either" do
+      {ref, entry} = outstanding(@key)
+      at = %{@key => ~U[2026-09-01 00:00:00Z]}
+
+      s0 = state(%{data: %{@key => [:a]}, data_at: at, inflight: %{ref => entry}})
+      {:noreply, s} = Vision.handle_info({ref, :skip}, s0)
+
+      # The panel is as old as its data actually is.
+      assert s.data_at[@key] == ~U[2026-09-01 00:00:00Z]
+    end
+  end
+
   describe "state given out" do
     test "carries when each answer arrived" do
       at = %{@key => ~U[2026-09-01 12:00:00Z]}

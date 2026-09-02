@@ -276,27 +276,37 @@ defmodule RoomSanctum.Worker.Vision do
   # was slow or broken, and is why waiting would be the wrong move.
   defp query_cached(q) do
     case RoomSanctum.QueryCache.fetch({q.id, q.source.type}, fn -> query_safely(q) end) do
-      {:ok, result} -> {:ok, result}
+      # query_safely already tags its own outcome, so this is {:ok, {:ok, _}}
+      # or {:ok, :skip} -- the cache does not care which it is holding.
+      {:ok, outcome} -> outcome
       :busy -> :skip
     end
   end
 
+  # `:skip` rather than an empty list, and the difference matters.
+  #
+  # An empty list is a real answer -- nothing calls at this stop in the next
+  # hour -- and writing it is correct. A query that raised has no answer at
+  # all, and returning [] for it published "nothing is coming" on the strength
+  # of a database timeout. The panel blanked, which is the very thing keeping
+  # the last value was meant to prevent; it just arrived by a different route
+  # than a task being killed.
   defp query_safely(q) do
-    query_one(q)
+    {:ok, query_one(q)}
   rescue
     e ->
       Logger.warning(
         "Query failed for #{inspect(q.source.type)} (#{q.source.id}): #{Exception.message(e)}"
       )
 
-      []
+      :skip
   catch
     kind, reason ->
       Logger.warning(
         "Query #{kind} for #{inspect(q.source.type)} (#{q.source.id}): #{inspect(reason)}"
       )
 
-      []
+      :skip
   end
 
   defp query_one(q) do
