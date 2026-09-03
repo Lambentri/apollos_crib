@@ -19,6 +19,8 @@
         height="420px"
         focus={RoomSanctumWeb.PlaniLive.Show.focus(@anchor)}
         focus_zoom={15}
+        route_lines={RoomSanctumWeb.PlaniLive.Show.radius_ring(@anchor, @plani.radius)}
+        show_route_lines={true}
         stations={RoomSanctumWeb.PlaniLive.Show.markers(@anchor, :stations)}
         free_bikes={RoomSanctumWeb.PlaniLive.Show.markers(@anchor, :bikes)}
         legend={false}

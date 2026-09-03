@@ -123,6 +123,18 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
         <.input field={@form[:radius]} type="number" label="Radius (metres, 50-3000)" />
         <.input field={@form[:limit]} type="number" label="How many of each (1-20)" />
 
+        <.input
+          field={@form[:break_out]}
+          type="checkbox"
+          label="One card per stop"
+        />
+        <p class="text-xs text-base-content/60">
+          Publishes an entry per stop rather than one per source, which is how a
+          vision looks on the wire — so a client draws a card each and needs to
+          know nothing about grouping. Off, the stops near you arrive blended
+          into one entry per source.
+        </p>
+
         <:actions>
           <.button phx-disable-with="Saving...">Save Plani</.button>
         </:actions>

@@ -51,7 +51,7 @@ object Wire {
             ?: return emptyList()
         return root.keys
             .mapNotNull { key ->
-                val dash = key.lastIndexOf('-')
+                val dash = key.indexOf('-')
                 if (dash <= 0) null else key.substring(0, dash)
             }
             .filter { SourceType.of(it) == null }
@@ -60,9 +60,12 @@ object Wire {
     }
 
     private fun entry(key: String, value: JsonElement): VisionEntry? {
-        // "gtfs-12" -- the id is everything after the last dash, since no
-        // source type contains one but nothing guarantees that forever.
-        val dash = key.lastIndexOf('-')
+        // "gtfs-12", and "gtfs-40:2378" for a Plani that breaks its sources
+        // out by stop. The *first* dash is the separator: no source type
+        // contains one, and an id certainly can -- a GBFS station id is a
+        // UUID, so splitting on the last dash lands inside it and leaves a
+        // type nothing recognises.
+        val dash = key.indexOf('-')
         if (dash <= 0) return null
         val type = SourceType.of(key.substring(0, dash)) ?: return null
         val id = key.substring(dash + 1)

@@ -133,9 +133,19 @@ defmodule RoomSanctum.Worker.Plani do
             Logger.warning("plani #{state.id} source #{source_id}: #{message}")
             {data, queries, places, Map.put(notes, source_id, {:error, message})}
 
-          {key, results, described, found} ->
-            {Map.put(data, key, results), [described | queries], found ++ places,
-             Map.put(notes, source_id, {:ok, length(results)})}
+          {entries, found} ->
+            # One source can answer with several entries now: broken out, a
+            # stop is an entry of its own.
+            data =
+              Enum.reduce(entries, data, fn {key, results, _q}, acc ->
+                Map.put(acc, key, results)
+              end)
+
+            described = Enum.map(entries, fn {_key, _results, q} -> q end)
+            counted = entries |> Enum.map(fn {_k, results, _q} -> length(results) end) |> Enum.sum()
+
+            {data, Enum.reverse(described) ++ queries, found ++ places,
+             Map.put(notes, source_id, {:ok, counted})}
         end
       end)
 
@@ -195,14 +205,37 @@ defmodule RoomSanctum.Worker.Plani do
       :gtfs ->
         stops = Storage.nearby_stops(source_id, anchor, plani.limit, plani.radius)
 
-        arrivals =
-          stops
-          |> Enum.flat_map(&Storage.get_upcoming_arrivals_for_stop(source_id, &1.stop_id, 8, :now, source.config.tz))
-          |> Storage.fix_arrival_times()
-          |> Enum.sort_by(& &1.arrival_time)
-          |> Enum.take(16)
+        by_stop =
+          Enum.map(stops, fn stop ->
+            arrivals =
+              source_id
+              |> Storage.get_upcoming_arrivals_for_stop(stop.stop_id, 8, :now, source.config.tz)
+              |> Storage.fix_arrival_times()
+              |> Enum.sort_by(& &1.arrival_time)
 
-        {{source_id, :gtfs}, arrivals, described(source), places(stops, source, :stop)}
+            {stop, arrivals}
+          end)
+
+        entries =
+          if plani.break_out do
+            # One entry per stop, named after it, the way a vision's queries
+            # are. A stop with nothing due is left out rather than published
+            # empty -- the same call the clients already make.
+            for {stop, arrivals} <- by_stop, arrivals != [] do
+              key = "#{source_id}:#{stop.stop_id}"
+              {{key, :gtfs}, arrivals, described(source, key, stop.stop_name)}
+            end
+          else
+            blended =
+              by_stop
+              |> Enum.flat_map(fn {_stop, arrivals} -> arrivals end)
+              |> Enum.sort_by(& &1.arrival_time)
+              |> Enum.take(16)
+
+            [{{source_id, :gtfs}, blended, described(source)}]
+          end
+
+        {entries, places(stops, source, :stop)}
 
       :gbfs ->
         # Both, because a source does not say which kind it is. A docked
@@ -211,12 +244,29 @@ defmodule RoomSanctum.Worker.Plani do
         bikes = Storage.free_bikes_near(source_id, anchor, plani.radius)
         docks = Storage.stations_near(source_id, anchor, plani.radius)
 
-        {{source_id, :gbfs}, bikes ++ docks, described(source),
-         places(bikes, source, :bike) ++ places(docks, source, :dock)}
+        entries =
+          if plani.break_out do
+            # A dock is a place, so it gets its own entry. Loose bikes are not
+            # -- they are a count of what is lying about nearby -- so they stay
+            # together under the source.
+            per_dock =
+              for dock <- docks do
+                key = "#{source_id}:#{dock.station_id}"
+                {{key, :gbfs}, [dock], described(source, key, dock.name)}
+              end
+
+            if bikes == [],
+              do: per_dock,
+              else: [{{source_id, :gbfs}, bikes, described(source)} | per_dock]
+          else
+            [{{source_id, :gbfs}, bikes ++ docks, described(source)}]
+          end
+
+        {entries, places(bikes, source, :bike) ++ places(docks, source, :dock)}
 
       :aqi ->
         readings = Storage.nearby_aqi_stations(source_id, anchor, plani.limit)
-        {{source_id, :aqi}, readings, described(source), places(readings, source, :monitor)}
+        {[{{source_id, :aqi}, readings, described(source)}], places(readings, source, :monitor)}
 
       other ->
         # Sources with nothing located in them, or nothing near-able yet. Left
@@ -242,8 +292,14 @@ defmodule RoomSanctum.Worker.Plani do
   # so a Plani hands them something query-shaped. The empty `query` matters --
   # the GTFS condenser reads a stop out of it to look up stop-specific alerts,
   # and a Plani has no one stop any more than an area query does.
-  defp described(source) do
-    %{id: source.id, name: source.name, meta: %{}, query: %{}}
+  # What the condensers expect alongside the data: a vision hands them a query,
+  # so a Plani hands them something query-shaped. The id has to match the key
+  # the data went under -- that is how the two are paired again -- so a broken
+  # out entry carries its own, or its name is dropped on the way out.
+  defp described(source), do: described(source, source.id, source.name)
+
+  defp described(source, id, name) do
+    %{id: id, name: name, meta: %{}, query: %{}}
   end
 
   # Where the things it found actually are, for anything drawing a map.

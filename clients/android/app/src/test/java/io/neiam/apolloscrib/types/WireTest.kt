@@ -61,6 +61,42 @@ class WireTest {
     }
 
     @Test
+    fun `an id with dashes in it survives the split`() {
+        // A Plani that breaks its sources out keys an entry by source and
+        // stop, and a GBFS station id is a UUID -- so the key has dashes well
+        // past the one that separates the type.
+        val payload = """
+            {"gbfs-38:6cec3afa-554c-466f-8323-5c619fe0ddc6": {
+              "query": {"name": "Packard Ave", "meta": {}},
+              "data": [{"name":"Packard Ave","id":"1","avail":4,"docks_avail":9,
+                        "capacity":13,"ebikes_info":[]}]
+            }}
+        """.trimIndent()
+
+        val entry = Wire.parse(payload).single()
+
+        assertEquals(SourceType.Gbfs, entry.type)
+        assertEquals("38:6cec3afa-554c-466f-8323-5c619fe0ddc6", entry.queryId)
+        assertEquals("Packard Ave", entry.label())
+    }
+
+    @Test
+    fun `a stop broken out of a Plani reads as its own board`() {
+        val payload = """
+            {"gtfs-40:2378": {
+              "query": {"name": "Boston Ave @ College Ave", "meta": {}},
+              "data": [{"route":"96","dest":"Harvard","dir":"In","mode":"Bus",
+                        "times":["08:00:00"]}]
+            }}
+        """.trimIndent()
+
+        val entry = Wire.parse(payload).single()
+
+        assertEquals(SourceType.Gtfs, entry.type)
+        assertEquals("Boston Ave @ College Ave", entry.label())
+    }
+
+    @Test
     fun `a source with no shape is dropped rather than failing the board`() {
         // `bourse` is published by apollos-crib but has no type in the
         // apollos-types crate, so this client does not claim to read it.

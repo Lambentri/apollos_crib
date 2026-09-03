@@ -46,6 +46,33 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
   def focus(_), do: nil
 
   @doc """
+  The radius, as a ring to draw around the anchor.
+
+  A polyline rather than a circle: the map already draws lines as a child
+  element that LiveView adds and removes, and a sixty-four sided ring is a
+  circle at any zoom a city is read at. Adding a circle element would mean new
+  JavaScript for the same picture.
+
+  Metres to degrees the flat way -- a kilometre is not far enough for the
+  curvature to show, and the longitude scale is taken at the ring's own
+  latitude so it does not go oval further north.
+  """
+  def radius_ring(%{anchor: %Geo.Point{coordinates: {lon, lat}}}, radius_m) when is_integer(radius_m) do
+    d_lat = radius_m / 111_320
+    d_lon = radius_m / (111_320 * max(:math.cos(lat * :math.pi() / 180), 0.01))
+
+    points =
+      for step <- 0..64 do
+        angle = step / 64 * 2 * :math.pi()
+        [lat + d_lat * :math.sin(angle), lon + d_lon * :math.cos(angle)]
+      end
+
+    [%{id: "radius", points: points, color: "#38bdf8"}]
+  end
+
+  def radius_ring(_where, _radius), do: []
+
+  @doc """
   The things found near the anchor, as map markers.
 
   Bikes go on their own layer because the component draws them differently;

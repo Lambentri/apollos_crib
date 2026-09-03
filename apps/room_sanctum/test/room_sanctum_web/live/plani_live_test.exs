@@ -130,6 +130,25 @@ defmodule RoomSanctumWeb.PlaniLiveTest do
       assert marker.lat == 42.4
     end
 
+    test "rings the radius around the anchor" do
+      where = %{anchor: %Geo.Point{coordinates: {-71.1, 42.4}, srid: 4326}}
+
+      [ring] = Show.radius_ring(where, 800)
+
+      # Closed, so the line meets itself rather than leaving a gap.
+      assert List.first(ring.points) == List.last(ring.points)
+
+      lats = Enum.map(ring.points, &List.first/1)
+      # 800m north and south of 42.4, near enough.
+      assert_in_delta Enum.max(lats), 42.4072, 0.001
+      assert_in_delta Enum.min(lats), 42.3928, 0.001
+    end
+
+    test "draws no ring before there is an anchor to draw it round" do
+      assert Show.radius_ring(nil, 800) == []
+      assert Show.radius_ring(%{anchor: nil}, 800) == []
+    end
+
     test "draws nothing before the worker has found anything" do
       assert Show.markers(nil, :stations) == []
       assert Show.markers(%{anchor: nil}, :bikes) == []

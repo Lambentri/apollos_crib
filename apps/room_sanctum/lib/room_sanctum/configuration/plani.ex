@@ -36,6 +36,12 @@ defmodule RoomSanctum.Configuration.Plani do
     field :radius, :integer, default: 800
     field :limit, :integer, default: 5
 
+    # One entry per stop rather than one per source. A vision publishes an
+    # entry per query and a query is one stop, so a client that draws a card
+    # per entry needs to know nothing about grouping. Blended is fewer entries
+    # and asks the client to render a list of its own.
+    field :break_out, :boolean, default: false
+
     timestamps()
   end
 
@@ -51,7 +57,8 @@ defmodule RoomSanctum.Configuration.Plani do
       :sources,
       :follow_tint,
       :radius,
-      :limit
+      :limit,
+      :break_out
     ])
     |> validate_required([:name, :home_foci_id])
     # The same bounds an area query keeps, and for the same reason: past a
