@@ -60,9 +60,38 @@ defmodule RoomSanctum.Worker.Plani do
   the two it is reading.
   """
   def get_state(name) do
-    "plani#{name}" |> via_tuple() |> GenServer.call(:return_state, 15_000)
-  catch
-    :exit, _ -> %{data: %{}, queries: []}
+    try do
+      "plani#{name}" |> via_tuple() |> GenServer.call(:return_state, 15_000)
+    rescue
+      ArgumentError -> empty()
+    catch
+      :exit, _ -> empty()
+    end
+  end
+
+  # A Plani whose worker is not up yet: it has nothing to say, and saying so
+  # is better than a Pythiae crashing on the way out of a deploy.
+  defp empty, do: %{data: %{}, queries: []}
+
+  @doc """
+  Where this Plani currently thinks it is, and how it knows.
+
+  `:client` means somebody reported inside the window; `:home` means nobody
+  has and the home foci is answering. Worth showing on a page, because a Plani
+  answering from home looks exactly like a Plani answering from a client that
+  happens to be at home.
+  """
+  def where(name) do
+    try do
+      "plani#{name}" |> via_tuple() |> GenServer.call(:where, 5_000)
+    rescue
+      # A registry that is not up raises from the lookup before any call
+      # happens, where a dead process would have exited -- a node still
+      # booting, or a test. Not knowing where a Plani is is a normal answer.
+      ArgumentError -> nil
+    catch
+      :exit, _ -> nil
+    end
   end
 
   def handle_cast(:refresh_db_cfg, state) do
@@ -87,6 +116,10 @@ defmodule RoomSanctum.Worker.Plani do
       end)
 
     {:noreply, %{state | data: data, queries: Enum.reverse(queries), anchor: anchor, anchored_to: anchored_to}}
+  end
+
+  def handle_call(:where, _from, state) do
+    {:reply, %{anchor: state.anchor, anchored_to: state.anchored_to}, state}
   end
 
   def handle_call(:return_state, _from, state) do

@@ -24,6 +24,50 @@
     <div class="flex flex flex-wrap md:flex-nowrap flex-col flex-col-reverse md:flex-row">
       <div class="card card-compact w-full md:w-1/5 bg-base-100 shadow-xl m-2">
         <div class="card-body">
+          <h3 class="card-title">
+            Plani
+            <%= if @pythiae.curr_plani do %>
+              <button class="btn btn-xs btn-ghost" phx-click="clear-current-plani" title="Go back to the vision">
+                <i class="fas fa-fw fa-xmark"></i> unset
+              </button>
+            <% end %>
+          </h3>
+          <%= if @plani == [] do %>
+            <p class="text-sm opacity-60">
+              None yet. A Plani is a vision whose anchor moves with a client.
+            </p>
+          <% else %>
+            <p>
+              <%= for p <- @plani do %>
+                <div class="btn-group">
+                  <button
+                    class="btn btn-sm btn-ghost"
+                    phx-click="set-current-plani"
+                    phx-value-id={p.id}
+                    disabled={p.id == @pythiae.curr_plani}
+                    title={if p.id == @pythiae.curr_plani, do: "Currently showing this", else: "Show this instead of the vision"}
+                  >
+                    <i class={"fas fa-fw fa-location-crosshairs #{if p.id == @pythiae.curr_plani, do: "text-accent"}"}></i>
+                  </button>
+                  <a href={Routes.plani_show_path(@socket, :show, p)} class="text-sm hover:underline btn btn-sm btn-secondary">
+                    <%= p.name %>
+                  </a>
+                </div>
+              <% end %>
+            </p>
+          <% end %>
+          <%= if @pythiae.curr_plani do %>
+            <p class="text-xs text-warning mt-2">
+              <i class="fas fa-fw fa-circle-info"></i>
+              While a Plani is set the vision below is not read at all — both
+              answer the same question, one from where the queries were written
+              and one from where the client is.
+            </p>
+          <% end %>
+        </div>
+      </div>
+      <div class={"card card-compact w-full md:w-1/5 bg-base-100 shadow-xl m-2 #{if @pythiae.curr_plani, do: "opacity-50"}"}>
+        <div class="card-body">
           <h3 class="card-title">Visions</h3>
           <p>
               <%= for v <- @pythiae.visions do %>

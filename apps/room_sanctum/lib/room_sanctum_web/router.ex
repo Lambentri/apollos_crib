@@ -103,6 +103,11 @@ defmodule RoomSanctumWeb.Router do
     live "/cfg/ankyra/:id", AnkyraLive.Show, :show
     live "/cfg/ankyra/:id/show/edit", AnkyraLive.Show, :edit
 
+    live "/cfg/plani", PlaniLive.Index, :index
+    live "/cfg/plani/new", PlaniLive.Index, :new
+    live "/cfg/plani/:id/edit", PlaniLive.Index, :edit
+    live "/cfg/plani/:id", PlaniLive.Show, :show
+
     live "/cfg/pythiæ", PythiaeLive.Index, :index
     live "/cfg/pythiæ/new", PythiaeLive.Index, :new
     live "/cfg/pythiæ/:id/edit", PythiaeLive.Index, :edit

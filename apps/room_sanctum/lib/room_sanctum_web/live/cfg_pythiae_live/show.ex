@@ -25,6 +25,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
      |> assign(:visions, Configuration.list_visions({:user, socket.assigns.current_user.id}))
      |> assign(:foci, Configuration.list_focis({:user, socket.assigns.current_user.id}))
      |> assign(:ankyra, Accounts.list_users_rabbit({:user, socket.assigns.current_user.id}))
+     |> assign(:plani, Configuration.list_plani(socket.assigns.current_user.id))
      |> assign(:preview, [])
      |> assign(:preview_mode, :basic)
      |> assign(:preview_raw, false)}
@@ -169,6 +170,20 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
   # Setting a foci was one-way: every foci had a button to become the current
   # one and none of them had a way back, so a Pythiae that had ever been
   # pointed at a place stayed pointed at it.
+  def handle_event("set-current-plani", %{"id" => plani_id}, socket) do
+    pythiae = socket.assigns.pythiae
+    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_plani: plani_id})
+    {:noreply, socket |> assign(:pythiae, updated)}
+  end
+
+  # Back to the vision. Exclusive rather than additive, so unsetting is the
+  # only way to see the vision again.
+  def handle_event("clear-current-plani", _params, socket) do
+    pythiae = socket.assigns.pythiae
+    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_plani: nil})
+    {:noreply, socket |> assign(:pythiae, updated)}
+  end
+
   def handle_event("clear-current-foci", _params, socket) do
     pythiae = socket.assigns.pythiae
     {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_foci: nil})

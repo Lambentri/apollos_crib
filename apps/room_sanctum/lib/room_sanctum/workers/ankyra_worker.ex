@@ -74,13 +74,18 @@ defmodule RoomSanctum.Worker.Ankyra do
   signal to fall back to a home foci rather than an error.
   """
   def position(name, client_id) do
-    "ankyra#{name}"
-    |> via_tuple()
-    |> GenServer.call({:position, client_id}, 5_000)
-  catch
-    # A worker that is not up yet, or a node on its way down. Not knowing
-    # where somebody is is a normal answer here.
-    :exit, _ -> nil
+    try do
+      "ankyra#{name}"
+      |> via_tuple()
+      |> GenServer.call({:position, client_id}, 5_000)
+    rescue
+      # A registry that is not up raises from the lookup rather than exiting.
+      ArgumentError -> nil
+    catch
+      # A worker that is not up yet, or a node on its way down. Not knowing
+      # where somebody is is a normal answer here.
+      :exit, _ -> nil
+    end
   end
 
   def meta_check(name) do

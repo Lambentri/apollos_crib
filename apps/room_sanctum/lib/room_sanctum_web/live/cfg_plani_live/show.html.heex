@@ -1,0 +1,65 @@
+<.itb icon="fa-chevron-left" to={Routes.plani_index_path(@socket, :index)} what="Back"></.itb>
+<.itb icon="fa-pencil" to={Routes.plani_index_path(@socket, :edit, @plani)} what="Edit"></.itb>
+
+<h1 class="text-3xl font-bold text-accent mx-4 py-2"><%= @plani.name %></h1>
+
+<div class="mx-4 py-2 flex flex-wrap">
+  <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+    <div class="card-body">
+      <h3 class="card-title">
+        <i class="fas fa-fw fa-location-crosshairs"></i> Where it is
+      </h3>
+
+      <%= case @anchor do %>
+        <% nil -> %>
+          <p class="opacity-70">
+            No worker yet — one is started within a few seconds of a Plani being made.
+          </p>
+        <% %{anchored_to: :client} = a -> %>
+          <p>
+            <span class="badge badge-success gap-2">
+              <i class="fas fa-fw fa-satellite-dish"></i> following a client
+            </span>
+          </p>
+          <pre class="text-sm"><%= RoomSanctumWeb.PlaniLive.Show.coordinates(a) %></pre>
+        <% a -> %>
+          <p>
+            <span class="badge badge-ghost gap-2">
+              <i class="fas fa-fw fa-house"></i> at home
+            </span>
+          </p>
+          <pre class="text-sm"><%= RoomSanctumWeb.PlaniLive.Show.coordinates(a) %></pre>
+          <p class="text-xs opacity-60">
+            Nothing has reported inside the window, so the home foci is answering.
+          </p>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+    <div class="card-body">
+      <h3 class="card-title"><i class="fas fa-fw fa-layer-group"></i> What it is asking</h3>
+      <%= if @plani.sources == [] do %>
+        <p class="opacity-70">No sources yet. Edit it to add some.</p>
+      <% else %>
+        <ul class="menu p-2 bg-base-200 rounded-xl">
+          <li :for={source_id <- @plani.sources}>
+            <a>
+              <span><%= RoomSanctumWeb.PlaniLive.Show.source_name(@sources, source_id) %></span>
+              <%= case RoomSanctumWeb.PlaniLive.Show.count_for(@state, source_id) do %>
+                <% nil -> %>
+                  <span class="badge badge-ghost">nothing yet</span>
+                <% n -> %>
+                  <span class="badge badge-accent"><%= n %></span>
+              <% end %>
+            </a>
+          </li>
+        </ul>
+        <p class="text-xs opacity-60">
+          Within <%= @plani.radius %>m, up to <%= @plani.limit %> of each. A source with
+          nothing located in it is skipped rather than guessed at.
+        </p>
+      <% end %>
+    </div>
+  </div>
+</div>
