@@ -65,14 +65,7 @@ class LocationReporter(
         if (listening) return
         val manager = manager ?: return
 
-        val provider = when {
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
-                manager.allProviders.contains(LocationManager.FUSED_PROVIDER) ->
-                LocationManager.FUSED_PROVIDER
-            manager.allProviders.contains(LocationManager.NETWORK_PROVIDER) ->
-                LocationManager.NETWORK_PROVIDER
-            else -> LocationManager.GPS_PROVIDER
-        }
+        val provider = bestProvider(manager)
 
         runCatching {
             manager.requestLocationUpdates(
@@ -90,11 +83,60 @@ class LocationReporter(
         }.onFailure { Log.w(TAG, "could not start location updates", it) }
     }
 
+    private fun bestProvider(manager: LocationManager): String = when {
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            manager.allProviders.contains(LocationManager.FUSED_PROVIDER) ->
+            LocationManager.FUSED_PROVIDER
+        manager.allProviders.contains(LocationManager.NETWORK_PROVIDER) ->
+            LocationManager.NETWORK_PROVIDER
+        else -> LocationManager.GPS_PROVIDER
+    }
+
     private fun stop() {
         if (!listening) return
         runCatching { manager?.removeUpdates(listener) }
         listening = false
         Log.d(TAG, "stopped reporting location")
+    }
+
+    /**
+     * Report where this client is, now, whatever the floors say.
+     *
+     * Asked for rather than waited for: the interval and the distance between
+     * updates are there to keep a phone in a pocket quiet, and a person
+     * looking at the screen has better information about whether this moment
+     * matters than either of them does.
+     */
+    fun reportNow(onResult: (Boolean) -> Unit = {}) {
+        if (!canReport()) return onResult(false)
+        val manager = manager ?: return onResult(false)
+
+        val provider = bestProvider(manager)
+
+        runCatching {
+            // A current fix rather than the last known one: "report now" that
+            // sends a position from an hour ago is worse than useless, since
+            // it looks like it worked.
+            manager.getCurrentLocation(
+                provider,
+                null,
+                context.mainExecutor
+            ) { location ->
+                if (location != null) {
+                    report(location)
+                    onResult(true)
+                } else {
+                    // No fix in the time it was willing to wait -- indoors,
+                    // usually. The last one known is better than nothing.
+                    val last = runCatching { manager.getLastKnownLocation(provider) }.getOrNull()
+                    last?.let(::report)
+                    onResult(last != null)
+                }
+            }
+        }.onFailure {
+            Log.w(TAG, "could not take a fix", it)
+            onResult(false)
+        }
     }
 
     private fun report(location: Location) {
@@ -109,10 +151,14 @@ class LocationReporter(
         private const val TAG = "LocationReporter"
 
         /**
-         * Two minutes and a hundred metres, whichever the provider reaches
-         * first. A foci that travels is answering "which stop am I near",
-         * which does not change at walking pace within a block -- and the
-         * cost of asking more often is the phone's battery.
+         * Two minutes *and* a hundred metres: Android treats both as floors,
+         * so a fix arrives only once each has been passed.
+         *
+         * Which means a phone standing still reports nothing at all, and that
+         * is the intent -- a foci that travels is answering "which stop am I
+         * near", which does not change while you are sitting down, and the
+         * cost of asking more often is the battery. [reportNow] is the way to
+         * say where you are without waiting for either.
          */
         private const val MIN_INTERVAL_MS = 2 * 60 * 1000L
         private const val MIN_DISTANCE_M = 100f

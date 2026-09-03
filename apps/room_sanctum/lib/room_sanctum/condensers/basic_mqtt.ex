@@ -172,12 +172,20 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
               id: f.station_id,
               avail: f.num_bikes_available,
               avail_elec: f.num_ebikes_available,
-              avail_std: f.num_bikes_available - f.num_ebikes_available,
+              # Same reasoning: a feed that does not break its count down by
+              # motor leaves these null, and subtracting one raises.
+              avail_std: (f.num_bikes_available || 0) - (f.num_ebikes_available || 0),
               docks_avail: f.num_docks_available,
               docks_disabled: f.num_docks_disabled,
               capacity: f.capacity,
               ebikes_info:
-                f.ebikes_info
+                # A left join, so a dock that no e-bike is sitting in comes
+                # back nil rather than empty -- and mapping over that raised,
+                # which killed the condense for the *whole* board rather than
+                # this one dock. A Plani feels it hardest: it breaks a source
+                # out into an entry per dock, so a radius holding one ordinary
+                # unelectrified dock published nothing at all.
+                (f.ebikes_info || [])
                 |> Enum.map(fn eb ->
                   %{
                     name: eb.displayed_number,

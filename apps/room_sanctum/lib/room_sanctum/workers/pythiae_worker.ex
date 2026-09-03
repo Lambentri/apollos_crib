@@ -152,14 +152,34 @@ defmodule RoomSanctum.Worker.Pythiae do
     |> Enum.map(fn {{id, type}, datum} ->
       query = Map.get(query_map, id)
       
-      condensed = if query do
+      case condense_one({id, type}, datum, query) do
+        {:ok, condensed} -> {"#{type}-#{id}", condensed}
+        :error -> nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.into(%{})
+  end
+
+  # One entry, or nothing.
+  #
+  # A board is a dozen unrelated queries, and one of them raising used to take
+  # the publish down with it -- so a single dock with an unexpected shape meant
+  # no board at all, on every tick, with nothing saying why. The client already
+  # drops what it cannot read and draws the rest; this is the same call made at
+  # the other end, where there is a log to say it happened.
+  defp condense_one({id, type}, datum, query) do
+    condensed =
+      if query do
         RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum, query)
       else
         RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, datum)
       end
-      
-      {"#{type}-#{id}", condensed}
-    end)
-    |> Enum.into(%{})
+
+    {:ok, condensed}
+  rescue
+    error ->
+      Logger.warning("pythiae: dropping #{type}-#{id}: #{Exception.message(error)}")
+      :error
   end
 end

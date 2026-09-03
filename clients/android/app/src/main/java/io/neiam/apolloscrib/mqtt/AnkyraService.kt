@@ -118,6 +118,12 @@ class AnkyraService : Service() {
         sendUplink("${settings.topic}.publish.board", "{}")
     }
 
+    /** Say where this client is, now. See [LocationReporter.reportNow]. */
+    fun reportLocationNow(onResult: (Boolean) -> Unit) {
+        val reporter = location
+        if (reporter == null) onResult(false) else reporter.reportNow(onResult)
+    }
+
     private fun onPayload(payload: String) {
         Log.d(TAG, "payload: ${payload.length} bytes")
         store.save(payload)
@@ -248,6 +254,17 @@ class AnkyraService : Service() {
          */
         fun requestBoard(context: Context) {
             running?.requestBoard()
+        }
+
+        /**
+         * Publish a position on demand.
+         *
+         * Reports false when nothing is listening, which is the same answer
+         * the button wants for a service that is not running: it did not go.
+         */
+        fun reportLocationNow(context: Context, onResult: (Boolean) -> Unit) {
+            val service = running
+            if (service == null) onResult(false) else service.reportLocationNow(onResult)
         }
 
         fun stop(context: Context) {

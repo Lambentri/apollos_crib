@@ -32,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -42,6 +43,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
 import io.neiam.apolloscrib.data.Pairing
 import io.neiam.apolloscrib.feed.FeedProvider
+import kotlinx.coroutines.delay
 import io.neiam.apolloscrib.widget.BoardWidget
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
@@ -274,6 +276,46 @@ private fun ConnectionScreen(
                     }
                 }
             )
+
+            // Only worth offering once reporting is on -- and worth offering
+            // at all because the automatic report waits for two minutes *and*
+            // a hundred metres, so a phone standing still never sends one.
+            if (reportLocation) {
+                // "" is untried, which shows nothing; the button says enough
+                // on its own until it has been pressed.
+                var result by remember { mutableStateOf("") }
+
+                // A result that stayed on screen would be read as the current
+                // state of something, and it is not -- it is what happened
+                // when the button was last pressed.
+                LaunchedEffect(result) {
+                    if (result.isNotEmpty()) {
+                        delay(4000)
+                        result = ""
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    OutlinedButton(onClick = {
+                        result = ""
+                        AnkyraService.reportLocationNow(context) { sent ->
+                            result = if (sent) "Sent" else "No fix to send"
+                        }
+                    }) {
+                        Text("Report now")
+                    }
+                    if (result.isNotEmpty()) {
+                        Text(
+                            result,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LocalAppTheme.current.dim
+                        )
+                    }
+                }
+            }
         }
 
         Text("Client id: ${settings.clientId}", style = MaterialTheme.typography.bodySmall)
