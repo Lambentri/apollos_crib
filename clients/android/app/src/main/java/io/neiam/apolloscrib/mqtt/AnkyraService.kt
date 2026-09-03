@@ -15,6 +15,7 @@ import io.neiam.apolloscrib.R
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.data.VisionStore
 import io.neiam.apolloscrib.targets.Targets
+import io.neiam.apolloscrib.widget.BoardWidget
 import io.neiam.apolloscrib.ui.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -67,6 +68,7 @@ class AnkyraService : Service() {
         // about a departure that has since gone.
         settings.clearDismissed()
         Targets.notifyAll(this)
+        BoardWidget.refresh(this)
     }
 
     private fun onState(newState: AnkyraClient.State) {

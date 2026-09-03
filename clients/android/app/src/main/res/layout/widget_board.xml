@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/board_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="2dp">
+
+    <AdapterViewFlipper
+        android:id="@+id/board_flipper"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:loopViews="true"
+        android:autoStart="true"
+        android:flipInterval="8000"
+        android:animateFirstView="false" />
+
+    <!-- Shown by the flipper itself when the board has nothing in it, so the
+         widget says why rather than sitting blank. -->
+    <TextView
+        android:id="@+id/board_empty"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:gravity="center"
+        android:padding="12dp"
+        android:textSize="13sp"
+        android:text="@string/widget_empty" />
+</FrameLayout>

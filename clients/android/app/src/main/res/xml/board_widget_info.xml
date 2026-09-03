@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The board as a home screen widget: one card at a time, cycled by the
+     host. `autoAdvanceViewId` is what asks for the cycling — the flipper
+     advances itself on launchers that honour it, and can be swiped by hand on
+     the ones that do not.
+
+     No `updatePeriodMillis`: a board arrives when a Pythiae publishes one, and
+     the service notifies the widget then. Polling on a timer would redraw what
+     it already has. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="180dp"
+    android:minHeight="110dp"
+    android:minResizeWidth="110dp"
+    android:minResizeHeight="70dp"
+    android:targetCellWidth="3"
+    android:targetCellHeight="2"
+    android:maxResizeWidth="500dp"
+    android:maxResizeHeight="400dp"
+    android:resizeMode="horizontal|vertical"
+    android:updatePeriodMillis="0"
+    android:initialLayout="@layout/widget_board"
+    android:previewLayout="@layout/widget_board"
+    android:autoAdvanceViewId="@id/board_flipper"
+    android:widgetCategory="home_screen"
+    android:description="@string/widget_description" />
