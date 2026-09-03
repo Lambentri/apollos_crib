@@ -105,7 +105,10 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     # annotation on the map, not something read off a feed, and it followed the
     # theme everywhere else on the page but here. Resolved in the browser, so
     # it also survives a theme switch without a reload.
-    [%{id: "radius", points: points, color: "--a"}]
+    # Heavier than a route line, because it is not one -- the ring is the
+    # page's own annotation and reads as an edge rather than as something the
+    # map found.
+    [%{id: "radius", points: points, color: "--a", weight: 3}]
   end
 
   def radius_ring(_where, _radius), do: []

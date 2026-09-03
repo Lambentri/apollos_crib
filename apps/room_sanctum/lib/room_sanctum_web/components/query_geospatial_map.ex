@@ -226,8 +226,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
             id={"#{@id}-line-#{line.id}"}
             points={Jason.encode!(line.points)}
             color={Map.get(line, :color) || "#94a3b8"}
-            weight="2"
-            opacity="0.3"
+            weight={Map.get(line, :weight) || 2}
+            opacity={Map.get(line, :opacity) || 0.3}
           ></leaflet-line>
 
           <%= for p <- @all_points do %>
