@@ -2,10 +2,12 @@ package io.neiam.apolloscrib.mqtt
 
 import android.util.Log
 import com.hivemq.client.mqtt.MqttClient
+import com.hivemq.client.mqtt.MqttGlobalPublishFilter
 import com.hivemq.client.mqtt.datatypes.MqttQos
 import com.hivemq.client.mqtt.mqtt3.Mqtt3AsyncClient
 import io.neiam.apolloscrib.data.Settings
 import java.nio.charset.StandardCharsets
+import java.util.concurrent.TimeUnit
 
 /**
  * A subscription to one Ankyra topic.
@@ -58,12 +60,33 @@ class AnkyraClient(
             .identifier(settings.clientId)
             .serverHost(settings.host)
             .serverPort(settings.port)
-            .automaticReconnectWithDefaultConfig()
+            // Credentials belong on the builder, not on the connect call.
+            // connectWith().simpleAuth() authenticates that one CONNECT; an
+            // automatic reconnect builds its own from the client's defaults
+            // and carries no credentials, so the first connect succeeds and
+            // every reconnect after it is refused with BAD_USER_NAME_OR_PASSWORD.
+            .apply {
+                if (settings.username.isNotEmpty()) {
+                    simpleAuth()
+                        .username(settings.username)
+                        .password(settings.password.toByteArray(StandardCharsets.UTF_8))
+                        .applySimpleAuth()
+                }
+            }
+            .automaticReconnect()
+            // The default ceiling is two minutes, which is a long time to
+            // stare at a stale board after a tunnel. A phone changes network
+            // often enough that the wait matters more than the load a retry
+            // costs.
+            .initialDelay(1, TimeUnit.SECONDS)
+            .maxDelay(30, TimeUnit.SECONDS)
+            .applyAutomaticReconnect()
             // The connection outlives the call that opened it: HiveMQ
             // reconnects on its own, and a state read only from the callbacks
             // below would still be saying "not connected" while payloads
             // arrived. These follow the connection itself.
             .addConnectedListener {
+                Log.d(TAG, "connected attempt=$attempt live=$generation")
                 // Subscribing again on every connect rather than trusting the
                 // reconnect to carry the old one. A repeat subscription to the
                 // same filter replaces it at the broker, so this costs nothing
@@ -71,6 +94,12 @@ class AnkyraClient(
                 if (attempt == generation) client?.let { subscribe(it, attempt) }
             }
             .addDisconnectedListener { context ->
+                Log.d(
+                    TAG,
+                    "disconnected attempt=$attempt live=$generation " +
+                        "reconnect=${context.reconnector.isReconnect} " +
+                        "cause=${context.cause}"
+                )
                 if (attempt == generation) {
                     onState(
                         if (context.reconnector.isReconnect) State.Connecting
@@ -82,6 +111,16 @@ class AnkyraClient(
             .buildAsync()
         client = built
 
+        // Registered once, not per subscription. A subscribe callback stays
+        // registered for the life of the client, so re-subscribing on every
+        // reconnect stacked another copy and each board arrived once per
+        // reconnect the phone had ever made.
+        built.publishes(MqttGlobalPublishFilter.ALL) { publish ->
+            if (attempt == generation) {
+                onMessage(String(publish.payloadAsBytes, StandardCharsets.UTF_8))
+            }
+        }
+
         built.connectWith()
             // The board is a snapshot, not a log: on reconnect we want what is
             // true now, and the retained message plus the next tick give that.
@@ -89,14 +128,6 @@ class AnkyraClient(
             // Long enough that a dozing phone is not churning the connection,
             // short enough that the broker notices a dead one.
             .keepAlive(60)
-            .apply {
-                if (settings.username.isNotEmpty()) {
-                    simpleAuth()
-                        .username(settings.username)
-                        .password(settings.password.toByteArray(StandardCharsets.UTF_8))
-                        .applySimpleAuth()
-                }
-            }
             .send()
             .whenComplete { _, error ->
                 if (error != null && attempt == generation) {
@@ -116,10 +147,6 @@ class AnkyraClient(
             // QoS 0, matching the queue name Ankyra looks for when it counts
             // who is listening -- `mqtt-subscription-<client_id>qos0`.
             .qos(MqttQos.AT_MOST_ONCE)
-            .callback { publish ->
-                val payload = String(publish.payloadAsBytes, StandardCharsets.UTF_8)
-                onMessage(payload)
-            }
             .send()
             .whenComplete { _, error ->
                 if (attempt != generation) return@whenComplete
@@ -127,6 +154,7 @@ class AnkyraClient(
                     Log.w(TAG, "subscribe failed", error)
                     onState(State.Failed)
                 } else {
+                    Log.d(TAG, "subscribed to ${settings.topic}")
                     onState(State.Connected)
                 }
             }
