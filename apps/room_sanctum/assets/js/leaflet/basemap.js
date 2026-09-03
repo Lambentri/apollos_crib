@@ -126,6 +126,23 @@ function asColor(value) {
     return /^[\d.]+\s+[\d.]+%\s+[\d.]+%$/.test(value) ? `hsl(${value})` : value
 }
 
+/**
+ * A colour that may be named as a theme variable.
+ *
+ * `--a` reads the current theme's accent, `#38bdf8` is passed through, and
+ * anything falsy comes back null so the caller can pick its own default. The
+ * rule the basemap's `tint` option already used, pulled out so a line can be
+ * coloured by the same names -- otherwise every new caller reinvents which of
+ * these two forms it accepts, and they drift.
+ *
+ * `el` is the element to resolve against, which matters inside a shadow root
+ * whose host may sit under a different data-theme than <html>.
+ */
+export function themeColor(value, el) {
+    if (!value) return null
+    return asColor(value.startsWith('--') ? cssVar(value, el) : value)
+}
+
 // Themes here range from near-black to a deep navy, and the basemap has to
 // match the surrounding chrome or the map reads as a hole punched in the page.
 // base-100's lightness is the same signal daisyUI itself uses.
@@ -255,9 +272,7 @@ export function addBasemap(map, opts = {}) {
         tiles.setUrl(baseUrl())
         if (labelTiles) labelTiles.setUrl(styleFor().labels)
 
-        const color = tintOpt === 'none' ? null : asColor(
-            tintOpt.startsWith('--') ? cssVar(tintOpt, styleFrom) : tintOpt
-        )
+        const color = tintOpt === 'none' ? null : themeColor(tintOpt, styleFrom)
 
         tint.style.background = color || 'transparent'
         tint.style.opacity = color ? String(strength) : '0'

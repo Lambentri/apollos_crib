@@ -392,7 +392,14 @@ class LeafletMap extends HTMLElement {
         // The charge ramp is anchored to the surface it is drawn on, so a theme
         // flip restyles the bikes rather than leaving a scale reading against
         // its own background.
-        this.unwatchTheme = onThemeChange(() => this.repaintChargeMarkers());
+        this.unwatchTheme = onThemeChange(() => {
+            this.repaintChargeMarkers();
+            // A line coloured by a theme variable has no attribute change to
+            // react to when the theme flips -- only what the name resolves to
+            // moved. One subscription for both, since it is one signal and
+            // disconnectedCallback already tears this one down.
+            this.querySelectorAll('leaflet-line').forEach((lineEl) => this.addLineElement(lineEl));
+        });
 
         // After the initial setView, so it is not mistaken for a user move.
         this.watchForUserView();
@@ -539,7 +546,7 @@ class LeafletMap extends HTMLElement {
         this.removeLineById(lineId);
         if (points.length < 2) return;
 
-        const style = lineEl.getStyle();
+        const style = lineEl.getStyle(this.map.getContainer());
         const polyline = L.polyline(points, {
             renderer: this.lineRenderer,
             pane: 'routeLines',

@@ -101,7 +101,11 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
         [lat + d_lat * :math.sin(angle), lon + d_lon * :math.cos(angle)]
       end
 
-    [%{id: "radius", points: points, color: "#38bdf8"}]
+    # The theme's accent rather than a fixed blue: the ring is the page's own
+    # annotation on the map, not something read off a feed, and it followed the
+    # theme everywhere else on the page but here. Resolved in the browser, so
+    # it also survives a theme switch without a reload.
+    [%{id: "radius", points: points, color: "--a"}]
   end
 
   def radius_ring(_where, _radius), do: []

@@ -1,3 +1,5 @@
+import { themeColor } from './basemap'
+
 // A polyline expressed as a DOM child of <leaflet-map>, so route geometry
 // arrives and leaves the same way markers do -- LiveView adds and removes the
 // elements, the map's MutationObserver notices.
@@ -46,9 +48,12 @@ class LeafletLine extends HTMLElement {
         }
     }
 
-    getStyle() {
+    // `styleFrom` is the element to resolve theme variables against -- the map
+    // passes its own container, since this element lives in a shadow root and
+    // is display:none besides.
+    getStyle(styleFrom) {
         return {
-            color: this.getAttribute('color') || '#94a3b8',
+            color: themeColor(this.getAttribute('color'), styleFrom) || '#94a3b8',
             weight: parseFloat(this.getAttribute('weight')) || 2,
             opacity: this.hasAttribute('opacity') ? parseFloat(this.getAttribute('opacity')) : 0.35
         };
