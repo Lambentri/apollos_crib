@@ -218,7 +218,12 @@ defmodule RoomSanctum.Worker.Plani do
               |> Storage.fix_arrival_times()
               |> Enum.sort_by(& &1.arrival_time)
 
-            {stop, arrivals}
+            # Which way the stop lies, carried on each arrival: the condenser
+            # groups arrivals into routes and only it knows which end up
+            # together, so the bearing has to travel with them.
+            bearing = compass(anchor, Map.get(stop, :stop_lat), Map.get(stop, :stop_lon))
+
+            {stop, Enum.map(arrivals, &Map.put(&1, :bearing, bearing))}
           end)
           |> nearest_per_route(plani)
 

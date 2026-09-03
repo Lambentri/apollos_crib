@@ -139,6 +139,12 @@ use PhoenixHTMLHelpers
             <i class={"fa-solid fa-fw #{gtfs_icon(e.mode)}"}></i>
             <.route_badge entry={e} /> to <%= e.dest %>
           </p>
+          <%!-- Which way the stop lies from the anchor. Only a Plani sends
+                it, and only where the route was not blended across two stops
+                pointing different ways. --%>
+          <span :if={Map.get(e, :bearing)} class="badge badge-sm badge-outline gap-1">
+            <i class="fa-solid fa-location-arrow"></i><%= Map.get(e, :bearing) %>
+          </span>
         </h2>
         <%= if Map.get(e, :times_live, []) != [] do %>
           <%= for t <- (e.times_live |> Enum.filter(fn t -> !is_nil(t) end )) do %>
@@ -374,6 +380,12 @@ use PhoenixHTMLHelpers
               <i class={"fa-solid fa-fw #{gtfs_icon(e.mode)}"}></i>
               <.route_badge entry={e} /> to <%= e.dest %>
             </p>
+          <%!-- Which way the stop lies from the anchor. Only a Plani sends
+                it, and only where the route was not blended across two stops
+                pointing different ways. --%>
+          <span :if={Map.get(e, :bearing)} class="badge badge-sm badge-outline gap-1">
+            <i class="fa-solid fa-location-arrow"></i><%= Map.get(e, :bearing) %>
+          </span>
           </h2>
           <%= for a <- shown_arrivals(e.arrivals) do %>
             <div class="flex items-center gap-2 flex-wrap">

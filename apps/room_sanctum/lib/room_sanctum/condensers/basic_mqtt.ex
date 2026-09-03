@@ -95,7 +95,8 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             route: f.trip.route_id,
             presentation: route_presentation(f.trip.route, f.trip.route_id),
             mode: f.trip.route.route_type |> gtfs_mode,
-            tz: f.tz
+            tz: f.tz,
+            bearing: Map.get(f, :bearing)
           }
         end)
         |> Enum.reduce(%{}, fn %{
@@ -106,7 +107,8 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
                                  route: route,
                                  presentation: presentation,
                                  mode: mode,
-                                 tz: tz
+                                 tz: tz,
+                                 bearing: bearing
                                },
                                acc ->
           update_in(acc, [{route, dest, dir}], fn
@@ -117,7 +119,8 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
                 dir: dir,
                 mode: mode,
                 times: [time],
-                times_live: [livetime(time_live, tz)]
+                times_live: [livetime(time_live, tz)],
+                bearing: bearing
               }
               |> Map.merge(presentation)
 
@@ -125,7 +128,13 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
               %{
                 refs
                 | times: [time | refs.times],
-                  times_live: [livetime(time_live, tz) | refs.times_live]
+                  times_live: [livetime(time_live, tz) | refs.times_live],
+                  # A blended Plani groups a route across every stop it calls
+                  # at inside the radius, so these times can come from two
+                  # places at once. Agreeing keeps the bearing; disagreeing
+                  # drops it, because "north east" would then be true of only
+                  # some of the departures under it.
+                  bearing: if(refs.bearing == bearing, do: bearing, else: nil)
               }
           end)
         end)
@@ -139,6 +148,12 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             false ->
               v |> Map.put(:times, v.times |> Enum.reverse()) |> Map.delete(:times_live)
           end
+        end)
+        # Only a Plani has a bearing to give, and only for a stop far enough
+        # away to have one. Dropped rather than published as null, so a
+        # vision's payload is byte for byte what it always was.
+        |> Enum.map(fn route ->
+          if route.bearing, do: route, else: Map.delete(route, :bearing)
         end)
 
       :gbfs ->

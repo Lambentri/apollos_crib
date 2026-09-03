@@ -26,6 +26,7 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
       %{
         key: {f.trip.route_id, f.trip.trip_headsign, f.trip.direction.direction},
         mode: f.trip.route.route_type |> gtfs_mode(),
+        bearing: Map.get(f, :bearing),
         presentation: BasicMQTT.route_presentation(f.trip.route, f.trip.route_id),
         arrival: %{
           time: f.arrival_time,
@@ -53,19 +54,29 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
                              key: {route, dest, dir} = key,
                              mode: mode,
                              presentation: presentation,
+                             bearing: bearing,
                              arrival: arrival
                            },
                            acc ->
       update_in(acc, [key], fn
         nil ->
-          %{route: route, dest: dest, dir: dir, mode: mode, arrivals: [arrival]}
+          %{route: route, dest: dest, dir: dir, mode: mode, arrivals: [arrival], bearing: bearing}
           |> Map.merge(presentation)
 
         refs ->
-          %{refs | arrivals: [arrival | refs.arrivals]}
+          # As in Basic: a blended Plani can group one route across two stops,
+          # and a bearing true of only half the arrivals is worse than none.
+          %{
+            refs
+            | arrivals: [arrival | refs.arrivals],
+              bearing: if(refs.bearing == bearing, do: bearing, else: nil)
+          }
       end)
     end)
-    |> Enum.map(fn {_k, v} -> Map.put(v, :arrivals, v.arrivals |> Enum.reverse()) end)
+    |> Enum.map(fn {_k, v} ->
+      v = Map.put(v, :arrivals, v.arrivals |> Enum.reverse())
+      if v.bearing, do: v, else: Map.delete(v, :bearing)
+    end)
     |> attach_alerts(id, stop_of(data))
   end
 

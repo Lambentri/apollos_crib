@@ -79,8 +79,27 @@ object GtfsRenderer : SourceRenderer {
         val first = routes.firstOrNull() ?: return null
         val time = first.departures().firstOrNull()?.asClockTime() ?: return null
         val live = first.times_live?.firstOrNull() != null
-        return if (live) "${first.displayName()} at $time · live" else "${first.displayName()} at $time"
+        val next = if (live) {
+            "${first.displayName()} at $time · live"
+        } else {
+            "${first.displayName()} at $time"
+        }
+
+        return bearing(routes)?.let { "$it · $next" } ?: next
     }
+
+    /**
+     * Which way to walk to this stop, when every route on the card agrees.
+     *
+     * On the card rather than on each row: broken out, the card *is* one stop,
+     * so a bearing repeated down four rows says the same thing four times. A
+     * blended card can hold two stops in different directions, and there the
+     * publisher sends no bearing for the rows that disagree -- so requiring
+     * agreement here is the same rule read at the other end, and a mixed card
+     * says nothing rather than picking one.
+     */
+    private fun bearing(routes: List<GtfsCondensed>): String? =
+        routes.map { it.bearing }.distinct().singleOrNull()
 
     /**
      * Alerts, when one is bad enough to lead with. Everything the feed marked

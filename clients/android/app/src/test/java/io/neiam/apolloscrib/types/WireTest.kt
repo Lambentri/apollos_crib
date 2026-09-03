@@ -97,6 +97,24 @@ class WireTest {
     }
 
     @Test
+    fun `a stop's bearing is separate from the route's direction`() {
+        val payload = """
+            {"gtfs-40:2378": {
+              "query": {"name": "Boston Ave @ College Ave", "meta": {}},
+              "data": [{"route":"96","dest":"Harvard","dir":"In","mode":"Bus",
+                        "times":["08:00:00"],"bearing":"NE"}]
+            }}
+        """.trimIndent()
+
+        val route = Wire.parse(payload).single().decode<List<GtfsCondensed>>()!!.single()
+
+        // `dir` stays the feed's own inbound/outbound; the compass bearing is
+        // its own field, because they are different things.
+        assertEquals("In", route.dir)
+        assertEquals("NE", route.bearing)
+    }
+
+    @Test
     fun `a source with no shape is dropped rather than failing the board`() {
         // `bourse` is published by apollos-crib but has no type in the
         // apollos-types crate, so this client does not claim to read it.

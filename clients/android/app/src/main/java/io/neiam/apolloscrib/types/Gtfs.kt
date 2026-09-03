@@ -22,6 +22,14 @@ data class GtfsCondensed(
     /** What is written on the front of the vehicle. Older publishers omit it. */
     val route_name: String? = null,
     val route_long: String? = null,
+    /**
+     * Which way this stop lies from where you are, as a sixteen-point bearing.
+     *
+     * Not [dir], which is the feed's own inbound/outbound. Only a Plani sets
+     * it, and it is absent when a route was blended across two stops lying in
+     * different directions.
+     */
+    val bearing: String? = null,
     /** `#RRGGBB` -- the hash is added publisher-side. */
     val color: String? = null,
     val text_color: String? = null
