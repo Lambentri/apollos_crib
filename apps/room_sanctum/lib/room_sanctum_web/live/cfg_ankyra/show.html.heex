@@ -28,7 +28,7 @@
           <i class="fas fa-fw fa-plug-circle-xmark"></i> no subscribers
         </span>
       <% n -> %>
-        <span class="badge badge-success gap-2">
+        <span class="badge badge-success gap-2" title={Enum.join(@connected_client_ids, ", ")}>
           <i class="fas fa-fw fa-plug"></i> <%= n %> subscriber<%= if n == 1, do: "", else: "s" %>
         </span>
     <% end %>
@@ -123,13 +123,18 @@
       </div>
 
       <div class="flex flex-wrap gap-2 my-2">
-        <%= if @ankyra.client_ids == [] do %>
+        <%= if @ankyra.client_ids == [] and @connected_client_ids == [] do %>
           <span class="text-sm opacity-60">
             <%= if @ankyra.auto_register_clients, do: "No client IDs yet — first connection will be auto-registered.", else: "No client IDs registered. Add one below or enable auto-register; otherwise all connections will be denied." %>
           </span>
         <% else %>
           <%= for cid <- @ankyra.client_ids do %>
             <div class="badge badge-secondary gap-2 p-3">
+              <%= if cid in @connected_client_ids do %>
+                <i class="fas fa-fw fa-circle text-success text-[0.5rem]" title="Connected now"></i>
+              <% else %>
+                <i class="fas fa-fw fa-circle opacity-30 text-[0.5rem]" title="Not connected"></i>
+              <% end %>
               <span class="font-mono"><%= cid %></span>
               <button
                 phx-click="remove-client-id"
@@ -139,6 +144,12 @@
               >
                 <i class="fas fa-fw fa-xmark"></i>
               </button>
+            </div>
+          <% end %>
+          <%= for cid <- unregistered_connected(@ankyra, @connected_client_ids) do %>
+            <div class="badge badge-secondary badge-outline gap-2 p-3" title="Connected and registered since this page was loaded — reload to manage it">
+              <i class="fas fa-fw fa-circle text-success text-[0.5rem]"></i>
+              <span class="font-mono"><%= cid %></span>
             </div>
           <% end %>
         <% end %>

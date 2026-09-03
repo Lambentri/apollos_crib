@@ -68,7 +68,7 @@ defmodule RoomSanctum.Worker.Ankyra do
     parent = self()
     username = state.ankyra.username
 
-    spawn(fn -> send(parent, {:status_result, count_mqtt_connections(username)}) end)
+    spawn(fn -> send(parent, {:status_result, connected_clients(username)}) end)
 
     {:noreply, state}
   end
@@ -115,7 +115,8 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   @doc """
-  How many clients are attached to this Ankyra, or nil if we could not find out.
+  Who is attached to this Ankyra, as `%{count: n, client_ids: ids}` -- or nil
+  if we could not find out.
 
   RabbitMQ will not answer this over AMQP. An MQTT subscriber's queue is
   exclusive to the connection that made it, so a passive `queue.declare` from
@@ -126,23 +127,36 @@ defmodule RoomSanctum.Worker.Ankyra do
   receiving.
 
   The management API does know. Every connection carries the protocol it
-  speaks and the user it authenticated as, and an Ankyra *is* a rabbit user --
-  so MQTT connections under that username are exactly its clients. Counting
-  connections rather than probing per-client queues also drops the dependency
-  on `client_ids`, which this worker only re-reads once a minute.
+  speaks, the user it authenticated as, and -- for MQTT -- the client id it
+  announced. An Ankyra *is* a rabbit user, so MQTT connections under that
+  username are exactly its clients, and their ids are the ones the allow-list
+  is written in.
 
-  nil rather than 0 when the API cannot be reached: "we do not know" and
+  `count` is every matching connection; `client_ids` only those that announced
+  one. They are not always the same number, which is why the count is not
+  taken from the length of the list: a connection with no client id still has
+  someone on the end of it.
+
+  nil rather than zero when the API cannot be reached: "we do not know" and
   "nobody is listening" are different things, and the page draws them
   differently. Reporting the unreachable case as zero is the bug this replaces.
   """
-  def count_mqtt_connections(username) do
+  def connected_clients(username) do
     cfg = Application.get_env(:room_sanctum, :rabbit_mgmt, [])
 
     with url when is_binary(url) <- cfg[:url],
          {:ok, %HTTPoison.Response{status_code: 200, body: body}} <- fetch_connections(url, cfg),
          {:ok, connections} when is_list(connections) <- Jason.decode(body) do
       vhost = cfg[:vhost] || "/"
-      Enum.count(connections, &mqtt_connection_for?(&1, username, vhost))
+      mine = Enum.filter(connections, &mqtt_connection_for?(&1, username, vhost))
+
+      client_ids =
+        mine
+        |> Enum.map(&get_in(&1, ["client_properties", "client_id"]))
+        |> Enum.filter(&is_binary/1)
+        |> Enum.sort()
+
+      %{count: length(mine), client_ids: client_ids}
     else
       other ->
         Logger.debug("ankyra: could not read connections from management API: #{inspect(other)}")
@@ -156,7 +170,7 @@ defmodule RoomSanctum.Worker.Ankyra do
   # ever sent and the badge stuck on "checking" forever.
   defp fetch_connections(url, cfg) do
     HTTPoison.get(
-      String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost",
+      String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
       [{"accept", "application/json"}],
       hackney: [basic_auth: {to_string(cfg[:username]), to_string(cfg[:password])}],
       timeout: 2_000,

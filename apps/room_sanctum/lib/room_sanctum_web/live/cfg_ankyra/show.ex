@@ -12,6 +12,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
     {:ok,
      socket
      |> assign(:consumer_count, nil)
+     |> assign(:connected_client_ids, [])
      |> assign(:broker, default_broker())}
   end
 
@@ -25,8 +26,20 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
   end
 
   @impl true
-  def handle_info({:ankyra_status, count}, socket) do
-    {:noreply, assign(socket, :consumer_count, count)}
+  def handle_info({:ankyra_status, nil}, socket) do
+    # The broker could not be asked. Say nothing rather than report an empty
+    # room -- the badge draws nil as "checking".
+    {:noreply,
+     socket
+     |> assign(:consumer_count, nil)
+     |> assign(:connected_client_ids, [])}
+  end
+
+  def handle_info({:ankyra_status, %{count: count, client_ids: client_ids}}, socket) do
+    {:noreply,
+     socket
+     |> assign(:consumer_count, count)
+     |> assign(:connected_client_ids, client_ids)}
   end
 
   @impl true
@@ -68,6 +81,13 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
     }
 
     {:noreply, assign_pairing(socket, broker)}
+  end
+
+  # A client that auto-registers after this page was rendered is connected and
+  # allowed, but the copy of the allow-list in the socket predates it. Drawing
+  # it anyway beats a client that is plainly attached and nowhere on screen.
+  def unregistered_connected(ankyra, connected_client_ids) do
+    connected_client_ids -- (ankyra.client_ids || [])
   end
 
   defp assign_pairing(socket, broker) do
