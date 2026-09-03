@@ -124,8 +124,14 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
   defp marker_layer(_kind), do: :stations
 
   defp as_marker(place) do
+    point = %Geo.Point{coordinates: {place.lon, place.lat}, srid: 4326}
+
     %{
-      place: %Geo.Point{coordinates: {place.lon, place.lat}, srid: 4326},
+      # Both, because the two layers of the map component name this
+      # differently -- a station has a `place`, a free bike has a `point` --
+      # and these markers go to whichever layer their kind belongs to.
+      place: point,
+      point: point,
       station_id: "#{place.source_id}-#{place.name}",
       bike_id: "#{place.source_id}-#{place.name}",
       name: place.name,

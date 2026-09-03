@@ -790,6 +790,17 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     end)
   end
 
+  # Where a bike is, whichever key its caller had one under.
+  #
+  # The two layers of this component disagree: a free bike carries `point`,
+  # after the column on `gbfs_free_bike_status`, and a station carries `place`.
+  # A caller with markers for both layers has to satisfy both, and dot access
+  # on the one it did not use raises rather than reading nil -- which took the
+  # whole Plani page down over a marker it could have drawn from `lat`/`lon`
+  # anyway. The rest of this function was already reading its optional fields
+  # with `Map.get`; these two were the exception.
+  defp point_of(bike), do: Map.get(bike, :point) || Map.get(bike, :place)
+
   # Format free bikes for map display
   defp format_free_bikes(free_bikes) do
     # A feed declares how far each of its vehicle types can go -- Bay Wheels
@@ -798,18 +809,18 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     vehicle_types = vehicle_types_for(free_bikes)
 
     free_bikes
-    |> Enum.filter(fn bike -> 
-      (bike.point != nil) || (bike.lat != nil && bike.lon != nil)
+    |> Enum.filter(fn bike ->
+      point_of(bike) != nil || (Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil)
     end)
     |> Enum.map(fn bike ->
       {lat, lng} = cond do
-        bike.point != nil ->
-          case bike.point do
+        point_of(bike) != nil ->
+          case point_of(bike) do
             %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
             _ -> {0, 0}
           end
-        bike.lat != nil && bike.lon != nil ->
-          {bike.lat, bike.lon}
+        Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil ->
+          {Map.get(bike, :lat), Map.get(bike, :lon)}
         true -> {0, 0}
       end
 
