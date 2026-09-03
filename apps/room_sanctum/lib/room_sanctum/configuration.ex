@@ -616,6 +616,34 @@ defmodule RoomSanctum.Configuration do
       ** (Ecto.NoResultsError)
 
   """
+  alias RoomSanctum.Configuration.Plani
+
+  @doc "Every Plani, for the supervisor that keeps a worker per one."
+  def list_plani, do: Repo.all(Plani)
+
+  def list_plani(uid), do: Repo.all(from p in Plani, where: p.user_id == ^uid)
+
+  def get_plani!(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {n, ""} -> get_plani!(n)
+      _ -> raise Ecto.NoResultsError, queryable: Plani
+    end
+  end
+
+  def get_plani!(id), do: Repo.get!(Plani, id)
+
+  def create_plani(attrs \\ %{}) do
+    %Plani{} |> Plani.changeset(attrs) |> Repo.insert() |> announce(:plani)
+  end
+
+  def update_plani(%Plani{} = plani, attrs) do
+    plani |> Plani.changeset(attrs) |> Repo.update() |> announce(:plani)
+  end
+
+  def delete_plani(%Plani{} = plani), do: Repo.delete(plani)
+
+  def change_plani(%Plani{} = plani, attrs \\ %{}), do: Plani.changeset(plani, attrs)
+
   def get_pythiae!(id), do: Repo.get!(Pythiae, id)
 
   @doc """

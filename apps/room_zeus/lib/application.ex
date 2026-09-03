@@ -16,6 +16,7 @@ defmodule RoomZeus.Application do
       RoomZeus.Cache,
       {RoomZeus.DynSupervisor, strategy: :one_for_one},
       {RoomZeus.VisionSupervisor, strategy: :one_for_one},
+      {RoomZeus.PlaniSupervisor, strategy: :one_for_one},
       {RoomZeus.PythiaeSupervisor, strategy: :one_for_one},
       {RoomZeus.AnkyraSupervisor, strategy: :one_for_one},
       {RoomZeus.ScribusSupervisor, strategy: :one_for_one},

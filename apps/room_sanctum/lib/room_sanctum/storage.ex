@@ -2833,19 +2833,28 @@ defmodule RoomSanctum.Storage do
   """
   def free_bikes_near_foci(source_id, foci_id, radius) do
     case get_foci_by_id(foci_id) do
-      %{place: %Geo.Point{} = place} ->
-        from(f in FreeBikeStatus,
-          where:
-            fragment("ST_DWithin(?::geography, ?::geography, ?)", f.point, ^place, ^radius) and
-              f.source_id == ^source_id,
-          order_by: fragment("? <-> ?", f.point, ^place)
-        )
-        |> Repo.all()
-
-      _ ->
-        []
+      %{place: %Geo.Point{} = place} -> free_bikes_near(source_id, place, radius)
+      _ -> []
     end
   end
+
+  @doc """
+  Loose bikes within a radius of a point, closest first.
+
+  The point-taking half of `free_bikes_near_foci/3`, so an anchor that is not
+  a foci -- a client reporting where it is -- can ask the same question.
+  """
+  def free_bikes_near(source_id, %Geo.Point{} = place, radius) do
+    from(f in FreeBikeStatus,
+      where:
+        fragment("ST_DWithin(?::geography, ?::geography, ?)", f.point, ^place, ^radius) and
+          f.source_id == ^source_id,
+      order_by: fragment("? <-> ?", f.point, ^place)
+    )
+    |> Repo.all()
+  end
+
+  def free_bikes_near(_source_id, _place, _radius), do: []
 
   def find_free_bikes_around_point(source_id, point, distance) do
     from(f in FreeBikeStatus,

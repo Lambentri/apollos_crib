@@ -65,6 +65,24 @@ defmodule RoomSanctum.Worker.Ankyra do
     |> GenServer.cast({:publish_img, data})
   end
 
+  @doc """
+  Where a client last said it was, or nil.
+
+  A call rather than a broadcast because the asker wants it now and only when
+  it is asking: a Plani resolving its anchor on a tick, not a page watching a
+  trail. Nil when that client has not reported inside the window, which is the
+  signal to fall back to a home foci rather than an error.
+  """
+  def position(name, client_id) do
+    "ankyra#{name}"
+    |> via_tuple()
+    |> GenServer.call({:position, client_id}, 5_000)
+  catch
+    # A worker that is not up yet, or a node on its way down. Not knowing
+    # where somebody is is a normal answer here.
+    :exit, _ -> nil
+  end
+
   def meta_check(name) do
     "ankyra#{name}"
     |> via_tuple()
@@ -72,6 +90,15 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   def topic(id), do: "ankyra:#{id}"
+
+  def handle_call({:position, client_id}, _from, state) do
+    latest =
+      state.positions
+      |> prune()
+      |> Enum.find(fn p -> is_nil(client_id) or p.client_id == client_id end)
+
+    {:reply, latest, state}
+  end
 
   def handle_cast(:meta_check, %{ankyra: nil} = state), do: {:noreply, state}
 

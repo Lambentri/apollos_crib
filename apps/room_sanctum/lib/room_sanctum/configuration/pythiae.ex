@@ -46,6 +46,10 @@ defmodule RoomSanctum.Configuration.Pythiae do
     belongs_to :user, RoomSanctum.Accounts.User
     field :curr_vision, :id
     field :curr_foci, :id
+    # Exclusive with curr_vision: a Pythiae shows a vision or a Plani, never
+    # both. A Plani is a vision whose anchor moves, so the two answer the same
+    # question from different places and merging them would show each twice.
+    field :curr_plani, :id
     embeds_many :consts, Const
     embeds_one :tweaks, Tweaks
 
@@ -55,11 +59,12 @@ defmodule RoomSanctum.Configuration.Pythiae do
   @doc false
   def changeset(pythiae, attrs) do
     pythiae
-    |> cast(attrs, [:visions, :ankyra, :user_id, :curr_vision, :curr_foci, :name])
+    |> cast(attrs, [:visions, :ankyra, :user_id, :curr_vision, :curr_foci, :curr_plani, :name])
     |> cast_embed(:consts, with: &Const.changeset/2)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:curr_vision)
     |> foreign_key_constraint(:curr_foci)
+    |> foreign_key_constraint(:curr_plani)
     |> validate_required([:visions, :ankyra, :name])
   end
 end

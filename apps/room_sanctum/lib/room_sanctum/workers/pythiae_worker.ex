@@ -66,7 +66,7 @@ defmodule RoomSanctum.Worker.Pythiae do
   end
 
   def handle_cast(:query_current, state) do
-    current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
+    current = showing(state.pythiae)
 
     cfg_ttl =
       case state.pythiae do
@@ -97,7 +97,7 @@ defmodule RoomSanctum.Worker.Pythiae do
   end
 
   def handle_cast(:query_current_now, state) do
-    current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
+    current = showing(state.pythiae)
 
     for a <- state.pythiae.ankyra do
       RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense(current.queries))
@@ -107,7 +107,7 @@ defmodule RoomSanctum.Worker.Pythiae do
   end
 
   def handle_cast(:publish_img, state) do
-    current = RoomSanctum.Worker.Vision.get_state(state.pythiae.curr_vision)
+    current = showing(state.pythiae)
 
     for a <- state.pythiae.ankyra do
       RoomSanctum.Worker.Ankyra.publish_img(a, current.data |> condense(current.queries))
@@ -120,6 +120,22 @@ defmodule RoomSanctum.Worker.Pythiae do
   # pythiae instead of every two seconds in case they did.
   def handle_info({:cfg_changed, :pythiae, _id}, state) do
     handle_cast(:refresh_db_cfg, state)
+  end
+
+  # What this Pythiae is showing: a Plani, or a vision.
+  #
+  # Exclusive, and the Plani wins. A Pythiae pointed at a Plani is asking what
+  # is near its client; reading its vision as well would answer the same
+  # question from a fixed place and publish both.
+  #
+  # Both workers hand back the same shape, so nothing past this point -- the
+  # condensers, Ankyra, any client -- can tell which it was.
+  defp showing(%{curr_plani: plani_id}) when not is_nil(plani_id) do
+    RoomSanctum.Worker.Plani.get_state(plani_id)
+  end
+
+  defp showing(pythiae) do
+    RoomSanctum.Worker.Vision.get_state(pythiae.curr_vision)
   end
 
   defp condense(data, queries) do
