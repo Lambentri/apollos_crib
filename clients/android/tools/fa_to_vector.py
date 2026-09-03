@@ -34,6 +34,8 @@ ICONS = [
     "tower-broadcast", "clock",
     # Bikeshare.
     "bicycle", "bolt-lightning", "square-parking", "battery-half",
+    # Which way to walk to it, on a Plani's cards.
+    "location-arrow",
     # Alerts: the web uses a pin when the alert names the stop.
     "location-dot", "triangle-exclamation",
     # Tides: the web marks a high and a low with arrows to a line.

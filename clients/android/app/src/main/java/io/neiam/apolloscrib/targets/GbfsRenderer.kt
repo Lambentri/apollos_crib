@@ -53,15 +53,19 @@ object GbfsRenderer : SourceRenderer {
         station.isFreeBike() -> Row(
             iconRes = R.drawable.fa_bicycle,
             text = if (named) station.name else "",
-            stamps = station.fuel_pct?.let {
-                listOf(Stamp(R.drawable.fa_battery_half, "${(it * 100).toInt()}%"))
-            }.orEmpty()
+            stamps = buildList {
+                addAll(bearing(station))
+                station.fuel_pct?.let {
+                    add(Stamp(R.drawable.fa_battery_half, "${(it * 100).toInt()}%"))
+                }
+            }
         )
 
         else -> Row(
             iconRes = R.drawable.fa_bicycle,
             text = if (named) station.name else "",
             stamps = buildList {
+                addAll(bearing(station))
                 val bikes = station.avail ?: 0
                 add(Stamp(R.drawable.fa_bicycle, "$bikes", flat = "${bikes}b"))
                 val electric = station.avail_elec ?: 0
@@ -73,6 +77,16 @@ object GbfsRenderer : SourceRenderer {
             }
         )
     }
+
+    /**
+     * Which way to walk, when the publisher said.
+     *
+     * First on the row, ahead of the counts: "four bikes" is a fact and "NE"
+     * is an instruction, and the instruction is the one worth reading first.
+     * Only a Plani sends it, so this is empty on a vision's cards.
+     */
+    private fun bearing(station: GbfsCondensed): List<Stamp> =
+        station.dir?.let { listOf(Stamp(R.drawable.fa_location_arrow, it, flat = it)) }.orEmpty()
 
     private fun summary(stations: List<GbfsCondensed>): String? {
         if (stations.isEmpty()) return null

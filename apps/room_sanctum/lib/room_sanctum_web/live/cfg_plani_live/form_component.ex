@@ -133,6 +133,16 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
 
         <.input field={@form[:radius]} type="number" label="Radius (metres, 50-3000)" />
         <.input field={@form[:limit]} type="number" label="How many of each (1-20)" />
+        <.input
+          field={@form[:bike_limit]}
+          type="number"
+          label="Bikes and docks per source (blank for all)"
+        />
+        <p class="text-xs text-base-content/60">
+          Stops and monitors have always been bounded by “how many of each”;
+          bikes and docks were bounded only by the radius, so a dockless system
+          in a city centre answers with hundreds. The nearest are kept.
+        </p>
 
         <.input
           field={@form[:break_out]}

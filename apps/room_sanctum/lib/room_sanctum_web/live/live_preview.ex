@@ -557,6 +557,11 @@ use PhoenixHTMLHelpers
                 <span class="font-bold text-lg lg:text-4xl text-accent">
                   <%= e.name |> to_string() |> String.split(" ") |> Enum.take(3) |> Enum.join(" ") %>
                 </span>
+                <%!-- Only a Plani sends this: it is relative to where the
+                      client is, and a vision's foci does not move. --%>
+                <span :if={Map.get(e, :dir)} class="text-sm lg:text-2xl opacity-70 whitespace-nowrap">
+                  <i class="fa-solid fa-location-arrow fa-fw"></i><%= Map.get(e, :dir) %>
+                </span>
               </div>
               <%!-- A loose bike has no docks to count; what it has is charge.
                     Rendered per entry because an area query asked for docks

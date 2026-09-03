@@ -247,8 +247,19 @@ defmodule RoomSanctum.Worker.Plani do
         # Both, because a source does not say which kind it is. A docked
         # system answers with docks and a dockless one with loose bikes, and
         # asking only for the latter left a city full of docks looking empty.
-        bikes = Storage.free_bikes_near(source_id, anchor, plani.radius)
-        docks = Storage.stations_near(source_id, anchor, plani.radius)
+        # Both come back closest-first, so the cap keeps the nearest rather
+        # than whichever the feed happened to list first. Capped separately:
+        # they are different things, and one starving the other would make a
+        # docked system with loose bikes in it look like it had no docks.
+        bikes =
+          Storage.free_bikes_near(source_id, anchor, plani.radius)
+          |> cap(plani.bike_limit)
+          |> Enum.map(&toward(&1, anchor))
+
+        docks =
+          Storage.stations_near(source_id, anchor, plani.radius)
+          |> cap(plani.bike_limit)
+          |> Enum.map(&toward(&1, anchor))
 
         entries =
           if plani.break_out do
@@ -355,6 +366,58 @@ defmodule RoomSanctum.Worker.Plani do
 
     {arrival.trip.route_id, direction}
   end
+
+  defp cap(rows, nil), do: rows
+  defp cap(rows, limit) when is_integer(limit), do: Enum.take(rows, limit)
+
+  # Which way to walk.
+  #
+  # "Four bikes nearby" is not directions; "NE" is. Stamped here rather than
+  # worked out by each client, because it is the one thing on a bike that is
+  # relative to the anchor -- and only this worker knows where the anchor is.
+  #
+  # Written onto the record for the condenser to pass through. A dock arrives
+  # as a plain map and a loose bike as a schema struct; `Map.put/3` is right
+  # for both, and the condenser reads the key rather than the struct.
+  defp toward(row, anchor) do
+    Map.put(row, :dir, compass(anchor, Map.get(row, :lat), Map.get(row, :lon)))
+  end
+
+  @compass ~w(N NNE NE ENE E ESE SE SSE S SSW SW WSW W WNW NW NNW)
+
+  # Sixteen points, which is as fine as a direction can be read off a phone at
+  # a glance -- and finer than the accuracy of the fix it is measured from.
+  @doc false
+  # Public only so a test can reach it; nothing outside calls this.
+  def compass(%Geo.Point{coordinates: {lon1, lat1}}, lat2, lon2)
+       when is_number(lat2) and is_number(lon2) do
+    # Standing on the thing has no direction, and atan2(0, 0) would answer
+    # "north" rather than saying so. Metres, roughly, which is all this needs.
+    d_north = (lat2 - lat1) * 111_320
+    d_east = (lon2 - lon1) * 111_320 * :math.cos(rad(lat1))
+
+    if :math.sqrt(d_north * d_north + d_east * d_east) < 15 do
+      nil
+    else
+      phi1 = rad(lat1)
+      phi2 = rad(lat2)
+      d_lon = rad(lon2 - lon1)
+
+      y = :math.sin(d_lon) * :math.cos(phi2)
+
+      x =
+        :math.cos(phi1) * :math.sin(phi2) -
+          :math.sin(phi1) * :math.cos(phi2) * :math.cos(d_lon)
+
+      degrees = :math.fmod(:math.atan2(y, x) * 180 / :math.pi() + 360.0, 360.0)
+
+      Enum.at(@compass, degrees |> Kernel./(22.5) |> round() |> rem(16))
+    end
+  end
+
+  def compass(_anchor, _lat, _lon), do: nil
+
+  defp rad(degrees), do: degrees * :math.pi() / 180
 
   defp described(source), do: described(source, source.id, source.name)
 

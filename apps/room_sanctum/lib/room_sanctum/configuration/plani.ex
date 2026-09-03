@@ -47,6 +47,11 @@ defmodule RoomSanctum.Configuration.Plani do
     # the same bus is listed once per stop.
     field :nearest_per_route, :boolean, default: false
 
+    # How many bikes and docks one GBFS source may contribute. Nil is
+    # everything inside the radius, which is what a dockless system in a city
+    # centre answers with -- hundreds of them.
+    field :bike_limit, :integer
+
     timestamps()
   end
 
@@ -64,13 +69,17 @@ defmodule RoomSanctum.Configuration.Plani do
       :radius,
       :limit,
       :break_out,
-      :nearest_per_route
+      :nearest_per_route,
+      :bike_limit
     ])
     |> validate_required([:name, :home_foci_id])
     # The same bounds an area query keeps, and for the same reason: past a
     # couple of kilometres this stops meaning "near me".
     |> validate_number(:radius, greater_than_or_equal_to: 50, less_than_or_equal_to: 3000)
     |> validate_number(:limit, greater_than_or_equal_to: 1, less_than_or_equal_to: 20)
+    # Looser than `limit`: loose bikes are counted rather than read one by one,
+    # so a larger number is still a sensible thing to ask for.
+    |> validate_number(:bike_limit, greater_than_or_equal_to: 1, less_than_or_equal_to: 50)
     |> validate_tint()
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:home_foci_id)

@@ -26,7 +26,15 @@ data class GbfsCondensed(
     val range_m: Double? = null,
     val fuel_pct: Double? = null,
     val reserved: Boolean? = null,
-    val disabled: Boolean? = null
+    val disabled: Boolean? = null,
+    /**
+     * Which way it lies from where you are, as a sixteen-point bearing.
+     *
+     * Only a Plani sets this -- a vision's foci is a fixed place, so there is
+     * nothing for a direction to be relative to -- and it is absent for
+     * anything close enough that "which way" has no answer.
+     */
+    val dir: String? = null
 ) {
     /** Told apart by what came back, not by the query -- as the condenser does. */
     fun isFreeBike(): Boolean = kind == "free_bike" || capacity == null

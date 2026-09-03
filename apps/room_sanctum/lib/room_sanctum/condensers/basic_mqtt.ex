@@ -165,6 +165,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
               reserved: b.is_reserved,
               disabled: b.is_disabled
             }
+            |> with_dir(b)
 
           f ->
             %{
@@ -195,6 +196,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
                   }
                 end)
             }
+            |> with_dir(f)
         end)
 
       :tidal ->
@@ -334,6 +336,19 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         meta: query.meta || %{}
       }
     }
+  end
+
+  # Which way the thing lies from where the reader is standing.
+  #
+  # Only a Plani stamps this -- it is the one field here that is relative to
+  # the reader rather than to the world, and a vision's foci is a fixed place
+  # whose directions never change. Left out entirely rather than published as
+  # null, so a vision's payload is byte for byte what it always was.
+  defp with_dir(condensed, row) do
+    case Map.get(row, :dir) do
+      nil -> condensed
+      dir -> Map.put(condensed, :dir, dir)
+    end
   end
 
   # The vehicle types behind a list of bikes, or an empty map for a list that

@@ -126,6 +126,28 @@ class WireTest {
     }
 
     @Test
+    fun `a Plani stamps which way to walk, and a vision does not`() {
+        val payload = """
+            {"gbfs-7": [
+              {"name":"Main St","id":"1","avail":4,"docks_avail":9,"capacity":13,
+               "ebikes_info":[],"dir":"ENE"},
+              {"kind":"free_bike","name":"E-bike 4821","id":"b1","lat":42.3,"lon":-71.1,
+               "fuel_pct":0.62,"dir":"SW"},
+              {"name":"No Direction","id":"2","avail":1,"docks_avail":2,"capacity":3,
+               "ebikes_info":[]}
+            ]}
+        """.trimIndent()
+
+        val rows = Wire.parse(payload).single().decode<List<GbfsCondensed>>()!!
+
+        assertEquals("ENE", rows[0].dir)
+        assertEquals("SW", rows[1].dir)
+        // A vision leaves the key out entirely; so does a Plani for anything
+        // close enough that "which way" has no answer.
+        assertNull(rows[2].dir)
+    }
+
+    @Test
     fun `an unknown field from a newer publisher is ignored`() {
         val payload = """
             {"weather-4": {"data": [{"name":"Somerville","weather":"Clear","temp":21.5,
