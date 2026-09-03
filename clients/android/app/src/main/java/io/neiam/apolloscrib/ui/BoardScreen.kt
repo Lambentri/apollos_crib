@@ -1,5 +1,6 @@
 package io.neiam.apolloscrib.ui
 
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Column
@@ -13,27 +14,38 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.data.VisionStore
 import io.neiam.apolloscrib.mqtt.AnkyraClient
 import io.neiam.apolloscrib.mqtt.AnkyraService
 import io.neiam.apolloscrib.targets.Preview
 import io.neiam.apolloscrib.targets.Targets
 import io.neiam.apolloscrib.ui.theme.LocalAppTheme
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withTimeoutOrNull
 import java.text.DateFormat
 import java.util.Date
 
@@ -45,6 +57,7 @@ import java.util.Date
  * the same [Preview]s the Smartspace cards are built from, so what is on this
  * screen is what a Target added for that query will say.
  */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun BoardScreen(
     modifier: Modifier = Modifier,
@@ -62,7 +75,74 @@ fun BoardScreen(
     val lastUpdated = remember(boards) { store.lastUpdated() }
     val stale = remember(boards) { store.isStale() }
 
-    Column(modifier = modifier.fillMaxSize()) {
+    val context = LocalContext.current
+
+    // A pull asks for a board; the wait ends when one lands. There is no
+    // acknowledgement to wait for -- a Pythiae answers on its own tick and the
+    // request is debounced at the other end -- so a new payload is the only
+    // honest signal that it worked, and a timeout covers nothing coming back.
+    var refreshing by remember { mutableStateOf(false) }
+
+    LaunchedEffect(refreshing) {
+        if (!refreshing) return@LaunchedEffect
+
+        val before = VisionStore.boards.value
+        withTimeoutOrNull(8_000) {
+            snapshotFlow { VisionStore.boards.value }.first { it != before }
+        }
+        refreshing = false
+    }
+
+    // What the last side-swipe did. Cleared after a moment: it is what
+    // happened when the gesture was made, not the state of anything.
+    var swiped by remember { mutableStateOf("") }
+
+    LaunchedEffect(swiped) {
+        if (swiped.isNotEmpty()) {
+            kotlinx.coroutines.delay(3_000)
+            swiped = ""
+        }
+    }
+
+    // The launcher's feed page owns horizontal drags -- that is how the panel
+    // is dismissed -- so this gesture belongs to the app alone. Read-only is
+    // also the wrong place to be publishing anything from.
+    val sideSwipeModifier = if (onEditConnection == null) {
+        Modifier
+    } else {
+        Modifier.pointerInput(Unit) {
+            var travelled = 0f
+
+            detectHorizontalDragGestures(
+                onDragStart = { travelled = 0f },
+                onDragEnd = {
+                    // A quarter of the width, so a lazy thumb on a card does
+                    // not publish a position by accident.
+                    if (kotlin.math.abs(travelled) > size.width / 4f) {
+                        val settings = Settings(context)
+
+                        // Opt-in means opt-in: a gesture is not consent, and a
+                        // wall-mounted client should not start taking fixes
+                        // because somebody brushed the screen.
+                        if (!settings.publishLocation) {
+                            swiped = "Location reporting is off"
+                        } else {
+                            swiped = "Publishing position..."
+                            AnkyraService.reportLocationNow(context) { sent ->
+                                // False covers both no fix and no running
+                                // service, and this cannot tell them apart --
+                                // so it says the thing that is true of both
+                                // rather than guessing at the reason.
+                                swiped = if (sent) "Position sent" else "Could not send a position"
+                            }
+                        }
+                    }
+                }
+            ) { _, amount -> travelled += amount }
+        }
+    }
+
+    Column(modifier = modifier.fillMaxSize().then(sideSwipeModifier)) {
         // Outside the list rather than its first row: what the connection is
         // doing should not scroll away, since it is the thing that tells you
         // whether the board under it is worth reading.
@@ -74,6 +154,25 @@ fun BoardScreen(
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
         )
 
+        // Only when there is something to say: an empty line still takes one,
+        // and the board would shift under the reader every time it cleared.
+        if (swiped.isNotEmpty()) {
+            Text(
+                text = swiped,
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalAppTheme.current.dim,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 4.dp)
+            )
+        }
+
+        PullToRefreshBox(
+            isRefreshing = refreshing,
+            onRefresh = {
+                refreshing = true
+                AnkyraService.requestBoard(context)
+            },
+            modifier = Modifier.fillMaxSize()
+        ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
@@ -122,6 +221,7 @@ fun BoardScreen(
                     color = LocalAppTheme.current.dim
                 )
             }
+        }
         }
         }
     }
