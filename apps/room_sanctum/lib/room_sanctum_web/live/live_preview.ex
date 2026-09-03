@@ -435,6 +435,44 @@ use PhoenixHTMLHelpers
   end
 
   @doc """
+  The Basic view for whichever type the query is.
+
+  The sibling of `p_plus/1`, and the reason both exist as dispatchers rather
+  than as a `case` written out at each call site: a page that inlines the list
+  silently falls through to nothing -- or to `inspect` -- for every type added
+  after it was written, which is exactly what happened to the Plani page when
+  weather and the rest learned to travel.
+  """
+  attr :entries, :map, required: true
+  attr :type, :atom, required: true
+
+  def p_basic(assigns) do
+    ~H"""
+    <%= case @type do %>
+      <% :gtfs -> %> <.p_gtfs entries={@entries} />
+      <% :gbfs -> %> <.p_gbfs entries={@entries} />
+      <% :tidal -> %> <.p_tidal entries={@entries} />
+      <% :weather -> %> <.p_weather entries={@entries} />
+      <% :aqi -> %> <.p_aqi entries={@entries} />
+      <% :ephem -> %> <.p_ephem entries={@entries} />
+      <% :calendar -> %> <.p_calendar entries={@entries} />
+      <% :cronos -> %> <.p_cronos entries={@entries} />
+      <% :gitlab -> %> <.p_gitlab entries={@entries} />
+      <% :github -> %> <.p_github entries={@entries} />
+      <% :drought -> %> <.p_drought entries={@entries} />
+      <% :pollen -> %> <.p_pollen entries={@entries} />
+      <% :icarus -> %> <.p_icarus entries={@entries} />
+      <% :mailbox -> %> <.p_mailbox entries={@entries} />
+      <% :treasury -> %> <.p_treasury entries={@entries} />
+      <% :bourse -> %> <.p_bourse entries={@entries} />
+      <% :packages -> %> <.p_packages entries={@entries} />
+      <% :const -> %> <.p_const entries={@entries} />
+      <% _ -> %>
+    <% end %>
+    """
+  end
+
+  @doc """
   The Plus view for whichever type the query is.
 
   Only some types have an extended read written for them; the rest show what
@@ -514,6 +552,13 @@ use PhoenixHTMLHelpers
         <div class="card-body text-left">
         <h2 class="card-title">
           <p><i class="fa-solid fa-fw fa-bicycle"></i> <%= e.name %> </p>
+          <%!-- Which way to walk. Only a Plani sends it: a vision's foci is a
+                fixed place, so there is nothing for a bearing to be relative
+                to, and it is absent for anything close enough to have no
+                direction at all. --%>
+          <span :if={Map.get(e, :dir)} class="badge badge-sm badge-outline gap-1">
+            <i class="fa-solid fa-location-arrow"></i><%= Map.get(e, :dir) %>
+          </span>
         </h2>
         <%= if free_bike?(e) do %>
         <p>

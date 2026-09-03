@@ -11,7 +11,13 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     # and held there -- so the page asks, rather than waiting to be told.
     if connected?(socket), do: :timer.send_interval(5_000, self(), :look)
 
-    {:ok, socket |> assign(:anchor, nil) |> assign(:state, %{data: %{}, queries: []})}
+    {:ok,
+     socket
+     |> assign(:anchor, nil)
+     |> assign(:state, %{data: %{}, queries: []})
+     # Which read of the same data to draw. Basic is what the clients get and
+     # so the honest default for a page whose job is showing what is published.
+     |> assign(:view, :basic)}
   end
 
   @impl true
@@ -27,6 +33,12 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
 
   @impl true
   def handle_info(:look, socket), do: {:noreply, look(socket)}
+
+  @impl true
+  def handle_event("view", %{"view" => "plus"}, socket),
+    do: {:noreply, assign(socket, :view, :plus)}
+
+  def handle_event("view", _params, socket), do: {:noreply, assign(socket, :view, :basic)}
 
   defp look(socket) do
     id = to_string(socket.assigns.plani.id)
@@ -61,9 +73,19 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
 
   def entries(_state), do: []
 
-  @doc "The condensed form of one entry, as the preview components want it."
-  def condensed({id, type}, rows) do
-    condensed = RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, rows)
+  @doc """
+  The condensed form of one entry, as the preview components want it.
+
+  Which condenser depends on the view: Plus keeps each arrival whole where it
+  has more to say about one, and falls back to Basic's answer for every type
+  it does not write -- so switching never empties a card.
+  """
+  def condensed({id, type}, rows, view \\ :basic) do
+    condensed =
+      case view do
+        :plus -> RoomSanctum.Condenser.PlusMQTT.condense_data({id, type}, rows)
+        _ -> RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, rows)
+      end
 
     # The shape the preview components take. Defined here rather than borrowed
     # from the Pythiae page, which keeps its own private copy of the same

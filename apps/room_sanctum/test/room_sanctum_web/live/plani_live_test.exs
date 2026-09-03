@@ -216,6 +216,33 @@ defmodule RoomSanctumWeb.PlaniLiveTest do
     assert html =~ "No sources yet"
   end
 
+  test "the preview switches between the Basic and Plus reads", ctx do
+    plani = plani(ctx)
+    {:ok, live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
+
+    # Basic is what the clients receive, so it is what the page opens on.
+    assert html =~ "btn-primary"
+    assert html =~ "Plus"
+
+    plus = live |> element("button[phx-value-view=plus]") |> render_click()
+    assert plus =~ "Plus"
+
+    back = live |> element("button[phx-value-view=basic]") |> render_click()
+    assert back =~ "Basic"
+  end
+
+  test "the bike limit is bounded", ctx do
+    assert {:error, changeset} =
+             Configuration.create_plani(%{
+               name: "Too many",
+               user_id: ctx.user.id,
+               home_foci_id: ctx.foci.id,
+               bike_limit: 500
+             })
+
+    assert changeset.errors[:bike_limit]
+  end
+
   test "the radius and count are bounded", ctx do
     assert {:error, changeset} =
              Configuration.create_plani(%{

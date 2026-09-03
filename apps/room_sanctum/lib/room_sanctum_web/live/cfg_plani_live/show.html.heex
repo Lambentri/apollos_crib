@@ -51,7 +51,28 @@
 <div class="mx-4 py-2">
   <div class="card card-compact w-full bg-base-100 shadow-xl">
     <div class="card-body">
-      <h3 class="card-title"><i class="fas fa-fw fa-eye"></i> What it is publishing</h3>
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <h3 class="card-title"><i class="fas fa-fw fa-eye"></i> What it is publishing</h3>
+        <%!-- Basic is what the clients actually receive, so it leads and is
+              the default; Plus is the same data read further, for the types
+              that carry more than a card has room for. --%>
+        <div class="join">
+          <button
+            class={"btn btn-xs join-item #{if @view == :basic, do: "btn-primary", else: "btn-ghost"}"}
+            phx-click="view"
+            phx-value-view="basic"
+          >
+            Basic
+          </button>
+          <button
+            class={"btn btn-xs join-item #{if @view == :plus, do: "btn-primary", else: "btn-ghost"}"}
+            phx-click="view"
+            phx-value-view="plus"
+          >
+            Plus
+          </button>
+        </div>
+      </div>
       <% entries = RoomSanctumWeb.PlaniLive.Show.entries(@state) %>
       <%= if entries == [] do %>
         <p class="opacity-70">
@@ -76,15 +97,20 @@
                   <%= RoomSanctumWeb.PlaniLive.Show.entry_name(@state, elem(key, 0)) %>
                 </span>
               </div>
-              <%= case key do %>
-                <% {_, :gtfs} -> %>
-                  <.p_gtfs entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)} />
-                <% {_, :gbfs} -> %>
-                  <.p_gbfs entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)} />
-                <% {_, :aqi} -> %>
-                  <.p_aqi entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)} />
-                <% _ -> %>
-                  <pre class="text-xs"><%= inspect(rows, limit: 4) %></pre>
+              <%!-- Dispatched rather than listed here: a case written out on
+                    the page falls through to nothing for every type added
+                    after it, which is how weather and the rest ended up
+                    rendering as `inspect` on this page. --%>
+              <%= if @view == :plus do %>
+                <.p_plus
+                  type={elem(key, 1)}
+                  entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows, :plus)}
+                />
+              <% else %>
+                <.p_basic
+                  type={elem(key, 1)}
+                  entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)}
+                />
               <% end %>
             </div>
           </div>
