@@ -1,0 +1,116 @@
+# Plani
+
+A foci that moves.
+
+A [Foci](README.md) anchors a query in one place. A Plani anchors it wherever
+the client reporting to it currently is, and falls back to a home foci when
+nothing has reported for a while. The point is a vision that answers "what is
+near me" rather than "what is near Davis Square".
+
+This is a scope, not a description of something that exists. What is built so
+far is the plumbing underneath it, noted below.
+
+## Where the position lives
+
+**In a GenServer, and nowhere else.** A Plani's row in the database holds its
+configuration — a name, a home foci, the sources attached to it — and never a
+coordinate. The current position exists in the worker's memory, expires on a
+timer, and goes when the process does.
+
+That is a deliberate constraint rather than an implementation detail. A table
+of where somebody has been is a different kind of thing from a board of when
+the next bus is, with different obligations attached to it, and this avoids
+having one. It also makes the fallback obvious: when there is no position in
+memory there is nothing to fall back *from*, so the home foci answers.
+
+```
+                    fresh fix?  ──yes──▶  the client's position
+  Plani.anchor()  ──┤
+                    └──no───▶  home foci's place  (from the database)
+```
+
+## What already exists
+
+More than it looks, because the pieces were built for other reasons.
+
+| Piece | Where | State |
+| --- | --- | --- |
+| A client may publish to its Ankyra | `RoomHermesWeb.TopicController`, `<topic>.up.` | done |
+| A client reports its position, opt-in | `clients/android`, `LocationReporter` | done |
+| Positions arrive and are held for five minutes | `RoomSanctum.Worker.Ankyra` | done |
+| The trail is visible | `cfg/ankyra/:id` | done |
+| A client can ask for a fresh board | `<topic>.publish.`, `Pythiae.query_current_now/1` | done |
+
+And one piece of shape that matters more than any of it: **the storage layer
+already separates resolving an anchor from searching near a point.**
+
+```elixir
+def nearest_aqi_stations(source_id, foci_id, limit)   # resolves a foci, then:
+def nearby_aqi_stations(source_id, %Geo.Point{}, limit)
+```
+
+A Plani is largely a matter of handing a different point to functions that
+already take one.
+
+## The part that is not uniform
+
+"Most of our datapoints have a latlon attached someplace" is true, but they do
+not have it in the same place, and — more importantly — **"the closest N" only
+means something for some of them.** Attaching a source to a Plani means one of
+three different things:
+
+**Sources that store many located things.** Nearest-N is the natural question,
+and the work is a spatial query.
+
+| Source | Where the location is | Ready? |
+| --- | --- | --- |
+| `gbfs` stations | `gbfs_station_information.place`, PostGIS | yes — `ST_DWithin` + `<->` ordering already used |
+| `gbfs` free bikes | `gbfs_free_bike_status`, PostGIS | yes |
+| `aqi` monitors | `airnow_hourly_observations.point`, PostGIS | yes — `nearby_aqi_stations/3` |
+| `gtfs` stops | `stops.stop_lat` / `stop_lon`, **plain floats** | **no** — no geometry column, no index, no nearest-stop query anywhere |
+
+GTFS is the one anybody would want first and the only one needing real work: a
+geometry column on `stops`, a GiST index, and backfilling it on import. It is
+also the largest table in the system, so the index is not optional.
+
+**Sources answered *at* a point rather than *near* one.** Weather, sunrise,
+pollen, the tide at the nearest station: there is one answer and it is
+computed for wherever you are. These already take a `foci_id` in their query
+config (`weather`, `ephem`, `pollen`, `calendar`, `cronos`, `icarus`), so the
+change is to accept a point instead — the smallest useful stage, and it needs
+no spatial indexing at all.
+
+**Sources with no location.** `github`, `gitlab`, `packages`, `mailbox`,
+`treasury`, `bourse`. A Plani should either refuse these or pass them through
+untouched; "the nearest CI job" is not a thing. Worth deciding explicitly
+rather than discovering at runtime.
+
+## Suggested order
+
+1. **The anchor.** A Plani row (name, home foci, sources) and a worker that
+   resolves a position: freshest fix from the Ankyra worker's trail, else the
+   home foci. Publishes nothing yet — but the resolution, the expiry and the
+   fallback are the part with the design risk in it, and it can be watched on
+   a page before anything depends on it.
+2. **Relocatable point sources.** Give the query workers that take a `foci_id`
+   a way to take a `%Geo.Point{}`. Weather and ephem where you are. No schema
+   changes.
+3. **Nearest-N for what is already indexed.** GBFS stations and bikes, AQI
+   monitors. The queries exist; they need a limit and a caller.
+4. **GTFS stops.** Geometry column, GiST index, backfill on import, then
+   nearest-stop. The biggest piece and the one worth having.
+
+## Open questions
+
+- **N or a radius?** "Five nearest" and "everything within 500m" answer
+  differently when you are somewhere empty. GBFS queries already take a
+  radius; nearest-N would be a second mode rather than a replacement.
+- **Is a Plani its own thing, or a mode on a Pythiae?** A Pythiae already has
+  `curr_foci`. A Plani could be a foci whose place is resolved at read time,
+  which would mean nothing else has to know about it — the smaller change, and
+  probably the right one.
+- **What does a client see while it has never reported?** The home foci, which
+  is correct but silent. A board that says which anchor it used would save
+  somebody wondering why the times are for the wrong town.
+- **Which Ankyra?** A Plani follows *a* client. An Ankyra with two clients
+  reporting has two positions and no rule for choosing between them.
