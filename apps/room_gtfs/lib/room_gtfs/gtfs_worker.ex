@@ -248,7 +248,7 @@ defmodule RoomGtfs.Worker do
     foci = Configuration.get_foci!(query.foci_id)
 
     stops =
-      Storage.nearby_stops(id, foci.place, query.stops || 3)
+      Storage.nearby_stops(id, foci.place, query.stops || 3, query.radius)
       |> Enum.map(& &1.stop_id)
 
     stops

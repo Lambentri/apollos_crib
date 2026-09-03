@@ -84,11 +84,21 @@
               <%= source.name %>
             </a>
             <span class="ml-auto">
-              <%= case RoomSanctumWeb.PlaniLive.Show.count_for(@state, source.id) do %>
-                <% nil -> %>
-                  <span class="badge badge-ghost">nothing yet</span>
-                <% n -> %>
+              <%= case RoomSanctumWeb.PlaniLive.Show.outcome(@anchor, source.id) do %>
+                <% {:ok, n} -> %>
                   <span class="badge badge-accent"><%= n %></span>
+                <% {:empty, why} -> %>
+                  <span class="badge badge-ghost" title={why}>none</span>
+                <% {:skipped, why} -> %>
+                  <span class="badge badge-warning gap-1" title={why}>
+                    <i class="fas fa-fw fa-ban text-xs"></i> skipped
+                  </span>
+                <% {:error, message} -> %>
+                  <span class="badge badge-error gap-1" title={message}>
+                    <i class="fas fa-fw fa-triangle-exclamation text-xs"></i> failed
+                  </span>
+                <% {:pending, why} -> %>
+                  <span class="badge badge-ghost" title={why}>waiting</span>
               <% end %>
             </span>
           </div>

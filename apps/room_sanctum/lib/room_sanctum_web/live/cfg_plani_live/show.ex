@@ -102,6 +102,25 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     end
   end
 
+  @doc """
+  What happened to a source on the last tick.
+
+  A count is the happy answer. The others are worth saying out loud: a Plani
+  that shows nothing looks the same whether its sources are empty, ineligible
+  or raising, and only one of those is something to wait out.
+  """
+  def outcome(%{notes: notes}, source_id) when is_map(notes) do
+    case Map.get(notes, source_id) do
+      {:ok, 0} -> {:empty, "nothing near it"}
+      {:ok, n} -> {:ok, n}
+      {:error, message} -> {:error, message}
+      :not_spatial -> {:skipped, "nothing located in this source"}
+      nil -> {:pending, "not asked yet"}
+    end
+  end
+
+  def outcome(_where, _source_id), do: {:pending, "not asked yet"}
+
   @doc "How many results a source came back with."
   def count_for(state, source_id) do
     state.data

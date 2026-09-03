@@ -50,6 +50,7 @@ defmodule RoomSanctum.Worker.Plani do
        data: %{},
        queries: [],
        places: [],
+       notes: %{},
        anchor: nil,
        anchored_to: :home
      }}
@@ -121,15 +122,20 @@ defmodule RoomSanctum.Worker.Plani do
         Configuration.list_cfg_sources({:user, state.plani.user_id})
       )
 
-    {data, queries, places} =
+    {data, queries, places, notes} =
       sources
-      |> Enum.reduce({%{}, [], []}, fn source_id, {data, queries, places} ->
+      |> Enum.reduce({%{}, [], [], %{}}, fn source_id, {data, queries, places, notes} ->
         case ask(source_id, anchor, state.plani) do
           nil ->
-            {data, queries, places}
+            {data, queries, places, Map.put(notes, source_id, :not_spatial)}
+
+          {:error, _id, message} ->
+            Logger.warning("plani #{state.id} source #{source_id}: #{message}")
+            {data, queries, places, Map.put(notes, source_id, {:error, message})}
 
           {key, results, described, found} ->
-            {Map.put(data, key, results), [described | queries], found ++ places}
+            {Map.put(data, key, results), [described | queries], found ++ places,
+             Map.put(notes, source_id, {:ok, length(results)})}
         end
       end)
 
@@ -139,6 +145,7 @@ defmodule RoomSanctum.Worker.Plani do
        | data: data,
          queries: Enum.reverse(queries),
          places: places,
+         notes: notes,
          anchor: anchor,
          anchored_to: anchored_to
      }}
@@ -146,7 +153,12 @@ defmodule RoomSanctum.Worker.Plani do
 
   def handle_call(:where, _from, state) do
     {:reply,
-     %{anchor: state.anchor, anchored_to: state.anchored_to, places: state.places}, state}
+     %{
+       anchor: state.anchor,
+       anchored_to: state.anchored_to,
+       places: state.places,
+       notes: state.notes
+     }, state}
   end
 
   def handle_call(:return_state, _from, state) do
@@ -181,7 +193,7 @@ defmodule RoomSanctum.Worker.Plani do
 
     case source.type do
       :gtfs ->
-        stops = Storage.nearby_stops(source_id, anchor, plani.limit)
+        stops = Storage.nearby_stops(source_id, anchor, plani.limit, plani.radius)
 
         arrivals =
           stops
@@ -193,8 +205,14 @@ defmodule RoomSanctum.Worker.Plani do
         {{source_id, :gtfs}, arrivals, described(source), places(stops, source, :stop)}
 
       :gbfs ->
+        # Both, because a source does not say which kind it is. A docked
+        # system answers with docks and a dockless one with loose bikes, and
+        # asking only for the latter left a city full of docks looking empty.
         bikes = Storage.free_bikes_near(source_id, anchor, plani.radius)
-        {{source_id, :gbfs}, bikes, described(source), places(bikes, source, :bike)}
+        docks = Storage.stations_near(source_id, anchor, plani.radius)
+
+        {{source_id, :gbfs}, bikes ++ docks, described(source),
+         places(bikes, source, :bike) ++ places(docks, source, :dock)}
 
       :aqi ->
         readings = Storage.nearby_aqi_stations(source_id, anchor, plani.limit)
@@ -206,10 +224,16 @@ defmodule RoomSanctum.Worker.Plani do
         Logger.debug("plani: no spatial answer for a #{other} source")
         nil
     end
+  rescue
+    # `catch` takes throws and exits and lets a raise straight through, so one
+    # source with no config, or a stop id that has gone, took the whole worker
+    # down on every tick -- it restarted, lost its state, and the page stayed
+    # empty with nothing anywhere saying why.
+    error ->
+      {:error, source_id, Exception.message(error)}
   catch
     kind, reason ->
-      Logger.warning("plani source #{source_id} #{kind}: #{inspect(reason)}")
-      nil
+      {:error, source_id, "#{kind}: #{inspect(reason)}"}
   end
 
   defp ask(_source_id, _anchor, _plani), do: nil
@@ -258,6 +282,8 @@ defmodule RoomSanctum.Worker.Plani do
   defp coordinates(%{lat: lat, lon: lon}) when is_number(lat) and is_number(lon), do: {lat, lon}
 
   defp coordinates(%{point: %Geo.Point{coordinates: {lon, lat}}}), do: {lat, lon}
+
+  defp coordinates(%{place: %Geo.Point{coordinates: {lon, lat}}}), do: {lat, lon}
 
   defp coordinates(_record), do: nil
 

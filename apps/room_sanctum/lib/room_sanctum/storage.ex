@@ -2785,8 +2785,20 @@ defmodule RoomSanctum.Storage do
   """
   def stations_near_foci(source_id, foci_id, radius) do
     case get_foci_by_id(foci_id) do
-      %{place: %Geo.Point{} = place} ->
-        from(st in StationStatus,
+      %{place: %Geo.Point{} = place} -> stations_near(source_id, place, radius)
+      _ -> []
+    end
+  end
+
+  @doc """
+  Docks within a radius of a point, closest first.
+
+  The point-taking half of `stations_near_foci/3`, so an anchor that is not a
+  foci can ask it. A docked system answers a question about where you are with
+  its docks; only a dockless one answers with loose bikes.
+  """
+  def stations_near(source_id, %Geo.Point{} = place, radius) do
+    from(st in StationStatus,
           join: si in StationInfo,
           on: si.station_id == st.station_id and si.source_id == st.source_id,
           left_join: eb in EbikesAtStations,
@@ -2813,15 +2825,13 @@ defmodule RoomSanctum.Storage do
             place: si.place,
             name: si.name,
             short_name: si.short_name,
-            ebikes_info: eb.ebikes
-          }
-        )
-        |> Repo.all()
-
-      _ ->
-        []
-    end
+        ebikes_info: eb.ebikes
+      }
+    )
+    |> Repo.all()
   end
+
+  def stations_near(_source_id, _place, _radius), do: []
 
   @doc """
   Free-floating bikes within `radius` metres of a foci.
@@ -3280,18 +3290,37 @@ defmodule RoomSanctum.Storage do
   Ordered by the index operator rather than by distance, so this uses the GiST
   index instead of measuring every stop and sorting the result.
   """
-  def nearby_stops(source_id, point, limit \\ 5)
+  def nearby_stops(source_id, point, limit \\ 5, radius \\ nil)
 
-  def nearby_stops(source_id, %Geo.Point{} = point, limit) do
+  def nearby_stops(source_id, %Geo.Point{} = point, limit, radius) do
     from(s in Stop,
-      where: s.source_id == ^source_id and not is_nil(s.stop_lat) and not is_nil(s.stop_lon),
+      where:
+        s.source_id == ^source_id and not is_nil(s.stop_lat) and not is_nil(s.stop_lon) and
+          # Only somewhere you can board. A GTFS feed keeps its stairwells,
+          # lifts and pathway nodes in this table too -- location_type 1 to 4 --
+          # and none of them appear in stop_times. The five things nearest a
+          # station entrance are usually five of its own nodes, so without this
+          # the answer is a list of doors with no departures behind any of them.
+          (is_nil(s.location_type) or s.location_type in ["", "0"]),
       limit: ^limit,
       order_by: fragment("place <-> ?", ^point)
     )
+    |> within(point, radius)
     |> Repo.all()
   end
 
-  def nearby_stops(_source_id, _point, _limit), do: []
+  def nearby_stops(_source_id, _point, _limit, _radius), do: []
+
+  # A radius, when one was asked for. Without it "nearest" means nearest in the
+  # world: a foci nowhere near a source still gets that source's five closest
+  # stops, an ocean away, and nothing says they are not nearby.
+  defp within(query, _point, nil), do: query
+
+  defp within(query, point, radius) do
+    from(s in query,
+      where: fragment("ST_DWithin(place::geography, ?::geography, ?)", ^point, ^radius)
+    )
+  end
 
   @doc """
   Stops nearest a foci, closest first.
