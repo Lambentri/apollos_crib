@@ -3257,6 +3257,44 @@ defmodule RoomSanctum.Storage do
   One row per station: the feed replaces the whole set each hour, so the
   current reading and the station itself are the same record.
   """
+  @doc """
+  Stops nearest a point, closest first.
+
+  The counterpart of `nearby_aqi_stations/3` for transit, and the query a
+  moving anchor needs: a GTFS query names one stop, so until now there was no
+  way to ask which stops are near anything.
+
+  `place` is a generated column and deliberately absent from the Stop schema --
+  the importer builds its inserts from the schema's fields and would try to
+  write it -- so it is named in a fragment rather than through the struct.
+
+  Ordered by the index operator rather than by distance, so this uses the GiST
+  index instead of measuring every stop and sorting the result.
+  """
+  def nearby_stops(source_id, point, limit \\ 5)
+
+  def nearby_stops(source_id, %Geo.Point{} = point, limit) do
+    from(s in Stop,
+      where: s.source_id == ^source_id and not is_nil(s.stop_lat) and not is_nil(s.stop_lon),
+      limit: ^limit,
+      order_by: fragment("place <-> ?", ^point)
+    )
+    |> Repo.all()
+  end
+
+  def nearby_stops(_source_id, _point, _limit), do: []
+
+  @doc """
+  Stops nearest a foci, closest first.
+
+  Resolving the anchor separately from the search is what lets a Plani hand in
+  a position instead: see `nearby_stops/3`.
+  """
+  def nearest_stops(source_id, foci_id, limit \\ 5) do
+    foci = Cfg.get_foci!(foci_id)
+    nearby_stops(source_id, foci.place, limit)
+  end
+
   def nearest_aqi_stations(source_id, foci_id, limit \\ 5) do
     foci = Cfg.get_foci!(foci_id)
     nearby_aqi_stations(source_id, foci.place, limit)

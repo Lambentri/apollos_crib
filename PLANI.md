@@ -67,11 +67,13 @@ and the work is a spatial query.
 | `gbfs` stations | `gbfs_station_information.place`, PostGIS | yes — `ST_DWithin` + `<->` ordering already used |
 | `gbfs` free bikes | `gbfs_free_bike_status`, PostGIS | yes |
 | `aqi` monitors | `airnow_hourly_observations.point`, PostGIS | yes — `nearby_aqi_stations/3` |
-| `gtfs` stops | `stops.stop_lat` / `stop_lon`, **plain floats** | **no** — no geometry column, no index, no nearest-stop query anywhere |
+| `gtfs` stops | `gtfs_stops.place`, generated from `stop_lat` / `stop_lon` | yes — `nearby_stops/3`, GiST indexed |
 
-GTFS is the one anybody would want first and the only one needing real work: a
-geometry column on `stops`, a GiST index, and backfilling it on import. It is
-also the largest table in the system, so the index is not optional.
+GTFS was the gap and is now closed. The column is generated rather than
+written, because the importer builds its bulk inserts from the schema's fields
+and would otherwise have to maintain it; a generated column cannot drift from
+the coordinates it comes from and stays out of the importer's way by staying
+out of the Ecto schema.
 
 **Sources answered *at* a point rather than *near* one.** Weather, sunrise,
 pollen, the tide at the nearest station: there is one answer and it is
@@ -97,18 +99,27 @@ rather than discovering at runtime.
    changes.
 3. **Nearest-N for what is already indexed.** GBFS stations and bikes, AQI
    monitors. The queries exist; they need a limit and a caller.
-4. **GTFS stops.** Geometry column, GiST index, backfill on import, then
-   nearest-stop. The biggest piece and the one worth having.
+4. ~~**GTFS stops.**~~ Done: `gtfs_stops.place` is generated and GiST indexed,
+   and `nearby_stops/3` uses it. What is still missing is a *query* that asks
+   for them — GBFS has `mode: :area`, GTFS has only a named stop.
 
 ## Open questions
 
 - **N or a radius?** "Five nearest" and "everything within 500m" answer
   differently when you are somewhere empty. GBFS queries already take a
   radius; nearest-N would be a second mode rather than a replacement.
-- **Is a Plani its own thing, or a mode on a Pythiae?** A Pythiae already has
-  `curr_foci`. A Plani could be a foci whose place is resolved at read time,
-  which would mean nothing else has to know about it — the smaller change, and
-  probably the right one.
+- **Is a Plani its own thing, or a mode on a Pythiae?** Settled: not a mode,
+  and nothing XORs with visions. A Pythiae already carries `curr_foci`, which
+  is settable in the UI and read by nothing. If a query resolved its anchor
+  through the Pythiae's `curr_foci` rather than its own `foci_id`, the same
+  vision would answer for wherever the Pythiae is pointed, and a Plani would
+  be a foci whose place comes from a GenServer rather than a column. The
+  vision machinery, the condensers and the clients would all be untouched.
+
+  What does *not* compose is asking for things there is no query for. GBFS
+  already has `mode: :area` around a foci with a radius, so "bikes near me"
+  works the moment the foci moves. GTFS has only a named stop, so "stops near
+  me" needs a new query mode — a query type, not a Pythiae mode.
 - **What does a client see while it has never reported?** The home foci, which
   is correct but silent. A board that says which anchor it used would save
   somebody wondering why the times are for the wrong town.
