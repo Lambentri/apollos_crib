@@ -95,26 +95,10 @@ fun BoardScreen(
         }
 
         entries.forEach { entry ->
-            val previews = Targets.preview(entry)
-            if (previews.isEmpty()) {
-                // A query this build can draw, that answered with nothing it
-                // knows how to say. Worth showing as itself rather than as a
-                // gap in the list.
-                item(key = entry.key) {
-                    PreviewCard(
-                        Preview(
-                            id = entry.key,
-                            title = entry.label(),
-                            subtitle = entry.key,
-                            iconRes = io.neiam.apolloscrib.R.drawable.ic_crib,
-                            empty = "Nothing to show"
-                        )
-                    )
-                }
-            } else {
-                items(previews, key = { "${entry.key}-${it.id}" }) { preview ->
-                    PreviewCard(preview)
-                }
+            // No preview means the renderer had nothing worth a card -- a
+            // stop with nothing due says so by not being there.
+            items(Targets.preview(entry), key = { "${entry.key}-${it.id}" }) { preview ->
+                PreviewCard(preview)
             }
         }
 

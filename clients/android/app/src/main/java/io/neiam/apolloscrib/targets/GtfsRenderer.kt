@@ -27,6 +27,15 @@ object GtfsRenderer : SourceRenderer {
     override fun preview(entry: VisionEntry): List<Preview> {
         val routes = entry.decode<List<GtfsCondensed>>().orEmpty()
 
+        // A stop with nothing due is not news. Unlike a dock with no bikes --
+        // where the count is the answer -- an empty departure board says only
+        // that the query window is quiet, and it crowds out the stops that do
+        // have something. An alert still shows: "suspended" is why there is
+        // nothing due, and worth the space on its own.
+        if (routes.all { it.times.isEmpty() }) {
+            return listOfNotNull(alert(entry, routes))
+        }
+
         // Soonest first. The publisher orders departures within a route but
         // says nothing about the order of the routes themselves.
         val soonest = routes.sortedBy { it.departures().firstOrNull() ?: "99:99" }

@@ -115,14 +115,30 @@ class RendererTest {
     }
 
     @Test
-    fun `a stop with nothing due still draws, and says so`() {
+    fun `a stop with nothing due is not drawn at all`() {
+        // A dock with no bikes still answers the question; an empty departure
+        // board only says the window is quiet, and crowds out the stops that
+        // have something.
         val previews = GtfsRenderer.preview(
             entry("""{"gtfs-1": {"query": {"name": "Curtis St", "meta": {}}, "data": []}}""")
         )
-        val board = previews.single()
-        assertEquals("Curtis St", board.title)
-        assertTrue(board.rows.isEmpty())
-        assertEquals("Nothing due", board.empty)
+        assertTrue(previews.isEmpty())
+    }
+
+    @Test
+    fun `an alert still shows when there is nothing due`() {
+        // "Suspended" is why there is nothing due, and worth the space alone.
+        val previews = GtfsRenderer.preview(
+            entry(
+                """
+                {"gtfs-1": [{"route":"RL","dest":"Alewife","dir":"NB","mode":"Subway",
+                 "times":[],
+                 "alerts":[{"effect":"NO_SERVICE","cause":"MAINTENANCE",
+                            "header":"Red Line suspended","severity":"SEVERE"}]}]}
+                """.trimIndent()
+            )
+        )
+        assertEquals("Red Line suspended", previews.single().title)
     }
 
     @Test
