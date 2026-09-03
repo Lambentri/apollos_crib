@@ -52,6 +52,44 @@
       </div>
     </div>
   </div>
+  <%= if @positions != [] do %>
+    <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
+      <div class="card-body">
+        <h3 class="card-title">
+          <i class="fas fa-fw fa-location-dot"></i> Where its clients are
+        </h3>
+        <p class="text-sm opacity-70">
+          Reported by clients that were asked to, and kept for five minutes.
+          Held in memory only — nothing here is written down, and it empties
+          itself as the fixes age out.
+        </p>
+        <div class="flex flex-col gap-1 mt-2">
+          <%= for position <- @positions do %>
+            <div
+              class="flex items-center gap-3 rounded-lg bg-base-200 px-3 py-2 font-mono text-sm"
+              style={"opacity: #{RoomSanctumWeb.AnkyraLive.Show.freshness(position)}"}
+            >
+              <span class="w-32 shrink-0 opacity-70">
+                <%= RoomSanctumWeb.AnkyraLive.Show.age_in_words(position) %>
+              </span>
+              <span><%= Float.round(position.lat, 5) %>, <%= Float.round(position.lon, 5) %></span>
+              <%= if position.accuracy_m do %>
+                <span class="opacity-70">±<%= round(position.accuracy_m) %>m</span>
+              <% end %>
+              <%= if position.speed_mps do %>
+                <span class="opacity-70">
+                  <i class="fas fa-fw fa-gauge-high"></i>
+                  <%= Float.round(position.speed_mps * 3.6, 1) %> km/h
+                </span>
+              <% end %>
+              <span class="ml-auto opacity-50"><%= position.client_id %></span>
+            </div>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+
   <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
     <div class="card-body">
       <h3 class="card-title">Pair a Client</h3>

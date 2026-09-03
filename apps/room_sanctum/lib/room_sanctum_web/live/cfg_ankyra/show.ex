@@ -156,6 +156,26 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
     end
   end
 
+  @doc """
+  How stale a fix is, as a fraction: 1.0 just arrived, 0.0 about to go.
+
+  Drives the opacity, so a trail fades rather than blinking out. The floor
+  keeps the oldest one readable right up until it is dropped.
+  """
+  def freshness(%{at: at}, ttl_s \\ 300) do
+    age = DateTime.diff(DateTime.utc_now(), at, :second)
+    ((ttl_s - age) / ttl_s) |> max(0.0) |> min(1.0) |> then(&(0.25 + 0.75 * &1))
+  end
+
+  @doc "How long ago a fix arrived, in words."
+  def age_in_words(%{at: at}) do
+    case DateTime.diff(DateTime.utc_now(), at, :second) do
+      s when s < 5 -> "just now"
+      s when s < 60 -> "#{s}s ago"
+      s -> "#{div(s, 60)}m ago"
+    end
+  end
+
   defp page_title(:show), do: "Ankyra Detail"
   defp page_title(:edit), do: "Modify Ankyra"
 end

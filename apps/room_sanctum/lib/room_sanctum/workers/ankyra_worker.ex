@@ -10,6 +10,12 @@ defmodule RoomSanctum.Worker.Ankyra do
   # Asking is cheap and answering is not: a vision's queries all run again.
   @request_floor_ms 1_000
 
+  # How long a reported position is worth showing, and how many to keep. Five
+  # minutes is a trail rather than a history: long enough to see which way
+  # somebody is going, short enough that it is gone before it is a record.
+  @positions_ttl_s 300
+  @positions_kept 20
+
   @registry :zeus
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("ankyra" <> opts[:id]))
@@ -34,7 +40,8 @@ defmodule RoomSanctum.Worker.Ankyra do
       initial_delay: 10
     )
 
-    {:ok, %{id: opts[:id], ankyra: nil, requests: nil, last_request: nil}}
+    {:ok,
+     %{id: opts[:id], ankyra: nil, requests: nil, last_request: nil, positions: []}}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -68,14 +75,20 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   def handle_cast(:meta_check, %{ankyra: nil} = state), do: {:noreply, state}
 
-  def handle_cast(:meta_check, state) do
-    parent = self()
-    username = state.ankyra.username
+  # Positions age out whether or not anything is arriving, so the pruning
+  # rides the check that already runs every couple of seconds. Without it a
+  # client that stopped moving would sit on the page indefinitely.
+  def handle_cast(:meta_check, %{positions: [_ | _]} = state) do
+    pruned = prune(state.positions)
 
-    spawn(fn -> send(parent, {:status_result, connected_clients(username)}) end)
+    if pruned != state.positions do
+      broadcast_positions(state.id, pruned)
+    end
 
-    {:noreply, state}
+    do_meta_check(%{state | positions: pruned})
   end
+
+  def handle_cast(:meta_check, state), do: do_meta_check(state)
 
   def handle_cast(:refresh_db_cfg, state) do
     p = Accounts.get_rabbit_user!(state[:id])
@@ -112,8 +125,11 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_info({:basic_cancel, _meta}, state), do: {:noreply, state |> Map.put(:requests, nil)}
   def handle_info({:basic_cancel_ok, _meta}, state), do: {:noreply, state}
 
-  def handle_info({:basic_deliver, _payload, %{routing_key: key}}, state) do
-    {:noreply, serve_request(state, key)}
+  def handle_info({:basic_deliver, payload, %{routing_key: key}}, state) do
+    cond do
+      String.contains?(key, ".up.") -> {:noreply, remember_position(state, payload)}
+      true -> {:noreply, serve_request(state, key)}
+    end
   end
 
   def handle_info({:status_result, count}, state) do
@@ -199,6 +215,7 @@ defmodule RoomSanctum.Worker.Ankyra do
          {:ok, chan} <- AMQP.Channel.open(conn),
          {:ok, %{queue: queue}} <- AMQP.Queue.declare(chan, "", exclusive: true, auto_delete: true),
          :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: request_key(state)),
+         :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: uplink_key(state)),
          {:ok, tag} <- AMQP.Basic.consume(chan, queue, self(), no_ack: true) do
       Logger.info("ankyra #{state.id} listening for requests on #{request_key(state)}")
       state |> Map.put(:requests, tag) |> Map.put(:requests_chan, chan)
@@ -210,6 +227,8 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   defp request_key(state), do: state.ankyra.topic <> ".publish.#"
+
+  defp uplink_key(state), do: state.ankyra.topic <> ".up.#"
 
   # The consumer's own lifecycle. Nothing to do but let them through.
 
@@ -244,6 +263,63 @@ defmodule RoomSanctum.Worker.Ankyra do
     else
       RoomSanctum.Worker.Pythiae.query_current_now(id)
     end
+  end
+
+  defp do_meta_check(state) do
+    parent = self()
+    username = state.ankyra.username
+
+    spawn(fn -> send(parent, {:status_result, connected_clients(username)}) end)
+
+    {:noreply, state}
+  end
+
+  # Where a client said it was, kept for as long as it is worth showing.
+  #
+  # In memory and nowhere else: this is a trail on a page somebody is looking
+  # at, not a record of where anybody has been. It goes when the worker does,
+  # and each fix goes five minutes after it arrived.
+  defp remember_position(state, payload) do
+    case decode_position(payload) do
+      nil ->
+        state
+
+      position ->
+        positions = prune([position | state.positions]) |> Enum.take(@positions_kept)
+        broadcast_positions(state.id, positions)
+        %{state | positions: positions}
+    end
+  end
+
+  defp decode_position(payload) do
+    with {:ok, %{"lat" => lat, "lon" => lon} = fix} <- Poison.decode(payload),
+         true <- is_number(lat) and is_number(lon) do
+      %{
+        lat: lat,
+        lon: lon,
+        accuracy_m: Map.get(fix, "accuracy_m"),
+        speed_mps: Map.get(fix, "speed_mps"),
+        client_id: Map.get(fix, "client_id"),
+        # When it reached us, not when the phone says it was taken: a clock
+        # that is wrong should not put a fix in the future or age it out early.
+        at: DateTime.utc_now()
+      }
+    else
+      _ -> nil
+    end
+  end
+
+  defp prune(positions) do
+    cutoff = DateTime.add(DateTime.utc_now(), -@positions_ttl_s, :second)
+    Enum.filter(positions, fn p -> DateTime.compare(p.at, cutoff) == :gt end)
+  end
+
+  defp broadcast_positions(id, positions) do
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      topic(id),
+      {:ankyra_positions, positions}
+    )
   end
 
   defp too_soon?(nil, _now), do: false
