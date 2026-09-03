@@ -5,6 +5,10 @@ defmodule RoomSanctum.Worker.Ankyra do
   require Logger
 
   alias RoomSanctum.Accounts
+  alias RoomSanctum.Configuration
+
+  # Asking is cheap and answering is not: a vision's queries all run again.
+  @request_floor_ms 1_000
 
   @registry :zeus
   def start_link(opts) do
@@ -30,7 +34,7 @@ defmodule RoomSanctum.Worker.Ankyra do
       initial_delay: 10
     )
 
-    {:ok, %{id: opts[:id], ankyra: nil}}
+    {:ok, %{id: opts[:id], ankyra: nil, requests: nil, last_request: nil}}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -75,7 +79,7 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   def handle_cast(:refresh_db_cfg, state) do
     p = Accounts.get_rabbit_user!(state[:id])
-    {:noreply, state |> Map.put(:ankyra, p)}
+    {:noreply, state |> Map.put(:ankyra, p) |> listen_for_requests()}
   end
 
   def handle_cast({:publish, data}, state) do
@@ -102,6 +106,14 @@ defmodule RoomSanctum.Worker.Ankyra do
     end
 
     {:noreply, state}
+  end
+
+  def handle_info({:basic_consume_ok, _meta}, state), do: {:noreply, state}
+  def handle_info({:basic_cancel, _meta}, state), do: {:noreply, state |> Map.put(:requests, nil)}
+  def handle_info({:basic_cancel_ok, _meta}, state), do: {:noreply, state}
+
+  def handle_info({:basic_deliver, _payload, %{routing_key: key}}, state) do
+    {:noreply, serve_request(state, key)}
   end
 
   def handle_info({:status_result, count}, state) do
@@ -168,6 +180,76 @@ defmodule RoomSanctum.Worker.Ankyra do
   # itself throws -- so a broker that is merely unreachable arrives here as an
   # exception, and unrescued it would kill the spawned checker with no status
   # ever sent and the badge stuck on "checking" forever.
+  # Listen for a client asking for something.
+  #
+  # A Pythiae publishes on change and on its own tick, so a client that has just
+  # woken up -- a phone out of a pocket, a panel after a power cut -- can be
+  # looking at a board from some time ago with no way to ask for a fresh one.
+  # This is the way to ask.
+  #
+  # The queue is exclusive and auto-deleting: it belongs to this worker and
+  # should go when it does, rather than accumulating requests for a process that
+  # is not there to serve them.
+  defp listen_for_requests(%{requests: tag} = state) when not is_nil(tag), do: state
+
+  defp listen_for_requests(%{ankyra: nil} = state), do: state
+
+  defp listen_for_requests(state) do
+    with {:ok, conn} <- AMQP.Application.get_connection(:default),
+         {:ok, chan} <- AMQP.Channel.open(conn),
+         {:ok, %{queue: queue}} <- AMQP.Queue.declare(chan, "", exclusive: true, auto_delete: true),
+         :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: request_key(state)),
+         {:ok, tag} <- AMQP.Basic.consume(chan, queue, self(), no_ack: true) do
+      Logger.info("ankyra #{state.id} listening for requests on #{request_key(state)}")
+      state |> Map.put(:requests, tag) |> Map.put(:requests_chan, chan)
+    else
+      error ->
+        Logger.warning("ankyra #{state.id} could not listen for requests: #{inspect(error)}")
+        state
+    end
+  end
+
+  defp request_key(state), do: state.ankyra.topic <> ".publish.#"
+
+  # The consumer's own lifecycle. Nothing to do but let them through.
+
+  # Serve a request, if one is due.
+  #
+  # Debounced: asking is cheap and a vision's queries are not, so a client in a
+  # loop would have the server running them as fast as it could. One a second is
+  # more than enough to feel immediate, and the Pythiae's own tick covers
+  # everything else.
+  defp serve_request(state, key) do
+    now = DateTime.utc_now()
+
+    if too_soon?(state.last_request, now) do
+      state
+    else
+      for pythiae <- Configuration.list_pythiae(:ankyra, state.id) do
+        serve(pythiae, key)
+      end
+
+      Map.put(state, :last_request, now)
+    end
+  end
+
+  # What was asked for, from the end of the routing key. `.img` gets the board
+  # drawn; anything else gets the board itself, since that is what a client
+  # that has just woken up wants and the reason to guess at all.
+  defp serve(pythiae, key) do
+    id = to_string(pythiae.id)
+
+    if String.ends_with?(key, ".img") do
+      RoomSanctum.Worker.Pythiae.publish_img(id)
+    else
+      RoomSanctum.Worker.Pythiae.query_current_now(id)
+    end
+  end
+
+  defp too_soon?(nil, _now), do: false
+
+  defp too_soon?(last, now), do: DateTime.diff(now, last, :millisecond) < @request_floor_ms
+
   defp fetch_connections(url, cfg) do
     HTTPoison.get(
       String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost,client_properties.client_id",

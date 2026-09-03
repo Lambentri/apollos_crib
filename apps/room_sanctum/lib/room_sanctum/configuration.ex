@@ -618,6 +618,24 @@ defmodule RoomSanctum.Configuration do
   """
   def get_pythiae!(id), do: Repo.get!(Pythiae, id)
 
+  @doc """
+  Every Pythiae that publishes to a given Ankyra.
+
+  The reverse of the list a Pythiae carries, for the Ankyra end: a client's
+  request arrives on a topic, which identifies the Ankyra, and what has to act
+  on it is whatever publishes there.
+  """
+  def list_pythiae(:ankyra, id) when is_binary(id) do
+    case Integer.parse(id) do
+      {n, ""} -> list_pythiae(:ankyra, n)
+      _ -> []
+    end
+  end
+
+  def list_pythiae(:ankyra, id) do
+    from(p in Pythiae, where: ^id in p.ankyra) |> Repo.all()
+  end
+
   def get_pythiae!(:name, name), do: Repo.get_by(Pythiae, name: name)
 
   def get_pythiae(:vision, id) do

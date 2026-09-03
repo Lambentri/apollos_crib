@@ -54,15 +54,29 @@ defmodule RoomHermesWeb.TopicController do
   def permitted?(topic, "read", routing_key), do: String.starts_with?(routing_key, topic)
 
   def permitted?(topic, "write", routing_key),
-    do: String.starts_with?(routing_key, uplink_prefix(topic))
+    do: Enum.any?(uplink_prefixes(topic), &String.starts_with?(routing_key, &1))
 
   def permitted?(_topic, _permission, _routing_key), do: false
 
   @doc """
-  Where a client publishes to, for a given Ankyra topic.
+  Where a client may publish to, for a given Ankyra topic.
+
+  Two channels, both inbound:
+
+    * `<topic>.up.` — what the client is, most of it what it knows about
+      itself. A location, for a foci that travels with the phone.
+    * `<topic>.publish.` — what the client wants, which is currently a board.
+      A Pythiae publishes on change and on its own tick, so a client that has
+      just woken up can be looking at something old; this is how it asks.
 
   Named here rather than in each caller so the two ends of the rule cannot
   drift: this is both what the broker allows and what a client should send to.
   """
+  def uplink_prefixes(topic), do: [topic <> ".up.", topic <> ".publish."]
+
+  @doc "The uplink a client reports itself on."
   def uplink_prefix(topic), do: topic <> ".up."
+
+  @doc "The channel a client asks for something on."
+  def request_prefix(topic), do: topic <> ".publish."
 end
