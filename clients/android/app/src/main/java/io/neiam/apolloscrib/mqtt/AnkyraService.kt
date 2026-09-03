@@ -37,18 +37,25 @@ class AnkyraService : Service() {
     private var client: AnkyraClient? = null
     private var location: LocationReporter? = null
 
+    /**
+     * Set when the broker will not take anything this client sends.
+     *
+     * A publish to a topic a client may not write is not answered with an
+     * error -- RabbitMQ closes the connection -- so an uplink the server does
+     * not know about costs the board every couple of minutes. After a few
+     * refusals the uplink stops and the board goes on, which is the right one
+     * to keep.
+     */
+    private var uplinkFailures = 0
+    private var uplinkBlocked = false
+
     override fun onCreate() {
         super.onCreate()
+        running = this
         settings = Settings(this)
         store = VisionStore(this)
-        location = LocationReporter(this, settings) { uplink ->
-            client?.publish(
-                topic = LocationUplink.topicFor(settings.topic),
-                payload = Json.encodeToString(uplink),
-                onResult = { ok ->
-                    if (ok) location?.onPublishSucceeded() else location?.onPublishFailed()
-                }
-            )
+        location = LocationReporter(this, settings, allowed = { !uplinkBlocked }) { uplink ->
+            sendUplink(LocationUplink.topicFor(settings.topic), Json.encodeToString(uplink))
         }
         createChannel()
     }
@@ -76,6 +83,41 @@ class AnkyraService : Service() {
         return START_STICKY
     }
 
+    /**
+     * Send something to the server, while it is still taking things.
+     *
+     * Everything a client says goes through here so one refusal count covers
+     * all of it: a location and a request for a board are refused for the same
+     * reason, and either one costs the same connection.
+     */
+    private fun sendUplink(topic: String, payload: String) {
+        if (uplinkBlocked) return
+        client?.publish(topic, payload) { ok ->
+            if (ok) {
+                uplinkFailures = 0
+            } else {
+                uplinkFailures += 1
+                if (uplinkFailures >= GIVE_UP_AFTER) {
+                    uplinkBlocked = true
+                    Log.w(TAG, "giving up on the uplink: the board matters more")
+                    location?.sync()
+                }
+            }
+        }
+    }
+
+    /**
+     * Ask for a board.
+     *
+     * A Pythiae publishes on change and on its own tick, so a client that has
+     * just woken up can be looking at something old with no way to say so.
+     * Cheap to ask and debounced at the other end.
+     */
+    fun requestBoard() {
+        if (!settings.isConfigured) return
+        sendUplink("${settings.topic}.publish.board", "{}")
+    }
+
     private fun onPayload(payload: String) {
         Log.d(TAG, "payload: ${payload.length} bytes")
         store.save(payload)
@@ -90,7 +132,14 @@ class AnkyraService : Service() {
         state.value = newState
         // Proof the settings are right, which is what licenses reconnecting on
         // a later launch without asking.
-        if (newState == AnkyraClient.State.Connected) settings.hasConnected = true
+        if (newState == AnkyraClient.State.Connected) {
+            settings.hasConnected = true
+            // Just subscribed, so whatever is on disk is from before the gap.
+            // This covers the cases the callers below cannot: a cold start,
+            // where the service is not up yet when the screen asks, and every
+            // reconnect after a tunnel.
+            requestBoard()
+        }
         // The notification is the only place a connection problem is visible,
         // since the Targets themselves fall back to the stored board.
         runCatching {
@@ -145,6 +194,7 @@ class AnkyraService : Service() {
     }
 
     override fun onDestroy() {
+        running = null
         location?.shutDown()
         client?.disconnect()
         client = null
@@ -158,6 +208,15 @@ class AnkyraService : Service() {
         private const val CHANNEL_ID = "ankyra"
         private const val NOTIFICATION_ID = 1
         const val ACTION_STOP = "io.neiam.apolloscrib.STOP"
+
+        /** Three refusals is a server that will not take this, not a blip. */
+        private const val GIVE_UP_AFTER = 3
+
+        /**
+         * The running service, for the few callers that need to reach the
+         * live connection rather than start one.
+         */
+        private var running: AnkyraService? = null
 
         /** Connection state, for the settings screen to show. */
         val state = MutableStateFlow(AnkyraClient.State.Disconnected)
@@ -179,6 +238,16 @@ class AnkyraService : Service() {
         fun resume(context: Context) {
             val settings = Settings(context)
             if (settings.isConfigured && settings.hasConnected) start(context)
+        }
+
+        /**
+         * Ask for a fresh board, if anything is listening.
+         *
+         * Sent through the running service rather than a new connection: the
+         * one that is subscribed is the one the answer comes back on.
+         */
+        fun requestBoard(context: Context) {
+            running?.requestBoard()
         }
 
         fun stop(context: Context) {

@@ -124,6 +124,14 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    override fun onResume() {
+        super.onResume()
+        // Opening the app is the moment a board from an hour ago is most
+        // obviously wrong, so ask for one. Costs nothing if the server does
+        // not take requests.
+        AnkyraService.requestBoard(this)
+    }
+
     // singleTop, so a scan while the app is already open arrives here rather
     // than as a second copy of the activity.
     override fun onNewIntent(intent: Intent) {

@@ -26,6 +26,8 @@ import io.neiam.apolloscrib.data.Settings
 class LocationReporter(
     private val context: Context,
     private val settings: Settings,
+    /** Whether the server is still taking anything from this client. */
+    private val allowed: () -> Boolean,
     private val publish: (LocationUplink) -> Unit
 ) {
 
@@ -34,51 +36,12 @@ class LocationReporter(
 
     private var listening = false
 
-    /**
-     * Set when the broker will not take the uplink.
-     *
-     * A client that publishes where it has no write permission is not sent an
-     * error -- RabbitMQ closes the connection. So a client reporting into a
-     * server that has not been upgraded loses its board every couple of
-     * minutes: connect, publish, disconnected, reconnect, publish. Giving up
-     * on the uplink keeps the board, which is what the app is for.
-     */
-    @Volatile
-    private var blocked = false
-
-    private var failures = 0
 
     private val listener = LocationListener { location -> report(location) }
 
     /** True when the user has asked for this and Android has allowed it. */
     fun canReport(): Boolean =
-        settings.publishLocation && !blocked && hasPermission()
-
-    /**
-     * Told when a publish did not land. A few in a row means the server will
-     * not take this at all, rather than the network having been away.
-     */
-    fun onPublishFailed() {
-        failures += 1
-        if (failures >= GIVE_UP_AFTER && !blocked) {
-            blocked = true
-            Log.w(
-                TAG,
-                "giving up on the uplink after $failures failures: the board matters more"
-            )
-            stop()
-        }
-    }
-
-    fun onPublishSucceeded() {
-        failures = 0
-    }
-
-    /** Turning the setting off and on again is a deliberate retry. */
-    fun retry() {
-        blocked = false
-        failures = 0
-    }
+        settings.publishLocation && allowed() && hasPermission()
 
     private fun hasPermission(): Boolean =
         ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
@@ -153,11 +116,5 @@ class LocationReporter(
          */
         private const val MIN_INTERVAL_MS = 2 * 60 * 1000L
         private const val MIN_DISTANCE_M = 100f
-
-        /**
-         * Three refusals is a server that does not want this, not a network
-         * that was briefly away.
-         */
-        private const val GIVE_UP_AFTER = 3
     }
 }

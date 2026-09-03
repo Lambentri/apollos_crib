@@ -72,6 +72,9 @@ class FeedOverlayService : Service() {
                 // A board nobody has connected shows nothing, so the page is
                 // the moment to make sure the subscription is up.
                 AnkyraService.resume(this@FeedOverlayService)
+                // Swiping onto the page is the same moment as opening the
+                // app: whatever is on it should be current.
+                AnkyraService.requestBoard(this@FeedOverlayService)
             }
         }
 
