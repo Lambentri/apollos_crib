@@ -39,6 +39,18 @@ class Settings(context: Context) {
         set(value) = prefs.edit { putString(KEY_TOPIC, value.trim()) }
 
     /**
+     * Whether this client reports where it is.
+     *
+     * Off, and stays off until somebody turns it on. Most of these are on a
+     * wall showing a fixed vision and have no business asking for a location
+     * permission, let alone publishing one -- so nothing about location
+     * happens, including the permission request, until this is true.
+     */
+    var publishLocation: Boolean
+        get() = prefs.getBoolean(KEY_PUBLISH_LOCATION, false)
+        set(value) = prefs.edit { putBoolean(KEY_PUBLISH_LOCATION, value) }
+
+    /**
      * Which of the ported palettes the app's own screens use. Not a
      * light/dark switch: these are the same named themes the Scribus routes
      * render under, and the user picks one.
@@ -112,6 +124,7 @@ class Settings(context: Context) {
         private const val KEY_TLS = "tls"
         private const val KEY_THEME = "theme"
         private const val KEY_HAS_CONNECTED = "has_connected"
+        private const val KEY_PUBLISH_LOCATION = "publish_location"
         private const val KEY_CLIENT_ID = "client_id"
         private const val KEY_BINDING_PREFIX = "binding_"
         private const val KEY_DISMISSED = "dismissed"

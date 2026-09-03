@@ -172,6 +172,8 @@ private fun ConnectionScreen(
         ActivityResultContracts.RequestPermission()
     ) { }
 
+    val context = LocalContext.current
+
     Column(
         modifier = modifier.verticalScroll(rememberScrollState()).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -224,6 +226,46 @@ private fun ConnectionScreen(
         Column {
             Text("TLS", style = MaterialTheme.typography.bodyLarge)
             Switch(checked = tls, onCheckedChange = { tls = it })
+        }
+
+        // Opt-in, and the permission is asked for only when it is switched
+        // on: a client on a wall showing a fixed vision has no business
+        // holding one.
+        var reportLocation by remember(pairingKey) { mutableStateOf(settings.publishLocation) }
+        val locationPermission = rememberLauncherForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { granted ->
+            val allowed = granted.values.any { it }
+            settings.publishLocation = allowed
+            reportLocation = allowed
+            AnkyraService.start(context)
+        }
+
+        Column {
+            Text("Report this client's location", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Publishes where this device is to the Ankyra, for a focus that " +
+                    "travels with it. Off unless you turn it on.",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalAppTheme.current.dim
+            )
+            Switch(
+                checked = reportLocation,
+                onCheckedChange = { wanted ->
+                    if (wanted) {
+                        locationPermission.launch(
+                            arrayOf(
+                                Manifest.permission.ACCESS_COARSE_LOCATION,
+                                Manifest.permission.ACCESS_FINE_LOCATION
+                            )
+                        )
+                    } else {
+                        settings.publishLocation = false
+                        reportLocation = false
+                        AnkyraService.start(context)
+                    }
+                }
+            )
         }
 
         Text("Client id: ${settings.clientId}", style = MaterialTheme.typography.bodySmall)

@@ -160,6 +160,26 @@ class AnkyraClient(
             }
     }
 
+    /**
+     * Send something back to the Ankyra.
+     *
+     * Only under the uplink prefix: the broker refuses anything above it, and
+     * rightly -- a client writing the board topic would be believed by every
+     * other client subscribed to it.
+     */
+    fun publish(topic: String, payload: String, onResult: (Boolean) -> Unit = {}) {
+        val live = client ?: return onResult(false)
+        live.publishWith()
+            .topic(topic)
+            .payload(payload.toByteArray(StandardCharsets.UTF_8))
+            .qos(MqttQos.AT_LEAST_ONCE)
+            .send()
+            .whenComplete { _, error ->
+                if (error != null) Log.w(TAG, "publish to $topic failed", error)
+                onResult(error == null)
+            }
+    }
+
     fun disconnect() {
         // Retires the current attempt, so whatever the old client says on its
         // way out lands after its own generation has passed and is ignored.

@@ -14,6 +14,8 @@ import android.util.Log
 import io.neiam.apolloscrib.R
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.data.VisionStore
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import io.neiam.apolloscrib.targets.Targets
 import io.neiam.apolloscrib.widget.BoardWidget
 import io.neiam.apolloscrib.ui.MainActivity
@@ -33,11 +35,21 @@ class AnkyraService : Service() {
     private lateinit var settings: Settings
     private lateinit var store: VisionStore
     private var client: AnkyraClient? = null
+    private var location: LocationReporter? = null
 
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)
         store = VisionStore(this)
+        location = LocationReporter(this, settings) { uplink ->
+            client?.publish(
+                topic = LocationUplink.topicFor(settings.topic),
+                payload = Json.encodeToString(uplink),
+                onResult = { ok ->
+                    if (ok) location?.onPublishSucceeded() else location?.onPublishFailed()
+                }
+            )
+        }
         createChannel()
     }
 
@@ -56,6 +68,9 @@ class AnkyraService : Service() {
                 onState = ::onState
             ).also { it.connect() }
         }
+        // Whether this reports its location is a setting, so every start is a
+        // chance for it to have changed.
+        location?.sync()
         // Sticky: if Android kills this for memory, the board should come back
         // when there is room again, without the user opening the app.
         return START_STICKY
@@ -130,6 +145,7 @@ class AnkyraService : Service() {
     }
 
     override fun onDestroy() {
+        location?.shutDown()
         client?.disconnect()
         client = null
         super.onDestroy()
