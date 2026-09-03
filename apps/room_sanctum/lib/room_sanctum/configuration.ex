@@ -616,6 +616,8 @@ defmodule RoomSanctum.Configuration do
       ** (Ecto.NoResultsError)
 
   """
+  def get_pythiae!(id), do: Repo.get!(Pythiae, id)
+
   alias RoomSanctum.Configuration.Plani
 
   @doc "Every Plani, for the supervisor that keeps a worker per one."
@@ -644,15 +646,29 @@ defmodule RoomSanctum.Configuration do
 
   def change_plani(%Plani{} = plani, attrs \\ %{}), do: Plani.changeset(plani, attrs)
 
-  def get_pythiae!(id), do: Repo.get!(Pythiae, id)
-
   @doc """
-  Every Pythiae that publishes to a given Ankyra.
+  The Pythiae on the other end of something.
 
-  The reverse of the list a Pythiae carries, for the Ankyra end: a client's
-  request arrives on a topic, which identifies the Ankyra, and what has to act
-  on it is whatever publishes there.
+  `:ankyra` is the reverse of the list a Pythiae carries -- a client's request
+  arrives on a topic, and what has to act on it is whatever publishes there.
+  `:plani` is the reverse of `curr_plani`: a Plani is worth nothing on its own,
+  and the first question about one is which board it is driving.
   """
+  def list_pythiae(:plani, id) when is_binary(id) do
+    case Integer.parse(id) do
+      {n, ""} -> list_pythiae(:plani, n)
+      _ -> []
+    end
+  end
+
+  def list_pythiae(:plani, id) do
+    from(p in Pythiae, where: p.curr_plani == ^id) |> Repo.all()
+  end
+
+  # Every Pythiae that publishes to a given Ankyra: the reverse of the list a
+  # Pythiae carries, for the Ankyra end. A client's request arrives on a topic,
+  # which identifies the Ankyra, and what has to act on it is whatever
+  # publishes there.
   def list_pythiae(:ankyra, id) when is_binary(id) do
     case Integer.parse(id) do
       {n, ""} -> list_pythiae(:ankyra, n)

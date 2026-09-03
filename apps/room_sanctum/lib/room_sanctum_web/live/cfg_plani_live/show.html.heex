@@ -3,6 +3,25 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2"><%= @plani.name %></h1>
 
+<div class="mx-4">
+  <%= if @pythiae == [] do %>
+    <p class="text-sm opacity-60">
+      <i class="fas fa-fw fa-circle-info"></i>
+      No Pythiae is showing this. Set it as one's current Plani and it will be
+      published instead of that Pythiae's vision.
+    </p>
+  <% else %>
+    <p class="text-sm">
+      Showing on
+      <%= for p <- @pythiae do %>
+        <a href={Routes.pythiae_show_path(@socket, :show, p)} class="btn btn-xs btn-secondary gap-1">
+          <i class="fas fa-fw fa-tower-broadcast"></i> <%= p.name %>
+        </a>
+      <% end %>
+    </p>
+  <% end %>
+</div>
+
 <div class="mx-4 py-2">
   <div class="card card-compact w-full bg-base-100 shadow-xl">
     <div class="card-body">
@@ -25,6 +44,52 @@
         free_bikes={RoomSanctumWeb.PlaniLive.Show.markers(@anchor, :bikes)}
         legend={false}
       />
+    </div>
+  </div>
+</div>
+
+<div class="mx-4 py-2">
+  <div class="card card-compact w-full bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h3 class="card-title"><i class="fas fa-fw fa-eye"></i> What it is publishing</h3>
+      <% entries = RoomSanctumWeb.PlaniLive.Show.entries(@state) %>
+      <%= if entries == [] do %>
+        <p class="opacity-70">
+          Nothing yet. A Plani asks its sources every half minute, and publishes
+          whatever came back.
+        </p>
+      <% else %>
+        <p class="text-xs opacity-60">
+          Condensed as it goes on the wire, so this is what a client draws —
+          <%= if @plani.break_out do %>
+            one card per stop.
+          <% else %>
+            one card per source, with the stops near you blended into it.
+          <% end %>
+        </p>
+        <div class="2xl:columns-4 xl:columns-3 lg:columns-2 gap-4 mt-2">
+          <div :for={{key, rows} <- entries} class="card bg-base-300 shadow-xl mb-2 break-inside-avoid">
+            <div class="card-body">
+              <div class="flex gap-2">
+                <i class={"fas fa-fw fa-xl #{RoomSanctumWeb.IconHelpers.icon(elem(key, 1))}"}></i>
+                <span class="text-secondary font-bold">
+                  <%= RoomSanctumWeb.PlaniLive.Show.entry_name(@state, elem(key, 0)) %>
+                </span>
+              </div>
+              <%= case key do %>
+                <% {_, :gtfs} -> %>
+                  <.p_gtfs entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)} />
+                <% {_, :gbfs} -> %>
+                  <.p_gbfs entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)} />
+                <% {_, :aqi} -> %>
+                  <.p_aqi entries={RoomSanctumWeb.PlaniLive.Show.condensed(key, rows)} />
+                <% _ -> %>
+                  <pre class="text-xs"><%= inspect(rows, limit: 4) %></pre>
+              <% end %>
+            </div>
+          </div>
+        </div>
+      <% end %>
     </div>
   </div>
 </div>

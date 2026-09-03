@@ -21,6 +21,7 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
      |> assign(:page_title, "Plani")
      |> assign(:plani, Configuration.get_plani!(id))
       |> assign(:sources, Configuration.list_cfg_sources({:user, socket.assigns.current_user.id}))
+     |> assign(:pythiae, Configuration.list_pythiae(:plani, id))
      |> look()}
   end
 
@@ -44,6 +45,39 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
   """
   def focus(%{anchor: %Geo.Point{coordinates: {lon, lat}}}), do: %{lat: lat, lng: lon}
   def focus(_), do: nil
+
+  @doc """
+  The entries as they would go out on the wire, for the preview.
+
+  Condensed the way the Pythiae publishes them rather than shown raw: the
+  point of a preview is what a client will draw, and a Plani broken out by
+  stop looks very different on the wire from one that is not.
+  """
+  def entries(%{data: data}) when is_map(data) and map_size(data) > 0 do
+    data
+    |> Enum.reject(fn {_key, rows} -> rows == [] end)
+    |> Enum.sort_by(fn {{id, _type}, _rows} -> to_string(id) end)
+  end
+
+  def entries(_state), do: []
+
+  @doc "The condensed form of one entry, as the preview components want it."
+  def condensed({id, type}, rows) do
+    condensed = RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, rows)
+
+    # The shape the preview components take. Defined here rather than borrowed
+    # from the Pythiae page, which keeps its own private copy of the same
+    # three fields.
+    %{data: condensed, id: id, type: type}
+  end
+
+  @doc "What to call an entry: the stop or source it was published under."
+  def entry_name(state, id) do
+    case Enum.find(state.queries, &(&1.id == id)) do
+      nil -> to_string(id)
+      query -> query.name
+    end
+  end
 
   @doc """
   The radius, as a ring to draw around the anchor.

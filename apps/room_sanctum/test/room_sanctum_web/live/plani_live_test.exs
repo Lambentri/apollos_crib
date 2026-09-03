@@ -155,6 +155,40 @@ defmodule RoomSanctumWeb.PlaniLiveTest do
     end
   end
 
+  test "says when nothing is showing it", ctx do
+    plani = plani(ctx)
+    {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
+
+    assert html =~ "No Pythiae is showing this"
+  end
+
+  test "links back to the Pythiae showing it", ctx do
+    plani = plani(ctx)
+
+    {:ok, pythiae} =
+      Configuration.create_pythiae(%{
+        name: "Kitchen",
+        user_id: ctx.user.id,
+        visions: [],
+        ankyra: [],
+        curr_plani: plani.id
+      })
+
+    {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
+
+    assert html =~ "Showing on"
+    assert html =~ pythiae.name
+    refute html =~ "No Pythiae is showing this"
+  end
+
+  test "the preview says so before there is anything to preview", ctx do
+    plani = plani(ctx)
+    {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
+
+    assert html =~ "What it is publishing"
+    assert html =~ "asks its sources every half minute"
+  end
+
   test "the map is on the page", ctx do
     plani = plani(ctx)
     {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
