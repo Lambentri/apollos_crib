@@ -1,6 +1,8 @@
 defmodule RoomSanctumWeb.PlaniLive.Show do
   use RoomSanctumWeb, :live_view_a
 
+  import RoomSanctumWeb.Components.QueryGeospatialMap
+
   alias RoomSanctum.Configuration
 
   @impl true
@@ -31,6 +33,47 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     socket
     |> assign(:anchor, RoomSanctum.Worker.Plani.where(id))
     |> assign(:state, RoomSanctum.Worker.Plani.get_state(id))
+  end
+
+  @doc """
+  Where to centre the map: the anchor, in the shape the map component wants.
+
+  Nil until a worker has resolved one, which the component reads as "fit
+  whatever markers there are" -- the right answer for a Plani that has not
+  ticked yet.
+  """
+  def focus(%{anchor: %Geo.Point{coordinates: {lon, lat}}}), do: %{lat: lat, lng: lon}
+  def focus(_), do: nil
+
+  @doc """
+  The things found near the anchor, as map markers.
+
+  Bikes go on their own layer because the component draws them differently;
+  everything else is a station, which is the component's generic marker.
+  """
+  def markers(%{places: places}, kind) when is_list(places) do
+    places
+    |> Enum.filter(&(marker_layer(&1.kind) == kind))
+    |> Enum.map(&as_marker/1)
+  end
+
+  def markers(_where, _kind), do: []
+
+  defp marker_layer(:bike), do: :bikes
+  defp marker_layer(_kind), do: :stations
+
+  defp as_marker(place) do
+    %{
+      place: %Geo.Point{coordinates: {place.lon, place.lat}, srid: 4326},
+      station_id: "#{place.source_id}-#{place.name}",
+      bike_id: "#{place.source_id}-#{place.name}",
+      name: place.name,
+      short_name: place.name,
+      capacity: 0,
+      address: place.source_name,
+      lat: place.lat,
+      lon: place.lon
+    }
   end
 
   @doc "A point as something readable, or nil."

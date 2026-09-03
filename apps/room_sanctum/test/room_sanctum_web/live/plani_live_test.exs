@@ -92,6 +92,58 @@ defmodule RoomSanctumWeb.PlaniLiveTest do
     assert html =~ "following everything tinted"
   end
 
+  describe "the map" do
+    alias RoomSanctumWeb.PlaniLive.Show
+
+    test "centres on the anchor" do
+      where = %{anchor: %Geo.Point{coordinates: {-71.1, 42.4}, srid: 4326}}
+
+      assert Show.focus(where) == %{lat: 42.4, lng: -71.1}
+    end
+
+    test "has nothing to centre on before the worker has resolved one" do
+      # Which the component reads as "fit whatever markers there are", the
+      # right answer for a Plani that has not ticked yet.
+      assert Show.focus(nil) == nil
+      assert Show.focus(%{anchor: nil}) == nil
+    end
+
+    test "puts bikes on their own layer and everything else on the other" do
+      where = %{
+        places: [
+          %{lat: 42.4, lon: -71.1, kind: :stop, name: "Davis", source_id: 1, source_name: "MBTA", tint: nil},
+          %{lat: 42.5, lon: -71.2, kind: :bike, name: "b-1", source_id: 2, source_name: "Bluebikes", tint: nil},
+          %{lat: 42.6, lon: -71.3, kind: :monitor, name: "Site", source_id: 3, source_name: "AirNow", tint: nil}
+        ]
+      }
+
+      assert Enum.map(Show.markers(where, :bikes), & &1.name) == ["b-1"]
+      assert Enum.map(Show.markers(where, :stations), & &1.name) == ["Davis", "Site"]
+    end
+
+    test "gives every marker a point the map can draw" do
+      where = %{places: [%{lat: 42.4, lon: -71.1, kind: :stop, name: "Davis", source_id: 1, source_name: "MBTA", tint: nil}]}
+      [marker] = Show.markers(where, :stations)
+
+      # {lon, lat}, as everything geospatial in this app stores it.
+      assert marker.place.coordinates == {-71.1, 42.4}
+      assert marker.lat == 42.4
+    end
+
+    test "draws nothing before the worker has found anything" do
+      assert Show.markers(nil, :stations) == []
+      assert Show.markers(%{anchor: nil}, :bikes) == []
+    end
+  end
+
+  test "the map is on the page", ctx do
+    plani = plani(ctx)
+    {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
+
+    assert html =~ "plani-map"
+    assert html =~ "What is around it"
+  end
+
   test "a tint that is not a tint is refused", ctx do
     assert {:error, changeset} =
              Configuration.create_plani(%{

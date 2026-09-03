@@ -43,7 +43,16 @@ defmodule RoomSanctum.Worker.Plani do
       initial_delay: 500
     )
 
-    {:ok, %{id: opts[:id], plani: nil, data: %{}, queries: [], anchor: nil, anchored_to: :home}}
+    {:ok,
+     %{
+       id: opts[:id],
+       plani: nil,
+       data: %{},
+       queries: [],
+       places: [],
+       anchor: nil,
+       anchored_to: :home
+     }}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -112,23 +121,32 @@ defmodule RoomSanctum.Worker.Plani do
         Configuration.list_cfg_sources({:user, state.plani.user_id})
       )
 
-    {data, queries} =
+    {data, queries, places} =
       sources
-      |> Enum.reduce({%{}, []}, fn source_id, {data, queries} ->
+      |> Enum.reduce({%{}, [], []}, fn source_id, {data, queries, places} ->
         case ask(source_id, anchor, state.plani) do
           nil ->
-            {data, queries}
+            {data, queries, places}
 
-          {key, results, described} ->
-            {Map.put(data, key, results), [described | queries]}
+          {key, results, described, found} ->
+            {Map.put(data, key, results), [described | queries], found ++ places}
         end
       end)
 
-    {:noreply, %{state | data: data, queries: Enum.reverse(queries), anchor: anchor, anchored_to: anchored_to}}
+    {:noreply,
+     %{
+       state
+       | data: data,
+         queries: Enum.reverse(queries),
+         places: places,
+         anchor: anchor,
+         anchored_to: anchored_to
+     }}
   end
 
   def handle_call(:where, _from, state) do
-    {:reply, %{anchor: state.anchor, anchored_to: state.anchored_to}, state}
+    {:reply,
+     %{anchor: state.anchor, anchored_to: state.anchored_to, places: state.places}, state}
   end
 
   def handle_call(:return_state, _from, state) do
@@ -163,24 +181,24 @@ defmodule RoomSanctum.Worker.Plani do
 
     case source.type do
       :gtfs ->
-        stops = Storage.nearby_stops(source_id, anchor, plani.limit) |> Enum.map(& &1.stop_id)
+        stops = Storage.nearby_stops(source_id, anchor, plani.limit)
 
         arrivals =
           stops
-          |> Enum.flat_map(&Storage.get_upcoming_arrivals_for_stop(source_id, &1, 8, :now, source.config.tz))
+          |> Enum.flat_map(&Storage.get_upcoming_arrivals_for_stop(source_id, &1.stop_id, 8, :now, source.config.tz))
           |> Storage.fix_arrival_times()
           |> Enum.sort_by(& &1.arrival_time)
           |> Enum.take(16)
 
-        {{source_id, :gtfs}, arrivals, described(source)}
+        {{source_id, :gtfs}, arrivals, described(source), places(stops, source, :stop)}
 
       :gbfs ->
         bikes = Storage.free_bikes_near(source_id, anchor, plani.radius)
-        {{source_id, :gbfs}, bikes, described(source)}
+        {{source_id, :gbfs}, bikes, described(source), places(bikes, source, :bike)}
 
       :aqi ->
         readings = Storage.nearby_aqi_stations(source_id, anchor, plani.limit)
-        {{source_id, :aqi}, readings, described(source)}
+        {{source_id, :aqi}, readings, described(source), places(readings, source, :monitor)}
 
       other ->
         # Sources with nothing located in them, or nothing near-able yet. Left
@@ -203,4 +221,49 @@ defmodule RoomSanctum.Worker.Plani do
   defp described(source) do
     %{id: source.id, name: source.name, meta: %{}, query: %{}}
   end
+
+  # Where the things it found actually are, for anything drawing a map.
+  #
+  # Flattened to one shape rather than kept as the records they came from: a
+  # stop, a loose bike and an air quality monitor are three different rows in
+  # three different tables, and all a map wants of any of them is a point, a
+  # name and which of the three it is.
+  defp places(records, source, kind) do
+    records
+    |> Enum.map(fn record ->
+      case coordinates(record) do
+        nil ->
+          nil
+
+        {lat, lon} ->
+          %{
+            lat: lat,
+            lon: lon,
+            kind: kind,
+            name: name_of(record, kind),
+            source_id: source.id,
+            source_name: source.name,
+            tint: source.meta && Map.get(source.meta, :tint)
+          }
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+  end
+
+  # Each table spells its position differently: stops carry the floats they
+  # were imported with, the rest carry a point.
+  defp coordinates(%{stop_lat: lat, stop_lon: lon}) when is_number(lat) and is_number(lon),
+    do: {lat, lon}
+
+  defp coordinates(%{lat: lat, lon: lon}) when is_number(lat) and is_number(lon), do: {lat, lon}
+
+  defp coordinates(%{point: %Geo.Point{coordinates: {lon, lat}}}), do: {lat, lon}
+
+  defp coordinates(_record), do: nil
+
+  defp name_of(%{stop_name: name}, :stop) when is_binary(name), do: name
+  defp name_of(%{name: name}, _kind) when is_binary(name), do: name
+  defp name_of(%{site_name: name}, :monitor) when is_binary(name), do: name
+  defp name_of(%{bike_id: id}, :bike), do: id
+  defp name_of(_record, kind), do: to_string(kind)
 end

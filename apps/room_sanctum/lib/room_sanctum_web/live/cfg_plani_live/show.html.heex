@@ -3,6 +3,30 @@
 
 <h1 class="text-3xl font-bold text-accent mx-4 py-2"><%= @plani.name %></h1>
 
+<div class="mx-4 py-2">
+  <div class="card card-compact w-full bg-base-100 shadow-xl">
+    <div class="card-body">
+      <h3 class="card-title">
+        <i class="fas fa-fw fa-map-location-dot"></i> What is around it
+      </h3>
+      <p class="text-sm opacity-70">
+        The anchor and everything found near it. The map follows the anchor, so
+        a client that is moving redraws this as it goes.
+      </p>
+      <.query_geospatial_map
+        id="plani-map"
+        queries={[]}
+        height="420px"
+        focus={RoomSanctumWeb.PlaniLive.Show.focus(@anchor)}
+        focus_zoom={15}
+        stations={RoomSanctumWeb.PlaniLive.Show.markers(@anchor, :stations)}
+        free_bikes={RoomSanctumWeb.PlaniLive.Show.markers(@anchor, :bikes)}
+        legend={false}
+      />
+    </div>
+  </div>
+</div>
+
 <div class="mx-4 py-2 flex flex-wrap">
   <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
     <div class="card-body">
