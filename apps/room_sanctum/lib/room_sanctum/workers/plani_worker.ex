@@ -103,8 +103,17 @@ defmodule RoomSanctum.Worker.Plani do
   def handle_cast(:query, state) do
     {anchor, anchored_to} = anchor(state.plani)
 
+    # Resolved on every tick rather than held: a source tinted since the last
+    # one should join without the Plani being edited, which is the whole point
+    # of following a tint.
+    sources =
+      RoomSanctum.Configuration.Plani.sources_for(
+        state.plani,
+        Configuration.list_cfg_sources({:user, state.plani.user_id})
+      )
+
     {data, queries} =
-      state.plani.sources
+      sources
       |> Enum.reduce({%{}, []}, fn source_id, {data, queries} ->
         case ask(source_id, anchor, state.plani) do
           nil ->

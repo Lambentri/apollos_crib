@@ -55,15 +55,53 @@ defmodule RoomSanctumWeb.PlaniLiveTest do
     assert html =~ "anchor moves"
   end
 
+  defp source(ctx, name, attrs \\ %{}) do
+    {:ok, source} =
+      Configuration.create_source(
+        Map.merge(
+          %{name: name, type: :gtfs, config: %{}, enabled: true, user_id: ctx.user.id},
+          attrs
+        )
+      )
+
+    source
+  end
+
   test "the show page renders before a worker exists", ctx do
-    plani = plani(ctx, %{sources: [1, 2]})
+    transit = source(ctx, "MBTA")
+    plani = plani(ctx, %{sources: [transit.id]})
+
     {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
 
     assert html =~ plani.name
     # Nothing is running, so it says so rather than raising.
     assert html =~ "No worker yet"
-    # Named where the source is known, numbered where it is not.
-    assert html =~ "source 1"
+    assert html =~ "MBTA"
+  end
+
+  test "following a tint picks up sources it was never told about", ctx do
+    _named = source(ctx, "Named")
+    _tinted = source(ctx, "Tinted", %{meta: %{tint: "teal"}})
+
+    plani = plani(ctx, %{sources: [], follow_tint: "teal"})
+
+    {:ok, _live, html} = live(ctx.conn, "/cfg/plani/#{plani.id}")
+
+    assert html =~ "Tinted"
+    refute html =~ "Named"
+    assert html =~ "following everything tinted"
+  end
+
+  test "a tint that is not a tint is refused", ctx do
+    assert {:error, changeset} =
+             Configuration.create_plani(%{
+               name: "Puce",
+               user_id: ctx.user.id,
+               home_foci_id: ctx.foci.id,
+               follow_tint: "puce"
+             })
+
+    assert changeset.errors[:follow_tint]
   end
 
   test "a Plani with no sources says what is missing", ctx do

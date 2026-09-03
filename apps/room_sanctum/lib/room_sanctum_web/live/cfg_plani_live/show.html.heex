@@ -39,22 +39,36 @@
   <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
     <div class="card-body">
       <h3 class="card-title"><i class="fas fa-fw fa-layer-group"></i> What it is asking</h3>
-      <%= if @plani.sources == [] do %>
-        <p class="opacity-70">No sources yet. Edit it to add some.</p>
+      <% asked = RoomSanctumWeb.PlaniLive.Show.asked(@plani, @sources) %>
+      <%= if asked == [] do %>
+        <p class="opacity-70">No sources yet. Edit it to add some, or follow a tint.</p>
       <% else %>
-        <ul class="menu p-2 bg-base-200 rounded-xl">
-          <li :for={source_id <- @plani.sources}>
-            <a>
-              <span><%= RoomSanctumWeb.PlaniLive.Show.source_name(@sources, source_id) %></span>
-              <%= case RoomSanctumWeb.PlaniLive.Show.count_for(@state, source_id) do %>
+        <%= if @plani.follow_tint do %>
+          <p class="text-sm mb-1">
+            <.tint_dot tint={@plani.follow_tint} /> following everything tinted
+            <span class="font-mono"><%= @plani.follow_tint %></span>
+          </p>
+        <% end %>
+        <div class="flex flex-col gap-1">
+          <div
+            :for={source <- asked}
+            class="flex items-center gap-2 rounded-lg bg-base-200 px-3 py-2"
+          >
+            <.tint_dot tint={source.meta && source.meta.tint} />
+            <i class={"fas fa-fw #{RoomSanctumWeb.IconHelpers.icon(source.type)}"}></i>
+            <a href={Routes.source_show_path(@socket, :show, source)} class="hover:underline">
+              <%= source.name %>
+            </a>
+            <span class="ml-auto">
+              <%= case RoomSanctumWeb.PlaniLive.Show.count_for(@state, source.id) do %>
                 <% nil -> %>
                   <span class="badge badge-ghost">nothing yet</span>
                 <% n -> %>
                   <span class="badge badge-accent"><%= n %></span>
               <% end %>
-            </a>
-          </li>
-        </ul>
+            </span>
+          </div>
+        </div>
         <p class="text-xs opacity-60">
           Within <%= @plani.radius %>m, up to <%= @plani.limit %> of each. A source with
           nothing located in it is skipped rather than guessed at.

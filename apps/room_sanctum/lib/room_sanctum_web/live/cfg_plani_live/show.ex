@@ -18,7 +18,7 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
      socket
      |> assign(:page_title, "Plani")
      |> assign(:plani, Configuration.get_plani!(id))
-     |> assign(:sources, Configuration.list_cfg_sources({:user, socket.assigns.current_user.id}))
+      |> assign(:sources, Configuration.list_cfg_sources({:user, socket.assigns.current_user.id}))
      |> look()}
   end
 
@@ -39,6 +39,17 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
   end
 
   def coordinates(_), do: nil
+
+  @doc """
+  Every source this Plani asks, named and tinted alike.
+
+  Resolved the same way the worker resolves it, so the page cannot list one
+  set while the worker asks another.
+  """
+  def asked(plani, sources) do
+    ids = RoomSanctum.Configuration.Plani.sources_for(plani, sources)
+    Enum.filter(sources, &(&1.id in ids))
+  end
 
   @doc "A source's name, for a page that would otherwise show a number."
   def source_name(sources, id) do

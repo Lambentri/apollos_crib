@@ -122,19 +122,25 @@ defmodule RoomSanctum.Worker.Pythiae do
     handle_cast(:refresh_db_cfg, state)
   end
 
-  # What this Pythiae is showing: a Plani, or a vision.
-  #
-  # Exclusive, and the Plani wins. A Pythiae pointed at a Plani is asking what
-  # is near its client; reading its vision as well would answer the same
-  # question from a fixed place and publish both.
-  #
-  # Both workers hand back the same shape, so nothing past this point -- the
-  # condensers, Ankyra, any client -- can tell which it was.
-  defp showing(%{curr_plani: plani_id}) when not is_nil(plani_id) do
+  @doc """
+  What this Pythiae is showing: a Plani, or a vision.
+
+  Exclusive, and the Plani wins. A Pythiae pointed at a Plani is asking what
+  is near its client; reading its vision as well would answer the same
+  question from a fixed place and publish both.
+
+  Both workers hand back the same shape, so nothing past this point -- the
+  condensers, Ankyra, any client -- can tell which it was.
+
+  Public because the rule has two readers: this worker, which publishes, and
+  the config page's preview, which should show what is about to be published
+  rather than what would have been.
+  """
+  def showing(%{curr_plani: plani_id}) when not is_nil(plani_id) do
     RoomSanctum.Worker.Plani.get_state(plani_id)
   end
 
-  defp showing(pythiae) do
+  def showing(pythiae) do
     RoomSanctum.Worker.Vision.get_state(pythiae.curr_vision)
   end
 

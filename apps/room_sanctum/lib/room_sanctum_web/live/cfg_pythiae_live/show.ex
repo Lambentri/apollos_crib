@@ -35,8 +35,10 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 15000)
 
+    # The same choice the worker makes, so the preview shows what is about to
+    # be published rather than the vision it is not reading.
     %{data: data, queries: queries} =
-      RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
+      RoomSanctum.Worker.Pythiae.showing(socket.assigns.pythiae)
 
     data = if is_map(data), do: data, else: Map.new(data)
 
