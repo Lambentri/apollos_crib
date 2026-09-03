@@ -22,11 +22,16 @@ defmodule RoomHermesWeb.ResourceController do
         end
 
       {"/", "exchange"} ->
-        IO.puts("exch")
         case name do
+          # Write is allowed at the exchange so a client can talk back --
+          # a phone reporting where it is, for a foci that travels with it.
+          # What it may write is not decided here: the topic check that
+          # follows confines a client to its own uplink prefix, and this
+          # would be far too broad on its own.
           "amq.topic" ->
             case permission do
               "read" -> send_resp(conn, :ok, "allow")
+              "write" -> send_resp(conn, :ok, "allow")
               _otherwise -> send_resp(conn, :ok, "deny")
             end
 
