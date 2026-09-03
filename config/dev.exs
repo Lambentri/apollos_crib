@@ -144,6 +144,15 @@ config :amqp,
     default: [connection: :default]
   ]
 
+# How many clients are attached to an Ankyra is a question only the management
+# API answers -- see RoomSanctum.Worker.Ankyra.count_mqtt_connections/1 for why
+# AMQP cannot. Same broker, its HTTP port.
+config :room_sanctum, :rabbit_mgmt,
+  url: "http://localhost:15672",
+  username: "hermes",
+  password: "hermes",
+  vhost: "/"
+
 # Do not include metadata nor timestamps in development logs
 config :logger, :console, format: "[$level] $message\n", level: :info
 

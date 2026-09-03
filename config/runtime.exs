@@ -134,6 +134,18 @@ if config_env() == :prod do
       default: [connection: :default]
     ]
 
+  # Counting an Ankyra's subscribers needs the management API rather than AMQP.
+  # Credentials are the broker's own default user -- the operator writes it to
+  # the rabbitmq-default-user secret and tags it administrator -- so this reuses
+  # what RABBIT_URL is already built from rather than asking for a second
+  # account. Left unset, the detail page says "checking" instead of lying about
+  # having no subscribers.
+  config :room_sanctum, :rabbit_mgmt,
+    url: System.get_env("RABBIT_MGMT_URL"),
+    username: System.get_env("AMQP_USER"),
+    password: System.get_env("AMQP_PASS"),
+    vhost: System.get_env("RABBIT_VHOST", "/")
+
   # ## Using releases
   #
   # If you are doing OTP releases, you need to instruct Phoenix

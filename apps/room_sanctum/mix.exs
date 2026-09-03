@@ -98,6 +98,7 @@ defmodule RoomSanctum.MixProject do
 
       # hermes
       #      {:room_hermes, in_umbrella: true}
+      {:httpoison, "~> 1.8"},
       {:amqp, "~> 4.1"},
       {:amqp_client, "~> 4.2"},
       {:rabbit_common, "~> 4.0"},
