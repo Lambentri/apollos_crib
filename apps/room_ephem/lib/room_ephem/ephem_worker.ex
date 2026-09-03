@@ -97,8 +97,7 @@ defmodule RoomEphem.Worker do
   @decorate cacheable(cache: RoomZeus.Cache, opts: [ttl: @ttl])
   def query_ephem(_name, query) do
     IO.inspect("QEPH")
-    foci = Configuration.get_foci!(query.foci_id)
-    {lon, lat} = foci.place.coordinates
+    {lon, lat} = Configuration.place_for!(query).coordinates
     lat = normalize_ll(lat)
     lon = normalize_ll(lon)
 
@@ -136,7 +135,7 @@ defmodule RoomEphem.Worker do
           |> DateTime.to_time()
       },
       %{period: :phase, result: phase},
-      %{name: foci.name}
+      %{name: Configuration.place_name(query)}
     ] ++ moon_entries
   end
 end

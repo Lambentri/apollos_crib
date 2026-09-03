@@ -24,6 +24,11 @@ defmodule RoomSanctum.Worker.Plani do
   # reading while walking. The Vision worker's own tick is the precedent.
   @tick_ms :timer.seconds(30)
 
+  # Answered at a point rather than near one: there is one answer and it is
+  # computed for wherever you are, so "the closest five" means nothing. They
+  # all took a foci already; the anchor is simply a different one.
+  @asked_at_a_point [:weather, :ephem, :pollen, :icarus]
+
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("plani" <> opts[:id]))
   end
@@ -268,9 +273,17 @@ defmodule RoomSanctum.Worker.Plani do
         readings = Storage.nearby_aqi_stations(source_id, anchor, plani.limit)
         {[{{source_id, :aqi}, readings, described(source)}], places(readings, source, :monitor)}
 
+      type when type in @asked_at_a_point ->
+        # Answered *at* the anchor rather than near it. These name a foci in a
+        # vision -- the weather at home, sunrise at home -- and the only thing
+        # a Plani changes is where "at" is. The query is the anchor itself,
+        # which `Configuration.place_for!/1` prefers over a foci id.
+        results = ask_at(type, source_id, %{place: anchor})
+        {[{{source_id, type}, results, described(source)}], []}
+
       other ->
-        # Sources with nothing located in them, or nothing near-able yet. Left
-        # out rather than guessed at; the board says what it could not draw.
+        # Sources with nothing located in them. Left out rather than guessed
+        # at; the page says what it could not draw.
         Logger.debug("plani: no spatial answer for a #{other} source")
         nil
     end
@@ -300,6 +313,24 @@ defmodule RoomSanctum.Worker.Plani do
 
   defp described(source, id, name) do
     %{id: id, name: name, meta: %{}, query: %{}}
+  end
+
+  # Asked at the anchor. Each of these already takes a query naming a foci; a
+  # Plani hands over a place instead and they resolve it the same way.
+  defp ask_at(:weather, source_id, query), do: RoomWeather.Worker.query_weather(source_id, query)
+  defp ask_at(:ephem, source_id, query), do: RoomEphem.Worker.query_ephem(source_id, query)
+  # These two read from a worker that may not be up, exactly as the vision
+  # worker calls them.
+  defp ask_at(:pollen, source_id, query) do
+    if RoomPollen.Worker.pid(source_id),
+      do: RoomPollen.Worker.read(source_id, query) || [],
+      else: []
+  end
+
+  defp ask_at(:icarus, source_id, query) do
+    if RoomIcarus.Worker.pid(source_id),
+      do: RoomIcarus.Worker.read(source_id, query) || [],
+      else: []
   end
 
   # Where the things it found actually are, for anything drawing a map.

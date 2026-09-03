@@ -34,8 +34,7 @@ defmodule RoomWeather.Worker do
   end
 
   def handle_call({:query_weather, query}, _from, state) do
-    foci = Configuration.get_foci!(query.foci_id)
-    {lon, lat} = foci.place.coordinates
+    {lon, lat} = Configuration.place_for!(query).coordinates
 
     lat = normalize_ll(lat)
     lon = normalize_ll(lon)

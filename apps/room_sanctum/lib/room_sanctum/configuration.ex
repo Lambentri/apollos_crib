@@ -519,6 +519,41 @@ defmodule RoomSanctum.Configuration do
   def get_foci!(id), do: Repo.get!(Foci, id)
 
   @doc """
+  Where a query is being asked from.
+
+  Every query that is answered *at* a place rather than near one names a foci,
+  and resolves it the same way. A Plani asks the same questions from wherever
+  its client is, which is not a foci and has no row to look up -- so it hands
+  the place over directly, and this prefers it.
+
+  One helper rather than each worker growing its own branch: they all did the
+  same two lines, and a Plani that could relocate five of six sources would be
+  worse than one that could relocate none.
+  """
+  def place_for!(%{place: %Geo.Point{} = place}), do: place
+
+  def place_for!(%{foci_id: foci_id}) when not is_nil(foci_id) do
+    get_foci!(foci_id).place
+  end
+
+  def place_for!(_query), do: nil
+
+  @doc """
+  What to call where a query is being asked from.
+
+  The foci's name where there is one. A Plani asking from a client's position
+  has no foci and no name for it, so it says what it is -- a board that reads
+  "Here" is telling the truth about an anchor that moves.
+  """
+  def place_name(%{place: %Geo.Point{}}), do: "Here"
+
+  def place_name(%{foci_id: foci_id}) when not is_nil(foci_id) do
+    get_foci!(foci_id).name
+  end
+
+  def place_name(_query), do: "Here"
+
+  @doc """
   Creates a foci.
 
   ## Examples

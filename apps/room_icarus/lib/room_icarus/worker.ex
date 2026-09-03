@@ -317,13 +317,19 @@ defmodule RoomIcarus.Worker do
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
   defp target_from_query(query) do
-    case resolve_foci(field(query, :foci_id)) do
+    case resolve_foci(RoomSanctum.Configuration.place_for!(query) || field(query, :foci_id)) do
       {lat, lon} -> {lat, lon, clamp_dist(field(query, :dist))}
       nil -> nil
     end
   end
 
   defp resolve_foci(nil), do: nil
+
+  # A Plani asks from wherever its client is, which is not a foci and has no
+  # row to look up.
+  # Matched by shape rather than as a %Geo.Point{}: this app does not
+  # depend on geo, and the only thing here with coordinates is a place.
+  defp resolve_foci(%{coordinates: {lon, lat}}), do: {lat, lon}
 
   defp resolve_foci(foci_id) do
     try do

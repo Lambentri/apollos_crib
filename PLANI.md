@@ -76,11 +76,12 @@ the coordinates it comes from and stays out of the importer's way by staying
 out of the Ecto schema.
 
 **Sources answered *at* a point rather than *near* one.** Weather, sunrise,
-pollen, the tide at the nearest station: there is one answer and it is
-computed for wherever you are. These already take a `foci_id` in their query
-config (`weather`, `ephem`, `pollen`, `calendar`, `cronos`, `icarus`), so the
-change is to accept a point instead — the smallest useful stage, and it needs
-no spatial indexing at all.
+pollen, what is overhead: there is one answer and it is computed for wherever
+you are. Done, via `Configuration.place_for!/1` — every one of them resolved a
+foci with the same two lines, so they now take a place when one is handed over
+and a foci id otherwise. `weather`, `ephem`, `pollen` and `icarus` relocate;
+`cronos` uses its foci for a timezone rather than a position, and `calendar`
+for filtering, so neither moves.
 
 **Sources with no location.** `github`, `gitlab`, `packages`, `mailbox`,
 `treasury`, `bourse`. A Plani should either refuse these or pass them through
@@ -94,9 +95,9 @@ rather than discovering at runtime.
    home foci. Publishes nothing yet — but the resolution, the expiry and the
    fallback are the part with the design risk in it, and it can be watched on
    a page before anything depends on it.
-2. **Relocatable point sources.** Give the query workers that take a `foci_id`
-   a way to take a `%Geo.Point{}`. Weather and ephem where you are. No schema
-   changes.
+2. ~~**Relocatable point sources.**~~ Done: `place_for!/1` is the one helper
+   they all use, so a Plani relocates weather, sunrise, pollen and aircraft
+   without any of them knowing what a Plani is.
 3. **Nearest-N for what is already indexed.** GBFS stations and bikes, AQI
    monitors. The queries exist; they need a limit and a caller.
 4. ~~**GTFS stops.**~~ Done: `gtfs_stops.place` is generated and GiST indexed,

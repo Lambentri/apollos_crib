@@ -101,17 +101,28 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
               <.tint_dot tint={source.meta && source.meta.tint} />
               <i class={"fas fa-fw #{RoomSanctumWeb.IconHelpers.icon(source.type)}"}></i>
               <%= source.name %>
-              <%= if not spatial?(source.type) do %>
-                <i class="fas fa-fw fa-ban text-xs" title="Nothing located in this one"></i>
+              <%= cond do %>
+                <% not spatial?(source.type) -> %>
+                  <i class="fas fa-fw fa-ban text-xs" title="Nothing located in this one"></i>
+                <% asked_near?(source.type) -> %>
+                  <i class="fas fa-fw fa-location-crosshairs text-xs" title="The closest few to you"></i>
+                <% true -> %>
+                  <i class="fas fa-fw fa-map-pin text-xs" title="Answered where you are"></i>
               <% end %>
             </span>
           </label>
         </div>
         <p class="text-xs text-base-content/60">
           Sources, not queries: a Plani asks what is near it rather than about a
-          place named in advance. The faded ones have nothing located in them and
-          are skipped — transit stops, loose bikes and air quality monitors are
-          what can answer a question about where you are.
+          place named in advance.
+        </p>
+        <p class="text-xs text-base-content/60">
+          <i class="fas fa-fw fa-location-crosshairs"></i>
+          returns the closest few to you — stops, bikes, monitors.
+          <i class="fas fa-fw fa-map-pin ml-2"></i>
+          is computed where you are — the weather, sunrise, pollen, what is overhead.
+          <i class="fas fa-fw fa-ban ml-2"></i>
+          has no location and is skipped.
         </p>
         <%= if @form[:sources].value in [nil, []] and @form[:follow_tint].value in [nil, ""] do %>
           <p class="text-xs text-warning">
@@ -216,7 +227,12 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
   # Which source types have anything with a location in them. The rest can be
   # picked, and are skipped when asked -- shown faded rather than hidden, so a
   # source that is missing from the answer is not also missing from the form.
-  defp spatial?(type), do: type in [:gtfs, :gbfs, :aqi]
+  # Two kinds answer a Plani, and they answer differently. Some store many
+  # located things and return the closest few; some are computed at a point and
+  # return one answer for wherever you are. The rest have no location at all.
+  defp spatial?(type), do: type in [:gtfs, :gbfs, :aqi, :weather, :ephem, :pollen, :icarus]
+
+  defp asked_near?(type), do: type in [:gtfs, :gbfs, :aqi]
 
   defp notify_parent(msg), do: send(self(), {__MODULE__, msg})
 end

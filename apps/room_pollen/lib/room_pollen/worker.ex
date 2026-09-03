@@ -131,7 +131,10 @@ defmodule RoomPollen.Worker do
   defp creds(_), do: :no_creds
 
   defp target_from_query(query) do
-    foci_id = Map.get(query, :foci_id) || Map.get(query, "foci_id")
+    # A place if one was handed over, otherwise the foci named in the query.
+    anchor =
+      RoomSanctum.Configuration.place_for!(query) ||
+        Map.get(query, :foci_id) || Map.get(query, "foci_id")
 
     days =
       case Map.get(query, :days) || Map.get(query, "days") do
@@ -140,13 +143,19 @@ defmodule RoomPollen.Worker do
         _ -> 3
       end
 
-    case resolve_foci(foci_id) do
+    case resolve_foci(anchor) do
       {lat, lng} -> {lat, lng, days}
       nil -> nil
     end
   end
 
   defp resolve_foci(nil), do: nil
+
+  # A Plani asks from wherever its client is, which is not a foci and has no
+  # row to look up.
+  # Matched by shape rather than as a %Geo.Point{}: this app does not
+  # depend on geo, and the only thing here with coordinates is a place.
+  defp resolve_foci(%{coordinates: {lng, lat}}), do: {lat, lng}
 
   defp resolve_foci(foci_id) do
     try do

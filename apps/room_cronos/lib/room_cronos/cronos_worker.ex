@@ -12,7 +12,7 @@ defmodule RoomCronos.Worker do
   #  @decorate cacheable(cache: RoomZeus.Cache, opts: [ttl: @ttl])
   def query_cronos(name, query) do
     q = Configuration.get_query!(name)
-    foci = Configuration.get_foci!(query.foci_id)
+    foci = %{place: Configuration.place_for!(query)}
     {lon, lat} = foci.place.coordinates
     tz = WhereTZ.lookup(lat, lon)
     now = DateTime.now!(tz)
