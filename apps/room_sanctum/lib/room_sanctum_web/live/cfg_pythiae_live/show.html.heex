@@ -61,7 +61,18 @@
       </div>
       <div class="card card-compact w-full md:w-1/5 bg-base-100 shadow-xl m-2">
         <div class="card-body">
-          <h3 class="card-title">Foci</h3>
+          <h3 class="card-title">
+            Foci
+            <%= if @pythiae.curr_foci do %>
+              <button
+                class="btn btn-xs btn-ghost"
+                phx-click="clear-current-foci"
+                title="Stop using a current foci"
+              >
+                <i class="fas fa-fw fa-xmark"></i> unset
+              </button>
+            <% end %>
+          </h3>
           <p>
             <%= for f <- @foci do %>
               <div class="btn-group">

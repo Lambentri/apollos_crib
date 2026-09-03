@@ -100,8 +100,9 @@ rather than discovering at runtime.
 3. **Nearest-N for what is already indexed.** GBFS stations and bikes, AQI
    monitors. The queries exist; they need a limit and a caller.
 4. ~~**GTFS stops.**~~ Done: `gtfs_stops.place` is generated and GiST indexed,
-   and `nearby_stops/3` uses it. What is still missing is a *query* that asks
-   for them — GBFS has `mode: :area`, GTFS has only a named stop.
+   `nearby_stops/3` uses it, and GTFS queries have a `mode: :area` that asks
+   what is leaving near a foci. Both spatial sources now move when their
+   anchor does.
 
 ## Open questions
 
@@ -116,10 +117,14 @@ rather than discovering at runtime.
   be a foci whose place comes from a GenServer rather than a column. The
   vision machinery, the condensers and the clients would all be untouched.
 
-  What does *not* compose is asking for things there is no query for. GBFS
-  already has `mode: :area` around a foci with a radius, so "bikes near me"
-  works the moment the foci moves. GTFS has only a named stop, so "stops near
-  me" needs a new query mode — a query type, not a Pythiae mode.
+  What did *not* compose was asking for things there was no query for. Both
+  GBFS and GTFS now have `mode: :area` around a foci, so "what is near me"
+  works the moment the foci moves. That was a query mode rather than a
+  Pythiae mode, which is the shape the rest of this should keep.
+
+  What remains is the substitution itself: nothing yet reads `curr_foci`, so
+  a query still resolves its own `foci_id`. That is the one piece of wiring
+  between here and a foci that travels.
 - **What does a client see while it has never reported?** The home foci, which
   is correct but silent. A board that says which anchor it used would save
   somebody wondering why the times are for the wrong town.

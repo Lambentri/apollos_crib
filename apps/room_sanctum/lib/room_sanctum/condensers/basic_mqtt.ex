@@ -295,7 +295,9 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   def condense({id, :gtfs}, data, query) do
     condensed = condense_data({id, :gtfs}, data)
     route_ids = condensed |> Enum.map(& &1.route) |> Enum.uniq()
-    stop      = query.query.stop
+    # An area query has no one stop, so there is no stop-specific alert to
+    # look for -- only the ones on the routes that turned up.
+    stop      = Map.get(query.query, :stop)
     alerts    = RoomGtfs.Worker.query_alerts(id, stop, route_ids)
 
     condensed_with_alerts = condensed |> Enum.map(fn route ->

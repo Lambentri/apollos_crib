@@ -165,4 +165,13 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_foci: foci_id})
     {:noreply, socket |> assign(:pythiae, updated)}
   end
+
+  # Setting a foci was one-way: every foci had a button to become the current
+  # one and none of them had a way back, so a Pythiae that had ever been
+  # pointed at a place stayed pointed at it.
+  def handle_event("clear-current-foci", _params, socket) do
+    pythiae = socket.assigns.pythiae
+    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_foci: nil})
+    {:noreply, socket |> assign(:pythiae, updated)}
+  end
 end

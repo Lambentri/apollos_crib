@@ -130,6 +130,9 @@ defmodule RoomGtfs.Worker do
     _ -> %{}
   end
 
+  @area_arrivals_per_stop 8
+  @area_arrivals_total 16
+
   def query_alerts(name, stop, route_ids) do
     try do
       "gtfs-rt#{name}"
@@ -230,6 +233,31 @@ defmodule RoomGtfs.Worker do
 
   def any_trip_match?(_config, scheduled_ids, realtime) do
     realtime in scheduled_ids
+  end
+
+  @doc """
+  What is leaving from near a foci, rather than from one named stop.
+
+  Gathers the nearest few stops and asks each of them, then takes the
+  soonest departures across the lot. The answer is deliberately blended: an
+  area query asks what you can catch from here, not which pole to stand at,
+  and the stops in a radius this size are usually the same corner.
+  """
+  def query_stop(id, %{mode: :area} = query) do
+    inst = Configuration.get_source!(:bare, id)
+    foci = Configuration.get_foci!(query.foci_id)
+
+    stops =
+      Storage.nearby_stops(id, foci.place, query.stops || 3)
+      |> Enum.map(& &1.stop_id)
+
+    stops
+    |> Enum.flat_map(fn stop ->
+      Storage.get_upcoming_arrivals_for_stop(id, stop, @area_arrivals_per_stop, :now, inst.config.tz)
+    end)
+    |> Storage.fix_arrival_times()
+    |> Enum.sort_by(& &1.arrival_time)
+    |> Enum.take(@area_arrivals_total)
   end
 
   def query_stop(id, query) do

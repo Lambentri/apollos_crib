@@ -106,12 +106,36 @@
   <% :gtfs -> %>
   <%= polymorphic_embed_inputs_for @form, :query, :gtfs, fn gtfs_form -> %>
   <div class="form-control">
+    <.input field={gtfs_form[:mode]} type="select" label="Mode"
+            options={[{"Station - one stop", "station"}, {"Area - what leaves near a Foci", "area"}]} />
+  </div>
+
+  <div class="divider">Station mode</div>
+  <div class="form-control">
     <.input field={gtfs_form[:stop]} type="text" label="Stop" />
   </div>
+  <.search_input field={gtfs_form[:stop]} id="search-1" type="gtfs" label="Stop Search" results={@results} label_field={:stop_name} value_field={:stop_id} />
+
+  <div class="divider">Area mode</div>
+  <div class="form-control">
+    <.input field={gtfs_form[:foci_id]} type="select" label="Foci" options={@cfg_foci_sel} />
+  </div>
+  <div class="form-control">
+    <.input field={gtfs_form[:radius]} type="number" label="Radius (metres, 50-3000)" />
+  </div>
+  <div class="form-control">
+    <.input field={gtfs_form[:stops]} type="number" label="Stops to gather from (1-8)" />
+    <p class="text-xs text-base-content/60 mt-1">
+      What is leaving from near the Foci rather than from one named stop. The departures
+      of the nearest few stops are blended: an area query asks what you can catch from
+      here, not which pole to stand at.
+    </p>
+  </div>
+
+  <div class="divider">Both modes</div>
   <div class="form-control">
     <.input field={gtfs_form[:routes]} type="text" label="Route Filter" />
   </div>
-  <.search_input field={gtfs_form[:stop]} id="search-1" type="gtfs" label="Stop Search" results={@results} label_field={:stop_name} value_field={:stop_id} />
   <% end %>
 
   <% :hass -> %>
