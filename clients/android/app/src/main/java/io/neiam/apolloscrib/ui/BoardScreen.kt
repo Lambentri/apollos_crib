@@ -215,7 +215,10 @@ private fun PreviewCard(preview: Preview) {
         Row(Modifier.padding(16.dp)) {
             Glyph(preview.iconRes, size = 28.dp, tint = palette.primary)
             Spacer(Modifier.width(12.dp))
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
                 Text(preview.title, style = MaterialTheme.typography.titleMedium)
                 preview.subtitle?.let {
                     Text(it, style = MaterialTheme.typography.bodySmall, color = palette.dim)
@@ -245,21 +248,28 @@ private fun PreviewCard(preview: Preview) {
 private fun BoardRow(row: io.neiam.apolloscrib.targets.Row) {
     val palette = LocalAppTheme.current
     Row(
+        modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp)
     ) {
         Glyph(row.iconRes, size = 16.dp, tint = palette.dim)
         if (row.text.isNotEmpty()) {
-            // The stamps are the numbers; the text is what they are about. A
-            // long station name should lose its tail rather than push the
-            // counts off the card.
+            // Takes the space between, so the values end up against the right
+            // edge rather than trailing whatever length the label happened to
+            // be -- the times of one route line up under the times of the
+            // next. A long station name loses its tail rather than pushing
+            // the counts off the card.
             Text(
                 row.text,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f, fill = false)
+                modifier = Modifier.weight(1f)
             )
+        } else {
+            // Nothing to label them with, but the values still belong in the
+            // same column as every other row's.
+            Spacer(Modifier.weight(1f))
         }
         row.stamps.forEach { stamp ->
             Row(

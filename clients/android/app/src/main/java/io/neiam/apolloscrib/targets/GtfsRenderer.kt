@@ -35,9 +35,11 @@ object GtfsRenderer : SourceRenderer {
             id = entry.key,
             title = entry.label(),
             subtitle = summary(soonest),
-            // The stop's own glyph is whatever mostly calls there -- a bus
-            // stop and a subway platform should not look alike.
-            iconRes = modeIcon(soonest.firstOrNull()?.mode),
+            // The stop's own glyph is whatever calls there next -- a bus stop
+            // and a subway platform should not look alike. With nothing due
+            // there is nothing to read it off, and the generic mark is
+            // honest where a guess would not be.
+            iconRes = soonest.firstOrNull()?.let { modeIcon(it.mode) } ?: iconRes,
             rows = soonest.map { row(it) },
             empty = "Nothing due"
         )
