@@ -77,6 +77,7 @@ class OverlayHarnessActivity : Activity() {
                 addView(button("open") { client?.openOverlay(0) })
                 addView(button("close") { client?.closeOverlay(0) })
                 addView(button("detach") { client?.windowDetached(false) })
+                addView(button("pin the board widget") { pinWidget() })
             }
         )
 
@@ -90,6 +91,22 @@ class OverlayHarnessActivity : Activity() {
     private fun button(label: String, onClick: () -> Unit) = Button(this).apply {
         text = label
         setOnClickListener { runCatching(onClick).onFailure { Log.e(TAG, label, it) } }
+    }
+
+    /**
+     * Ask the launcher to place the board widget.
+     *
+     * Dragging one out of a widget picker is not something adb does well, and
+     * the pin request ends in a dialog with a button, which it does.
+     */
+    private fun pinWidget() {
+        val manager = getSystemService(android.appwidget.AppWidgetManager::class.java)
+        val provider = ComponentName(this, io.neiam.apolloscrib.widget.BoardWidget::class.java)
+        if (manager?.isRequestPinAppWidgetSupported == true) {
+            manager.requestPinAppWidget(provider, null, null)
+        } else {
+            status.text = "launcher will not take a pin request"
+        }
     }
 
     /**

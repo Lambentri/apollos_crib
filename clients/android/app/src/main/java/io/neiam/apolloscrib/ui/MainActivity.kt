@@ -42,6 +42,7 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.platform.LocalContext
 import io.neiam.apolloscrib.data.Pairing
 import io.neiam.apolloscrib.feed.FeedProvider
+import io.neiam.apolloscrib.widget.BoardWidget
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
 import io.neiam.apolloscrib.ui.theme.CribTheme
@@ -97,6 +98,12 @@ class MainActivity : ComponentActivity() {
                             onThemeChange = {
                                 settings.themeKey = it
                                 themeKey = it
+                                // The widget reads the palette when it redraws,
+                                // and it redraws when a board lands -- which
+                                // could be minutes. Tell it now, or the home
+                                // screen keeps the old colours until something
+                                // unrelated happens.
+                                BoardWidget.refresh(this)
                             },
                             onConnect = {
                                 AnkyraService.start(this)
