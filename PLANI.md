@@ -83,6 +83,24 @@ and a foci id otherwise. `weather`, `ephem`, `pollen` and `icarus` relocate;
 `cronos` uses its foci for a timezone rather than a position, and `calendar`
 for filtering, so neither moves.
 
+### What "nearest" over-answers
+
+An areal query asks *every* stop inside the radius, and a route calls at
+several of them — so the 87 toward Arlington arrives once per stop, all of them
+the same bus. **One stop per line** (`nearest_per_route`) keeps a route only at
+the nearest stop that has it.
+
+Two things it deliberately does not do. It claims per *stop*, not per arrival,
+so the winning stop keeps all of that line's departures — showing one time for
+the nearest stop would be the wrong half of the point. And direction is part of
+the key, so the two sides of a street stay separate: those are genuinely
+different departures, and merging them would send somebody the wrong way. The
+key is route-and-direction rather than headsign, since a short turn gets a sign
+of its own and is still the same line.
+
+This applies to both blended and broken-out modes, since it happens before the
+split.
+
 **Sources with no location.** `github`, `gitlab`, `packages`, `mailbox`,
 `treasury`, `bourse`. A Plani should either refuse these or pass them through
 untouched; "the nearest CI job" is not a thing. Worth deciding explicitly

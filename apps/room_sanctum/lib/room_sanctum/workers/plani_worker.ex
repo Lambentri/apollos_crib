@@ -220,6 +220,7 @@ defmodule RoomSanctum.Worker.Plani do
 
             {stop, arrivals}
           end)
+          |> nearest_per_route(plani)
 
         entries =
           if plani.break_out do
@@ -309,6 +310,52 @@ defmodule RoomSanctum.Worker.Plani do
   # so a Plani hands them something query-shaped. The id has to match the key
   # the data went under -- that is how the two are paired again -- so a broken
   # out entry carries its own, or its name is dropped on the way out.
+  # Keep a line only at the nearest stop it calls at.
+  #
+  # An areal query asks every stop inside the radius, and a bus route calls at
+  # several of them -- so the 87 toward Arlington turns up three times, once
+  # per stop, all of them the same bus. Nobody walks to the second-nearest stop
+  # to catch it.
+  #
+  # Claimed per stop rather than per arrival: the nearest stop keeps *all* of
+  # that line's departures, which is the point -- it is the next two or three
+  # times that make a departure board worth reading. Claiming as each arrival
+  # went past would have left the winning stop showing one time.
+  #
+  # Direction is part of the key, so the two sides of a street stay separate.
+  # Those are genuinely different departures, and collapsing them would send
+  # somebody the wrong way.
+  @doc false
+  # Public only so a test can reach it; nothing outside calls this.
+  def nearest_per_route(by_stop, %{nearest_per_route: true}) do
+    {kept, _claimed} =
+      Enum.map_reduce(by_stop, MapSet.new(), fn {stop, arrivals}, claimed ->
+        # Stops arrive nearest-first, so a first claim is the closest one.
+        mine = arrivals |> Enum.map(&line_of/1) |> Enum.uniq() |> Enum.reject(&(&1 in claimed))
+
+        {{stop, Enum.filter(arrivals, &(line_of(&1) in mine))},
+         MapSet.union(claimed, MapSet.new(mine))}
+      end)
+
+    kept
+  end
+
+  def nearest_per_route(by_stop, _plani), do: by_stop
+
+  # A route in a direction. Not the headsign: a short turn gets a sign of its
+  # own and is still the same line calling at the same stop. A feed that does
+  # not say which direction leaves it nil, which groups them -- the honest
+  # answer when there is nothing to tell them apart by.
+  defp line_of(arrival) do
+    direction =
+      case arrival.trip.direction do
+        %{direction: direction} -> direction
+        _ -> nil
+      end
+
+    {arrival.trip.route_id, direction}
+  end
+
   defp described(source), do: described(source, source.id, source.name)
 
   defp described(source, id, name) do

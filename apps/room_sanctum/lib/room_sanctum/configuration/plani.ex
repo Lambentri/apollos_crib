@@ -42,6 +42,11 @@ defmodule RoomSanctum.Configuration.Plani do
     # and asks the client to render a list of its own.
     field :break_out, :boolean, default: false
 
+    # Show a line only at the nearest stop it calls at. An areal query asks
+    # every stop in the radius and a route calls at several, so without this
+    # the same bus is listed once per stop.
+    field :nearest_per_route, :boolean, default: false
+
     timestamps()
   end
 
@@ -58,7 +63,8 @@ defmodule RoomSanctum.Configuration.Plani do
       :follow_tint,
       :radius,
       :limit,
-      :break_out
+      :break_out,
+      :nearest_per_route
     ])
     |> validate_required([:name, :home_foci_id])
     # The same bounds an area query keeps, and for the same reason: past a

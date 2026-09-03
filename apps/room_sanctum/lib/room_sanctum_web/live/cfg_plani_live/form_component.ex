@@ -146,6 +146,18 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
           into one entry per source.
         </p>
 
+        <.input
+          field={@form[:nearest_per_route]}
+          type="checkbox"
+          label="One stop per line"
+        />
+        <p class="text-xs text-base-content/60">
+          A route that calls at several stops inside the radius is shown only at
+          the nearest one — otherwise the same bus is listed once per stop. The
+          two sides of a street stay separate, since those are different
+          departures.
+        </p>
+
         <:actions>
           <.button phx-disable-with="Saving...">Save Plani</.button>
         </:actions>
