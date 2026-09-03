@@ -13,6 +13,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
      socket
      |> assign(:consumer_count, nil)
      |> assign(:connected_client_ids, [])
+     |> assign(:positions, [])
      |> assign(:broker, default_broker())}
   end
 
@@ -26,6 +27,13 @@ defmodule RoomSanctumWeb.AnkyraLive.Show do
   end
 
   @impl true
+  # Where the clients on this Ankyra say they are, newest first. The worker
+  # holds these for five minutes and sends the list again as they age out, so
+  # the page empties itself without needing a timer of its own.
+  def handle_info({:ankyra_positions, positions}, socket) do
+    {:noreply, assign(socket, :positions, positions)}
+  end
+
   def handle_info({:ankyra_status, nil}, socket) do
     # The broker could not be asked. Say nothing rather than report an empty
     # room -- the badge draws nil as "checking".
