@@ -158,9 +158,17 @@ defmodule RoomGbfs.Worker do
                 )
 
               :stat_status ->
+                # v3 dropped the electric count; the types stored from
+                # vehicle_types.json are what puts it back.
+                electric =
+                  id
+                  |> intify()
+                  |> RoomSanctum.Storage.gbfs_vehicle_types()
+                  |> RoomGbfs.V3.electric_type_ids()
+
                 data =
                   json.data.stations
-                  |> Enum.map(&RoomGbfs.V3.station_status/1)
+                  |> Enum.map(&RoomGbfs.V3.station_status(&1, electric))
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
                     RoomSanctum.Storage.change_station_status(
@@ -377,6 +385,10 @@ defmodule RoomGbfs.Worker do
                 bcast(state.id, :parsing, 2, @tfh)
 
                 feeds
+                # Vehicle types first: station_status needs them stored to
+                # work out how many of its bikes are electric, and operators
+                # list the feeds in whatever order suits them.
+                |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
                 |> Enum.map(fn %{"name" => name, "url" => url} ->
                 # v3 renamed the loose-vehicle feed; everything below is
                 # written in v2's names, which is the one dialect this worker

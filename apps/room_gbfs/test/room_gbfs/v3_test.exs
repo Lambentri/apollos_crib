@@ -69,6 +69,77 @@ defmodule RoomGbfs.V3Test do
     end
   end
 
+  describe "the electric count v3 dropped" do
+    # PBSC's Chattanooga fleet, as it actually publishes it.
+    defp types do
+      %{
+        "ICONIC" => %{propulsion_type: "human"},
+        "FIT" => %{propulsion_type: "human"},
+        "EFIT" => %{propulsion_type: "electric_assist"},
+        "CHLOE" => %{propulsion_type: "electric"},
+        "CAR" => %{propulsion_type: "combustion"}
+      }
+    end
+
+    test "assist and full electric count, combustion does not" do
+      assert Enum.sort(RoomGbfs.V3.electric_type_ids(types())) == ["CHLOE", "EFIT"]
+    end
+
+    test "the electric ones at a station are added back up" do
+      # Two human bikes and one assist: three available, one of them electric.
+      row = %{
+        num_vehicles_available: 3,
+        vehicle_types_available: [
+          %{vehicle_type_id: "ICONIC", count: 2},
+          %{vehicle_type_id: "EFIT", count: 1},
+          %{vehicle_type_id: "CHLOE", count: 0}
+        ]
+      }
+
+      out = V3.station_status(row, V3.electric_type_ids(types()))
+
+      assert out.num_bikes_available == 3
+      assert out.num_ebikes_available == 1
+    end
+
+    test "a feed that already reports the count keeps its own" do
+      # Lyft publishes this as an extension; theirs is authoritative over
+      # anything worked out from the type breakdown.
+      row = %{
+        num_bikes_available: 5,
+        num_ebikes_available: 4,
+        vehicle_types_available: [%{vehicle_type_id: "EFIT", count: 1}]
+      }
+
+      assert %{num_ebikes_available: 4} = V3.station_status(row, V3.electric_type_ids(types()))
+    end
+
+    test "no types loaded yet means no invented number" do
+      row = %{num_vehicles_available: 3, vehicle_types_available: [%{vehicle_type_id: "EFIT", count: 1}]}
+
+      refute Map.has_key?(V3.station_status(row, nil), :num_ebikes_available)
+    end
+
+    test "a station with no breakdown is left alone" do
+      refute Map.has_key?(
+               V3.station_status(%{num_vehicles_available: 3}, V3.electric_type_ids(types())),
+               :num_ebikes_available
+             )
+    end
+  end
+
+  describe "feed order" do
+    test "vehicle types are read before anything that needs them" do
+      feeds = [
+        %{"name" => "station_status"},
+        %{"name" => "vehicle_types"},
+        %{"name" => "station_information"}
+      ]
+
+      assert [%{"name" => "vehicle_types"} | _] = Enum.sort_by(feeds, &V3.feed_order/1)
+    end
+  end
+
   describe "loose vehicles" do
     test "v3's vehicle_id is v2's bike_id" do
       assert %{bike_id: "b1"} = V3.vehicle_status(%{vehicle_id: "b1", lat: 1.0, lon: 2.0})

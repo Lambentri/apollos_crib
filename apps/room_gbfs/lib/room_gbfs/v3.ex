@@ -18,12 +18,13 @@ defmodule RoomGbfs.V3 do
   flag to thread through -- or to get wrong for the one operator who publishes
   a v3 document with a v2 version string in it.
 
-  What is *not* handled, and cannot be here: v3 has no `num_ebikes_available`.
-  The electric count is derivable, but only by joining `vehicle_types_available`
-  against `vehicle_types.json`, which is a different feed fetched separately
-  and possibly later. A v3 station reports its total correctly and its electric
-  count as nothing.
+  The one field with no direct counterpart is `num_ebikes_available`, which v3
+  dropped. It is recovered rather than abandoned: `vehicle_types_available`
+  counts each type at the station and `vehicle_types.json` says which types are
+  electric, so the two together give the number back. That needs the types
+  loaded first, which is why `feed_order/1` exists.
   """
+
 
   @doc """
   The feed list out of a discovery document, whichever version wrote it.
@@ -65,11 +66,63 @@ defmodule RoomGbfs.V3 do
   system that rents scooters -- but it is a rename, and a reader looking for
   the old key finds nothing rather than failing.
   """
-  def station_status(row) do
+  def station_status(row, electric_ids \\ nil) do
     row
     |> rename(:num_vehicles_available, :num_bikes_available)
     |> rename(:num_vehicles_disabled, :num_bikes_disabled)
+    |> derive_ebikes(electric_ids)
   end
+
+  @doc """
+  The order to read the feeds in.
+
+  Operators list them alphabetically or however their generator felt, and for
+  every feed but one the order does not matter. `station_status` needs the
+  vehicle types already stored to work out how many of the bikes at a station
+  are electric, and the two PBSC systems list `vehicle_types` last -- so left
+  alone, the electric count would be a refresh behind for ever.
+  """
+  def feed_order(%{"name" => name}), do: feed_order(name)
+  def feed_order("vehicle_types"), do: 0
+  def feed_order(_name), do: 1
+
+  @doc """
+  The vehicle type ids that count as electric, from `Storage.gbfs_vehicle_types/1`.
+
+  Assist and full electric both; combustion and hybrid do not, and a car share
+  publishing those has no business reporting an e-bike count at all.
+  """
+  @electric ~w(electric electric_assist)
+
+  def electric_type_ids(vehicle_types) when is_map(vehicle_types) do
+    vehicle_types
+    |> Enum.filter(fn {_id, type} -> to_string(type.propulsion_type) in @electric end)
+    |> MapSet.new(fn {id, _type} -> to_string(id) end)
+  end
+
+  # v3 has no num_ebikes_available. Where the station breaks its count down by
+  # type and the types are known, the number is simply the electric ones added
+  # up. Anything already carrying the field -- a v2 feed, or Lyft's extension
+  # of it -- keeps what it had.
+  defp derive_ebikes(row, nil), do: row
+
+  defp derive_ebikes(%{num_ebikes_available: count} = row, _electric) when is_integer(count),
+    do: row
+
+  defp derive_ebikes(%{vehicle_types_available: types} = row, electric) when is_list(types) do
+    count =
+      Enum.reduce(types, 0, fn type, acc ->
+        if to_string(Map.get(type, :vehicle_type_id)) in electric do
+          acc + (Map.get(type, :count) || 0)
+        else
+          acc
+        end
+      end)
+
+    Map.put(row, :num_ebikes_available, count)
+  end
+
+  defp derive_ebikes(row, _electric), do: row
 
   @doc """
   A loose vehicle, in v2 terms.
