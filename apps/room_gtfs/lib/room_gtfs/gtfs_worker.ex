@@ -736,6 +736,11 @@ defmodule RoomGtfs.Worker do
 end
 
 defmodule RoomGtfs.Worker.RT do
+
+  # A realtime feed is a protobuf of a few hundred kilobytes, fetched on a
+  # tick. Explicit rather than left to HTTPoison's five seconds, which is the
+  # right number here but should not be a coincidence.
+  @rt_http [follow_redirect: true, recv_timeout: 10_000, timeout: 8_000]
   use GenServer
   @registry :zeus
 
@@ -1147,7 +1152,7 @@ defmodule RoomGtfs.Worker.RT do
 
 
   def fetch_rt_url(url) do
-    case HTTPoison.get(url, [], follow_redirect: true) do
+    case HTTPoison.get(url, [], @rt_http) do
       {:ok, %{status_code: 200} = result} ->
         decode_rt(url, result)
 
@@ -1602,6 +1607,25 @@ defmodule RoomGtfs.Worker.RT do
 end
 
 defmodule RoomGtfs.Worker.Static do
+
+  # A static feed is the whole timetable, and they are enormous: Chicago's is
+  # 95 MiB, which is half a minute of transfer on a good link and several on a
+  # bad one. Left on HTTPoison's five second default it could not finish, and
+  # had not been finishing -- every run ended in `%HTTPoison.Error{reason:
+  # :timeout}` and the source simply never updated.
+  #
+  # The pool matters as much as the number. Every HTTP client in this umbrella
+  # -- realtime feeds, GitHub, GitLab, the weather -- shares hackney's default
+  # pool, and a hundred megabytes takes a connection out of it for minutes.
+  # That is what the `:checkout_timeout`s on unrelated requests were: not those
+  # services being slow, but this download holding the pool. A pool of its own
+  # means a bulk transfer can only ever starve another bulk transfer.
+  @static_http [
+    follow_redirect: true,
+    recv_timeout: 300_000,
+    timeout: 30_000,
+    hackney: [pool: :gtfs_static]
+  ]
   use GenServer
   require Logger
   @registry :zeus
@@ -2258,7 +2282,7 @@ end
     Logger.info("GTFS::#{id} updating static info")
     bcast(id, :downloading, 1, 11)
 
-    case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
+    case HTTPoison.get(cfg.config.url, [], @static_http) do
       {:ok, result} ->
         bcast(id, :extracting, 2, 11)
 

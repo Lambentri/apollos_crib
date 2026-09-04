@@ -31,8 +31,24 @@ defmodule RoomGtfs.Application do
     # start callback, it is.
     :ok = Protobuf.load_extensions()
 
-    children = [RoomGtfs.FeedCache, RoomGtfs.RTIndex]
+    children = [static_pool(), RoomGtfs.FeedCache, RoomGtfs.RTIndex]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: RoomGtfs.Supervisor)
+  end
+
+  # The connection pool the static feed downloads use.
+  #
+  # Started here with a size rather than left for hackney to create on demand,
+  # because the size is the point. A static feed is the whole timetable and
+  # they run to a hundred megabytes; four at once is already several hundred
+  # megabytes in flight, and each one holds its connection for minutes. Left
+  # unbounded, a scheduled refresh of every source at once would try to hold
+  # them all.
+  #
+  # Separate from hackney's default pool for the same reason. Everything else
+  # in this umbrella -- realtime feeds, GitHub, the weather -- shares that one,
+  # and a bulk transfer sitting in it starves requests that take milliseconds.
+  defp static_pool do
+    :hackney_pool.child_spec(:gtfs_static, max_connections: 4, timeout: 300_000)
   end
 end
