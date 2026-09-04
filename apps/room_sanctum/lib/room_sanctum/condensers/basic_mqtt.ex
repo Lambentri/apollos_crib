@@ -323,7 +323,12 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     # An area query has no one stop, so there is no stop-specific alert to
     # look for -- only the ones on the routes that turned up.
     stop      = Map.get(query.query, :stop)
-    alerts    = RoomGtfs.Worker.query_alerts(id, stop, route_ids)
+    # A broken out entry is keyed by source *and* stop, so its id is not a
+    # source id and the lookup found nothing -- silently, since no alerts and
+    # no such source look the same from here. The descriptor names the source
+    # when the key cannot.
+    source_id = Map.get(query.query, :source_id) || id
+    alerts    = RoomGtfs.Worker.query_alerts(source_id, stop, route_ids)
 
     condensed_with_alerts = condensed |> Enum.map(fn route ->
       route_alerts = Enum.filter(alerts, fn a ->

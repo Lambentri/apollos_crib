@@ -27,6 +27,9 @@ defmodule RoomSanctum.Worker.Plani do
   # Answered at a point rather than near one: there is one answer and it is
   # computed for wherever you are, so "the closest five" means nothing. They
   # all took a foci already; the anchor is simply a different one.
+  # Enough to fill a card and leave the sort something to choose from.
+  @arrivals_per_stop 8
+
   @asked_at_a_point [:weather, :ephem, :pollen, :icarus]
 
   def start_link(opts) do
@@ -214,8 +217,7 @@ defmodule RoomSanctum.Worker.Plani do
           Enum.map(stops, fn stop ->
             arrivals =
               source_id
-              |> Storage.get_upcoming_arrivals_for_stop(stop.stop_id, 8, :now, source.config.tz)
-              |> Storage.fix_arrival_times()
+              |> arrivals_at(stop.stop_id, source.config)
               |> Enum.sort_by(& &1.arrival_time)
 
             # Which way the stop lies, carried on each arrival: the condenser
@@ -234,7 +236,13 @@ defmodule RoomSanctum.Worker.Plani do
             # empty -- the same call the clients already make.
             for {stop, arrivals} <- by_stop, arrivals != [] do
               key = "#{source_id}:#{stop.stop_id}"
-              {{key, :gtfs}, arrivals, described(source, key, stop.stop_name)}
+              descriptor =
+                described(source, key, stop.stop_name, %{
+                  source_id: source_id,
+                  stop: stop.stop_id
+                })
+
+              {{key, :gtfs}, arrivals, descriptor}
             end
           else
             blended =
@@ -274,7 +282,7 @@ defmodule RoomSanctum.Worker.Plani do
             per_dock =
               for dock <- docks do
                 key = "#{source_id}:#{dock.station_id}"
-                {{key, :gbfs}, [dock], described(source, key, dock.name)}
+                {{key, :gbfs}, [dock], described(source, key, dock.name, %{source_id: source_id})}
               end
 
             if bikes == [],
@@ -372,6 +380,34 @@ defmodule RoomSanctum.Worker.Plani do
     {arrival.trip.route_id, direction}
   end
 
+  # What is due at a stop, live where the feed says so.
+  #
+  # Through room_gtfs rather than straight at the tables: the realtime half --
+  # revised times, occupancy, platform assignments -- lives there, and reading
+  # the timetable directly is why a Plani was publishing departures that had
+  # already been revised, with nothing to say they were only scheduled.
+  #
+  # Called across apps the way the condenser calls `query_alerts`, since
+  # room_sanctum does not declare a dependency on room_gtfs. A missing module
+  # or an unstarted worker falls back to the timetable, which is worse than
+  # live but much better than nothing.
+  defp arrivals_at(source_id, stop_id, config) do
+    RoomGtfs.Worker.arrivals_at_stop(source_id, stop_id, @arrivals_per_stop, config)
+  rescue
+    error ->
+      Logger.debug("plani: no realtime for stop #{stop_id}: #{Exception.message(error)}")
+      timetable_at(source_id, stop_id, config)
+  catch
+    :exit, _ ->
+      timetable_at(source_id, stop_id, config)
+  end
+
+  defp timetable_at(source_id, stop_id, config) do
+    source_id
+    |> Storage.get_upcoming_arrivals_for_stop(stop_id, @arrivals_per_stop, :now, config.tz)
+    |> Storage.fix_arrival_times()
+  end
+
   defp cap(rows, nil), do: rows
   defp cap(rows, limit) when is_integer(limit), do: Enum.take(rows, limit)
 
@@ -424,10 +460,18 @@ defmodule RoomSanctum.Worker.Plani do
 
   defp rad(degrees), do: degrees * :math.pi() / 180
 
-  defp described(source), do: described(source, source.id, source.name)
+  defp described(source), do: described(source, source.id, source.name, %{})
 
-  defp described(source, id, name) do
-    %{id: id, name: name, meta: %{}, query: %{}}
+  defp described(source, id, name), do: described(source, id, name, %{})
+
+  # The descriptor an entry is published under.
+  #
+  # `query` carries what the condensers need to look past the entry itself. A
+  # broken out entry is keyed by source *and* stop, so its id is not a source
+  # id -- and the alerts lookup, which takes one, quietly found nothing for
+  # every broken out stop. Naming the source here is how it can.
+  defp described(_source, id, name, query) do
+    %{id: id, name: name, meta: %{}, query: query}
   end
 
   # Asked at the anchor. Each of these already takes a query naming a foci; a

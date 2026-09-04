@@ -253,9 +253,11 @@ defmodule RoomGtfs.Worker do
 
     stops
     |> Enum.flat_map(fn stop ->
-      Storage.get_upcoming_arrivals_for_stop(id, stop, @area_arrivals_per_stop, :now, inst.config.tz)
+      # Realtime per stop, as a query naming one stop has always had. Reading
+      # the timetable here meant an area query published times that had been
+      # revised minutes ago, and no way to tell they were stale.
+      arrivals_at_stop(id, stop, @area_arrivals_per_stop, inst.config)
     end)
-    |> Storage.fix_arrival_times()
     |> Enum.sort_by(& &1.arrival_time)
     |> Enum.take(@area_arrivals_total)
   end
@@ -264,23 +266,36 @@ defmodule RoomGtfs.Worker do
     # Bare: this wants the config blob, and nothing on this path reads the
     # mailboxes and webhooks the preloading version fetches alongside it.
     inst = Configuration.get_source!(:bare, id)
-    # The source is already in hand, so its timezone goes with the call rather
-    # than being looked up again inside it.
-    res =
-      Storage.get_upcoming_arrivals_for_stop(id, query.stop, 16, :now, inst.config.tz)
-      |> Storage.fix_arrival_times
 
-    # Not `url_rt_tu` alone: a source whose trip updates arrive in a combined
-    # feed has that field blank and its URL in url_rt_shared, and gating on the
-    # specific field skipped realtime entirely for exactly those sources.
-    case RoomGtfs.Worker.RT.rt_url_for(inst.config, :tu) do
+    arrivals_at_stop(id, query.stop, 16, inst.config)
+  end
+
+  @doc """
+  What is due at one stop, with whatever realtime the feed has to say about it.
+
+  Pulled out of `query_stop/2` because three callers want it and only one had
+  it. A query naming a stop got live times, occupancy and platforms; an area
+  query and a Plani -- both of which ask several stops and blend the answers --
+  read straight from the timetable and published departures that had already
+  been revised, with nothing marking them as scheduled rather than live.
+
+  Takes the source's config rather than looking it up, since a caller asking
+  about several stops has it in hand already and would otherwise re-fetch it
+  once per stop.
+  """
+  def arrivals_at_stop(id, stop_id, limit, config) do
+    res =
+      Storage.get_upcoming_arrivals_for_stop(id, stop_id, limit, :now, config.tz)
+      |> Storage.fix_arrival_times()
+
+    case RoomGtfs.Worker.RT.rt_url_for(config, :tu) do
       nil ->
         res
 
       _val ->
         trips = res |> Enum.map(fn x -> x.trip_id end)
 
-        case get_current_realtime(id, trips, query.stop, inst.config) do
+        case get_current_realtime(id, trips, stop_id, config) do
           [] ->
             res
 
@@ -288,12 +303,12 @@ defmodule RoomGtfs.Worker do
             # How full the vehicle is may be reported per stop in the trip
             # update, or only by the vehicle's own position report -- so the
             # positions are fetched once here to fall back on.
-            vehicles = occupancy_vehicles(id, inst.config, trips)
+            vehicles = occupancy_vehicles(id, config, trips)
 
             res
             |> Enum.map(fn x ->
               case Enum.find(rtvals, fn v ->
-                     trip_id_match?(inst.config, x.trip_id, v.trip_id)
+                     trip_id_match?(config, x.trip_id, v.trip_id)
                    end) do
                 nil ->
                   x
@@ -304,7 +319,7 @@ defmodule RoomGtfs.Worker do
 
                   x =
                     x
-                    |> merge_occupancy(occupancy_for(inst.config, x.trip_id, stu, vehicles))
+                    |> merge_occupancy(occupancy_for(config, x.trip_id, stu, vehicles))
                     |> merge_schedule_relationship(val.schedule_relationship, stu)
                     |> merge_stop_properties(stu)
 
@@ -324,6 +339,7 @@ defmodule RoomGtfs.Worker do
         end
     end
   end
+
 
   # How long to wait for vehicle positions before giving up on occupancy.
   #
