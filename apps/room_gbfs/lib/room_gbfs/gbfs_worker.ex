@@ -13,7 +13,13 @@ defmodule RoomGbfs.Worker do
 
   # 1d
   @static_refresh_seconds 86400
-  @static_delay_seconds 600
+
+  # Ten hours, and it always was: this went to `:timer.minutes/1` while being
+  # called seconds. Left where it is now that the counts refresh on the five
+  # minute pass -- what the static pass still carries is station locations and
+  # vehicle types, which do not change between one day and the next -- but
+  # named for what it does.
+  @static_delay_minutes 600
 
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("gbfs" <> opts[:name]))
@@ -30,7 +36,7 @@ defmodule RoomGbfs.Worker do
     Periodic.start_link(
       every: :timer.seconds(@static_refresh_seconds),
       run: fn -> RoomGbfs.Worker.update_static_data(opts[:name]) end,
-      initial_delay: :timer.minutes(@static_delay_seconds)
+      initial_delay: :timer.minutes(@static_delay_minutes)
     )
 
     {:ok, %{id: opts[:name], inst: nil}}
@@ -483,39 +489,48 @@ defmodule RoomGbfs.Worker do
           {:ok, result} ->
             case result.body |> Poison.decode() do
               {:ok, json_body} ->
-                if json_body["data"]
-                   |> Map.has_key?(cfg.config.lang) do
-                  bcast(state.id, :parsing, 2, 5)
+                case RoomGbfs.V3.feeds(json_body, cfg.config.lang) do
+                  {:ok, _version, feeds} ->
+                    bcast(state.id, :parsing, 2, 5)
 
-                  json_body["data"][cfg.config.lang]["feeds"]
-                  |> Enum.map(fn %{"name" => name, "url" => url} ->
-                    case name do
-                      "station_information" ->
-                        write_data(url, :stat_info, state.id, cfg.config.lang)
-                        bcast(state.id, :system_information, 3, 5)
+                    feeds
+                    |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
+                    |> Enum.map(fn %{"name" => name, "url" => url} ->
+                      case RoomGbfs.V3.feed_name(name) do
+                        "station_information" ->
+                          write_data(url, :stat_info, state.id, cfg.config.lang)
+                          bcast(state.id, :system_information, 3, 5)
 
-                      "ebikes_at_stations" ->
-                        write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
-                        bcast(state.id, :system_information, 4, 5)
+                        # The counts. Fetched here rather than only on the
+                        # daily static pass, which is how a dock could report
+                        # yesterday's bikes for a whole day.
+                        "station_status" ->
+                          write_data(url, :stat_status, state.id, cfg.config.lang)
+                          bcast(state.id, :system_information, 4, 5)
 
-                      "free_bike_status" ->
-                        write_data(url, :free_bike, state.id, cfg.config.lang)
-                        bcast(state.id, :system_information, 5, 5)
+                        "ebikes_at_stations" ->
+                          write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
+                          bcast(state.id, :system_information, 4, 5)
 
-                      _otherwise ->
-                        :ok
-                    end
-                  end)
+                        "free_bike_status" ->
+                          write_data(url, :free_bike, state.id, cfg.config.lang)
+                          bcast(state.id, :system_information, 5, 5)
 
-                  {:noreply, state}
-                else
-                  bcast(
-                    state.id,
-                    :language_error,
-                    "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
-                  )
+                        _otherwise ->
+                          :ok
+                      end
+                    end)
 
-                  {:noreply, state}
+                    {:noreply, state}
+
+                  {:error, languages} ->
+                    bcast(
+                      state.id,
+                      :language_error,
+                      "Invalid Language Selected, available #{Enum.join(languages, ", ")}, selected: #{cfg.config.lang}"
+                    )
+
+                    {:noreply, state}
                 end
 
               {:error, error} ->
