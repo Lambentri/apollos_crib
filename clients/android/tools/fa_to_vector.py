@@ -36,6 +36,10 @@ ICONS = [
     "bicycle", "bolt-lightning", "square-parking", "battery-half",
     # Which way to walk to it, on a Plani's cards.
     "location-arrow",
+    # A GBFS feed is not always bicycles: Getaround publishes cars, and other
+    # operators mopeds. Only where the free set has a truthful glyph -- there
+    # is no kick scooter in it, so those stay on the bicycle.
+    "car", "motorcycle",
     # Alerts: the web uses a pin when the alert names the stop.
     "location-dot", "triangle-exclamation",
     # Tides: the web marks a high and a low with arrows to a line.

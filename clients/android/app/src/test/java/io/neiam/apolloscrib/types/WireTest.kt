@@ -1,5 +1,6 @@
 package io.neiam.apolloscrib.types
 
+import io.neiam.apolloscrib.targets.Targets
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -141,6 +142,54 @@ class WireTest {
         val bikes = Wire.parse(payload).single().decode<List<GbfsCondensed>>()!!
         assertTrue(!bikes[0].isFreeBike())
         assertTrue(bikes[1].isFreeBike())
+    }
+
+    @Test
+    fun `a car share is cars, not bikes`() {
+        // Getaround Barcelona publishes 293 cars over GBFS. Nothing about the
+        // format says bicycle.
+        val payload = """
+            {"gbfs-9": [
+              {"kind":"free_bike","name":"Car","id":"YGA:Vehicle:59615e46d7db",
+               "lat":41.379253,"lon":2.145276,"form_factor":"car"},
+              {"kind":"free_bike","name":"Car","id":"YGA:Vehicle:4a0c7e18f6e1",
+               "lat":41.38,"lon":2.14,"form_factor":"car"}
+            ]}
+        """.trimIndent()
+
+        val entry = Wire.parse(payload).single()
+        val rows = entry.decode<List<GbfsCondensed>>()!!
+
+        assertEquals("car", rows[0].form_factor)
+
+        // And what the card actually says, which is the point of carrying it.
+        val preview = Targets.preview(entry).single()
+        assertEquals("2 cars nearby", preview.subtitle)
+    }
+
+    @Test
+    fun `a fleet of mixed kinds is described neutrally`() {
+        val payload = """
+            {"gbfs-9": [
+              {"kind":"free_bike","name":"Car","id":"c1","form_factor":"car"},
+              {"kind":"free_bike","name":"Bike","id":"b1","form_factor":"bicycle"}
+            ]}
+        """.trimIndent()
+
+        // Being vague is recoverable; being confidently wrong is not.
+        val preview = Targets.preview(Wire.parse(payload).single()).single()
+        assertEquals("2 vehicles nearby", preview.subtitle)
+    }
+
+    @Test
+    fun `a feed with no vehicle types still reads as bikes`() {
+        // The overwhelming majority of GBFS feeds, and every one published
+        // before this field existed. Saying "vehicles" here would make them
+        // all read worse in exchange for nothing.
+        val payload = """{"gbfs-9": [{"kind":"free_bike","name":"E-bike","id":"b1"}]}"""
+
+        val preview = Targets.preview(Wire.parse(payload).single()).single()
+        assertEquals("1 bike nearby", preview.subtitle)
     }
 
     @Test

@@ -172,6 +172,10 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
             %{
               kind: :free_bike,
               name: vehicle_label(vehicle_types, b) || bike_id,
+              # What kind of thing it is, so a client can draw a car as a car.
+              # The name already says "Car", but a name is read and an icon is
+              # glanced at, and these cards are built to be glanced at.
+              form_factor: vehicle_form_factor(vehicle_types, b),
               id: bike_id,
               lat: b.lat,
               lon: b.lon,
@@ -384,6 +388,16 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     |> Enum.reduce(%{}, fn source_id, acc ->
       Map.merge(acc, RoomSanctum.Storage.gbfs_vehicle_types(source_id))
     end)
+  end
+
+  # Straight off the vehicle type, in GBFS's own words -- "car", "moped",
+  # "scooter_standing". Left untranslated because the client is choosing a
+  # glyph from it rather than showing it.
+  defp vehicle_form_factor(vehicle_types, bike) do
+    case Map.get(vehicle_types, Map.get(bike, :vehicle_type_id)) do
+      %{form_factor: form_factor} -> form_factor
+      _ -> nil
+    end
   end
 
   defp vehicle_label(vehicle_types, bike) do

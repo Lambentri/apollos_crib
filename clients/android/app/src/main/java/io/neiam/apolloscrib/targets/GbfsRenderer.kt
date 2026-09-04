@@ -49,9 +49,25 @@ object GbfsRenderer : SourceRenderer {
      * has only its charge. The web board stamps the same three things --
      * bikes, a bolt for the electric ones, and parking for the docks.
      */
+    /**
+     * The glyph for what this actually is.
+     *
+     * A GBFS feed is not always bicycles -- Getaround publishes cars, other
+     * operators mopeds -- and a car share drawn as a row of bicycles is wrong
+     * in the way a glance cannot recover from, because nobody reads the label
+     * first. Only where the free icon set has a truthful glyph: it has no kick
+     * scooter, and drawing a standing scooter as a motorcycle would trade one
+     * wrong picture for another.
+     */
+    private fun formIcon(form: String?): Int = when (form) {
+        "car" -> R.drawable.fa_car
+        "moped" -> R.drawable.fa_motorcycle
+        else -> R.drawable.fa_bicycle
+    }
+
     private fun row(station: GbfsCondensed, named: Boolean): Row = when {
         station.isFreeBike() -> Row(
-            iconRes = R.drawable.fa_bicycle,
+            iconRes = formIcon(station.form_factor),
             text = if (named) station.name else "",
             stamps = buildList {
                 addAll(bearing(station))
@@ -88,9 +104,41 @@ object GbfsRenderer : SourceRenderer {
     private fun bearing(station: GbfsCondensed): List<Stamp> =
         station.dir?.let { listOf(Stamp(R.drawable.fa_location_arrow, it, flat = it)) }.orEmpty()
 
+    /**
+     * What to call them, when they are all the same kind of thing.
+     *
+     * "4 bikes nearby" is wrong for a car share and "4 vehicles nearby" is
+     * clumsy for a bike share, so the fleet decides. A mixed fleet, or one
+     * whose feed publishes no vehicle types, gets the neutral word rather than
+     * the majority's -- being vague is recoverable, being confidently wrong is
+     * not.
+     */
+    private fun noun(stations: List<GbfsCondensed>, plural: Boolean): String {
+        val forms = stations.map { it.form_factor }.distinct()
+
+        // Nothing said what these are. Almost every GBFS feed is bicycles and
+        // this renderer's own card is titled Bikeshare, so the old word stays
+        // the default -- calling a bike share "vehicles" for want of a field
+        // would make every existing source read worse to no purpose.
+        if (forms == listOf(null)) return if (plural) "bikes" else "bike"
+
+        return when (forms.singleOrNull()) {
+            "car" -> if (plural) "cars" else "car"
+            "moped" -> if (plural) "mopeds" else "moped"
+            "scooter_standing", "scooter_seated", "scooter" ->
+                if (plural) "scooters" else "scooter"
+            "bicycle", "cargo_bicycle" -> if (plural) "bikes" else "bike"
+            else -> if (plural) "vehicles" else "vehicle"
+        }
+    }
+
     private fun summary(stations: List<GbfsCondensed>): String? {
         if (stations.isEmpty()) return null
-        if (stations.all { it.isFreeBike() }) return "${stations.size} bikes nearby"
+
+        if (stations.all { it.isFreeBike() }) {
+            return "${stations.size} ${noun(stations, stations.size != 1)} nearby"
+        }
+
         val bikes = stations.sumOf { it.avail ?: 0 }
         val electric = stations.sumOf { it.avail_elec ?: 0 }
         return if (electric > 0) "$bikes bikes · $electric electric" else "$bikes bikes"

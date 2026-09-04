@@ -21,6 +21,12 @@ data class GbfsCondensed(
     val ebikes_info: List<EbikeInfo> = emptyList(),
     // Free-bike shape.
     val kind: String? = null,
+    /**
+     * What kind of vehicle, in GBFS's own words: "bicycle", "cargo_bicycle",
+     * "scooter_standing", "moped", "car". Present where the feed publishes
+     * vehicle types.
+     */
+    val form_factor: String? = null,
     val lat: Double? = null,
     val lon: Double? = null,
     val range_m: Double? = null,

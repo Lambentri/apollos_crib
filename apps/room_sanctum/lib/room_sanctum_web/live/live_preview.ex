@@ -557,13 +557,26 @@ use PhoenixHTMLHelpers
   # is what kind it is and how much of it is left.
   defp free_bike?(entry), do: Map.get(entry, :kind) == :free_bike
 
+  # A GBFS feed is not always bicycles. There is no kick scooter in the free
+  # icon set, so those keep the bicycle rather than being drawn as something
+  # they are even less like.
+  defp gbfs_icon(entry) do
+    case Map.get(entry, :form_factor) do
+      "car" -> "fa-car"
+      "moped" -> "fa-motorcycle"
+      _ -> "fa-bicycle"
+    end
+  end
+
   def p_gbfs(assigns) do
     ~H"""
     <%= for e <- @entries.data do %>
       <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
         <div class="card-body text-left">
         <h2 class="card-title">
-          <p><i class="fa-solid fa-fw fa-bicycle"></i> <%= e.name %> </p>
+          <%!-- Not always a bicycle: Getaround publishes cars, others mopeds.
+                Only where the free set has a truthful glyph. --%>
+          <p><i class={"fa-solid fa-fw #{gbfs_icon(e)}"}></i> <%= e.name %> </p>
           <%!-- Which way to walk. Only a Plani sends it: a vision's foci is a
                 fixed place, so there is nothing for a bearing to be relative
                 to, and it is absent for anything close enough to have no
