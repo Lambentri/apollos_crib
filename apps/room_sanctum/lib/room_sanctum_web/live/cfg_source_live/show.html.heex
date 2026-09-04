@@ -262,8 +262,14 @@ gl_available_projects={@gitlab_available_projects}
                     <%!-- This bar is one feed's progress, which cannot say
                           whether that feed is running or sat behind three
                           others in a queue with a concurrency of one. The
-                          import queue can, so it is one click from here. --%>
+                          import queue can, so it is one click from here.
+
+                          GTFS only: that queue imports static timetables and
+                          holds nothing else, so on a weather or bikeshare
+                          source the link goes somewhere its own source will
+                          never appear. --%>
                     <.link
+                        :if={@source.type == :gtfs}
                         navigate={Routes.source_work_path(@socket, :index)}
                         class="btn btn-xs btn-ghost gap-1 font-normal"
                         title="What the import queue is doing, across every source"
