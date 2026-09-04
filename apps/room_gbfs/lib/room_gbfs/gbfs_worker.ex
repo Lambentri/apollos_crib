@@ -106,7 +106,9 @@ defmodule RoomGbfs.Worker do
     |> Map.put(:updated_at, dt)
   end
 
-  defp write_data(url, type, id) do
+  # `lang` is only used to pick one string out of v3's localised name lists;
+  # a v2 feed never reaches that code.
+  defp write_data(url, type, id, lang) do
     dt = NaiveDateTime.local_now()
     Logger.info("GBFS::#{id} retrieving #{url}")
 
@@ -123,7 +125,9 @@ defmodule RoomGbfs.Worker do
                 Repo.insert(
                   RoomSanctum.Storage.change_sys_info(
                     %RoomSanctum.Storage.GBFS.V1.SysInfo{},
-                    json.data |> Map.put(:source_id, id |> intify)
+                    json.data
+                    |> RoomGbfs.V3.system_information(lang)
+                    |> Map.put(:source_id, id |> intify)
                   ),
                   on_conflict: {:replace_all_except, [:id]},
                   conflict_target: [:source_id, :system_id]
@@ -132,6 +136,7 @@ defmodule RoomGbfs.Worker do
               :stat_info ->
                 data =
                   json.data.stations
+                  |> Enum.map(&RoomGbfs.V3.station_info(&1, lang))
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
                     point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
@@ -155,6 +160,7 @@ defmodule RoomGbfs.Worker do
               :stat_status ->
                 data =
                   json.data.stations
+                  |> Enum.map(&RoomGbfs.V3.station_status/1)
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
                     RoomSanctum.Storage.change_station_status(
@@ -173,7 +179,9 @@ defmodule RoomGbfs.Worker do
 
               :free_bike ->
                 data =
-                  json.data.bikes
+                  # v3 calls them vehicles and puts them under `vehicles`.
+                  (Map.get(json.data, :bikes) || Map.get(json.data, :vehicles) || [])
+                  |> Enum.map(&RoomGbfs.V3.vehicle_status/1)
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
                     point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
@@ -199,6 +207,7 @@ defmodule RoomGbfs.Worker do
               :vehicle_types ->
                 data =
                   json.data.vehicle_types
+                  |> Enum.map(&RoomGbfs.V3.vehicle_types(&1, lang))
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
                     RoomSanctum.Storage.change_vehicle_types(
@@ -359,60 +368,66 @@ defmodule RoomGbfs.Worker do
                   %{}
               end
 
-            if json_body["data"] != nil and
-                 json_body["data"]
-                 |> Map.has_key?(cfg.config.lang) do
-              bcast(state.id, :parsing, 2, @tfh)
+            case RoomGbfs.V3.feeds(json_body, cfg.config.lang) do
+              {:ok, version, feeds} ->
+                if version == :v3 do
+                  Logger.info("GBFS::#{state.id} discovery is v3")
+                end
 
-              json_body["data"][cfg.config.lang]["feeds"]
-              |> Enum.map(fn %{"name" => name, "url" => url} ->
-                case name do
+                bcast(state.id, :parsing, 2, @tfh)
+
+                feeds
+                |> Enum.map(fn %{"name" => name, "url" => url} ->
+                # v3 renamed the loose-vehicle feed; everything below is
+                # written in v2's names, which is the one dialect this worker
+                # speaks.
+                case RoomGbfs.V3.feed_name(name) do
                   "ebikes_at_stations" ->
-                    write_data(url, :ebikes_at_stations, state.id)
+                    write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 3, @tfh)
 
                   "system_information" ->
-                    write_data(url, :sys_info, state.id)
+                    write_data(url, :sys_info, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 4, @tfh)
 
                   "station_information" ->
-                    write_data(url, :stat_info, state.id)
+                    write_data(url, :stat_info, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 5, @tfh)
 
                   "station_status" ->
-                    write_data(url, :stat_status, state.id)
+                    write_data(url, :stat_status, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 6, @tfh)
 
                   "free_bike_status" ->
-                    write_data(url, :free_bike, state.id)
+                    write_data(url, :free_bike, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 7, @tfh)
 
                   "system_hours" ->
-                    write_data(url, :sys_hours, state.id)
+                    write_data(url, :sys_hours, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 8, @tfh)
 
                   "system_calendar" ->
-                    write_data(url, :sys_cal, state.id)
+                    write_data(url, :sys_cal, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 9, @tfh)
 
                   "system_regions" ->
-                    write_data(url, :sys_regions, state.id)
+                    write_data(url, :sys_regions, state.id, cfg.config.lang)
                     bcast(state.id, :system_information, 10, @tfh)
 
                   "system_alerts" ->
-                    write_data(url, :sys_alerts, state.id)
+                    write_data(url, :sys_alerts, state.id, cfg.config.lang)
                     bcast(state.id, :system_alerts, 11, @tfh)
 
                   "vehicle_types" ->
-                    write_data(url, :vehicle_types, state.id)
+                    write_data(url, :vehicle_types, state.id, cfg.config.lang)
                     bcast(state.id, :vehicle_types, 12, @tfh)
 
                   "system_pricing_plans" ->
-                    write_data(url, :pricing_plans, state.id)
+                    write_data(url, :pricing_plans, state.id, cfg.config.lang)
                     bcast(state.id, :pricing_plans, 13, @tfh)
 
                   "geofencing_zones" ->
-                    write_data(url, :geofencing_zones, state.id)
+                    write_data(url, :geofencing_zones, state.id, cfg.config.lang)
                     bcast(state.id, :geofencing_zones, 14, @tfh)
 
                   otherwise ->
@@ -420,15 +435,16 @@ defmodule RoomGbfs.Worker do
                 end
               end)
 
-              {:noreply, state}
-            else
-              bcast(
-                state.id,
-                :language_error,
-                "Invalid Language Selected, available #{json_body["data"] |> Map.keys() |> Enum.join(", ")}, selected: #{cfg.config.lang}"
-              )
+                {:noreply, state}
 
-              {:noreply, state}
+              {:error, languages} ->
+                bcast(
+                  state.id,
+                  :language_error,
+                  "Invalid Language Selected, available #{Enum.join(languages, ", ")}, selected: #{cfg.config.lang}"
+                )
+
+                {:noreply, state}
             end
 
           {:error, info} ->
@@ -463,15 +479,15 @@ defmodule RoomGbfs.Worker do
                   |> Enum.map(fn %{"name" => name, "url" => url} ->
                     case name do
                       "station_information" ->
-                        write_data(url, :stat_info, state.id)
+                        write_data(url, :stat_info, state.id, cfg.config.lang)
                         bcast(state.id, :system_information, 3, 5)
 
                       "ebikes_at_stations" ->
-                        write_data(url, :ebikes_at_stations, state.id)
+                        write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
                         bcast(state.id, :system_information, 4, 5)
 
                       "free_bike_status" ->
-                        write_data(url, :free_bike, state.id)
+                        write_data(url, :free_bike, state.id, cfg.config.lang)
                         bcast(state.id, :system_information, 5, 5)
 
                       _otherwise ->
