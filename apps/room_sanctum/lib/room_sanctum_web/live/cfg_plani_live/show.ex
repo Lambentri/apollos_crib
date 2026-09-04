@@ -172,6 +172,37 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     }
   end
 
+  @doc """
+  Everything a Plani was configured with, for the settings card.
+
+  Built here rather than read field by field in the template so that the
+  "not set" cases are decided once: a blank bike limit means everything inside
+  the radius, and saying so is more use than an empty cell.
+  """
+  def settings(plani) do
+    [
+      {"Home foci", :text, foci_name(plani.home_foci_id)},
+      {"Ankyra", :text, plani.ankyra_id && "##{plani.ankyra_id}"},
+      {"Client", :text, plani.client_id},
+      {"Radius", :text, "#{plani.radius} m"},
+      {"How many of each", :text, plani.limit},
+      {"Bikes and docks per source", :text, plani.bike_limit || "all within the radius"},
+      {"One card per stop", :flag, plani.break_out},
+      {"One stop per line", :flag, plani.nearest_per_route},
+      {"Following tint", :text, plani.follow_tint}
+    ]
+  end
+
+  # A foci that has been deleted out from under a Plani should show as missing
+  # rather than take the page down -- `get_foci!` raises.
+  defp foci_name(nil), do: nil
+
+  defp foci_name(id) do
+    Configuration.get_foci!(id).name
+  rescue
+    Ecto.NoResultsError -> "missing (##{id})"
+  end
+
   @doc "A point as something readable, or nil."
   def coordinates(%{anchor: %Geo.Point{coordinates: {lon, lat}}}) do
     "#{Float.round(lat, 5)}, #{Float.round(lon, 5)}"

@@ -120,8 +120,11 @@
   </div>
 </div>
 
-<div class="mx-4 py-2 flex flex-wrap">
-  <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+<%!-- A grid rather than flex-wrap: these were already md:w-1/2, but the m-2
+      beside it made each half a full rem wider than half, so the pair never
+      fitted on one row and silently stacked. A gap belongs to the container. --%>
+<div class="mx-4 py-2 grid gap-4 md:grid-cols-2 items-start">
+  <div class="card card-compact w-full bg-base-100 shadow-xl">
     <div class="card-body">
       <h3 class="card-title">
         <i class="fas fa-fw fa-location-crosshairs"></i> Where it is
@@ -153,7 +156,7 @@
     </div>
   </div>
 
-  <div class="card card-compact w-full md:w-1/2 bg-base-100 shadow-xl m-2">
+  <div class="card card-compact w-full bg-base-100 shadow-xl">
     <div class="card-body">
       <h3 class="card-title"><i class="fas fa-fw fa-layer-group"></i> What it is asking</h3>
       <% asked = RoomSanctumWeb.PlaniLive.Show.asked(@plani, @sources) %>
@@ -201,6 +204,42 @@
           nothing located in it is skipped rather than guessed at.
         </p>
       <% end %>
+    </div>
+  </div>
+</div>
+
+<div class="mx-4 py-2">
+  <%!-- Collapsed by default, and with a checkbox rather than an event: this is
+        a reference the reader opens once to check a number, not state the
+        server has any business remembering. --%>
+  <div class="collapse collapse-arrow bg-base-100 shadow-xl">
+    <input type="checkbox" />
+    <div class="collapse-title card-title text-base">
+      <i class="fas fa-fw fa-sliders"></i> How it is set up
+    </div>
+    <div class="collapse-content">
+      <div class="grid gap-x-6 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+        <div
+          :for={{label, kind, value} <- RoomSanctumWeb.PlaniLive.Show.settings(@plani)}
+          class="flex items-center justify-between gap-2 border-b border-base-300 py-1"
+        >
+          <span class="text-sm opacity-70"><%= label %></span>
+          <%= case {kind, value} do %>
+            <% {:flag, true} -> %>
+              <span class="badge badge-accent badge-sm gap-1">
+                <i class="fas fa-fw fa-check text-xs"></i> on
+              </span>
+            <% {:flag, _} -> %>
+              <span class="badge badge-ghost badge-sm">off</span>
+            <% {_, nil} -> %>
+              <span class="text-sm opacity-40">not set</span>
+            <% {_, ""} -> %>
+              <span class="text-sm opacity-40">not set</span>
+            <% {_, shown} -> %>
+              <span class="font-mono text-sm"><%= shown %></span>
+          <% end %>
+        </div>
+      </div>
     </div>
   </div>
 </div>
