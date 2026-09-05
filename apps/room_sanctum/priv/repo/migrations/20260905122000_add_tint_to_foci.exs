@@ -10,6 +10,11 @@ defmodule RoomSanctum.Repo.Migrations.AddTintToFoci do
   a tint of foci gains a new one the moment it is tinted.
   """
 
+  # Renumbered from 20260905120000, which collided with add_plus_to_pythiae.
+  # Ecto keys schema_migrations on the version alone, so the first of the two
+  # to run recorded the number and the second was skipped -- while still
+  # reporting `:up`, because the version it is looked up by was there.
+  # Silent, and it looked exactly like a migration that had run.
   def change do
     alter table(:cfg_focis) do
       add :tint, :string
