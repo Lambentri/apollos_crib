@@ -50,6 +50,10 @@ defmodule RoomSanctum.Configuration.Pythiae do
     # both. A Plani is a vision whose anchor moves, so the two answer the same
     # question from different places and merging them would show each twice.
     field :curr_plani, :id
+    # Publish the Plus reading too, on the Ankyra's `.plus` topic. Alongside
+    # the Basic board rather than instead of it: a client that does not know
+    # about the second topic is unaffected by this being on.
+    field :plus, :boolean, default: false
     embeds_many :consts, Const
     embeds_one :tweaks, Tweaks
 
@@ -59,7 +63,16 @@ defmodule RoomSanctum.Configuration.Pythiae do
   @doc false
   def changeset(pythiae, attrs) do
     pythiae
-    |> cast(attrs, [:visions, :ankyra, :user_id, :curr_vision, :curr_foci, :curr_plani, :name])
+    |> cast(attrs, [
+      :visions,
+      :ankyra,
+      :user_id,
+      :curr_vision,
+      :curr_foci,
+      :curr_plani,
+      :name,
+      :plus
+    ])
     |> cast_embed(:consts, with: &Const.changeset/2)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:curr_vision)

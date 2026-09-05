@@ -66,6 +66,20 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   @doc """
+  The Plus board, on a topic of its own.
+
+  Beside `publish/2` rather than replacing it: the two are the same board read
+  two ways, and every client that exists reads the Basic one. A second topic
+  costs a subscriber that does not want it nothing, where a second shape on the
+  same topic would cost it the board.
+  """
+  def publish_plus(name, data) do
+    "ankyra#{name}"
+    |> via_tuple()
+    |> GenServer.cast({:publish_plus, data})
+  end
+
+  @doc """
   Where a client last said it was, or nil.
 
   A call rather than a broadcast because the asker wants it now and only when
@@ -134,6 +148,23 @@ defmodule RoomSanctum.Worker.Ankyra do
 
       {:error, error} ->
         IO.inspect(error)
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_cast({:publish_plus, data}, state) do
+    case AMQP.Application.get_channel(:default) do
+      {:ok, chan} ->
+        AMQP.Basic.publish(
+          chan,
+          "amq.topic",
+          state.ankyra.topic <> ".plus",
+          data |> Poison.encode!()
+        )
+
+      {:error, error} ->
+        Logger.warning("ankyra #{state.id}: could not publish plus: #{inspect(error)}")
     end
 
     {:noreply, state}

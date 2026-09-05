@@ -26,6 +26,18 @@
         <.input field={@form[:curr_foci]} type="select" label="Current Foci"  options={@cfg_foci_sel} />
       </div>
       <div class="form-control">
+        <.input
+          field={@form[:plus]}
+          type="checkbox"
+          label="Also publish the Plus board"
+        />
+        <p class="text-sm opacity-70">
+          The same board with each arrival kept whole -- occupancy, delay, track,
+          cancellations -- on <span class="font-mono">&lt;topic&gt;.plus</span>,
+          alongside the ordinary one. Clients that do not read it are unaffected.
+        </p>
+      </div>
+      <div class="form-control">
         <label class="block text-md font-bold leading-6 pt-4 text-primary-content">
           Consts
           <span class="float-right">

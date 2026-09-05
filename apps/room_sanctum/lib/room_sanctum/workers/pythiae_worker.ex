@@ -86,9 +86,7 @@ defmodule RoomSanctum.Worker.Pythiae do
 #      IO.puts("change detected")
 #      IO.inspect({DateTime.utc_now(), comparison})
 
-      for a <- state.pythiae.ankyra do
-        RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense(current.queries))
-      end
+      publish_board(state, current)
 
       {:noreply, state |> Map.put(:vision, current) |> Map.put(:lastpub, DateTime.utc_now())}
     else
@@ -99,9 +97,7 @@ defmodule RoomSanctum.Worker.Pythiae do
   def handle_cast(:query_current_now, state) do
     current = showing(state.pythiae)
 
-    for a <- state.pythiae.ankyra do
-      RoomSanctum.Worker.Ankyra.publish(a, current.data |> condense(current.queries))
-    end
+    publish_board(state, current)
 
     {:noreply, state |> Map.put(:vision, current)}
   end
@@ -144,22 +140,54 @@ defmodule RoomSanctum.Worker.Pythiae do
     RoomSanctum.Worker.Vision.get_state(pythiae.curr_vision)
   end
 
-  defp condense(data, queries) do
+  # The board, to every Ankyra this Pythiae publishes to.
+  #
+  # Twice, where the Pythiae asks for it: the Basic reading on the Ankyra's
+  # topic and the Plus one on `<topic>.plus`. Both are whole boards -- Plus
+  # falls back to Basic's answer for every type it does not write -- so a
+  # client reads one or the other and never has to stitch them together.
+  #
+  # Condensed once for all of them rather than once per Ankyra, which is a
+  # vision's worth of work repeated for every client that was listening.
+  defp publish_board(state, current) do
+    basic = condense(current.data, current.queries)
+    plus = if plus?(state.pythiae), do: condense(current.data, current.queries, :plus)
+
+    for a <- state.pythiae.ankyra do
+      RoomSanctum.Worker.Ankyra.publish(a, basic)
+      if plus, do: RoomSanctum.Worker.Ankyra.publish_plus(a, plus)
+    end
+  end
+
+  defp plus?(%{plus: true}), do: true
+  defp plus?(_), do: false
+
+  defp condense(data, queries, reading \\ :basic) do
     # Create a map of query id to query info for quick lookup
     query_map = queries |> Enum.map(fn q -> {q.id, q} end) |> Enum.into(%{})
-    
+
     data
     |> Enum.map(fn {{id, type}, datum} ->
       query = Map.get(query_map, id)
-      
-      case condense_one({id, type}, datum, query) do
-        {:ok, condensed} -> {"#{type}-#{id}", condensed}
+
+      case condense_one({id, type}, datum, query, reading) do
+        {:ok, condensed} -> {"#{key_type(type, reading)}-#{id}", condensed}
         :error -> nil
       end
     end)
     |> Enum.reject(&is_nil/1)
     |> Enum.into(%{})
   end
+
+  # What the entry is keyed as. The Plus reading of a GTFS query is a different
+  # shape from the Basic one and says so in the key, so a payload is
+  # self-describing whichever topic it arrived on -- a client is never left
+  # inferring the shape from where it came from.
+  #
+  # Only GTFS: every other type is Basic's answer under Plus too, and giving it
+  # a new key would say a difference that is not there.
+  defp key_type(:gtfs, :plus), do: "gtfs_plus"
+  defp key_type(type, _reading), do: type
 
   # One entry, or nothing.
   #
@@ -168,12 +196,14 @@ defmodule RoomSanctum.Worker.Pythiae do
   # no board at all, on every tick, with nothing saying why. The client already
   # drops what it cannot read and draws the rest; this is the same call made at
   # the other end, where there is a log to say it happened.
-  defp condense_one({id, type}, datum, query) do
+  defp condense_one({id, type}, datum, query, reading) do
+    condenser = condenser(reading)
+
     condensed =
       if query do
-        RoomSanctum.Condenser.BasicMQTT.condense({id, type}, datum, query)
+        condenser.condense({id, type}, datum, query)
       else
-        RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, datum)
+        condenser.condense_data({id, type}, datum)
       end
 
     {:ok, condensed}
@@ -182,4 +212,7 @@ defmodule RoomSanctum.Worker.Pythiae do
       Logger.warning("pythiae: dropping #{type}-#{id}: #{Exception.message(error)}")
       :error
   end
+
+  defp condenser(:plus), do: RoomSanctum.Condenser.PlusMQTT
+  defp condenser(_), do: RoomSanctum.Condenser.BasicMQTT
 end
