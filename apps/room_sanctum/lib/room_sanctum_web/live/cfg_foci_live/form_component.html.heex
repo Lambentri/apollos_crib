@@ -21,6 +21,37 @@
             <div class="form-control">
                 <.input field={@form[:name]} type="text" label="Name" />
             </div>
+            <%!-- The same picker a Plani uses for sources. A tinted foci can
+                  be followed as a home without being named. --%>
+            <div class="form-control mt-2">
+                <label class="label label-text">Tint</label>
+                <div class="flex flex-wrap gap-2">
+                    <label class="cursor-pointer" title="No tint">
+                        <input
+                            type="radio"
+                            name={@form[:tint].name}
+                            value=""
+                            class="sr-only peer"
+                            checked={@form[:tint].value in [nil, ""]}
+                        />
+                        <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-base-300 ring-offset-2 ring-offset-base-100 peer-checked:ring-2 peer-checked:ring-accent">
+                            <i class="fa-solid fa-ban text-xs opacity-60"></i>
+                        </span>
+                    </label>
+
+                    <label :for={tint <- RoomSanctum.Tints.all()} class="cursor-pointer" title={tint}>
+                        <input
+                            type="radio"
+                            name={@form[:tint].name}
+                            value={tint}
+                            class="sr-only peer"
+                            checked={to_string(@form[:tint].value) == tint}
+                        />
+                        <span class={"inline-flex h-7 w-7 rounded-full bg-#{tint}-500 ring-offset-2 ring-offset-base-100 peer-checked:ring-2 peer-checked:ring-accent"}>
+                        </span>
+                    </label>
+                </div>
+            </div>
         </div>
     </div>
     <div>

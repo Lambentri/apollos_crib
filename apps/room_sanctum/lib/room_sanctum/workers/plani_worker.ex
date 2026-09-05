@@ -60,7 +60,11 @@ defmodule RoomSanctum.Worker.Plani do
        places: [],
        notes: %{},
        anchor: nil,
-       anchored_to: :home
+       anchored_to: :home,
+       # The last position a client reported, for choosing which home to
+       # settle on. Lost with the process, deliberately: a Plani that has just
+       # restarted falls back to its first home, which is where it started.
+       last_seen: nil
      }}
   end
 
@@ -119,7 +123,7 @@ defmodule RoomSanctum.Worker.Plani do
   def handle_cast(:query, %{plani: nil} = state), do: {:noreply, state}
 
   def handle_cast(:query, state) do
-    {anchor, anchored_to} = anchor(state.plani)
+    {anchor, anchored_to, last_seen} = anchor(state.plani, state.last_seen)
 
     # Resolved on every tick rather than held: a source tinted since the last
     # one should join without the Plani being edited, which is the whole point
@@ -165,7 +169,8 @@ defmodule RoomSanctum.Worker.Plani do
          places: places,
          notes: notes,
          anchor: anchor,
-         anchored_to: anchored_to
+         anchored_to: anchored_to,
+         last_seen: last_seen
      }}
   end
 
@@ -187,20 +192,74 @@ defmodule RoomSanctum.Worker.Plani do
 
   def handle_info(_msg, state), do: {:noreply, state}
 
-  # Where to ask from: the client if it has said recently, the home foci if not.
-  defp anchor(plani) do
+  # Where to ask from: the client if it has said recently, a home foci if not.
+  #
+  # Takes and returns the last position this worker saw, because "which home"
+  # is answered by where you were, not by which was configured first. A house
+  # and an office are both home; the useful one is the one you were last near.
+  # Held here and nowhere else -- it does not outlive the process, which is the
+  # same promise the position itself is under.
+  defp anchor(plani, last_seen) do
+    window = (plani.home_after_mins || 5) * 60
+
     reported =
       if plani.ankyra_id do
-        RoomSanctum.Worker.Ankyra.position(to_string(plani.ankyra_id), plani.client_id)
+        RoomSanctum.Worker.Ankyra.position(to_string(plani.ankyra_id), plani.client_id, window)
       end
 
     case reported do
       %{lat: lat, lon: lon} ->
-        {%Geo.Point{coordinates: {lon, lat}, srid: 4326}, :client}
+        point = %Geo.Point{coordinates: {lon, lat}, srid: 4326}
+        {point, :client, point}
 
       _ ->
-        {Configuration.get_foci!(plani.home_foci_id).place, :home}
+        {home(plani, last_seen), :home, last_seen}
     end
+  end
+
+  # The home to settle on: the nearest to where the client last was.
+  #
+  # With one home this is that home, which is every Plani that has not been
+  # told otherwise. With several and nothing ever heard from a client, it is
+  # `home_foci_id` -- the first, and what a Plani has always fallen back to.
+  defp home(plani, last_seen) do
+    all = Configuration.list_focis({:user, plani.user_id})
+    ids = RoomSanctum.Configuration.Plani.homes_for(plani, all)
+
+    all
+    |> Enum.filter(&(&1.id in ids))
+    |> nearest_home(last_seen, plani.home_foci_id)
+  end
+
+  @doc false
+  # Public only so a test can reach it; the database read is the caller's.
+  def nearest_home(foci, last_seen, fallback_id)
+
+  def nearest_home([], _last_seen, _fallback_id), do: nil
+
+  def nearest_home([only], _last_seen, _fallback_id), do: only.place
+
+  def nearest_home(foci, %Geo.Point{} = seen, fallback_id) do
+    # A foci with no place cannot be measured against and cannot be an answer.
+    case Enum.filter(foci, &match?(%Geo.Point{}, &1.place)) do
+      [] -> nearest_home(foci, nil, fallback_id)
+      placed -> placed |> Enum.min_by(&distance(&1.place, seen)) |> Map.get(:place)
+    end
+  end
+
+  def nearest_home(foci, _last_seen, fallback_id) do
+    # Never heard from anybody: the first home, which is where a Plani with
+    # one home has always gone.
+    Enum.find_value(foci, hd(foci).place, fn f -> if f.id == fallback_id, do: f.place end)
+  end
+
+  # Close enough to order by. Squared degrees, scaled for longitude at this
+  # latitude -- no square root because nothing here needs the number itself,
+  # only which of two is smaller.
+  defp distance(%Geo.Point{coordinates: {lon1, lat1}}, %Geo.Point{coordinates: {lon2, lat2}}) do
+    d_lat = lat1 - lat2
+    d_lon = (lon1 - lon2) * :math.cos(rad((lat1 + lat2) / 2))
+    d_lat * d_lat + d_lon * d_lon
   end
 
   # What is near the anchor, for one source. The shape of the answer matches

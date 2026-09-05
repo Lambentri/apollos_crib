@@ -19,7 +19,19 @@ defmodule RoomSanctum.Configuration.Plani do
     belongs_to :user, RoomSanctum.Accounts.User
 
     # Where it is when it does not know where it is.
+    #
+    # More than one is allowed, because more than one is true: a house and an
+    # office are both home, and which one answers depends on where you were
+    # last. `home_foci_id` is the first of them and the answer for a Plani
+    # that has never heard a position at all.
     field :home_foci_id, :integer
+    field :home_foci_ids, {:array, :integer}, default: []
+    field :home_tint, :string
+
+    # How long a client may say nothing before the anchor goes home. Five
+    # minutes suits a phone in a pocket on a bus; half an hour suits one that
+    # only reports when it is opened.
+    field :home_after_mins, :integer, default: 5
 
     # Whose position to follow. An Ankyra may carry several clients and only
     # one of them is the one that travels.
@@ -62,6 +74,9 @@ defmodule RoomSanctum.Configuration.Plani do
       :name,
       :user_id,
       :home_foci_id,
+      :home_foci_ids,
+      :home_tint,
+      :home_after_mins,
       :ankyra_id,
       :client_id,
       :sources,
@@ -80,7 +95,11 @@ defmodule RoomSanctum.Configuration.Plani do
     # Looser than `limit`: loose bikes are counted rather than read one by one,
     # so a larger number is still a sensible thing to ask for.
     |> validate_number(:bike_limit, greater_than_or_equal_to: 1, less_than_or_equal_to: 50)
+    # Offered as a menu of five minute steps, so the number is never anything
+    # but one of these -- but a form is not the only way in.
+    |> validate_inclusion(:home_after_mins, [5, 10, 15, 20, 25, 30])
     |> validate_tint()
+    |> validate_home_tint()
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:home_foci_id)
   end
@@ -95,6 +114,34 @@ defmodule RoomSanctum.Configuration.Plani do
         [follow_tint: "is not a tint"]
       end
     end)
+  end
+
+  defp validate_home_tint(changeset) do
+    validate_change(changeset, :home_tint, fn :home_tint, tint ->
+      if tint in [nil, ""] or RoomSanctum.Tints.valid?(tint),
+        do: [],
+        else: [home_tint: "is not a tint"]
+    end)
+  end
+
+  @doc """
+  Every foci this Plani calls home: the first one, any others it names, and
+  any wearing its home tint.
+
+  In that order and deduplicated, so `home_foci_id` stays the one a Plani with
+  no position falls back to -- which is what it has always been, and what
+  keeps every existing Plani behaving exactly as it did.
+  """
+  def homes_for(%__MODULE__{} = plani, all_foci) do
+    tinted =
+      case plani.home_tint do
+        blank when blank in [nil, ""] -> []
+        tint -> all_foci |> Enum.filter(&(&1.tint == tint)) |> Enum.map(& &1.id)
+      end
+
+    ([plani.home_foci_id] ++ (plani.home_foci_ids || []) ++ tinted)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
   end
 
   @doc """

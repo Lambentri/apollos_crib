@@ -182,6 +182,9 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
   def settings(plani) do
     [
       {"Home foci", :text, foci_name(plani.home_foci_id)},
+      {"Other homes", :text, other_homes(plani)},
+      {"Homes wearing tint", :text, plani.home_tint},
+      {"Go home after", :text, "#{plani.home_after_mins || 5} minutes"},
       {"Ankyra", :text, plani.ankyra_id && "##{plani.ankyra_id}"},
       {"Client", :text, plani.client_id},
       {"Radius", :text, "#{plani.radius} m"},
@@ -192,6 +195,16 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
       {"Following tint", :text, plani.follow_tint}
     ]
   end
+
+  # The named extras, without repeating the first one back at the reader.
+  defp other_homes(%{home_foci_ids: ids, home_foci_id: first}) when is_list(ids) do
+    case ids |> Enum.reject(&(&1 == first)) |> Enum.map(&foci_name/1) do
+      [] -> nil
+      names -> Enum.join(names, ", ")
+    end
+  end
+
+  defp other_homes(_plani), do: nil
 
   # A foci that has been deleted out from under a Plani should show as missing
   # rather than take the page down -- `get_foci!` raises.

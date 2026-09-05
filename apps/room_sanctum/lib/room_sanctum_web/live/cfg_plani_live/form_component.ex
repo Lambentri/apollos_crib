@@ -35,6 +35,75 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
           so this is what it knows when it knows nothing else.
         </p>
 
+        <label class="label label-text mt-2">Other homes wearing this tint</label>
+        <div class="flex flex-wrap gap-2">
+          <label class="cursor-pointer" title="No tint">
+            <input
+              type="radio"
+              name={@form[:home_tint].name}
+              value=""
+              class="sr-only peer"
+              checked={@form[:home_tint].value in [nil, ""]}
+            />
+            <span class="inline-flex h-7 w-7 items-center justify-center rounded-full bg-base-300 ring-offset-2 ring-offset-base-100 peer-checked:ring-2 peer-checked:ring-accent">
+              <i class="fa-solid fa-ban text-xs opacity-60"></i>
+            </span>
+          </label>
+
+          <label :for={tint <- @tints} class="cursor-pointer" title={tint}>
+            <input
+              type="radio"
+              name={@form[:home_tint].name}
+              value={tint}
+              class="sr-only peer"
+              checked={to_string(@form[:home_tint].value) == tint}
+            />
+            <span class={"inline-flex h-7 w-7 rounded-full bg-#{tint}-500 ring-offset-2 ring-offset-base-100 peer-checked:ring-2 peer-checked:ring-accent"}>
+            </span>
+          </label>
+        </div>
+
+        <label class="label label-text mt-2">And these in particular</label>
+        <div class="flex flex-wrap gap-2">
+          <label :for={foci <- @cfg_foci} class="cursor-pointer">
+            <input
+              type="checkbox"
+              name={@form[:home_foci_ids].name <> "[]"}
+              value={foci.id}
+              class="sr-only peer"
+              checked={to_string(foci.id) in Enum.map(List.wrap(@form[:home_foci_ids].value), &to_string/1)}
+            />
+            <span class="badge badge-lg gap-2 peer-checked:badge-accent">
+              <.tint_dot tint={foci.tint} />
+              <%= foci.name %>
+            </span>
+          </label>
+        </div>
+        <p class="text-xs text-base-content/60">
+          A house and an office are both home. With more than one, the anchor
+          settles on whichever is nearest to where the client last was, rather
+          than on whichever was configured first.
+        </p>
+
+        <.input
+          field={@form[:home_after_mins]}
+          type="select"
+          label="Go home after"
+          options={[
+            {"5 minutes", 5},
+            {"10 minutes", 10},
+            {"15 minutes", 15},
+            {"20 minutes", 20},
+            {"25 minutes", 25},
+            {"30 minutes", 30}
+          ]}
+        />
+        <p class="text-xs text-base-content/60">
+          How long a client may say nothing before the anchor goes home. Short
+          suits a phone reporting from a bus; long suits one that only reports
+          when somebody opens it.
+        </p>
+
         <.input
           field={@form[:ankyra_id]}
           type="select"
@@ -191,6 +260,7 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
      |> assign(:cfg_sources_sel, Enum.map(sources, fn x -> {x.name, x.id} end))
      |> assign(:cfg_ankyra_sel, Enum.map(ankyra, fn x -> {x.topic, x.id} end))
      |> assign(:cfg_sources, sources)
+     |> assign(:cfg_foci, focis)
      |> assign(:tints, RoomSanctum.Tints.all())}
   end
 

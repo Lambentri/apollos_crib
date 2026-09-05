@@ -10,11 +10,17 @@ defmodule RoomSanctum.Worker.Ankyra do
   # Asking is cheap and answering is not: a vision's queries all run again.
   @request_floor_ms 1_000
 
-  # How long a reported position is worth showing, and how many to keep. Five
-  # minutes is a trail rather than a history: long enough to see which way
-  # somebody is going, short enough that it is gone before it is a record.
-  @positions_ttl_s 300
-  @positions_kept 20
+  # How long a reported position is worth *showing*. Five minutes is a trail
+  # rather than a history: long enough to see which way somebody is going,
+  # short enough that it is gone before it is a record.
+  @positions_shown_s 300
+
+  # How long one is worth *keeping*, which is not the same question. A Plani
+  # may wait up to half an hour before it gives up on a client and goes home,
+  # and it cannot ask about a position that has already been dropped. Still a
+  # trail rather than a record: nothing here outlives the process.
+  @positions_ttl_s 1800
+  @positions_kept 64
 
   @registry :zeus
   def start_link(opts) do
@@ -87,11 +93,11 @@ defmodule RoomSanctum.Worker.Ankyra do
   trail. Nil when that client has not reported inside the window, which is the
   signal to fall back to a home foci rather than an error.
   """
-  def position(name, client_id) do
+  def position(name, client_id, max_age_s \\ @positions_shown_s) do
     try do
       "ankyra#{name}"
       |> via_tuple()
-      |> GenServer.call({:position, client_id}, 5_000)
+      |> GenServer.call({:position, client_id, max_age_s}, 5_000)
     rescue
       # A registry that is not up raises from the lookup rather than exiting.
       ArgumentError -> nil
@@ -110,10 +116,10 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   def topic(id), do: "ankyra:#{id}"
 
-  def handle_call({:position, client_id}, _from, state) do
+  def handle_call({:position, client_id, max_age_s}, _from, state) do
     latest =
       state.positions
-      |> prune()
+      |> prune(max_age_s)
       |> Enum.find(fn p -> is_nil(client_id) or p.client_id == client_id end)
 
     {:reply, latest, state}
@@ -372,16 +378,19 @@ defmodule RoomSanctum.Worker.Ankyra do
     end
   end
 
-  defp prune(positions) do
-    cutoff = DateTime.add(DateTime.utc_now(), -@positions_ttl_s, :second)
+  defp prune(positions, max_age_s \\ @positions_ttl_s) do
+    cutoff = DateTime.add(DateTime.utc_now(), -max_age_s, :second)
     Enum.filter(positions, fn p -> DateTime.compare(p.at, cutoff) == :gt end)
   end
 
+  # The page draws a five minute trail whatever the worker is holding for the
+  # Plani's benefit -- keeping a position and showing it are different
+  # questions, and the answer to the second did not change.
   defp broadcast_positions(id, positions) do
     Phoenix.PubSub.broadcast(
       RoomSanctum.PubSub,
       topic(id),
-      {:ankyra_positions, positions}
+      {:ankyra_positions, prune(positions, @positions_shown_s)}
     )
   end
 

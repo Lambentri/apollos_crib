@@ -29,6 +29,28 @@ memory there is nothing to fall back *from*, so the home foci answers.
                     └──no───▶  home foci's place  (from the database)
 ```
 
+### Which home
+
+A Plani may have several. `home_foci_id` is the first and the fallback;
+`home_foci_ids` names others, and `home_tint` follows every foci wearing a
+colour — the same shortcut sources have, and the reason foci now carry a tint
+at all.
+
+With more than one, the anchor settles on **the one nearest to where the client
+last was**, not the one configured first. A house and an office are both home;
+which is the right answer depends on which you were last near.
+
+That last position is held in the worker and nowhere else, so it dies with the
+process — a Plani that has just restarted goes to its first home, which is
+where a Plani with one home has always gone. Keeping it anywhere durable would
+be storing a location history, which is the thing this component exists to
+avoid.
+
+`home_after_mins` is how long a client may say nothing first: 5 to 30 minutes
+in five minute steps. The Ankyra keeps positions for the longest of those, and
+still *shows* only five minutes on its page — keeping a position and displaying
+one are different questions.
+
 ## What already exists
 
 More than it looks, because the pieces were built for other reasons.
