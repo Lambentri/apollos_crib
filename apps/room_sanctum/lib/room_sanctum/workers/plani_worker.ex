@@ -123,7 +123,7 @@ defmodule RoomSanctum.Worker.Plani do
   def handle_cast(:query, %{plani: nil} = state), do: {:noreply, state}
 
   def handle_cast(:query, state) do
-    {anchor, anchored_to, last_seen} = anchor(state.plani, state.last_seen)
+    {anchor, anchored_to, last_seen} = resolve_anchor(state)
 
     # Resolved on every tick rather than held: a source tinted since the last
     # one should join without the Plani being edited, which is the whole point
@@ -191,6 +191,32 @@ defmodule RoomSanctum.Worker.Plani do
   def handle_info({:cfg_changed, :plani, _id}, state), do: handle_cast(:refresh_db_cfg, state)
 
   def handle_info(_msg, state), do: {:noreply, state}
+
+  # The anchor, or the one it had.
+  #
+  # Resolving it reads the database -- which home foci this Plani has, and
+  # where they are -- and a database that cannot answer took the worker down
+  # on every tick, losing its state and its queries with it. That is a worse
+  # outcome than a stale anchor: a Plani drawing from where it last knew is
+  # wrong by however far the client has moved, while a Plani that keeps
+  # restarting shows nothing at all and says only that it restarted.
+  #
+  # Loud, because the cause is nearly always a schema behind the code, and
+  # that wants fixing rather than riding out.
+  defp resolve_anchor(state) do
+    anchor(state.plani, state.last_seen)
+  rescue
+    error ->
+      Logger.warning(
+        "plani#{state.id}: could not resolve an anchor, keeping the last one: " <>
+          Exception.message(error)
+      )
+
+      {state.anchor, state.anchored_to, state.last_seen}
+  catch
+    :exit, _reason ->
+      {state.anchor, state.anchored_to, state.last_seen}
+  end
 
   # Where to ask from: the client if it has said recently, a home foci if not.
   #
