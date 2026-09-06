@@ -2283,8 +2283,9 @@ end
     bcast(id, :downloading, 1, 11)
 
     case HTTPoison.get(cfg.config.url, [], @static_http) do
-      {:ok, result} ->
+      {:ok, %{status_code: 200} = result} ->
         bcast(id, :extracting, 2, 11)
+        Logger.info("GTFS::#{id} downloaded #{byte_size(result.body)} bytes")
 
         case result.body |> trim_zip_tail() |> Unzip.InMem.new() |> Unzip.new() do
           {:ok, unzip} ->
@@ -2340,11 +2341,34 @@ end
             {:error, {:unzip, term}}
         end
 
+      # A server that answers a zip URL with an error page was, until now,
+      # reported as a feed that was not a readable zip -- true, and useless.
+      # It sent an HTML apology and the answer is to look at what it said,
+      # which is the same call the realtime fetches have always made.
+      {:ok, result} ->
+        Logger.error(
+          "GTFS::#{id} static feed answered HTTP #{result.status_code} " <>
+            "(#{byte_size(result.body)} bytes): #{static_body_hint(result.body)}"
+        )
+
+        {:error, {:status, result.status_code}}
+
       {:error, error} ->
         Logger.error("GTFS::#{id} static feed download failed: #{inspect(error)}")
         {:error, {:download, error}}
     end
   end
+
+  # The first line of whatever came instead, flattened. Enough to tell a rate
+  # limit from a login page from a 404, and short enough to sit in a log line.
+  defp static_body_hint(body) when is_binary(body) do
+    body
+    |> binary_part(0, min(byte_size(body), 200))
+    |> String.replace(~r/\s+/, " ")
+    |> String.trim()
+  end
+
+  defp static_body_hint(_body), do: "no body"
 
   defp replace(string) do
     String.replace(string, ~s("), "")
