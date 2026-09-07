@@ -57,7 +57,14 @@ defmodule RoomGtfs.FeedTester do
   defp check_group({url, kinds}, source) do
     base = %{url: display_url(url), kinds: kinds, entities: %{}, findings: []}
 
-    case RoomGtfs.Worker.RT.fetch_rt_url(url) do
+    # The source's own headers, because a feed behind an API key answers 403 to
+    # a request without one -- and a tester that reports "did not answer with
+    # HTTP 200" for a feed the worker fetches perfectly well is worse than no
+    # tester at all. It sends what the worker sends, or it is testing something
+    # else.
+    headers = RoomSanctum.Configuration.Configs.GTFS.request_headers(source.config)
+
+    case RoomGtfs.Worker.RT.fetch_rt_url(url, headers) do
       {:ok, feed} ->
         base
         |> Map.put(:ok, true)
