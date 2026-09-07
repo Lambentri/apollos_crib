@@ -25,6 +25,31 @@ defmodule RoomSanctumWeb.SourceLive.Stations do
 
   @mappable [:gtfs, :gbfs, :aqi]
 
+  # How many stops one source may contribute to a map.
+  #
+  # A national feed has hundreds of thousands, and no map draws that -- but the
+  # cost that mattered was fetching them: the offering page reloads its
+  # stations on a ten second timer, and for Germany that query outran the
+  # fifteen second timeout and took the LiveView down with it, every tick.
+  #
+  # Two thousand is well past what is legible on a map and small enough that
+  # the query is never the slow part. `count_for_source/1` says how many there
+  # really are, so a capped map can admit to it rather than quietly lying about
+  # the size of the feed.
+  @map_cap 2000
+
+  @doc "The cap `for_source/1` applies to a single source's stops."
+  def map_cap, do: @map_cap
+
+  @doc """
+  How many places a source actually has, capped or not.
+
+  Counted in the database rather than by measuring what came back, which
+  cannot tell a source with exactly the cap from one with far more.
+  """
+  def count_for_source(%{type: :gtfs, id: id}), do: Storage.count_stops(id)
+  def count_for_source(source), do: source |> for_source() |> length()
+
   @doc "Whether a source has geography of its own to draw."
   def mappable?(%{type: type}), do: type in @mappable
   def mappable?(_), do: false
@@ -40,7 +65,7 @@ defmodule RoomSanctumWeb.SourceLive.Stations do
   def for_source(%{type: :gbfs, id: id}), do: Storage.list_gbfs_station_information(id)
 
   def for_source(%{type: :gtfs, id: id}),
-    do: id |> Storage.list_stops() |> Enum.map(&stop_as_station/1)
+    do: id |> Storage.list_stops(@map_cap) |> Enum.map(&stop_as_station/1)
 
   def for_source(%{type: :aqi, id: id}),
     do: id |> Storage.list_aqi_stations() |> Enum.map(&site_as_station/1)

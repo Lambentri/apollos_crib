@@ -30,6 +30,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:vehicle_positions, [])
       |> assign(:free_bikes, [])
       |> assign(:stations, [])
+      # Set here as well as on the tick: the dead render happens before the
+      # first tick, and a template reading an assign that is not there yet is
+      # a KeyError on the very first paint.
+      |> assign(:station_count, 0)
       # Both are otherwise only set by the :update_sec tick 200ms in, so any
       # view touching them could be rendered before they exist.
       |> assign(:station_statuses, [])
@@ -76,6 +80,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
     stations = Stations.for_source(socket.assigns.source)
 
+    # What the map is not showing. Counted rather than inferred from the list,
+    # which cannot tell a source with exactly the cap from one with far more.
+    station_count = Stations.count_for_source(socket.assigns.source)
+
     # Add station status for GBFS sources
     station_statuses = Stations.statuses_for_source(socket.assigns.source)
 
@@ -104,6 +112,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
      |> assign(:available_tints, available_tints)
      |> assign(:free_bikes, free_bikes)
      |> assign(:stations, stations)
+     |> assign(:station_count, station_count)
      |> assign(:station_statuses, station_statuses)
      |> assign(:route_types, route_types)
      |> assign(:aircraft, aircraft)

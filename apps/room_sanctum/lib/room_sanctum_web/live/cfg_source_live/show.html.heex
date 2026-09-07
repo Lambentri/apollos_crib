@@ -491,6 +491,12 @@ gl_available_projects={@gitlab_available_projects}
                       add_query_event="map-add-query"
                       queried_station_ids={Enum.map(@queries, &station_id_of/1)}
                     />
+                    <%!-- A national feed has stops by the hundred thousand.
+                          The map draws a bounded subset; saying so is better
+                          than a map that looks complete and is not. --%>
+                    <p :if={@station_count > length(@stations)} class="text-xs opacity-60 mt-1">
+                      Showing <%= length(@stations) %> of <%= @station_count %> stops.
+                    </p>
                   </div>
 
                 <% @view_mode == :paint -> %>

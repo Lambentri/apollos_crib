@@ -1057,6 +1057,24 @@ defmodule RoomSanctum.Storage do
     |> Repo.all()
   end
 
+  @doc """
+  The first `limit` stops of a source, for callers that cannot use all of them.
+
+  A map is the case this exists for. Germany's feed has stops by the hundred
+  thousand, and drawing them is neither possible nor useful -- but *fetching*
+  them is what actually broke: the offering page reloaded every stop on a ten
+  second timer, which at that size took longer than the fifteen second query
+  timeout and killed the LiveView on a loop.
+
+  Ordered, so the same stops come back each time rather than whatever the
+  planner felt like -- a map whose markers reshuffle every tick is worse than
+  one showing a stable subset.
+  """
+  def list_stops(source_id, limit) when is_integer(limit) do
+    from(p in Stop, where: p.source_id == ^source_id, order_by: p.stop_id, limit: ^limit)
+    |> Repo.all()
+  end
+
   def list_stops(source_id, search_term) do
     from(p in Stop,
       where:
