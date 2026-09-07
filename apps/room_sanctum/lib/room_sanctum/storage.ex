@@ -1058,6 +1058,24 @@ defmodule RoomSanctum.Storage do
   end
 
   @doc """
+  A page of a source's stops, after `cursor`, in stop_id order.
+
+  Keyset rather than offset: `OFFSET 400000` makes Postgres walk and discard
+  four hundred thousand rows to reach the last page, so a paged read gets
+  slower the further it goes and ends up costing more than the single query it
+  replaced. `stop_id > cursor` starts where the last page stopped.
+
+  There has been a unique index on (source_id, stop_id) since this table was
+  created, which is exactly this access pattern -- so each page is an index
+  range scan of `limit` rows, whatever page it is.
+  """
+  def stops_after(source_id, cursor, limit) do
+    from(p in Stop, where: p.source_id == ^source_id, order_by: p.stop_id, limit: ^limit)
+    |> then(fn q -> if cursor, do: where(q, [p], p.stop_id > ^cursor), else: q end)
+    |> Repo.all()
+  end
+
+  @doc """
   The first `limit` stops of a source, for callers that cannot use all of them.
 
   A map is the case this exists for. Germany's feed has stops by the hundred

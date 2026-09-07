@@ -4,6 +4,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
+  alias RoomSanctumWeb.SourceLive.StationStream
   alias RoomSanctumWeb.SourceLive.Stations
 
   @impl true
@@ -34,6 +35,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       # first tick, and a template reading an assign that is not there yet is
       # a KeyError on the very first paint.
       |> assign(:station_count, 0)
+      |> assign(:stations_loading, false)
       # Both are otherwise only set by the :update_sec tick 200ms in, so any
       # view touching them could be rendered before they exist.
       |> assign(:station_statuses, [])
@@ -78,11 +80,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       _ -> []
     end
 
-    stations = Stations.for_source(socket.assigns.source)
-
-    # What the map is not showing. Counted rather than inferred from the list,
-    # which cannot tell a source with exactly the cap from one with far more.
-    station_count = Stations.count_for_source(socket.assigns.source)
 
     # Add station status for GBFS sources
     station_statuses = Stations.statuses_for_source(socket.assigns.source)
@@ -111,8 +108,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
      |> assign(:queries, queries)
      |> assign(:available_tints, available_tints)
      |> assign(:free_bikes, free_bikes)
-     |> assign(:stations, stations)
-     |> assign(:station_count, station_count)
      |> assign(:station_statuses, station_statuses)
      |> assign(:route_types, route_types)
      |> assign(:aircraft, aircraft)
@@ -121,6 +116,50 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
+  # Read the source's places in the background, folding each page in as it
+  # lands. Only when connected: the dead render has no process to send to and
+  # no client to paint, and starting one would read a quarter of a million rows
+  # for a page nobody is looking at yet.
+  defp stream_stations(socket, source) do
+    if connected?(socket) and Stations.mappable?(source) do
+      # Linked, so a reader whose page has gone dies with it rather than
+      # finishing into a dead mailbox.
+      {:ok, _pid} = StationStream.start_link(source: source, to: self())
+
+      socket
+      |> assign(:stations, [])
+      |> assign(:stations_loading, true)
+      |> assign(:station_count, Stations.count_for_source(source))
+    else
+      socket
+    end
+  end
+
+  # A page of places, folded in as it lands.
+  #
+  # `batch ++ stations` rather than `stations ++ batch`: ++ walks its left
+  # side, so appending onto the accumulated list costs more with every page and
+  # a quarter of a million stops becomes quadratic. Prepending walks only the
+  # new page, which is the same twenty thousand each time. The map does not
+  # care which order its markers arrive in.
+  def handle_info({:stations_batch, source_id, batch}, socket) do
+    if source_id == socket.assigns.source_id do
+      {:noreply, assign(socket, :stations, batch ++ socket.assigns.stations)}
+    else
+      # A page navigated away from mid-read; its reader is on its way out.
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:stations_done, source_id, total}, socket) do
+    if source_id == socket.assigns.source_id do
+      {:noreply,
+       socket |> assign(:stations_loading, false) |> assign(:station_count, total)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(:update_tester, socket) do
     Process.send_after(self(), :update_tester, 2000)
     case socket.assigns.tester_selected do
@@ -169,6 +208,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       socket
       |> assign(:page_title, page_title(socket.assigns.live_action))
       |> assign(:source, source)
+      |> stream_stations(source)
       |> assign(:source_id, source_id)
       |> assign(:queries, queries)
       |> assign(:available_tints, get_available_tints(queries))

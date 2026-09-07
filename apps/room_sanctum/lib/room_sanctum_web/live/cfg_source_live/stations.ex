@@ -42,6 +42,34 @@ defmodule RoomSanctumWeb.SourceLive.Stations do
   def map_cap, do: @map_cap
 
   @doc """
+  One page of a source's places, and the cursor to ask for the next.
+
+  `{[], :done}` means there are no more. Only GTFS pages -- it is the only one
+  of these that runs to hundreds of thousands -- and everything else comes back
+  whole on its first page, which is what `:done` on the second call says.
+
+  See `RoomSanctumWeb.SourceLive.StationStream` for who calls this and why.
+  """
+  def page(source, cursor, limit)
+
+  def page(_source, :done, _limit), do: {[], :done}
+
+  def page(%{type: :gtfs, id: id}, cursor, limit) do
+    case Storage.stops_after(id, cursor, limit) do
+      [] ->
+        {[], :done}
+
+      stops ->
+        # The cursor is the last stop_id of this page, so the next page starts
+        # after it. Taken from the row rather than counted, because a short
+        # page is the last page and its own last id is still where to resume.
+        {Enum.map(stops, &stop_as_station/1), List.last(stops).stop_id}
+    end
+  end
+
+  def page(source, _cursor, _limit), do: {for_source(source), :done}
+
+  @doc """
   How many places a source actually has, capped or not.
 
   Counted in the database rather than by measuring what came back, which
