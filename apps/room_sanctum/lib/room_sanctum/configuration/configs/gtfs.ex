@@ -49,6 +49,19 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
     # looser than an exact one and can match a trip it should not; a feed that
     # needs it should say so rather than have it guessed from a bad day's data.
     field :rt_trip_id_suffix, :boolean, default: false
+
+    # Headers to send with every request for this feed: static zip, realtime,
+    # and the linked datasets a discovery file points at.
+    #
+    # Arbitrary because the schemes are. Some agencies want `apikey`, some
+    # `x-api-key`, 511 wants it in the query string and needs none of this,
+    # and TMB wants `Authorization: Bearer ...`. Naming a scheme here would
+    # mean a new field for every operator with an opinion.
+    field :headers, :map, default: %{}
+
+    # What the form edits: one `Name: value` per line. The stored shape is the
+    # map; this is the shape a person can type and read back.
+    field :headers_raw, :string, virtual: true
   end
 
   def changeset(source, params) do
@@ -56,10 +69,97 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
     |> cast(
       params,
       ~w(url url_rt_sa url_rt_tu url_rt_vp url_rt_shared tz rt_agency
-         rt_trip_id_suffix rt_period_tu rt_period_vp rt_period_sa)a
+         rt_trip_id_suffix rt_period_tu rt_period_vp rt_period_sa headers)a
     )
+    # Its own cast, with "" kept as a value rather than treated as nothing.
+    # Ecto's default empty_values turns an emptied textarea into no change at
+    # all, so clearing the box left the old headers in place -- which means an
+    # API key could be added through this form and never taken away again.
+    |> cast(params, [:headers_raw], empty_values: [])
     |> validate_required([:url, :tz])
     |> validate_periods()
+    |> put_headers()
+  end
+
+  @doc """
+  The configured headers in the shape HTTPoison wants.
+
+  `[]` for a source that sets none, which is nearly all of them -- and which
+  is also what every caller passed before this existed, so an unconfigured
+  feed makes exactly the request it always did.
+  """
+  def request_headers(%{headers: headers}) when is_map(headers) do
+    Enum.map(headers, fn {name, value} -> {to_string(name), to_string(value)} end)
+  end
+
+  def request_headers(_config), do: []
+
+  @doc """
+  The stored headers as the text the form edits: one `Name: value` per line.
+
+  Sorted, so editing a source does not reshuffle the box every time it is
+  opened -- a map has no order and a textarea that reorders itself looks like
+  it changed something.
+  """
+  def headers_text(%{headers: headers}) when is_map(headers) and map_size(headers) > 0 do
+    headers
+    |> Enum.sort_by(fn {name, _value} -> name end)
+    |> Enum.map_join("\n", fn {name, value} -> "#{name}: #{value}" end)
+  end
+
+  def headers_text(_config), do: ""
+
+  @doc """
+  Parse the textarea into a map, or say which line is wrong.
+
+  Returns `{:ok, map}` or `{:error, line}`. Public because the form and the
+  changeset both want it and a second copy of "what a header line looks like"
+  is the kind of thing that drifts.
+  """
+  def parse_headers(text) when is_binary(text) do
+    text
+    |> String.split(~r/\r?\n/)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.reduce_while({:ok, %{}}, fn line, {:ok, acc} ->
+      case String.split(line, ":", parts: 2) do
+        [name, value] ->
+          name = String.trim(name)
+          value = String.trim(value)
+
+          # A name with a space in it is not a header name, and is nearly
+          # always a colon typed in the value of the line above.
+          if name != "" and not String.contains?(name, " ") do
+            {:cont, {:ok, Map.put(acc, name, value)}}
+          else
+            {:halt, {:error, line}}
+          end
+
+        _ ->
+          {:halt, {:error, line}}
+      end
+    end)
+  end
+
+  def parse_headers(_text), do: {:ok, %{}}
+
+  # Only when the form sent the text field. A changeset that does not mention
+  # headers_raw -- anything not coming from that form -- leaves the stored
+  # headers exactly as they were.
+  defp put_headers(changeset) do
+    case fetch_change(changeset, :headers_raw) do
+      :error ->
+        changeset
+
+      {:ok, text} ->
+        case parse_headers(text) do
+          {:ok, headers} ->
+            put_change(changeset, :headers, headers)
+
+          {:error, line} ->
+            add_error(changeset, :headers_raw, "expected \"Name: value\", got: #{line}")
+        end
+    end
   end
 
   # Below about ten seconds the poller cannot keep up and the feed will not have

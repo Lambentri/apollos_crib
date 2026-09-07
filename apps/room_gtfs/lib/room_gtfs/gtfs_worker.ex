@@ -1151,8 +1151,8 @@ defmodule RoomGtfs.Worker.RT do
   end
 
 
-  def fetch_rt_url(url) do
-    case HTTPoison.get(url, [], @rt_http) do
+  def fetch_rt_url(url, headers \\ []) do
+    case HTTPoison.get(url, headers, @rt_http) do
       {:ok, %{status_code: 200} = result} ->
         decode_rt(url, result)
 
@@ -1380,7 +1380,23 @@ defmodule RoomGtfs.Worker.RT do
 
   defp do_fetch_group(state, url, kinds, period) do
     started = System.monotonic_time(:millisecond)
-    result = FeedCache.get(url, max(period - :timer.seconds(5), :timer.seconds(1)))
+
+    headers =
+      RoomSanctum.Configuration.Configs.GTFS.request_headers(
+        state.inst && state.inst.config
+      )
+
+    # Scoped to the owner. Several of one person's sources pointing at one URL
+    # still fetch it once between them, which is what this cache is for; two
+    # people's do not, because they may hold different credentials for it and
+    # a hit fetched with somebody else's key is a bad kind of correct.
+    result =
+      FeedCache.get(
+        url,
+        max(period - :timer.seconds(5), :timer.seconds(1)),
+        headers,
+        state.inst && state.inst.user_id
+      )
     took = System.monotonic_time(:millisecond) - started
 
     case result do
@@ -2330,7 +2346,9 @@ end
     Logger.info("GTFS::#{id} updating static info")
     bcast(id, :downloading, 1, 11)
 
-    case HTTPoison.get(cfg.config.url, [], @static_http) do
+    headers = RoomSanctum.Configuration.Configs.GTFS.request_headers(cfg.config)
+
+    case HTTPoison.get(cfg.config.url, headers, @static_http) do
       {:ok, %{status_code: 200} = result} ->
         bcast(id, :extracting, 2, 11)
         Logger.info("GTFS::#{id} downloaded #{byte_size(result.body)} bytes")

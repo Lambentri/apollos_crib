@@ -126,6 +126,25 @@
         511.org allows 60 on a default token.
     </div>
     <div class="form-control">
+        <.input
+            field={gtfs_form[:headers_raw]}
+            type="textarea"
+            label="Request headers"
+            rows="3"
+            value={gtfs_form[:headers_raw].value ||
+                   RoomSanctum.Configuration.Configs.GTFS.headers_text(gtfs_form.data)}
+            placeholder={"Authorization: Bearer ...\nx-api-key: ..."}
+        />
+        <label class="label">
+            <span class="label-text-alt opacity-70">
+                One <code>Name: value</code> per line, sent with every request for this
+                feed &mdash; the static zip and the realtime feeds alike. For agencies
+                that gate downloads behind a key. Leave empty for the ones that do not,
+                which is most of them.
+            </span>
+        </label>
+    </div>
+    <div class="form-control">
         <.input field={gtfs_form[:rt_trip_id_suffix]} type="checkbox"
                 label="Realtime sends partial trip ids"/>
         <label class="label">

@@ -73,23 +73,37 @@ defmodule RoomGtfs.FeedCache do
   @doc """
   The parsed feed at `url`, fetching it only if nobody has within `max_age`.
 
-  Returns what `RoomGtfs.Worker.RT.fetch_rt_url/1` returns, so it drops into
+  Returns what `RoomGtfs.Worker.RT.fetch_rt_url/2` returns, so it drops into
   call sites unchanged: `{:ok, %TransitRealtime.FeedMessage{}}` or
   `{:error, reason}`. Errors are not cached -- a feed that failed should be
   retried on the next poll, not remembered as broken for 25 seconds.
+
+  `headers` are sent with the fetch; `scope` is who is asking, and entries are
+  keyed by both the URL and it. A feed can require an API key, and two people
+  reading the same feed hold different ones -- so the sharing this exists for
+  stops at the owner's edge. Within one owner nothing changes: several sources
+  pointing at one URL still fetch it once between them.
+
+  Scoping by owner rather than by the headers themselves is deliberate. It
+  keeps one entry per URL per person however their credentials are written,
+  and it keeps secrets out of an ETS key that `stats/0` and any observer can
+  read back.
   """
-  def get(url, max_age \\ @default_max_age) when is_binary(url) do
-    case fresh_entry(url, max_age) do
+  def get(url, max_age \\ @default_max_age, headers \\ [], scope \\ nil)
+      when is_binary(url) do
+    key = {url, scope}
+
+    case fresh_entry(key, max_age) do
       {:ok, _feed} = hit ->
         bump(@hits)
         hit
 
       :stale ->
-        GenServer.call(__MODULE__, {:fetch, url, max_age}, @call_timeout)
+        GenServer.call(__MODULE__, {:fetch, key, headers, max_age}, @call_timeout)
     end
   catch
     :exit, _reason ->
-      RoomGtfs.Worker.RT.fetch_rt_url(url)
+      RoomGtfs.Worker.RT.fetch_rt_url(url, headers)
   end
 
   @doc """
@@ -119,41 +133,41 @@ defmodule RoomGtfs.FeedCache do
   end
 
   @impl true
-  def handle_call({:fetch, url, max_age}, from, state) do
+  def handle_call({:fetch, key, headers, max_age}, from, state) do
     # Re-checked: the caller missed, then waited on this mailbox, and another
-    # fetch of the same URL may have landed in between.
-    case fresh_entry(url, max_age) do
+    # fetch of the same key may have landed in between.
+    case fresh_entry(key, max_age) do
       {:ok, _feed} = hit ->
         bump(@hits)
         {:reply, hit, state}
 
       :stale ->
         case state.inflight do
-          %{^url => waiting} ->
-            {:noreply, put_in(state.inflight[url], [from | waiting])}
+          %{^key => waiting} ->
+            {:noreply, put_in(state.inflight[key], [from | waiting])}
 
           _ ->
-            {_pid, ref} = spawn_fetch(url)
+            {_pid, ref} = spawn_fetch(key, headers)
 
             {:noreply,
              state
-             |> put_in([:inflight, url], [from])
-             |> put_in([:refs, ref], url)}
+             |> put_in([:inflight, key], [from])
+             |> put_in([:refs, ref], key)}
         end
     end
   end
 
   @impl true
-  def handle_info({:fetched, url, result}, state) do
-    {waiting, inflight} = Map.pop(state.inflight, url, [])
+  def handle_info({:fetched, key, result}, state) do
+    {waiting, inflight} = Map.pop(state.inflight, key, [])
 
     # Dropped before the fetcher's :DOWN arrives, so the normal exit that
     # follows this message is not mistaken for a crash.
-    {refs, _} = pop_ref(state.refs, url)
+    {refs, _} = pop_ref(state.refs, key)
 
     case result do
       {:ok, _feed} ->
-        :ets.insert(@table, {url, System.monotonic_time(:millisecond), result})
+        :ets.insert(@table, {key, System.monotonic_time(:millisecond), result})
         bump(@fetches)
 
       {:error, _reason} ->
@@ -182,9 +196,9 @@ defmodule RoomGtfs.FeedCache do
       {nil, _refs} ->
         {:noreply, state}
 
-      {url, refs} ->
+      {{url, _scope} = key, refs} ->
         Logger.warning("gtfs-rt fetch of #{url} died: #{inspect(reason)}")
-        {waiting, inflight} = Map.pop(state.inflight, url, [])
+        {waiting, inflight} = Map.pop(state.inflight, key, [])
         Enum.each(waiting, &GenServer.reply(&1, {:error, {:fetch_crashed, reason}}))
         {:noreply, %{state | inflight: inflight, refs: refs}}
     end
@@ -193,32 +207,32 @@ defmodule RoomGtfs.FeedCache do
   @impl true
   def handle_info(_msg, state), do: {:noreply, state}
 
-  defp pop_ref(refs, url) do
-    case Enum.find(refs, fn {_ref, u} -> u == url end) do
+  defp pop_ref(refs, key) do
+    case Enum.find(refs, fn {_ref, k} -> k == key end) do
       nil -> {refs, nil}
       {ref, _} -> {Map.delete(refs, ref), ref}
     end
   end
 
-  defp spawn_fetch(url) do
+  defp spawn_fetch({url, _scope} = key, headers) do
     parent = self()
 
     spawn_monitor(fn ->
       result =
         try do
-          RoomGtfs.Worker.RT.fetch_rt_url(url)
+          RoomGtfs.Worker.RT.fetch_rt_url(url, headers)
         rescue
           e -> {:error, e}
         catch
           kind, reason -> {:error, {kind, reason}}
         end
 
-      send(parent, {:fetched, url, result})
+      send(parent, {:fetched, key, result})
     end)
   end
 
-  defp fresh_entry(url, max_age) do
-    with [{^url, at, result}] <- safe_lookup(url),
+  defp fresh_entry(key, max_age) do
+    with [{^key, at, result}] <- safe_lookup(key),
          true <- System.monotonic_time(:millisecond) - at <= max_age do
       result
     else
@@ -226,8 +240,8 @@ defmodule RoomGtfs.FeedCache do
     end
   end
 
-  defp safe_lookup(url) do
-    :ets.lookup(@table, url)
+  defp safe_lookup(key) do
+    :ets.lookup(@table, key)
   rescue
     ArgumentError -> []
   end

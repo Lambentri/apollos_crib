@@ -177,7 +177,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    source = Configuration.get_source!(id) |> IO.inspect
+    # Not inspected. This struct now carries a source's request headers, and an
+    # API key printed to the logs on every page load is a secret in a place
+    # nobody thinks to look for one.
+    source = Configuration.get_source!(id)
 
     # Subscribe to relevant PubSub channels
     case source.type do
