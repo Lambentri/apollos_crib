@@ -2138,6 +2138,54 @@ end
     end
   end
 
+  @doc false
+  # The entries of a zip that are actually this feed's GTFS files.
+  #
+  # Three things go wrong in real feeds, and all of them end the same way --
+  # matching the whole path against a list of bare names finds nothing, and an
+  # import that loads no files looks exactly like one that worked.
+  #
+  #   * The files are inside a folder. Delhi publishes
+  #     `delhi_buses_static_gtfs_v1-2/stops.txt`, which is not `stops.txt`.
+  #
+  #   * A zip built on a Mac carries `__MACOSX/._stops.txt` beside every real
+  #     file -- an AppleDouble resource fork, not a GTFS file. Matched on
+  #     basename alone these are still excluded, since `._stops.txt` is not
+  #     `stops.txt`, but they are dropped explicitly rather than by luck.
+  #
+  #   * A zip can hold more than one feed, each in its own folder. Taking every
+  #     `stops.txt` would merge two agencies into one source, so the directory
+  #     with the most GTFS files wins and the rest are left alone.
+  def gtfs_entries(files, id \\ nil) do
+    by_dir =
+      files
+      |> Enum.reject(&apple_double?/1)
+      |> Enum.filter(&(Path.basename(&1.file_name) in @import_files))
+      |> Enum.group_by(&Path.dirname(&1.file_name))
+
+    case by_dir |> Enum.sort_by(fn {dir, entries} -> {-length(entries), dir} end) do
+      [] ->
+        []
+
+      [{dir, entries} | rest] ->
+        if dir != "." do
+          Logger.info("GTFS::#{id} feed is nested under #{dir}/")
+        end
+
+        for {other, _} <- rest do
+          Logger.info("GTFS::#{id} ignoring a second feed under #{other}/")
+        end
+
+        entries
+    end
+  end
+
+  # `__MACOSX/._trips.txt` and friends: metadata a Mac's zip tool leaves
+  # behind, which is not a GTFS file however much its name looks like one.
+  defp apple_double?(%{file_name: name}) do
+    String.starts_with?(name, "__MACOSX/") or String.starts_with?(Path.basename(name), "._")
+  end
+
   defp file_to_atom(filename) do
     case filename do
       "agency.txt" ->
@@ -2313,12 +2361,13 @@ end
               # that numbers the steps makes the order the bar claims the order
               # the files are actually written in, for every feed.
               files
-              |> Enum.filter(&(&1.file_name in @import_files))
-              |> Enum.sort_by(&file_to_order(&1.file_name))
+              |> gtfs_entries(id)
+              |> Enum.sort_by(&file_to_order(Path.basename(&1.file_name)))
               |> Enum.map(fn e ->
-                type = file_to_atom(e.file_name)
+                name = Path.basename(e.file_name)
+                type = file_to_atom(name)
 
-                bcast(id, type, file_to_order(e.file_name), 12)
+                bcast(id, type, file_to_order(name), 12)
 
                 Unzip.file_stream!(unzip, e.file_name)
                 |> write_file(type, id, nil)
