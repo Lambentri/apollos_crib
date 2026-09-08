@@ -236,6 +236,7 @@ private fun StatusHeader(
     modifier: Modifier = Modifier
 ) {
     val palette = LocalAppTheme.current
+    val heading by rememberHeading()
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -258,6 +259,12 @@ private fun StatusHeader(
                 color = palette.dim
             )
         }
+        // Between the two, because it belongs to neither: the cards say a stop
+        // is NE of you and this says which way NE is. Nothing to read without
+        // both, which is why it sits where the eye crosses from one to the
+        // other.
+        Compass(heading, Modifier.padding(horizontal = 12.dp))
+
         // The connection, and the way into it, on the right: both about the
         // link rather than about the data.
         Column(horizontalAlignment = Alignment.End) {
