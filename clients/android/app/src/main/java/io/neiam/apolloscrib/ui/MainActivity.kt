@@ -45,6 +45,7 @@ import io.neiam.apolloscrib.data.Pairing
 import io.neiam.apolloscrib.feed.FeedProvider
 import kotlinx.coroutines.delay
 import io.neiam.apolloscrib.widget.BoardWidget
+import io.neiam.apolloscrib.widget.RichBoardWidget
 import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
 import io.neiam.apolloscrib.ui.theme.CribTheme
@@ -106,6 +107,7 @@ class MainActivity : ComponentActivity() {
                                 // screen keeps the old colours until something
                                 // unrelated happens.
                                 BoardWidget.refresh(this)
+                                RichBoardWidget.refresh(this)
                             },
                             onConnect = {
                                 AnkyraService.start(this)

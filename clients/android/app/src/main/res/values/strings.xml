@@ -3,5 +3,6 @@
     <string name="app_name">Apollo\'s Crib</string>
     <string name="configure">Choose a query</string>
     <string name="widget_description">A vision\'s board, one card at a time</string>
+    <string name="rich_widget_description">A vision\'s board in detail, one card at a time</string>
     <string name="widget_empty">No board yet — open Apollo\'s Crib to connect</string>
 </resources>

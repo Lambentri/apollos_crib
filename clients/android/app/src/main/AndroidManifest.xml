@@ -70,10 +70,30 @@
                 android:resource="@xml/board_widget_info" />
         </receiver>
 
+        <!-- The same board in detail, as its own widget. A home screen has
+             room for both, and they answer different questions: the compact
+             one for a glance, this one for the readings a glyph cannot
+             label. -->
+        <receiver
+            android:name=".widget.RichBoardWidget"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/rich_board_widget_info" />
+        </receiver>
+
         <!-- The cards themselves. Bound by the launcher's widget host, so it
              needs the permission the host holds. -->
         <service
             android:name=".widget.BoardWidgetService"
+            android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <service
+            android:name=".widget.RichBoardWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
             android:exported="false" />
 

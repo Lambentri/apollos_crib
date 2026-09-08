@@ -18,6 +18,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import io.neiam.apolloscrib.targets.Targets
 import io.neiam.apolloscrib.widget.BoardWidget
+import io.neiam.apolloscrib.widget.RichBoardWidget
 import io.neiam.apolloscrib.ui.MainActivity
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -142,6 +143,7 @@ class AnkyraService : Service() {
         settings.clearDismissed()
         Targets.notifyAll(this)
         BoardWidget.refresh(this)
+        RichBoardWidget.refresh(this)
     }
 
     private fun onState(newState: AnkyraClient.State) {
