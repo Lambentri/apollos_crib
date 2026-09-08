@@ -51,16 +51,18 @@ class Settings(context: Context) {
         set(value) = prefs.edit { putBoolean(KEY_PUBLISH_LOCATION, value) }
 
     /**
-     * Whether the board shows a few detailed cards rather than many compact
-     * ones. Toggled by holding the compass.
+     * How many detailed cards the board shows: 0 for the compact board, 1 to 3
+     * for that many rich ones. Cycled by holding the compass.
      *
-     * Remembered, because it is a way of using the app rather than a moment:
-     * somebody who wants the whole picture of three departures wants it again
-     * next time they open it.
+     * A count rather than a switch, because how much detail you want is not a
+     * yes or no -- one card is a departure board for the stop you are standing
+     * at, three is a comparison. Coerced into range on read, so a value left
+     * by an older build cannot put the screen in a state the gesture cannot
+     * get out of.
      */
-    var richMode: Boolean
-        get() = prefs.getBoolean(KEY_RICH_MODE, false)
-        set(value) = prefs.edit { putBoolean(KEY_RICH_MODE, value) }
+    var richCards: Int
+        get() = prefs.getInt(KEY_RICH_CARDS, 0).coerceIn(0, MAX_RICH_CARDS)
+        set(value) = prefs.edit { putInt(KEY_RICH_CARDS, value.coerceIn(0, MAX_RICH_CARDS)) }
 
     /**
      * Which of the ported palettes the app's own screens use. Not a
@@ -137,7 +139,10 @@ class Settings(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_HAS_CONNECTED = "has_connected"
         private const val KEY_PUBLISH_LOCATION = "publish_location"
-        private const val KEY_RICH_MODE = "rich_mode"
+        private const val KEY_RICH_CARDS = "rich_cards"
+
+        /** Past three the screen is a list again, which is the other mode. */
+        const val MAX_RICH_CARDS = 3
         private const val KEY_CLIENT_ID = "client_id"
         private const val KEY_BINDING_PREFIX = "binding_"
         private const val KEY_DISMISSED = "dismissed"

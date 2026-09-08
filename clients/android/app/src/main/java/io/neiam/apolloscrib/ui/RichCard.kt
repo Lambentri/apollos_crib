@@ -45,7 +45,7 @@ fun RichCard(entry: VisionEntry, route: GtfsPlusCondensed, modifier: Modifier = 
     val palette = LocalAppTheme.current
 
     Card(modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Header(entry, route, palette.dim)
 
             // Four is what fits without the card becoming a timetable. Past
@@ -79,39 +79,61 @@ fun RichCard(entry: VisionEntry, route: GtfsPlusCondensed, modifier: Modifier = 
 
 @Composable
 private fun Header(entry: VisionEntry, route: GtfsPlusCondensed, dim: Color) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        // The route, and which way this stop lies. One line, because between
+        // them they are the card's identity.
         Row(verticalAlignment = Alignment.CenterVertically) {
-            // The route's own colour, where the agency publishes one. A badge
-            // rather than tinted text: this is the thing on the front of the
-            // bus, and it is a badge there too.
             RouteBadge(route)
 
-            Spacer(Modifier.width(10.dp))
-
-            Text(
-                route.dest ?: entry.label(),
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f)
-            )
+            Spacer(Modifier.weight(1f))
 
             route.bearing?.let { bearing ->
-                Glyph(R.drawable.fa_location_arrow, 12.dp, dim)
-                Spacer(Modifier.width(4.dp))
-                Text(bearing, style = MaterialTheme.typography.labelMedium, color = dim)
+                Glyph(R.drawable.fa_location_arrow, 13.dp, dim)
+                Spacer(Modifier.width(5.dp))
+                Text(bearing, style = MaterialTheme.typography.titleSmall, color = dim)
             }
         }
 
+        // Where it goes, given the room to say so. This is what somebody
+        // reads first and the compact card could only ever abbreviate: two
+        // lines here rather than one ellipsised one, because "Alewife via
+        // Harvard" cut to "Alewife via..." is a different destination.
         Text(
-            listOfNotNull(entry.label(), route.dir, route.route_long?.takeIf { it != route.dest })
-                .distinct()
-                .joinToString(" · "),
-            style = MaterialTheme.typography.bodySmall,
-            color = dim,
-            maxLines = 1,
+            route.dest ?: entry.label(),
+            style = MaterialTheme.typography.headlineSmall,
+            maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
+
+        // The stop it leaves from, on its own line. In compact mode this is
+        // the card's title and the destination is squeezed in beside it; here
+        // there is room for both to be themselves.
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Glyph(R.drawable.fa_location_dot, 13.dp, dim)
+            Spacer(Modifier.width(6.dp))
+            Text(
+                entry.label(),
+                style = MaterialTheme.typography.titleSmall,
+                color = dim,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+
+        val extra =
+            listOfNotNull(route.dir, route.route_long?.takeIf { it != route.dest })
+                .distinct()
+                .joinToString(" · ")
+
+        if (extra.isNotEmpty()) {
+            Text(
+                extra,
+                style = MaterialTheme.typography.bodySmall,
+                color = dim,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
     }
 }
 
@@ -122,12 +144,12 @@ private fun RouteBadge(route: GtfsPlusCondensed) {
 
     Text(
         route.displayName(),
-        style = MaterialTheme.typography.titleMedium,
+        style = MaterialTheme.typography.headlineSmall,
         color = foreground ?: MaterialTheme.colorScheme.onSecondary,
         modifier = Modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(background ?: MaterialTheme.colorScheme.secondary)
-            .padding(horizontal = 8.dp, vertical = 2.dp)
+            .padding(horizontal = 12.dp, vertical = 4.dp)
     )
 }
 
@@ -153,7 +175,7 @@ private fun Arrival(arrival: PlusArrival, dim: Color) {
 
         Text(
             arrival.best()?.asClockTime() ?: "--:--",
-            style = MaterialTheme.typography.titleMedium,
+            style = MaterialTheme.typography.headlineSmall,
             fontFamily = FontFamily.Monospace,
             textDecoration = if (cancelled) TextDecoration.LineThrough else null,
             color = if (cancelled) dim else MaterialTheme.colorScheme.onSurface

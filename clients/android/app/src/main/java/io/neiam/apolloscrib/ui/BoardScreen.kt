@@ -82,8 +82,10 @@ fun BoardScreen(
 
     // Held here rather than in the header, because the header only offers the
     // gesture -- what changes is the whole board below it.
-    var rich by remember { mutableStateOf(Settings(context).richMode) }
-    val plus = remember(boards, rich) { if (rich) store.plusEntries() else emptyList() }
+    var richCards by remember { mutableStateOf(Settings(context).richCards) }
+    val plus = remember(boards, richCards) {
+        if (richCards > 0) store.plusEntries() else emptyList()
+    }
 
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
@@ -158,10 +160,13 @@ fun BoardScreen(
             state = state,
             lastUpdated = lastUpdated,
             stale = stale,
-            rich = rich,
+            richCards = richCards,
             onToggleRich = {
-                rich = !rich
-                Settings(context).richMode = rich
+                // One more each time, and off the end back to the compact
+                // board -- so the gesture always has somewhere to go and never
+                // needs a second one to undo it.
+                richCards = (richCards + 1) % (Settings.MAX_RICH_CARDS + 1)
+                Settings(context).richCards = richCards
             },
             onEditConnection = onEditConnection,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
@@ -206,13 +211,17 @@ fun BoardScreen(
             }
         }
 
-        if (rich) {
-            // Three, because the point of this mode is depth rather than
-            // coverage: a card here is four departures with everything the
-            // feed said about each, and a screen of those is unreadable.
-            val routes = plus.flatMap { entry ->
-                entry.decode<List<GtfsPlusCondensed>>().orEmpty().map { entry to it }
-            }
+        if (richCards > 0) {
+            // Soonest first, then as many as asked for. Taking them in payload
+            // order would show whichever the publisher happened to list, which
+            // for a stop with six routes is not the one leaving next.
+            val routes = plus
+                .flatMap { entry ->
+                    entry.decode<List<GtfsPlusCondensed>>().orEmpty().map { entry to it }
+                }
+                .sortedBy { (_, route) ->
+                    route.arrivals.firstNotNullOfOrNull { it.best() } ?: "99:99:99"
+                }
 
             if (routes.isEmpty()) {
                 item {
@@ -238,7 +247,7 @@ fun BoardScreen(
             }
 
             items(
-                routes.take(3),
+                routes.take(richCards),
                 key = { (entry, route) -> "${entry.key}-${route.route}-${route.dest}" }
             ) { (entry, route) ->
                 RichCard(entry, route)
@@ -285,7 +294,7 @@ private fun StatusHeader(
     state: AnkyraClient.State,
     lastUpdated: Long?,
     stale: Boolean,
-    rich: Boolean,
+    richCards: Int,
     onToggleRich: () -> Unit,
     onEditConnection: (() -> Unit)?,
     modifier: Modifier = Modifier
@@ -330,7 +339,12 @@ private fun StatusHeader(
                     onClick = {},
                     onLongClick = onToggleRich,
                     onLongClickLabel =
-                        if (rich) "Show every card" else "Show detailed cards"
+                        if (richCards == Settings.MAX_RICH_CARDS) {
+                            "Show every card"
+                        } else {
+                            "Show ${richCards + 1} detailed card" +
+                                if (richCards == 0) "" else "s"
+                        }
                 )
         )
 
