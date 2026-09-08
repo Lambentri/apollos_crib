@@ -210,7 +210,12 @@ private fun declinationAt(context: Context): Float? {
  * cards saying a stop is NE of you.
  */
 @Composable
-fun Compass(heading: Heading, modifier: Modifier = Modifier) {
+fun Compass(
+    heading: Heading,
+    modifier: Modifier = Modifier,
+    /** How far through the card rotation, 0..1, or null when nothing rotates. */
+    rotation: Float? = null
+) {
     if (!heading.available) return
 
     val palette = LocalAppTheme.current
@@ -220,7 +225,10 @@ fun Compass(heading: Heading, modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
-        Canvas(Modifier.size(34.dp)) { drawRose(heading.degrees, palette.dim, palette.accent) }
+        Canvas(Modifier.size(34.dp)) {
+            drawRose(heading.degrees, palette.dim, palette.accent)
+            rotation?.let { drawTurn(it, palette.accent) }
+        }
 
         Text(
             "${wrap(heading.degrees).roundToInt()}° ${compassPoint(heading.degrees)}",
@@ -229,6 +237,31 @@ fun Compass(heading: Heading, modifier: Modifier = Modifier) {
             color = palette.dim
         )
     }
+}
+
+/**
+ * How much of the current turn has passed, as an arc outside the dial.
+ *
+ * Outside rather than over it, so it never obscures the reading it is drawn
+ * around -- the compass is the thing being looked at and the timer is the
+ * thing being glanced at.
+ */
+private fun DrawScope.drawTurn(progress: Float, accent: androidx.compose.ui.graphics.Color) {
+    val inset = 0.5f
+
+    drawArc(
+        color = accent.copy(alpha = 0.75f),
+        // From the top, clockwise, like anything else measuring a turn.
+        startAngle = -90f,
+        sweepAngle = 360f * progress.coerceIn(0f, 1f),
+        useCenter = false,
+        topLeft = Offset(inset, inset),
+        size = androidx.compose.ui.geometry.Size(
+            size.minDimension - inset * 2,
+            size.minDimension - inset * 2
+        ),
+        style = Stroke(width = 2f)
+    )
 }
 
 private fun DrawScope.drawRose(

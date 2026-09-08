@@ -157,6 +157,7 @@ object Targets {
 
     val renderers: List<SourceRenderer> = listOf(
         GtfsRenderer,
+        GtfsPlusRenderer,
         GbfsRenderer,
         WeatherRenderer,
         TidalRenderer,

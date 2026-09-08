@@ -3,6 +3,7 @@ package io.neiam.apolloscrib.ui
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import io.neiam.apolloscrib.types.GtfsPlusCondensed
+import io.neiam.apolloscrib.types.SourceType
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -87,6 +88,24 @@ fun BoardScreen(
         if (richCards > 0) store.plusEntries() else emptyList()
     }
 
+    // Soonest first, then a window onto them. Taking them in payload order
+    // would show whichever the publisher happened to list, which for a stop
+    // with six routes is not the one leaving next.
+    val routes = remember(plus) {
+        plus
+            .flatMap { entry ->
+                entry.decode<List<GtfsPlusCondensed>>().orEmpty().map { entry to it }
+            }
+            .sortedBy { (_, route) ->
+                route.arrivals.firstNotNullOfOrNull { it.best() } ?: "99:99:99"
+            }
+    }
+
+    // Rotated only when there is more than fits. Turning a list that is
+    // already whole would take cards away and give them back for nothing.
+    val window = rotatingWindow(routes.size, richCards)
+    val rotation by rememberRotationProgress(rotating = routes.size > richCards && richCards > 0)
+
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
     // request is debounced at the other end -- so a new payload is the only
@@ -161,6 +180,7 @@ fun BoardScreen(
             lastUpdated = lastUpdated,
             stale = stale,
             richCards = richCards,
+            rotation = rotation,
             onToggleRich = {
                 // One more each time, and off the end back to the compact
                 // board -- so the gesture always has somewhere to go and never
@@ -212,16 +232,6 @@ fun BoardScreen(
         }
 
         if (richCards > 0) {
-            // Soonest first, then as many as asked for. Taking them in payload
-            // order would show whichever the publisher happened to list, which
-            // for a stop with six routes is not the one leaving next.
-            val routes = plus
-                .flatMap { entry ->
-                    entry.decode<List<GtfsPlusCondensed>>().orEmpty().map { entry to it }
-                }
-                .sortedBy { (_, route) ->
-                    route.arrivals.firstNotNullOfOrNull { it.best() } ?: "99:99:99"
-                }
 
             if (routes.isEmpty()) {
                 item {
@@ -247,10 +257,21 @@ fun BoardScreen(
             }
 
             items(
-                routes.take(richCards),
+                window.map { routes[it] },
                 key = { (entry, route) -> "${entry.key}-${route.route}-${route.dest}" }
             ) { (entry, route) ->
                 RichCard(entry, route)
+            }
+
+            // Everything Plus does not have an extended reading for -- the
+            // weather, the bikes, the tides. Plus carries Basic's own answer
+            // for those, so they are the same cards they always were, and
+            // leaving them out would make this mode a transit app rather than
+            // a board with detail on it.
+            plus.filter { it.type != SourceType.GtfsPlus }.forEach { entry ->
+                items(Targets.preview(entry), key = { "${entry.key}-${it.id}" }) { preview ->
+                    PreviewCard(preview)
+                }
             }
         } else {
             entries.forEach { entry ->
@@ -295,6 +316,8 @@ private fun StatusHeader(
     lastUpdated: Long?,
     stale: Boolean,
     richCards: Int,
+    /** How far through the card rotation, or null when nothing is rotating. */
+    rotation: Float?,
     onToggleRich: () -> Unit,
     onEditConnection: (() -> Unit)?,
     modifier: Modifier = Modifier
@@ -329,7 +352,8 @@ private fun StatusHeader(
         // other.
         Compass(
             heading,
-            Modifier
+            rotation = rotation,
+            modifier = Modifier
                 .padding(horizontal = 12.dp)
                 // A long press rather than a tap: the compass is a readout,
                 // and something you read should not change the screen when

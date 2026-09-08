@@ -33,7 +33,14 @@ private class BoardFactory(private val context: Context) : RemoteViewsService.Re
      */
     override fun onDataSetChanged() {
         palette = appThemeByKey(Settings(context).themeKey)
-        cards = store.entries().flatMap { Targets.preview(it) }
+        // The Plus board where there is one: it carries the extended reading
+        // for transit and Basic's own answer for every type Plus does not
+        // write, so it is the same board with more on it rather than a
+        // different one. Falls back the moment it is absent, which is every
+        // Pythiae that has not been asked to publish it.
+        val board = store.plusEntries().ifEmpty { store.entries() }
+
+        cards = board.flatMap { Targets.preview(it) }
     }
 
     override fun onDestroy() {
