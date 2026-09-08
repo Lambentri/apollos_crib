@@ -1,5 +1,8 @@
 package io.neiam.apolloscrib.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import io.neiam.apolloscrib.types.GtfsPlusCondensed
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -77,6 +80,11 @@ fun BoardScreen(
 
     val context = LocalContext.current
 
+    // Held here rather than in the header, because the header only offers the
+    // gesture -- what changes is the whole board below it.
+    var rich by remember { mutableStateOf(Settings(context).richMode) }
+    val plus = remember(boards, rich) { if (rich) store.plusEntries() else emptyList() }
+
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
     // request is debounced at the other end -- so a new payload is the only
@@ -150,6 +158,11 @@ fun BoardScreen(
             state = state,
             lastUpdated = lastUpdated,
             stale = stale,
+            rich = rich,
+            onToggleRich = {
+                rich = !rich
+                Settings(context).richMode = rich
+            },
             onEditConnection = onEditConnection,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
         )
@@ -193,11 +206,50 @@ fun BoardScreen(
             }
         }
 
-        entries.forEach { entry ->
-            // No preview means the renderer had nothing worth a card -- a
-            // stop with nothing due says so by not being there.
-            items(Targets.preview(entry), key = { "${entry.key}-${it.id}" }) { preview ->
-                PreviewCard(preview)
+        if (rich) {
+            // Three, because the point of this mode is depth rather than
+            // coverage: a card here is four departures with everything the
+            // feed said about each, and a screen of those is unreadable.
+            val routes = plus.flatMap { entry ->
+                entry.decode<List<GtfsPlusCondensed>>().orEmpty().map { entry to it }
+            }
+
+            if (routes.isEmpty()) {
+                item {
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Text(
+                                "No detailed board yet",
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                "The extended reading is published separately, and only " +
+                                    "when the Pythiae is asked for it. Hold the compass " +
+                                    "again to go back.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = LocalAppTheme.current.dim
+                            )
+                        }
+                    }
+                }
+            }
+
+            items(
+                routes.take(3),
+                key = { (entry, route) -> "${entry.key}-${route.route}-${route.dest}" }
+            ) { (entry, route) ->
+                RichCard(entry, route)
+            }
+        } else {
+            entries.forEach { entry ->
+                // No preview means the renderer had nothing worth a card -- a
+                // stop with nothing due says so by not being there.
+                items(Targets.preview(entry), key = { "${entry.key}-${it.id}" }) { preview ->
+                    PreviewCard(preview)
+                }
             }
         }
 
@@ -227,11 +279,14 @@ fun BoardScreen(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun StatusHeader(
     state: AnkyraClient.State,
     lastUpdated: Long?,
     stale: Boolean,
+    rich: Boolean,
+    onToggleRich: () -> Unit,
     onEditConnection: (() -> Unit)?,
     modifier: Modifier = Modifier
 ) {
@@ -263,7 +318,21 @@ private fun StatusHeader(
         // is NE of you and this says which way NE is. Nothing to read without
         // both, which is why it sits where the eye crosses from one to the
         // other.
-        Compass(heading, Modifier.padding(horizontal = 12.dp))
+        Compass(
+            heading,
+            Modifier
+                .padding(horizontal = 12.dp)
+                // A long press rather than a tap: the compass is a readout,
+                // and something you read should not change the screen when
+                // your thumb brushes it. Nothing is bound to the short press,
+                // so a stray tap does nothing at all.
+                .combinedClickable(
+                    onClick = {},
+                    onLongClick = onToggleRich,
+                    onLongClickLabel =
+                        if (rich) "Show every card" else "Show detailed cards"
+                )
+        )
 
         // The connection, and the way into it, on the right: both about the
         // link rather than about the data.

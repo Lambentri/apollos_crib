@@ -72,7 +72,8 @@ class AnkyraService : Service() {
             client = AnkyraClient(
                 settings = settings,
                 onMessage = ::onPayload,
-                onState = ::onState
+                onState = ::onState,
+                onPlus = ::onPlusPayload
             ).also { it.connect() }
         }
         // Whether this reports its location is a setting, so every start is a
@@ -122,6 +123,15 @@ class AnkyraService : Service() {
     fun reportLocationNow(onResult: (Boolean) -> Unit) {
         val reporter = location
         if (reporter == null) onResult(false) else reporter.reportNow(onResult)
+    }
+
+    // The extended reading. Stored and drawn only in rich mode, but stored
+    // whenever it arrives: switching modes should show the board that is
+    // current, not wait for the next tick to fetch one.
+    private fun onPlusPayload(payload: String) {
+        Log.d(TAG, "plus payload: ${payload.length} bytes")
+        store.savePlus(payload)
+        Targets.notifyAll(this)
     }
 
     private fun onPayload(payload: String) {

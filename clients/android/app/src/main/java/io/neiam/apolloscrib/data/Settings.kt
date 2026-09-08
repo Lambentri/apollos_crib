@@ -51,6 +51,18 @@ class Settings(context: Context) {
         set(value) = prefs.edit { putBoolean(KEY_PUBLISH_LOCATION, value) }
 
     /**
+     * Whether the board shows a few detailed cards rather than many compact
+     * ones. Toggled by holding the compass.
+     *
+     * Remembered, because it is a way of using the app rather than a moment:
+     * somebody who wants the whole picture of three departures wants it again
+     * next time they open it.
+     */
+    var richMode: Boolean
+        get() = prefs.getBoolean(KEY_RICH_MODE, false)
+        set(value) = prefs.edit { putBoolean(KEY_RICH_MODE, value) }
+
+    /**
      * Which of the ported palettes the app's own screens use. Not a
      * light/dark switch: these are the same named themes the Scribus routes
      * render under, and the user picks one.
@@ -125,6 +137,7 @@ class Settings(context: Context) {
         private const val KEY_THEME = "theme"
         private const val KEY_HAS_CONNECTED = "has_connected"
         private const val KEY_PUBLISH_LOCATION = "publish_location"
+        private const val KEY_RICH_MODE = "rich_mode"
         private const val KEY_CLIENT_ID = "client_id"
         private const val KEY_BINDING_PREFIX = "binding_"
         private const val KEY_DISMISSED = "dismissed"

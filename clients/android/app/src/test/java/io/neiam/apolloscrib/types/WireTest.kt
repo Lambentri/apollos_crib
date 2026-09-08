@@ -145,6 +145,60 @@ class WireTest {
     }
 
     @Test
+    fun `the plus reading is its own type, with whole arrivals`() {
+        // Published on <topic>.plus and keyed gtfs_plus, so a payload says
+        // which reading it is whichever topic it arrived on.
+        val payload = """
+            {"gtfs_plus-12": {
+              "query": {"name": "Davis", "meta": {}},
+              "data": [{"route":"87","dest":"Arlington","dir":"In","mode":"Bus",
+                        "route_name":"87","color":"#FFC72C","bearing":"NE",
+                        "arrivals":[
+                          {"time":"08:00:00","time_live":"08:03:00","delay":180,
+                           "occupancy":"FEW_SEATS_AVAILABLE","platform":"2",
+                           "name":"1842","trip_id":"t1"},
+                          {"time":"08:20:00","trip_status":"CANCELED"}
+                        ]}]
+            }}
+        """.trimIndent()
+
+        val entry = Wire.parse(payload).single()
+        assertEquals(SourceType.GtfsPlus, entry.type)
+
+        val route = entry.decode<List<GtfsPlusCondensed>>()!!.single()
+        assertEquals("87", route.displayName())
+        assertEquals("NE", route.bearing)
+
+        val first = route.arrivals[0]
+        assertEquals("08:03:00", first.best())
+        assertTrue(first.live())
+        assertEquals(3, first.delayMinutes())
+        assertTrue(!first.cancelled())
+
+        // A cancelled departure keeps its time -- it is struck through, not
+        // hidden, because "the 08:20 is not running" is the news.
+        val second = route.arrivals[1]
+        assertEquals("08:20:00", second.best())
+        assertTrue(!second.live())
+        assertTrue(second.cancelled())
+    }
+
+    @Test
+    fun `a plus arrival with no realtime claims nothing`() {
+        val payload = """
+            {"gtfs_plus-12": [{"route":"1","arrivals":[{"time":"09:00:00"}]}]}
+        """.trimIndent()
+
+        val arrival = Wire.parse(payload).single()
+            .decode<List<GtfsPlusCondensed>>()!!.single().arrivals.single()
+
+        assertEquals("09:00:00", arrival.best())
+        assertTrue(!arrival.live())
+        // No delay reported is not "on time"; it is nothing said.
+        assertEquals(null, arrival.delayMinutes())
+    }
+
+    @Test
     fun `a car share is cars, not bikes`() {
         // Getaround Barcelona publishes 293 cars over GBFS. Nothing about the
         // format says bicycle.

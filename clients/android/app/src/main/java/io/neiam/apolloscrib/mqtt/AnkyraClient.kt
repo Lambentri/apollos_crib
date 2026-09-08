@@ -24,7 +24,9 @@ import java.util.concurrent.TimeUnit
 class AnkyraClient(
     private val settings: Settings,
     private val onMessage: (String) -> Unit,
-    private val onState: (State) -> Unit
+    private val onState: (State) -> Unit,
+    /** The extended reading, when the Pythiae publishes one. */
+    private val onPlus: (String) -> Unit = {}
 ) {
 
     enum class State { Disconnected, Connecting, Connected, Failed }
@@ -117,7 +119,17 @@ class AnkyraClient(
         // reconnect the phone had ever made.
         built.publishes(MqttGlobalPublishFilter.ALL) { publish ->
             if (attempt == generation) {
-                onMessage(String(publish.payloadAsBytes, StandardCharsets.UTF_8))
+                val payload = String(publish.payloadAsBytes, StandardCharsets.UTF_8)
+
+                // Told apart by the topic it arrived on rather than by looking
+                // at the payload: the two boards carry the same query ids and
+                // mostly the same types, and guessing from content would be
+                // guessing.
+                if (publish.topic.toString().endsWith(PLUS_SUFFIX)) {
+                    onPlus(payload)
+                } else {
+                    onMessage(payload)
+                }
             }
         }
 
@@ -142,6 +154,27 @@ class AnkyraClient(
     }
 
     private fun subscribe(client: Mqtt3AsyncClient, attempt: Int) {
+        // The extended reading, on its own topic. Subscribed unconditionally:
+        // a Pythiae that is not publishing Plus simply never sends one, which
+        // costs nothing, where asking first would mean knowing before the
+        // first board has arrived.
+        client.subscribeWith()
+            .topicFilter(settings.topic + PLUS_SUFFIX)
+            .qos(MqttQos.AT_MOST_ONCE)
+            .send()
+            .whenComplete { _, error ->
+                // Logged either way. A Pythiae that is not publishing Plus
+                // sends nothing here for ever, which is indistinguishable from
+                // a subscription that never happened -- and rich mode showing
+                // an empty board is the same picture in both cases.
+                if (attempt != generation) return@whenComplete
+                if (error != null) {
+                    Log.w(TAG, "plus subscribe failed", error)
+                } else {
+                    Log.d(TAG, "subscribed to ${settings.topic}$PLUS_SUFFIX")
+                }
+            }
+
         client.subscribeWith()
             .topicFilter(settings.topic)
             // QoS 0, matching the queue name Ankyra looks for when it counts
@@ -193,5 +226,8 @@ class AnkyraClient(
 
     companion object {
         private const val TAG = "AnkyraClient"
+
+        /** Where a Pythiae publishes its Plus reading, beside the Basic one. */
+        const val PLUS_SUFFIX = ".plus"
     }
 }

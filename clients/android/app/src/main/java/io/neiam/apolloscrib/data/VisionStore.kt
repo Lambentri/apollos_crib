@@ -22,6 +22,24 @@ class VisionStore(context: Context) {
 
     private val file = File(context.applicationContext.filesDir, FILE_NAME)
 
+    // Its own file. The two boards arrive on separate topics and at separate
+    // times, and folding them into one would mean a Plus board that landed
+    // first being overwritten by the Basic one that followed it.
+    private val plusFile = File(context.applicationContext.filesDir, PLUS_FILE_NAME)
+
+    /** The extended reading, kept beside the board rather than replacing it. */
+    fun savePlus(payload: String) {
+        // Written whole then moved, as the board is, and for the same reason.
+        val temp = File(plusFile.parentFile, "$PLUS_FILE_NAME.tmp")
+        temp.writeText(payload)
+        temp.renameTo(plusFile)
+        revision.value = revision.value + 1
+    }
+
+    fun plusEntries(): List<VisionEntry> =
+        if (plusFile.exists()) runCatching { Wire.parse(plusFile.readText()) }.getOrDefault(emptyList())
+        else emptyList()
+
     fun save(payload: String) {
         // Written whole then moved, so a provider reading mid-write sees the
         // previous payload rather than half of this one.
@@ -72,6 +90,7 @@ class VisionStore(context: Context) {
         val boards: StateFlow<Long> get() = revision
 
         private const val FILE_NAME = "vision.json"
+        private const val PLUS_FILE_NAME = "vision_plus.json"
         private const val STALE_AFTER_MS = 30 * 60 * 1000L
     }
 }

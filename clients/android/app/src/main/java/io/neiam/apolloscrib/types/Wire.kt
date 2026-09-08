@@ -136,7 +136,14 @@ enum class SourceType(val wire: String, val label: String) {
     // the crate. Drawn generically, from whatever the publisher sent.
     Cronos("cronos", "Cronos"),
     Packages("packages", "Packages"),
-    Const("const", "Constant");
+    Const("const", "Constant"),
+
+    // The extended reading of a transit query, published on `<topic>.plus`.
+    // Its own type rather than a flag on Gtfs: the shape is different -- one
+    // entry per route carrying whole arrivals rather than parallel lists --
+    // and a key that says so means a payload describes itself whichever topic
+    // it arrived on.
+    GtfsPlus("gtfs_plus", "Transit");
 
     companion object {
         fun of(wire: String): SourceType? = entries.firstOrNull { it.wire == wire }
