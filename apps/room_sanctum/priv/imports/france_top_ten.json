@@ -1,0 +1,154 @@
+{
+  "note": "Paste into Offerings -> Import Offerings. Sources arrive disabled; toggle the ones you want. Compiled from https://transport.data.gouv.fr/api/datasets (the Point d'Acces National), 2026-09-08.",
+  "sources": [
+    {
+      "name": "Paris - Ile-de-France Mobilites",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "Every IDFM network: Metro, RER, Transilien, tram, bus. The PAN lists no GTFS-RT for IDFM -- realtime is behind PRIM (https://prim.iledefrance-mobilites.fr), which wants a per-account key. To add it, put the PRIM GTFS-RT URL in the trip updates field and an `apikey: <your key>` header on this source. The static zip is the largest in this bundle; expect a long first import.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://eu.ftp.opendatasoft.com/stif/GTFS/IDFM-gtfs.zip",
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Marseille - Metropole Aix-Marseille-Provence",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "The `referentiel complet` feed: RTM plus every other network in the metropole (Aixenbus, Ciotabus, Cartreize, and the rest). Only service alerts are published as GTFS-RT; trip updates and vehicle positions are SIRI only.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://app.mecatran.com/utw/ws/gtfsfeed/static/mamp?apiKey=60327e505a214c77303f52206f11483069257343",
+        "url_rt_sa": "https://api-mobilite.rbgl.fr/api/v1/mamp/getServiceAlerts",
+        "rt_period_sa": 600,
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Lyon - TCL",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "SYTRAL Mobilites. Grand Lyon's own download (download.data.grandlyon.com) now answers 401 without an account, so this uses the mirrored `GTFS modifie` resource the PAN lists, which does not. No GTFS-RT: TCL publishes realtime as SIRI Lite only.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://gtech-transit-prod.apigee.net/v1/google/gtfs/odbl/lyon_tcl.zip?apikey=BasyG6OFZXgXnzWdQLTwJFGcGmeOs204&secret=gNo6F5PhQpsGRBCK",
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Toulouse - Tisseo",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "One realtime feed carrying both trip updates and service alerts, so it goes in the shared field rather than being listed twice.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://data.toulouse-metropole.fr/explore/dataset/tisseo-gtfs/files/fc1dda89077cf37e4f7521760e0ef4e9/download/",
+        "url_rt_shared": "https://api.tisseo.fr/opendata/gtfsrt/GtfsRt.pb",
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Nice - Lignes d'Azur",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "Trip updates and vehicle positions from enRoute's ARA gateway. No service alerts feed.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://chouette.enroute.mobi/api/v1/datas/OpendataRLA/gtfs.zip",
+        "url_rt_tu": "https://ara-api.enroute.mobi/rla/gtfs/trip-updates",
+        "url_rt_vp": "https://ara-api.enroute.mobi/rla/gtfs/vehicle-positions",
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Nantes - Naolib",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "Realtime comes through the PAN proxy, which allows one request per 30 seconds per resource and answers 429 above that -- hence 60s trip updates and 600s alerts rather than the defaults.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://data.nantesmetropole.fr/explore/dataset/244400404_transports_commun_naolib_nantes_metropole_gtfs/files/0cc0469a72de54ee045cb66d1a21de9e/download/",
+        "url_rt_tu": "https://proxy.transport.data.gouv.fr/resource/naolib-nantes-gtfs-rt-trip-update",
+        "url_rt_sa": "https://proxy.transport.data.gouv.fr/resource/naolib-nantes-gtfs-rt-alerts",
+        "rt_period_tu": 60,
+        "rt_period_sa": 600,
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Montpellier - TaM",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "The urbain network, with all three realtime kinds. TaM publishes a second, suburbain network at the same paths with /Suburbain/ in place of /Urbain/; add it as its own source if you want it.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://data.montpellier3m.fr/GTFS/Urbain/GTFS.zip",
+        "url_rt_tu": "https://data.montpellier3m.fr/GTFS/Urbain/TripUpdate.pb",
+        "url_rt_vp": "https://data.montpellier3m.fr/GTFS/Urbain/VehiclePosition.pb",
+        "url_rt_sa": "https://data.montpellier3m.fr/GTFS/Urbain/Alert.pb",
+        "rt_period_sa": 600,
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Strasbourg - CTS",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "No GTFS-RT: the Eurometropole publishes realtime as SIRI Lite only.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://opendata.cts-strasbourg.eu/google_transit.zip",
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Bordeaux - TBM",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "All three realtime kinds. The apiKey in these URLs is Bordeaux Metropole's published open-data key, not a personal one.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://bdx.mecatran.com/utw/ws/gtfsfeed/static/bordeaux?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt",
+        "url_rt_tu": "https://bdx.mecatran.com/utw/ws/gtfsfeed/realtime/bordeaux?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt",
+        "url_rt_vp": "https://bdx.mecatran.com/utw/ws/gtfsfeed/vehicles/bordeaux?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt",
+        "url_rt_sa": "https://bdx.mecatran.com/utw/ws/gtfsfeed/alerts/bordeaux?apiKey=opendata-bordeaux-metropole-flux-gtfs-rt",
+        "rt_period_sa": 600,
+        "tz": "Europe/Paris"
+      }
+    },
+    {
+      "name": "Lille - Ilevia",
+      "type": "gtfs",
+      "enabled": false,
+      "public": true,
+      "notes": "Trip updates only, through the PAN proxy -- so 60s rather than the default, for the same rate limit as Nantes.",
+      "meta": { "tint": "indigo", "run_period": 604800 },
+      "config": {
+        "__type__": "gtfs",
+        "url": "https://media.ilevia.fr/opendata/gtfs.zip",
+        "url_rt_tu": "https://proxy.transport.data.gouv.fr/resource/ilevia-lille-gtfs-rt",
+        "rt_period_tu": 60,
+        "tz": "Europe/Paris"
+      }
+    }
+  ]
+}

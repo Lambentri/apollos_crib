@@ -39,7 +39,7 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
     valid_sources = 
       socket.assigns.validation_results
       |> Enum.filter(fn {_source, changeset} -> changeset.valid? end)
-      |> Enum.map(fn {source, _changeset} -> source end)
+      |> Enum.map(fn {{source, _index}, _changeset} -> source end)
 
     imported_count = import_valid_sources(valid_sources)
     
@@ -73,10 +73,13 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
             source = %Source{}
             changeset = Configuration.change_source(source, source_attrs)
             
-            {source_attrs, changeset}
+            # Paired with its index because the template shows "#3 of 10"
+            # next to each result, and a source that fails to parse has no
+            # name to identify it by.
+            {{source_attrs, index}, changeset}
           end)
         
-        parsed_sources = Enum.map(results, fn {source_attrs, _changeset} -> source_attrs end)
+        parsed_sources = Enum.map(results, fn {{source_attrs, _index}, _changeset} -> source_attrs end)
         validation_results = results
         
         {:ok, {parsed_sources, validation_results}}

@@ -109,3 +109,19 @@ the sibling app. That is expected, not a corrupt migration history.
 - `room_sanctum` (http://localhost:4002) serves the UI and should return 200.
 - `room_hermes` (http://localhost:4001) has no root route — its `get "/"` is commented out
   in the router — so **404 on `/` is normal** and means the app is healthy.
+
+#### Bundled imports
+
+`apps/room_sanctum/priv/imports/` holds ready-made source bundles for the
+**Import Offerings** page (Offerings → Import). Paste a file's contents into the
+box, check the ten green cards, and hit *Import Valid Sources*.
+
+- [`france_top_ten.json`](apps/room_sanctum/priv/imports/france_top_ten.json) —
+  GTFS and GTFS-RT for the ten largest French cities, compiled from
+  [transport.data.gouv.fr](https://transport.data.gouv.fr/api/datasets), the
+  Point d'Accès National.
+
+Sources arrive **disabled**, so importing does not kick off ten static imports at
+once; toggle the ones you want. Three of the ten are schedule-only — Paris, Lyon
+and Strasbourg publish realtime as SIRI or behind a personal API key rather than
+as open GTFS-RT — and each source's notes say why.
