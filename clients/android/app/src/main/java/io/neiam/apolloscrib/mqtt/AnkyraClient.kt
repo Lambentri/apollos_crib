@@ -125,7 +125,7 @@ class AnkyraClient(
                 // at the payload: the two boards carry the same query ids and
                 // mostly the same types, and guessing from content would be
                 // guessing.
-                if (publish.topic.toString().endsWith(PLUS_SUFFIX)) {
+                if (isPlusTopic(publish.topic.toString())) {
                     onPlus(payload)
                 } else {
                     onMessage(payload)
@@ -229,5 +229,22 @@ class AnkyraClient(
 
         /** Where a Pythiae publishes its Plus reading, beside the Basic one. */
         const val PLUS_SUFFIX = ".plus"
+
+        /**
+         * Whether a delivered topic is the Plus one.
+         *
+         * The separator changes in flight. A Pythiae publishes to the AMQP
+         * routing key `<topic>.plus`, and RabbitMQ's MQTT plugin maps dots in
+         * a routing key to slashes in the topic it hands a subscriber -- so
+         * what is subscribed to as `X.plus` arrives as `X/plus`.
+         *
+         * It went unnoticed because both boards still arrived: the Plus one
+         * simply failed this test and was filed as the Basic board, which then
+         * lost most of its cards, because nothing draws a `gtfs_plus` entry in
+         * compact mode. Two boards alternating in the log at slightly
+         * different sizes is what gave it away.
+         */
+        fun isPlusTopic(topic: String): Boolean =
+            topic.replace('/', '.').endsWith(PLUS_SUFFIX)
     }
 }
