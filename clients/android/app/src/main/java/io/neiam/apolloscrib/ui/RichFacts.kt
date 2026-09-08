@@ -111,21 +111,33 @@ private fun ephem(entry: VisionEntry): RichFacts? {
 private fun tidal(entry: VisionEntry): RichFacts? {
     val tide = entry.decode<List<TidalCondensed>>()?.firstOrNull() ?: return null
 
-    val facts = listOfNotNull(
-        tide.first_h?.let { RichFacts.Fact("High", "${it.asClockTime()}  ${tide.first_hv.orEmpty()}".trim()) },
-        tide.first_l?.let { RichFacts.Fact("Low", "${it.asClockTime()}  ${tide.first_lv.orEmpty()}".trim()) },
-        tide.second_h?.let { RichFacts.Fact("Then high", "${it.asClockTime()}  ${tide.second_hv.orEmpty()}".trim()) },
-        tide.second_l?.let { RichFacts.Fact("Then low", "${it.asClockTime()}  ${tide.second_lv.orEmpty()}".trim()) }
-    )
+    val extremes = Tides.order(tide)
+    if (extremes.isEmpty()) return null
 
-    if (facts.isEmpty()) return null
+    val now = java.time.LocalTime.now().let { it.hour * 60 + it.minute }
+    val next = Tides.next(extremes, now)
 
     return RichFacts(
         title = entry.label(),
         iconRes = R.drawable.fa_water,
-        headline = facts.first().value.substringBefore("  "),
-        caption = facts.first().label + " tide",
-        facts = facts.drop(1)
+        // The next tide, not the first field the publisher filled in.
+        headline = next?.at?.asClockTime(),
+        // What is happening now, which is the thing the numbers do not say.
+        caption = next?.let { extreme ->
+            listOfNotNull(
+                Tides.state(extreme),
+                Tides.until(now, extreme.minutes)
+            ).joinToString(" · ")
+        },
+        // The rest in clock order, each saying which it is and how high.
+        facts = extremes
+            .filter { it != next }
+            .map { extreme ->
+                RichFacts.Fact(
+                    if (extreme.high) "High" else "Low",
+                    listOfNotNull(extreme.at.asClockTime(), extreme.height).joinToString("  ")
+                )
+            }
     )
 }
 
