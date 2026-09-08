@@ -50,13 +50,17 @@ class TidesTest {
     }
 
     @Test
-    fun `the next tide says which kind it is`() {
+    fun `the next tide says which kind it is, and which way the water goes`() {
         val extremes = Tides.order(day)
 
-        // Which is the thing the card names, rather than leaving it to be
-        // deduced from the three tides underneath it.
+        // Both, and named rather than deduced from the three underneath.
         assertEquals(true, Tides.next(extremes, 5 * 60)?.high)
+        assertEquals("Coming in", Tides.state(Tides.next(extremes, 5 * 60)))
+
         assertEquals(false, Tides.next(extremes, 10 * 60)?.high)
+        assertEquals("Going out", Tides.state(Tides.next(extremes, 10 * 60)))
+
+        assertNull(Tides.state(null))
     }
 
     @Test

@@ -43,6 +43,21 @@ object Tides {
         extremes.firstOrNull { it.minutes > nowMinutes } ?: extremes.firstOrNull()
 
     /**
+     * Whether the water is rising or falling, from what comes next.
+     *
+     * Strictly it is implied by the tide being named beside it -- on its way
+     * to a high means filling. Kept anyway, and first, because it is the part
+     * you can read without knowing that: "coming in" needs no arithmetic and
+     * no tide tables, and it is the answer to the question actually being
+     * asked at the water's edge.
+     */
+    fun state(next: Extreme?): String? = when (next?.high) {
+        true -> "Coming in"
+        false -> "Going out"
+        null -> null
+    }
+
+    /**
      * How long until then, as a person would say it.
      *
      * Wraps past midnight, so a tide at 00:40 read at 23:00 is "in 1h 40m"

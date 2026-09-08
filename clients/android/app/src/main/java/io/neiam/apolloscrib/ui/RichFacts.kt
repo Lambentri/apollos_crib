@@ -122,13 +122,17 @@ private fun tidal(entry: VisionEntry): RichFacts? {
         iconRes = R.drawable.fa_water,
         // The next tide, not the first field the publisher filled in.
         headline = next?.at?.asClockTime(),
-        // Which tide is coming and how long until it. Named outright rather
-        // than left to be worked out from the three below it -- and naming it
-        // says which way the water is going, so saying that as well would be
-        // the same fact twice.
+        // What the water is doing, which tide brings it, and how long: the
+        // three in that order, because that is the order they are wanted in.
+        // The first needs nothing known to read, the second names what the
+        // headline is a time for, and the third is the only one that is
+        // arithmetic.
         caption = next?.let { extreme ->
-            val kind = if (extreme.high) "Next high" else "Next low"
-            "$kind · ${Tides.until(now, extreme.minutes)}"
+            listOfNotNull(
+                Tides.state(extreme),
+                if (extreme.high) "Next high" else "Next low",
+                Tides.until(now, extreme.minutes)
+            ).joinToString(" · ")
         },
         // The rest in clock order, each saying which it is and how high.
         facts = extremes
