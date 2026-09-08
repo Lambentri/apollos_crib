@@ -1058,6 +1058,32 @@ defmodule RoomSanctum.Storage do
   end
 
   @doc """
+  Just these stops of a source, as `%{stop_id => {lat, lon}}`.
+
+  For the realtime worker, which needs a position for the handful of vehicles
+  that report which stop they are at and not where that is. It used to read
+  every stop the source had for that -- fine for a subway feed's 1,488 rows,
+  and a slow query holding a database connection for a national feed's half
+  million, which is what saturated the pool and took the worker down with it.
+
+  Chunked, because `stop_id in (...)` with tens of thousands of ids is its own
+  kind of enormous query, and selected down to the three columns the caller
+  actually uses.
+  """
+  def stop_positions(source_id, stop_ids) do
+    stop_ids
+    |> Enum.chunk_every(5_000)
+    |> Enum.reduce(%{}, fn chunk, acc ->
+      from(p in Stop,
+        where: p.source_id == ^source_id and p.stop_id in ^chunk,
+        select: {p.stop_id, p.stop_lat, p.stop_lon}
+      )
+      |> Repo.all()
+      |> Enum.reduce(acc, fn {id, lat, lon}, inner -> Map.put(inner, id, {lat, lon}) end)
+    end)
+  end
+
+  @doc """
   A page of a source's stops, after `cursor`, in stop_id order.
 
   Keyset rather than offset: `OFFSET 400000` makes Postgres walk and discard

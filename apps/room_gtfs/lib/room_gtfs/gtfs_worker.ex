@@ -740,7 +740,18 @@ defmodule RoomGtfs.Worker.RT do
   # A realtime feed is a protobuf of a few hundred kilobytes, fetched on a
   # tick. Explicit rather than left to HTTPoison's five seconds, which is the
   # right number here but should not be a coincidence.
-  @rt_http [follow_redirect: true, recv_timeout: 10_000, timeout: 8_000]
+  # A pool of its own, for the same reason the static downloads have one.
+  # Realtime feeds are small but there are many of them and some are slow --
+  # Germany's three sources poll a combined feed each, and a slow one holds its
+  # connection for the full ten seconds. On hackney's shared default pool that
+  # showed up as `:checkout_timeout` on unrelated things: GitHub, the weather,
+  # and the German feeds starving each other.
+  @rt_http [
+    follow_redirect: true,
+    recv_timeout: 10_000,
+    timeout: 8_000,
+    hackney: [pool: :gtfs_rt]
+  ]
   use GenServer
   @registry :zeus
 
@@ -1123,32 +1134,72 @@ defmodule RoomGtfs.Worker.RT do
     end
   end
 
-  # Static stops for this source, as the fallback above needs them. Reloaded at
-  # most every few minutes: they only change when a feed is reimported, and a
-  # subway feed is 1,488 rows that would otherwise be read on every poll.
-  defp ensure_stops(state) do
+  # Positions for the stops this feed actually names, as the fallback above
+  # needs them.
+  #
+  # It used to read every stop the source had. That was 1,488 rows for a subway
+  # feed and half a million for a national one, on a five minute timer, per
+  # source -- a query slow enough to hold a database connection until it timed
+  # out, which starved the pool and crashed this worker on a loop.
+  #
+  # Only a vehicle that reports a stop and no coordinates needs a lookup at
+  # all, and there are rarely many of those. What is fetched is now bounded by
+  # what the feed asks about rather than by how large the country is.
+  #
+  # Still capped by the same five minutes, which is what picks up coordinates
+  # that changed in a reimport: past it the cache is dropped rather than added
+  # to.
+  defp ensure_stops(state, feed) do
     now = System.monotonic_time(:millisecond)
 
     # Matched rather than defaulted: the key is present from init with a value of
     # nil, so Map.get/3's default never fired and the first poll of every worker
     # arithmetic'd against nil.
-    stale? =
+    expired? =
       case state.stops_at do
         nil -> true
         at -> now - at >= @stops_ttl
       end
 
-    if stale? do
-      stops =
-        state.id
-        |> Storage.list_stops()
-        |> Map.new(fn stop -> {stop.stop_id, {stop.stop_lat, stop.stop_lon}} end)
+    known = if expired?, do: %{}, else: state.stops || %{}
+    wanted = feed |> stops_wanted() |> Enum.reject(&Map.has_key?(known, &1))
 
-      state |> Map.put(:stops, stops) |> Map.put(:stops_at, now)
-    else
+    if wanted == [] and not expired? do
       state
+    else
+      loaded = Storage.stop_positions(state.id, wanted)
+
+      state
+      |> Map.put(:stops, Map.merge(known, loaded))
+      |> Map.put(:stops_at, now)
     end
   end
+
+  @doc false
+  # Public only so a test can reach it; nothing outside calls this.
+  def stops_wanted_for_test(feed), do: stops_wanted(feed)
+
+  # The stops a feed needs looked up: those named by a vehicle that did not say
+  # where it is. A vehicle carrying its own coordinates never consults these.
+  defp stops_wanted(feed) do
+    feed.entity
+    |> Enum.flat_map(fn entity ->
+      case entity.vehicle do
+        %{stop_id: stop_id} = vehicle when is_binary(stop_id) ->
+          if positioned?(vehicle), do: [], else: [stop_id]
+
+        _ ->
+          []
+      end
+    end)
+    |> Enum.uniq()
+  end
+
+  defp positioned?(%{position: %{latitude: lat, longitude: lon}})
+       when not is_nil(lat) and not is_nil(lon),
+       do: true
+
+  defp positioned?(_vehicle), do: false
 
 
   def fetch_rt_url(url, headers \\ []) do
@@ -1473,7 +1524,7 @@ defmodule RoomGtfs.Worker.RT do
   end
 
   defp store_feed(state, :vp, feed) do
-    state = state |> Map.put(:rt_vp, feed) |> ensure_stops()
+    state = state |> Map.put(:rt_vp, feed) |> ensure_stops(feed)
     vehicles = vehicle_positions_from(feed, state.stops)
     RoomGtfs.RTIndex.put_vehicles(state.id, vehicles)
 

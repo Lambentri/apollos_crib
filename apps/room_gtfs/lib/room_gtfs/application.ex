@@ -31,7 +31,7 @@ defmodule RoomGtfs.Application do
     # start callback, it is.
     :ok = Protobuf.load_extensions()
 
-    children = [static_pool(), RoomGtfs.FeedCache, RoomGtfs.RTIndex]
+    children = [static_pool(), rt_pool(), RoomGtfs.FeedCache, RoomGtfs.RTIndex]
 
     Supervisor.start_link(children, strategy: :one_for_one, name: RoomGtfs.Supervisor)
   end
@@ -48,6 +48,17 @@ defmodule RoomGtfs.Application do
   # Separate from hackney's default pool for the same reason. Everything else
   # in this umbrella -- realtime feeds, GitHub, the weather -- shares that one,
   # and a bulk transfer sitting in it starves requests that take milliseconds.
+  # The realtime feeds' pool.
+  #
+  # Bigger than the static one and with a much shorter timeout: these are small
+  # requests made often, where the static pool is a few enormous ones. Separate
+  # from hackney's default so that a slow transit feed cannot exhaust the pool
+  # every other client in this umbrella is also using -- which is what the
+  # `:checkout_timeout`s on GitHub and the weather were.
+  defp rt_pool do
+    :hackney_pool.child_spec(:gtfs_rt, max_connections: 32, timeout: 20_000)
+  end
+
   defp static_pool do
     :hackney_pool.child_spec(:gtfs_static, max_connections: 4, timeout: 300_000)
   end
