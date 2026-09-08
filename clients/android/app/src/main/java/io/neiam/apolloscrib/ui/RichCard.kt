@@ -287,16 +287,26 @@ fun RichFactsCard(facts: RichFacts, modifier: Modifier = Modifier) {
             }
 
             if (facts.headline != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(facts.headline, style = MaterialTheme.typography.displaySmall)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Column(
+                        Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(facts.headline, style = MaterialTheme.typography.displaySmall)
 
-                    facts.caption?.let {
-                        Text(
-                            it,
-                            style = MaterialTheme.typography.titleSmall,
-                            color = palette.dim
-                        )
+                        facts.caption?.let {
+                            Text(
+                                it,
+                                style = MaterialTheme.typography.titleSmall,
+                                color = palette.dim
+                            )
+                        }
                     }
+
+                    // The picture of the answer, opposite the number. Sized to
+                    // the headline rather than to the text beside it: from
+                    // across a room this is the part that reads.
+                    facts.glyph?.let { glyph -> Glyph(glyph, 52.dp, palette.accent) }
                 }
             } else {
                 facts.caption?.let {

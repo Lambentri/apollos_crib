@@ -85,6 +85,15 @@ class RichBoardWidgetService : RemoteViewsService() {
                     if (card.caption == null) android.view.View.GONE else android.view.View.VISIBLE
                 )
 
+                // The picture of the answer, where there is one worth drawing.
+                if (card.glyph != null) {
+                    setImageViewResource(R.id.rich_glyph, card.glyph)
+                    setInt(R.id.rich_glyph, "setColorFilter", palette.accent.toArgb())
+                    setViewVisibility(R.id.rich_glyph, android.view.View.VISIBLE)
+                } else {
+                    setViewVisibility(R.id.rich_glyph, android.view.View.GONE)
+                }
+
                 removeAllViews(R.id.rich_facts)
 
                 // Four, because a widget card does not scroll and a fifth row

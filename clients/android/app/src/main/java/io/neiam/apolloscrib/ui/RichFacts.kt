@@ -30,7 +30,16 @@ data class RichFacts(
     val iconRes: Int,
     val headline: String? = null,
     val caption: String? = null,
-    val facts: List<Fact> = emptyList()
+    val facts: List<Fact> = emptyList(),
+    /**
+     * A picture of the answer, drawn large beside the headline.
+     *
+     * Only where there is one worth drawing. "Clouds" is a word; a cloud is
+     * the same fact read without reading, which is what a card glanced at
+     * from across a room needs. Null everywhere the answer is a number and a
+     * picture would only be decoration.
+     */
+    val glyph: Int? = null
 ) {
     data class Fact(val label: String, val value: String)
 }
@@ -60,6 +69,7 @@ private fun weather(entry: VisionEntry): RichFacts? {
         iconRes = R.drawable.fa_temperature_half,
         headline = now.temp?.let { "${it.roundToInt()}$degrees" },
         caption = now.weather,
+        glyph = skyGlyph(now.weather),
         facts = listOfNotNull(
             now.feel?.let { RichFacts.Fact("Feels like", "${it.roundToInt()}$degrees") },
             now.hum?.let { RichFacts.Fact("Humidity", "${it.roundToInt()}%") },
@@ -180,6 +190,46 @@ private fun gbfs(entry: VisionEntry): RichFacts? {
             }
         }
     )
+}
+
+/**
+ * What the sky is doing, as a picture.
+ *
+ * OpenWeather's condition groups, which is what the publisher sends through
+ * untouched. Matched loosely on purpose: agencies and forecasts spell these
+ * inconsistently, and a card showing a cloud for something drizzle-shaped is
+ * right enough, where showing nothing at all is a hole in the card.
+ *
+ * Null for anything unrecognised rather than a guess. A wrong picture is read
+ * before the word beside it and believed instead of it.
+ */
+private fun skyGlyph(condition: String?): Int? = when {
+    condition == null -> null
+    condition.contains("thunder", true) || condition.contains("storm", true) ->
+        R.drawable.fa_cloud_bolt
+    condition.contains("drizzle", true) -> R.drawable.fa_cloud_rain
+    condition.contains("rain", true) || condition.contains("shower", true) ->
+        R.drawable.fa_cloud_showers_heavy
+    condition.contains("snow", true) || condition.contains("sleet", true) ->
+        R.drawable.fa_snowflake
+    condition.contains("tornado", true) || condition.contains("squall", true) ->
+        R.drawable.fa_tornado
+    // Mist, fog, haze, smoke, dust, sand, ash: all the ways air stops being
+    // clear, and one glyph for the lot of them.
+    condition.contains("mist", true) || condition.contains("fog", true) ||
+        condition.contains("haze", true) || condition.contains("smoke", true) ||
+        condition.contains("dust", true) || condition.contains("sand", true) ||
+        condition.contains("ash", true) -> R.drawable.fa_smog
+    condition.contains("clear", true) || condition.contains("sun", true) ->
+        R.drawable.fa_sun
+    // "Few clouds" and "scattered clouds" are not the same sky as "overcast",
+    // and the sun showing through says which.
+    condition.contains("few", true) || condition.contains("scattered", true) ||
+        condition.contains("part", true) -> R.drawable.fa_cloud_sun
+    condition.contains("cloud", true) || condition.contains("overcast", true) ->
+        R.drawable.fa_cloud
+    condition.contains("wind", true) -> R.drawable.fa_wind
+    else -> null
 }
 
 /**

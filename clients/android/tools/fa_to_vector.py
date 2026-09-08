@@ -36,6 +36,10 @@ ICONS = [
     "bicycle", "bolt-lightning", "square-parking", "battery-half",
     # Which way to walk to it, on a Plani's cards.
     "location-arrow",
+    # What the sky is doing. A detailed weather card says "Clouds" in words
+    # and the word is the smallest part of the answer; these are the picture.
+    "cloud", "cloud-sun", "cloud-rain", "cloud-showers-heavy", "cloud-bolt",
+    "snowflake", "smog", "tornado",
     # A GBFS feed is not always bicycles: Getaround publishes cars, and other
     # operators mopeds. Only where the free set has a truthful glyph -- there
     # is no kick scooter in it, so those stay on the bicycle.
