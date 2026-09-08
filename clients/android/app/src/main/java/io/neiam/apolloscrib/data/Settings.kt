@@ -60,6 +60,24 @@ class Settings(context: Context) {
      * by an older build cannot put the screen in a state the gesture cannot
      * get out of.
      */
+    /**
+     * How long a card stays before the next slides in, in milliseconds.
+     *
+     * Cycled by tapping the compass. Offered as a short list rather than a
+     * number: the useful range is "faster than I can read" to "long enough to
+     * feel stuck", and five steps cover it.
+     *
+     * Snapped to the nearest offered value on read, so a stored number this
+     * build no longer offers still lands somewhere sensible.
+     */
+    var rotationMs: Int
+        get() {
+            val stored = prefs.getInt(KEY_ROTATION_MS, ROTATION_CHOICES.last())
+            return ROTATION_CHOICES.minByOrNull { kotlin.math.abs(it - stored) }
+                ?: ROTATION_CHOICES.last()
+        }
+        set(value) = prefs.edit { putInt(KEY_ROTATION_MS, value) }
+
     var richCards: Int
         get() = prefs.getInt(KEY_RICH_CARDS, 0).coerceIn(0, MAX_RICH_CARDS)
         set(value) = prefs.edit { putInt(KEY_RICH_CARDS, value.coerceIn(0, MAX_RICH_CARDS)) }
@@ -140,6 +158,13 @@ class Settings(context: Context) {
         private const val KEY_HAS_CONNECTED = "has_connected"
         private const val KEY_PUBLISH_LOCATION = "publish_location"
         private const val KEY_RICH_CARDS = "rich_cards"
+        private const val KEY_ROTATION_MS = "rotation_ms"
+
+        /**
+         * The turns on offer, quickest first. Twelve seconds is the default
+         * because a card nobody has read yet is worse than one that lingers.
+         */
+        val ROTATION_CHOICES = listOf(2_000, 3_000, 5_000, 8_000, 12_000)
 
         /** Past three the screen is a list again, which is the other mode. */
         const val MAX_RICH_CARDS = 3

@@ -10,37 +10,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 
-/** How long one page of cards stays before the next takes its place. */
-const val ROTATION_MS = 12_000L
 
 /**
  * Which cards to show right now, as indices into the list.
  *
- * A window of [size] moved along by [size] each turn, so every route gets its
- * turn rather than the first few holding the screen for ever. Wraps, and when
- * everything fits it never moves at all — rotating a list that is already
- * whole would take cards away and give them back for no reason.
+ * A window of [size] moved along by **one** each turn: a card slides in at the
+ * top and the bottom one falls off, so the two you were already reading stay
+ * put. Advancing by a whole page instead would replace everything at once, and
+ * a card you were halfway through would be gone for no reason you could see.
+ *
+ * Wraps, and when everything fits it never moves at all — rotating a list that
+ * is already whole would take cards away and give them back for nothing.
  */
 @Composable
-fun rotatingWindow(total: Int, size: Int): List<Int> {
+fun rotatingWindow(total: Int, size: Int, intervalMs: Int): List<Int> {
     if (total <= 0 || size <= 0) return emptyList()
     if (total <= size) return (0 until total).toList()
 
-    val pages = (total + size - 1) / size
-    var page by remember(total, size) { mutableIntStateOf(0) }
+    var first by remember(total, size) { mutableIntStateOf(0) }
 
-    LaunchedEffect(total, size) {
+    LaunchedEffect(total, size, intervalMs) {
         while (true) {
-            kotlinx.coroutines.delay(ROTATION_MS)
-            page = (page + 1) % pages
+            kotlinx.coroutines.delay(intervalMs.toLong())
+            first = (first + 1) % total
         }
     }
 
-    // Taken modulo the total rather than truncated, so a last page with room
-    // to spare is filled from the front instead of coming up short. Three
-    // cards should be three cards on every turn.
-    val start = page * size
-    return (start until start + size).map { it % total }
+    // Modulo the total, so a window running off the end comes back round
+    // rather than coming up short. Three cards should be three cards on every
+    // turn.
+    return (first until first + size).map { it % total }
 }
 
 /**
@@ -52,11 +51,11 @@ fun rotatingWindow(total: Int, size: Int): List<Int> {
  * none is.
  */
 @Composable
-fun rememberRotationProgress(rotating: Boolean): State<Float?> {
+fun rememberRotationProgress(rotating: Boolean, intervalMs: Int): State<Float?> {
     val progress = remember { mutableFloatStateOf(0f) }
     val result = remember { androidx.compose.runtime.mutableStateOf<Float?>(null) }
 
-    LaunchedEffect(rotating) {
+    LaunchedEffect(rotating, intervalMs) {
         if (!rotating) {
             result.value = null
             return@LaunchedEffect
@@ -68,11 +67,11 @@ fun rememberRotationProgress(rotating: Boolean): State<Float?> {
             val now = withFrameNanos { it }
             val elapsed = (now - started) / 1_000_000f
 
-            if (elapsed >= ROTATION_MS) {
+            if (elapsed >= intervalMs) {
                 started = now
                 progress.floatValue = 0f
             } else {
-                progress.floatValue = elapsed / ROTATION_MS
+                progress.floatValue = elapsed / intervalMs
             }
 
             result.value = progress.floatValue

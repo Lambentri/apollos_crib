@@ -1,5 +1,8 @@
 package io.neiam.apolloscrib.ui
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import io.neiam.apolloscrib.types.GtfsPlusCondensed
@@ -85,6 +88,7 @@ fun BoardScreen(
     // Held here rather than in the header, because the header only offers the
     // gesture -- what changes is the whole board below it.
     var richCards by remember { mutableStateOf(Settings(context).richCards) }
+    var rotationMs by remember { mutableStateOf(Settings(context).rotationMs) }
     val plus = remember(boards, richCards) {
         if (richCards > 0) store.plusEntries() else emptyList()
     }
@@ -114,8 +118,9 @@ fun BoardScreen(
 
     // Rotated only when there is more than fits. Turning a list that is
     // already whole would take cards away and give them back for nothing.
-    val window = rotatingWindow(cards.size, richCards)
-    val rotation by rememberRotationProgress(rotating = cards.size > richCards && richCards > 0)
+    val rotating = richCards > 0 && cards.size > richCards
+    val window = rotatingWindow(cards.size, richCards, rotationMs)
+    val rotation by rememberRotationProgress(rotating, rotationMs)
 
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
@@ -192,6 +197,13 @@ fun BoardScreen(
             stale = stale,
             richCards = richCards,
             rotation = rotation,
+            rotationMs = rotationMs,
+            rotating = rotating,
+            onCycleSpeed = {
+                val choices = Settings.ROTATION_CHOICES
+                rotationMs = choices[(choices.indexOf(rotationMs) + 1) % choices.size]
+                Settings(context).rotationMs = rotationMs
+            },
             onToggleRich = {
                 // One more each time, and off the end back to the compact
                 // board -- so the gesture always has somewhere to go and never
@@ -268,9 +280,19 @@ fun BoardScreen(
             }
 
             items(window.map { cards[it] }, key = { it.key }) { card ->
+                // Keyed, so the list knows the two cards that stayed are the
+                // same two cards. Without that every turn is three removals
+                // and three insertions, and nothing can be animated because
+                // nothing persisted.
+                val slide = Modifier.animateItem(
+                    fadeInSpec = tween(220),
+                    placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                    fadeOutSpec = tween(160)
+                )
+
                 when (card) {
-                    is RichItem.Transit -> RichCard(card.entry, card.route)
-                    is RichItem.Facts -> RichFactsCard(card.facts)
+                    is RichItem.Transit -> RichCard(card.entry, card.route, slide)
+                    is RichItem.Facts -> RichFactsCard(card.facts, slide)
                 }
             }
         } else {
@@ -318,6 +340,9 @@ private fun StatusHeader(
     richCards: Int,
     /** How far through the card rotation, or null when nothing is rotating. */
     rotation: Float?,
+    rotationMs: Int,
+    rotating: Boolean,
+    onCycleSpeed: () -> Unit,
     onToggleRich: () -> Unit,
     onEditConnection: (() -> Unit)?,
     modifier: Modifier = Modifier
@@ -360,7 +385,13 @@ private fun StatusHeader(
                 // your thumb brushes it. Nothing is bound to the short press,
                 // so a stray tap does nothing at all.
                 .combinedClickable(
-                    onClick = {},
+                    // Only while something is turning. Outside the detailed
+                    // mode there is no rotation to speed up, and a tap that
+                    // silently changes a setting you cannot see the effect of
+                    // is worse than one that does nothing.
+                    onClick = { if (rotating) onCycleSpeed() },
+                    onClickLabel =
+                        if (rotating) "Change how long each card stays" else null,
                     onLongClick = onToggleRich,
                     onLongClickLabel =
                         if (richCards == Settings.MAX_RICH_CARDS) {

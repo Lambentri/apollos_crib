@@ -12,13 +12,12 @@ import org.junit.Test
  */
 class WindowTest {
 
-    // The same expression `rotatingWindow` uses, once a page is chosen.
+    // The same expression `rotatingWindow` uses, once a turn is chosen.
     private fun page(total: Int, size: Int, page: Int): List<Int> {
         if (total <= 0 || size <= 0) return emptyList()
         if (total <= size) return (0 until total).toList()
 
-        val start = page * size
-        return (start until start + size).map { it % total }
+        return (page until page + size).map { it % total }
     }
 
     @Test
@@ -28,17 +27,22 @@ class WindowTest {
     }
 
     @Test
-    fun `each turn moves on by a whole page`() {
+    fun `each turn slides on by one, keeping what was already read`() {
+        // The two cards you were reading stay; one arrives and one leaves.
         assertEquals(listOf(0, 1, 2), page(total = 6, size = 3, page = 0))
-        assertEquals(listOf(3, 4, 5), page(total = 6, size = 3, page = 1))
+        assertEquals(listOf(1, 2, 3), page(total = 6, size = 3, page = 1))
+        assertEquals(listOf(2, 3, 4), page(total = 6, size = 3, page = 2))
     }
 
     @Test
-    fun `a short last page is filled from the front rather than coming up short`() {
-        // Four routes, three at a time: the second page is 3, 0, 1 -- three
-        // cards, as the mode promises, not one.
-        assertEquals(listOf(0, 1, 2), page(total = 4, size = 3, page = 0))
-        assertEquals(listOf(3, 0, 1), page(total = 4, size = 3, page = 1))
+    fun `a window running off the end comes back round`() {
+        // Still three cards, as the mode promises, not one and a gap.
+        assertEquals(listOf(3, 0, 1), page(total = 4, size = 3, page = 3))
+    }
+
+    @Test
+    fun `a full turn returns to the start`() {
+        assertEquals(page(total = 5, size = 2, page = 0), page(total = 5, size = 2, page = 5))
     }
 
     @Test
