@@ -1,5 +1,11 @@
 package io.neiam.apolloscrib.ui
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -283,6 +289,41 @@ fun BoardScreen(
                 }
             }
 
+            // One card is a different animation from three.
+            //
+            // With a stack, a turn moves two cards and replaces one, and the
+            // movement is the story -- `animateItem` shows what stayed. With a
+            // single card nothing stays, so there is nothing to move and a
+            // fade is all a list animation can offer. That reads as a stutter
+            // rather than a turn.
+            //
+            // So it gets its own: the old card leaves upward and the new one
+            // arrives from below, which is the direction a flick pushes it.
+            // The gesture and the animation then agree about which way the
+            // board runs, and the timer's turn looks like the one you make.
+            if (richCards == 1 && turn.window.isNotEmpty()) {
+                item(key = "single") {
+                    val card = cards[turn.window.first()]
+
+                    AnimatedContent(
+                        targetState = card,
+                        transitionSpec = {
+                            (slideInVertically(tween(320)) { height -> height } +
+                                fadeIn(tween(220)))
+                                .togetherWith(
+                                    slideOutVertically(tween(320)) { height -> -height } +
+                                        fadeOut(tween(180))
+                                )
+                        },
+                        label = "card"
+                    ) { shown ->
+                        when (shown) {
+                            is RichItem.Transit -> RichCard(shown.entry, shown.route)
+                            is RichItem.Facts -> RichFactsCard(shown.facts)
+                        }
+                    }
+                }
+            } else {
             items(turn.window.map { cards[it] }, key = { it.key }) { card ->
                 // Keyed, so the list knows the two cards that stayed are the
                 // same two cards. Without that every turn is three removals
@@ -298,6 +339,7 @@ fun BoardScreen(
                     is RichItem.Transit -> RichCard(card.entry, card.route, slide)
                     is RichItem.Facts -> RichFactsCard(card.facts, slide)
                 }
+            }
             }
         } else {
             entries.forEach { entry ->
