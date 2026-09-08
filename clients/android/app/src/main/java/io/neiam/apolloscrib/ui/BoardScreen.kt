@@ -8,6 +8,9 @@ import androidx.compose.foundation.combinedClickable
 import io.neiam.apolloscrib.types.GtfsPlusCondensed
 import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.types.VisionEntry
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -119,8 +122,8 @@ fun BoardScreen(
     // Rotated only when there is more than fits. Turning a list that is
     // already whole would take cards away and give them back for nothing.
     val rotating = richCards > 0 && cards.size > richCards
-    val window = rotatingWindow(cards.size, richCards, rotationMs)
-    val rotation by rememberRotationProgress(rotating, rotationMs)
+    val turn = rememberRotation(cards.size, richCards, rotationMs)
+    val advance = turn.advance
 
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
@@ -187,7 +190,8 @@ fun BoardScreen(
         }
     }
 
-    Column(modifier = modifier.fillMaxSize().then(sideSwipeModifier)) {
+    Box(modifier.fillMaxSize()) {
+    Column(modifier = Modifier.fillMaxSize().then(sideSwipeModifier)) {
         // Outside the list rather than its first row: what the connection is
         // doing should not scroll away, since it is the thing that tells you
         // whether the board under it is worth reading.
@@ -196,7 +200,7 @@ fun BoardScreen(
             lastUpdated = lastUpdated,
             stale = stale,
             richCards = richCards,
-            rotation = rotation,
+            rotation = turn.progress,
             rotationMs = rotationMs,
             rotating = rotating,
             onCycleSpeed = {
@@ -279,7 +283,7 @@ fun BoardScreen(
                 }
             }
 
-            items(window.map { cards[it] }, key = { it.key }) { card ->
+            items(turn.window.map { cards[it] }, key = { it.key }) { card ->
                 // Keyed, so the list knows the two cards that stayed are the
                 // same two cards. Without that every turn is three removals
                 // and three insertions, and nothing can be animated because
@@ -328,6 +332,36 @@ fun BoardScreen(
         }
         }
         }
+    }
+
+    // A strip along the bottom edge, and only while something is turning.
+    //
+    // The board scrolls, so a drag anywhere in it belongs to the list -- this
+    // takes the last few millimetres, which is where a flick up from off the
+    // screen starts and where no card is expecting to be read. Absent when
+    // there is nothing to advance, so it never takes a touch it has no use
+    // for.
+    if (rotating) {
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(28.dp)
+                .pointerInput(Unit) {
+                    var travelled = 0f
+
+                    detectVerticalDragGestures(
+                        onDragStart = { travelled = 0f },
+                        onDragEnd = {
+                            // Upward is negative. A flick rather than a nudge:
+                            // far enough that resting a thumb on the edge does
+                            // not turn the card you were reading.
+                            if (travelled < -40.dp.toPx()) advance()
+                        }
+                    ) { _, amount -> travelled += amount }
+                }
+        )
+    }
     }
 }
 

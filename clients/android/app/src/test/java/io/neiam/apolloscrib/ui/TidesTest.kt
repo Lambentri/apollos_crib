@@ -50,14 +50,13 @@ class TidesTest {
     }
 
     @Test
-    fun `which way the water is going comes from what is next`() {
+    fun `the next tide says which kind it is`() {
         val extremes = Tides.order(day)
 
-        // Next is a high, so it is filling.
-        assertEquals("Coming in", Tides.state(Tides.next(extremes, 5 * 60)))
-        // Next is a low, so it is emptying.
-        assertEquals("Going out", Tides.state(Tides.next(extremes, 10 * 60)))
-        assertNull(Tides.state(null))
+        // Which is the thing the card names, rather than leaving it to be
+        // deduced from the three tides underneath it.
+        assertEquals(true, Tides.next(extremes, 5 * 60)?.high)
+        assertEquals(false, Tides.next(extremes, 10 * 60)?.high)
     }
 
     @Test

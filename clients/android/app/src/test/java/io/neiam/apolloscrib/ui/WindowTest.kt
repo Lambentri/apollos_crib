@@ -12,7 +12,8 @@ import org.junit.Test
  */
 class WindowTest {
 
-    // The same expression `rotatingWindow` uses, once a turn is chosen.
+    // The same expression `rememberRotation` uses, once a turn is chosen --
+    // whether that turn came from the timer or from a flick.
     private fun page(total: Int, size: Int, page: Int): List<Int> {
         if (total <= 0 || size <= 0) return emptyList()
         if (total <= size) return (0 until total).toList()

@@ -122,12 +122,13 @@ private fun tidal(entry: VisionEntry): RichFacts? {
         iconRes = R.drawable.fa_water,
         // The next tide, not the first field the publisher filled in.
         headline = next?.at?.asClockTime(),
-        // What is happening now, which is the thing the numbers do not say.
+        // Which tide is coming and how long until it. Named outright rather
+        // than left to be worked out from the three below it -- and naming it
+        // says which way the water is going, so saying that as well would be
+        // the same fact twice.
         caption = next?.let { extreme ->
-            listOfNotNull(
-                Tides.state(extreme),
-                Tides.until(now, extreme.minutes)
-            ).joinToString(" · ")
+            val kind = if (extreme.high) "Next high" else "Next low"
+            "$kind · ${Tides.until(now, extreme.minutes)}"
         },
         // The rest in clock order, each saying which it is and how high.
         facts = extremes
