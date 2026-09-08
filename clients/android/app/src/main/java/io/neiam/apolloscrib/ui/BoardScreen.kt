@@ -4,6 +4,7 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import io.neiam.apolloscrib.types.GtfsPlusCondensed
 import io.neiam.apolloscrib.types.SourceType
+import io.neiam.apolloscrib.types.VisionEntry
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
@@ -88,23 +89,33 @@ fun BoardScreen(
         if (richCards > 0) store.plusEntries() else emptyList()
     }
 
-    // Soonest first, then a window onto them. Taking them in payload order
-    // would show whichever the publisher happened to list, which for a stop
-    // with six routes is not the one leaving next.
-    val routes = remember(plus) {
-        plus
+    // Everything the board has, as cards of one weight, in one order.
+    //
+    // Transit first and soonest first within it, because a departure is the
+    // only thing here that expires -- the weather is as true in ten minutes as
+    // it is now, and a bus is not. Everything else follows in the order the
+    // board gave it.
+    val cards: List<RichItem> = remember(plus) {
+        val routes = plus
             .flatMap { entry ->
                 entry.decode<List<GtfsPlusCondensed>>().orEmpty().map { entry to it }
             }
             .sortedBy { (_, route) ->
                 route.arrivals.firstNotNullOfOrNull { it.best() } ?: "99:99:99"
             }
+            .map { (entry, route) -> RichItem.Transit(entry, route) }
+
+        val others = plus
+            .filter { it.type != SourceType.GtfsPlus }
+            .mapNotNull { entry -> factsFor(entry)?.let { RichItem.Facts(entry, it) } }
+
+        routes + others
     }
 
     // Rotated only when there is more than fits. Turning a list that is
     // already whole would take cards away and give them back for nothing.
-    val window = rotatingWindow(routes.size, richCards)
-    val rotation by rememberRotationProgress(rotating = routes.size > richCards && richCards > 0)
+    val window = rotatingWindow(cards.size, richCards)
+    val rotation by rememberRotationProgress(rotating = cards.size > richCards && richCards > 0)
 
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
@@ -233,7 +244,7 @@ fun BoardScreen(
 
         if (richCards > 0) {
 
-            if (routes.isEmpty()) {
+            if (cards.isEmpty()) {
                 item {
                     Card(Modifier.fillMaxWidth()) {
                         Column(
@@ -256,21 +267,10 @@ fun BoardScreen(
                 }
             }
 
-            items(
-                window.map { routes[it] },
-                key = { (entry, route) -> "${entry.key}-${route.route}-${route.dest}" }
-            ) { (entry, route) ->
-                RichCard(entry, route)
-            }
-
-            // Everything Plus does not have an extended reading for -- the
-            // weather, the bikes, the tides. Plus carries Basic's own answer
-            // for those, so they are the same cards they always were, and
-            // leaving them out would make this mode a transit app rather than
-            // a board with detail on it.
-            plus.filter { it.type != SourceType.GtfsPlus }.forEach { entry ->
-                items(Targets.preview(entry), key = { "${entry.key}-${it.id}" }) { preview ->
-                    PreviewCard(preview)
+            items(window.map { cards[it] }, key = { it.key }) { card ->
+                when (card) {
+                    is RichItem.Transit -> RichCard(card.entry, card.route)
+                    is RichItem.Facts -> RichFactsCard(card.facts)
                 }
             }
         } else {
@@ -501,3 +501,26 @@ private fun Glyph(res: Int, size: Dp, tint: Color) {
 }
 
 private fun clock(at: Long): String = DateFormat.getTimeInstance().format(Date(at))
+
+/**
+ * One card in the detailed rotation.
+ *
+ * Transit keeps its own shape because it has genuinely more to say -- a list
+ * of departures, each with its own delay and crowding -- where everything else
+ * is a headline and some named facts. Both are cards of the same weight, which
+ * is what lets them share one turn.
+ */
+sealed interface RichItem {
+    val key: String
+
+    data class Transit(
+        val entry: VisionEntry,
+        val route: io.neiam.apolloscrib.types.GtfsPlusCondensed
+    ) : RichItem {
+        override val key = "${entry.key}-${route.route}-${route.dest}"
+    }
+
+    data class Facts(val entry: VisionEntry, val facts: RichFacts) : RichItem {
+        override val key = entry.key
+    }
+}

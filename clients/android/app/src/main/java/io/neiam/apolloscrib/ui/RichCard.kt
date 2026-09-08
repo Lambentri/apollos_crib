@@ -261,3 +261,77 @@ private fun Glyph(res: Int, size: androidx.compose.ui.unit.Dp, tint: Color) {
         tint = tint
     )
 }
+
+/**
+ * A non-transit query, in as much detail as it has.
+ *
+ * The same weight as [RichCard] so the two sit together in one rotation: a
+ * headline that answers the question, and beneath it the things that qualify
+ * it, each saying its own name.
+ */
+@Composable
+fun RichFactsCard(facts: RichFacts, modifier: Modifier = Modifier) {
+    val palette = LocalAppTheme.current
+
+    Card(modifier.fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Glyph(facts.iconRes, 18.dp, palette.accent)
+                Spacer(Modifier.width(10.dp))
+                Text(
+                    facts.title,
+                    style = MaterialTheme.typography.titleMedium,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+
+            if (facts.headline != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(facts.headline, style = MaterialTheme.typography.displaySmall)
+
+                    facts.caption?.let {
+                        Text(
+                            it,
+                            style = MaterialTheme.typography.titleSmall,
+                            color = palette.dim
+                        )
+                    }
+                }
+            } else {
+                facts.caption?.let {
+                    Text(it, style = MaterialTheme.typography.titleMedium, color = palette.dim)
+                }
+            }
+
+            // Two to a row: a label and its value need to stay together, and
+            // one per line would make a card of six facts taller than the
+            // screen for no gain.
+            facts.facts.chunked(2).forEach { pair ->
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                    pair.forEach { fact ->
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+                            Text(
+                                fact.label,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = palette.dim,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                fact.value.ifBlank { "—" },
+                                style = MaterialTheme.typography.titleMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // A lone fact on the last row keeps its half rather than
+                    // stretching across a width the others do not use.
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
