@@ -27,3 +27,15 @@ erl_crash.dump
 
 # Server logs
 *.log
+
+# Local credentials for development and investigation. Never committed.
+.env
+
+# Android release signing material. The APK signing key cannot be
+# rotated — Android checks its certificate on every update — so a
+# commit of one is not recoverable by deleting it later. Keep it in
+# OpenBao KV and in the CI secret, never here.
+# See clients/android/README.md#the-release-keystore.
+*.jks
+*.keystore
+keystore.pass

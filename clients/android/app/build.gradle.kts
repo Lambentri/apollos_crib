@@ -4,6 +4,10 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
+// Bumped by hand for a real release; the build metadata after it comes
+// from CI.
+val baseVersion = "0.1.0"
+
 android {
     namespace = "io.neiam.apolloscrib"
     compileSdk {
@@ -18,8 +22,21 @@ android {
         // declarations below are 14-era. 31 keeps the manifest honest.
         minSdk = 31
         targetSdk = 36
-        versionCode = 1
-        versionName = "0.1.0"
+        // Android refuses an update whose versionCode isn't higher than
+        // what's installed, and F-Droid orders versions by it — so a
+        // hardcoded 1 means no phone ever sees a second release. It also
+        // means every CI build publishes the same filename with
+        // different bytes, which the registry correctly refuses with a
+        // 409.
+        //
+        // The CI run number is monotonic and needs no state kept
+        // anywhere. Local builds stay at 1, which is fine: they are
+        // never published.
+        versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "").toIntOrNull() ?: 1
+
+        // The commit is what you want when someone reports a bug
+        // against a build. Local builds just say "dev".
+        versionName = "$baseVersion+" + ((System.getenv("GITHUB_SHA") ?: "dev").take(7))
     }
 
     buildTypes {
@@ -41,6 +58,19 @@ android {
     }
     testOptions {
         unitTests.isIncludeAndroidResources = true
+    }
+
+    lint {
+        // `assembleRelease` is a packaging step here, not a review gate.
+        //
+        // lintVital doubles the release build and fails for reasons that
+        // have nothing to do with the code: lint throws on JDK 25 with
+        // only the version string ("25.0.4.1") as the error, so a release
+        // built on a modern local JDK fails while the same commit builds
+        // fine in the container's JDK.
+        //
+        // Lint still runs on demand: ./gradlew :app:lint
+        checkReleaseBuilds = false
     }
     packaging {
         resources {

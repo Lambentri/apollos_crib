@@ -1,0 +1,124 @@
+# Publishes the Apollo's Crib Android client to the forge's own F-Droid
+# repository, the same way the forge publishes its own client.
+#
+# Needs two secrets, and skips cleanly without them rather than failing
+# a build for a package that isn't set up yet:
+#
+#   ANDROID_KEYSTORE       base64 of the release keystore (.jks)
+#   ANDROID_KEYSTORE_PASS  its password
+#
+# Generate one once, and keep it: the signing certificate is what
+# Android checks on every update, so losing it means every install has
+# to be uninstalled and redone by hand. See clients/android/README.md.
+#
+# This is the APK signing key. It is NOT the F-Droid index key — that
+# one is per-owner, lives in the forge's OpenBao, and never comes near
+# CI.
+name: android
+on:
+  push:
+    branches: [master]
+
+jobs:
+  android:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # `vars.CI_FORGE_URL` is a forge built-in, but an older forge
+      # build won't inject it. Fall back to what the runner already
+      # knows, and say so plainly if neither resolves rather than
+      # handing curl an empty URL.
+      - name: Resolve the forge URL
+        env:
+          CI_FORGE_URL: ${{ vars.CI_FORGE_URL }}
+        run: |
+          set -euo pipefail
+          forge_url=${CI_FORGE_URL:-${GITHUB_SERVER_URL:-}}
+
+          if [ -z "$forge_url" ]; then
+            echo "No forge URL available." >&2
+            echo "Set a CI_FORGE_URL variable on this repository or its org," >&2
+            echo "or upgrade the forge to a build that injects it." >&2
+            exit 1
+          fi
+
+          echo "using forge URL: $forge_url"
+          echo "FORGE_URL=$forge_url" >> "$GITHUB_ENV"
+
+      # A secret can't be read in a job-level `if`, so the gate is a
+      # step output that everything after checks.
+      - name: Unpack the signing keystore
+        id: keystore
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE }}
+          KEYSTORE_PASS: ${{ secrets.ANDROID_KEYSTORE_PASS }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${KEYSTORE:-}" ] || [ -z "${KEYSTORE_PASS:-}" ]; then
+            echo "No ANDROID_KEYSTORE / ANDROID_KEYSTORE_PASS set — skipping."
+            echo "An unsigned or debug-signed APK is worse than none: the"
+            echo "debug key is shared by every developer, so publishing one"
+            echo "would let anyone ship an 'update' to it."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          umask 077
+          printf '%s' "$KEYSTORE" | base64 -d > release.jks
+          printf '%s' "$KEYSTORE_PASS" > keystore.pass
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
+      - name: Build and sign the APK
+        if: steps.keystore.outputs.skip != 'true'
+        run: |
+          docker buildx build \
+            --target android-export \
+            --secret id=keystore,src=./release.jks \
+            --secret id=keystore_password,src=./keystore.pass \
+            --output type=local,dest=./apk \
+            --file clients/android/Dockerfile .
+
+      # The keystore is gone before anything else runs, so a later step
+      # or a failure mid-job can't leave it on a persistent runner.
+      - name: Shred the keystore
+        if: always()
+        run: shred -u release.jks keystore.pass 2>/dev/null || rm -f release.jks keystore.pass
+
+      # `${{ github.token }}` is minted for this job and authorized to
+      # publish to THIS repository's packages and nowhere else, so there
+      # is no secret to create first.
+      - name: Publish to the F-Droid repository
+        if: steps.keystore.outputs.skip != 'true'
+        env:
+          REPOSITORY: ${{ github.repository }}
+          TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl --fail-with-body -sS \
+            -u "ci:$TOKEN" \
+            -H "Content-Type: application/vnd.android.package-archive" \
+            --data-binary "@apk/app-release.apk" \
+            "$FORGE_URL/pkg/fdroid/$REPOSITORY/upload"
+          echo
+
+      - name: How to install it
+        if: steps.keystore.outputs.skip != 'true'
+        env:
+          OWNER: ${{ github.repository_owner }}
+        run: |
+          set -euo pipefail
+          fingerprint=$(curl -fsSL "$FORGE_URL/pkg/_keys/fdroid/$OWNER")
+
+          cat <<EOF
+          Add this repository in F-Droid (Settings -> Repositories -> +):
+
+            $FORGE_URL/pkg/fdroid/$OWNER/_all?fingerprint=$fingerprint
+
+          One entry covers every Android app $OWNER publishes. The
+          fingerprint pins the index signing certificate; F-Droid
+          refuses an index signed by anything else.
+          EOF

@@ -182,3 +182,105 @@ Font Awesome Free icons are CC BY 4.0; the vendored `LICENSE.txt` covers them.
 A Smartspace list row is plain text, so the glyphs are the app's alone. Rows
 carry a text form for that surface -- `8b 1e 7d` rather than `8 1 7`, which is
 not a number of bikes, e-bikes and docks to anybody reading it.
+
+## Release builds
+
+CI builds and signs the release APK in a container
+(`clients/android/Dockerfile`) and publishes it to the forge's own F-Droid
+repository — nothing is installed on the runner, and the same command
+reproduces it locally:
+
+```sh
+docker buildx build --target android-export \
+  --secret id=keystore,src=./release.jks \
+  --secret id=keystore_password,src=./keystore.pass \
+  --output type=local,dest=./apk --file clients/android/Dockerfile .
+```
+
+The keystore is a BuildKit secret, so it never reaches a Gradle script,
+a Gradle cache, or an image layer. Signing is a separate step from
+Gradle for the same reason.
+
+`.forgejo/workflows/android.yml` runs that on every push to `master`
+and `POST`s the APK to `/pkg/fdroid/<owner>/<repo>/upload` with the
+job's own token — there is no publishing credential to create.
+
+`versionCode` comes from the CI run number and `versionName` from the
+commit, so every published build sorts after the last one. Local builds
+stay at `versionCode = 1` / `…+dev`; they are never published.
+
+Install from the repository by adding it in F-Droid:
+
+```
+<forge>/pkg/fdroid/<owner>/_all?fingerprint=<fingerprint>
+curl -fsSL <forge>/pkg/_keys/fdroid/<owner>    # prints the fingerprint
+```
+
+One entry covers every Android app the owner publishes, this one
+included.
+
+**Two different keys, deliberately.** The *APK* key below is what
+Android checks on every update. The *index* key is per-owner, lives in
+the forge's OpenBao transit engine, and never comes near CI.
+
+## The release keystore
+
+Generate it once. Android verifies this certificate on every update, so
+**losing it means every install has to be uninstalled and redone by
+hand** — there is no recovery and no rotation.
+
+```sh
+keytool -genkeypair -v \
+  -keystore release.jks \
+  -storetype PKCS12 \
+  -alias apolloscrib \
+  -keyalg RSA -keysize 4096 \
+  -validity 10000 \
+  -dname "CN=Apollo's Crib, O=neiam, C=US"
+```
+
+It prompts for the password rather than taking `-storepass`, which
+keeps it out of shell history. PKCS12 uses one password for the store
+and the key, which is what `clients/android/Dockerfile` assumes — it passes the
+one password file to `--ks-pass` and lets the key password default to
+it.
+
+### Back it up before it exists anywhere else
+
+So there is never a window where your laptop holds the only copy:
+
+```sh
+export BAO_TOKEN=<root token>
+E() { kubectl -n openbao exec -i statefulset/openbao -- env BAO_TOKEN="$BAO_TOKEN" "$@"; }
+
+E bao kv put kv/apollos_crib/android \
+    keystore="$(base64 -w0 release.jks)" \
+    password='<the password>'
+```
+
+`kv-v2` versions writes, so a later overwrite doesn't destroy this one.
+Recover with:
+
+```sh
+E bao kv get -field=keystore kv/apollos_crib/android | base64 -d > release.jks
+```
+
+### Hand it to CI
+
+On the repository: **Settings → Actions → Secrets**.
+
+| Secret | Value |
+|---|---|
+| `ANDROID_KEYSTORE` | `base64 -w0 release.jks` |
+| `ANDROID_KEYSTORE_PASS` | the password |
+
+The `android` job skips cleanly while these are unset, so nothing
+breaks before you get to it. It refuses to fall back to a debug-signed
+APK: that key is shared by everyone with an SDK, so publishing one
+would let anyone ship an "update" to it.
+
+CI does not read the keystore out of OpenBao. `apksigner` has no
+external-signer hook, so the key has to reach the build container
+whichever store it comes from, and the runner is outside the cluster
+while OpenBao has no ingress on purpose. Bao holds the durable copy;
+the Forgejo secret is the operational one.
