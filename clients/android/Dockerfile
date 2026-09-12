@@ -9,10 +9,16 @@
 #       --secret id=keystore,src=./release.jks \
 #       --secret id=keystore_password,src=./keystore.pass \
 #       --output type=local,dest=./apk \
-#       --file clients/android/Dockerfile .
+#       --progress=plain \
+#       --file clients/android/Dockerfile clients/android
 #
-# Run from the repository root — the build context is the repo, so the
-# app sources are at `clients/android/`.
+# Run from the repository root. The build context is `clients/android`, not the
+# repository: the app needs nothing from outside it, and the root
+# .dockerignore in several of these repos excludes `android/` so the
+# service image doesn't drag the Gradle wrapper and SDK caches along.
+# With a repo-root context BuildKit is handed a tree with the app
+# filtered out of it, and the COPY below fails as a bare glob error
+# with no step log to explain itself.
 
 # JDK 21 rather than 17, and a current cmdline-tools: AGP 9.2 / Gradle
 # 9.4 here, compiling against android-36.1. The 2024-era tools pinned
@@ -58,9 +64,9 @@ RUN yes | sdkmanager --licenses > /dev/null \
 FROM sdk AS deps
 
 WORKDIR /src
-COPY clients/android/gradle ./gradle
-COPY clients/android/gradlew clients/android/settings.gradle.kts clients/android/build.gradle.kts clients/android/gradle.properties ./
-COPY clients/android/app/build.gradle.kts ./app/
+COPY gradle ./gradle
+COPY gradlew settings.gradle.kts build.gradle.kts gradle.properties ./
+COPY app/build.gradle.kts ./app/
 
 RUN echo "sdk.dir=${ANDROID_HOME}" > local.properties
 
@@ -75,7 +81,7 @@ RUN ./gradlew --no-daemon :app:dependencies --configuration releaseRuntimeClassp
 FROM deps AS build
 
 ARG BUILD_TOOLS=36.1.0
-COPY clients/android/app ./app
+COPY app ./app
 
 RUN ./gradlew --no-daemon :app:assembleRelease
 

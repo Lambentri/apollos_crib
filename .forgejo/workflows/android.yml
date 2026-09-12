@@ -80,7 +80,8 @@ jobs:
             --secret id=keystore,src=./release.jks \
             --secret id=keystore_password,src=./keystore.pass \
             --output type=local,dest=./apk \
-            --file clients/android/Dockerfile .
+            --progress=plain \
+            --file clients/android/Dockerfile clients/android
 
       # The keystore is gone before anything else runs, so a later step
       # or a failure mid-job can't leave it on a persistent runner.

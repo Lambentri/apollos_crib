@@ -194,7 +194,8 @@ reproduces it locally:
 docker buildx build --target android-export \
   --secret id=keystore,src=./release.jks \
   --secret id=keystore_password,src=./keystore.pass \
-  --output type=local,dest=./apk --file clients/android/Dockerfile .
+  --progress=plain \
+  --output type=local,dest=./apk --file clients/android/Dockerfile clients/android
 ```
 
 The keystore is a BuildKit secret, so it never reaches a Gradle script,
