@@ -1,0 +1,69 @@
+# Builds the service image and pushes it to the forge's own OCI
+# registry, on every push to master. This is the .gitlab-ci.yml kaniko
+# job ported across: same Dockerfile, same "one image per push to
+# master, tagged :latest" contract that keel polls for.
+#
+# No secrets. The per-job token is accepted by the registry's /v2/token
+# endpoint and authorized to push this repository's own image path, the
+# same deal the F-Droid and apt registries give.
+#
+# `.gitlab-ci.yml` stays where it is — origin is still GitLab, and that
+# pipeline still runs there.
+name: image
+on:
+  push:
+    branches: [master]
+
+jobs:
+  image:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      # An unset CI_REGISTRY resolves to the empty string, and
+      # login-action then silently defaults to docker.io while
+      # metadata-action builds a nonsense "/owner/repo" reference. Say
+      # what is missing instead.
+      - name: Check the registry variable is set
+        env:
+          CI_REGISTRY: ${{ vars.CI_REGISTRY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CI_REGISTRY:-}" ]; then
+            echo "CI_REGISTRY is not set for this repository." >&2
+            echo "Set it as an organisation-level Actions variable (the" >&2
+            echo "registry hostname), the same one gitgud builds against." >&2
+            exit 1
+          fi
+          echo "pushing to $CI_REGISTRY"
+
+      # The username is ignored by the token endpoint but login-action
+      # requires it to be non-empty.
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ vars.CI_REGISTRY }}
+          username: ci
+          password: ${{ github.token }}
+
+      # Push to the job's OWN repo path (<registry>/<owner>/<repo>); the
+      # per-job token only grants push there.
+      - uses: docker/metadata-action@v5
+        id: meta
+        with:
+          images: ${{ vars.CI_REGISTRY }}/${{ github.repository }}
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=registry,ref=${{ vars.CI_REGISTRY }}/${{ github.repository }}:buildcache
+          cache-to: type=registry,ref=${{ vars.CI_REGISTRY }}/${{ github.repository }}:buildcache,mode=max
