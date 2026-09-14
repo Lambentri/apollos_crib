@@ -74,9 +74,21 @@ jobs:
 
       - name: Build and sign the APK
         if: steps.keystore.outputs.skip != 'true'
+        env:
+          RUN_NUMBER: ${{ github.run_number }}
         run: |
+          set -euo pipefail
+
+          # One stamp for the whole run, computed here rather than
+          # inside Gradle, so every artifact a run produces agrees on
+          # its version even if the build is retried a step at a time.
+          stamp=$(date -u +%s)
+          echo "version: 0.1.0-dev-$stamp (versionCode $RUN_NUMBER)"
+
           docker buildx build \
             --target android-export \
+            --build-arg GITHUB_RUN_NUMBER="$RUN_NUMBER" \
+            --build-arg SOURCE_DATE_EPOCH="$stamp" \
             --secret id=keystore,src=./release.jks \
             --secret id=keystore_password,src=./keystore.pass \
             --output type=local,dest=./apk \

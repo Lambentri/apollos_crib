@@ -4,9 +4,26 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
 }
 
-// Bumped by hand for a real release; the build metadata after it comes
-// from CI.
+// Bumped by hand; everything after it is generated.
 val baseVersion = "0.1.0"
+
+// Seconds, and taken from the environment when it's there. CI sets it
+// once per run so every artifact from that run agrees; a local build
+// computes it, which is fine because local builds are never published.
+//
+// SOURCE_DATE_EPOCH first because it's the cross-toolchain convention
+// for exactly this, and honouring it means a reproducible-build harness
+// that already sets it gets a reproducible versionName for free.
+val buildTimestamp: Long =
+    (System.getenv("SOURCE_DATE_EPOCH") ?: System.getenv("BUILD_TIMESTAMP"))
+        ?.toLongOrNull()
+        ?: (System.currentTimeMillis() / 1000)
+
+// A real release overrides the whole string; until there is one, every
+// build says so in its name rather than claiming to be 0.1.0.
+val appVersionName: String =
+    System.getenv("RELEASE_VERSION")?.takeIf { it.isNotBlank() }
+        ?: "$baseVersion-dev-$buildTimestamp"
 
 android {
     namespace = "io.neiam.apolloscrib"
@@ -34,9 +51,11 @@ android {
         // never published.
         versionCode = (System.getenv("GITHUB_RUN_NUMBER") ?: "").toIntOrNull() ?: 1
 
-        // The commit is what you want when someone reports a bug
-        // against a build. Local builds just say "dev".
-        versionName = "$baseVersion+" + ((System.getenv("GITHUB_SHA") ?: "dev").take(7))
+        // Not the commit: versionCode is the CI run number, and a run
+        // knows its own commit, so the sha is one lookup away and the
+        // timestamp orders builds at a glance in a list that versionCode
+        // alone renders as bare integers.
+        versionName = appVersionName
     }
 
     buildTypes {

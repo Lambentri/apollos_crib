@@ -81,9 +81,26 @@ RUN ./gradlew --no-daemon :app:dependencies --configuration releaseRuntimeClassp
 FROM deps AS build
 
 ARG BUILD_TOOLS=36.1.0
+
+# A container build inherits nothing from the runner's environment, so
+# the version has to be handed in explicitly. Without these, Gradle's
+# getenv lookups come back empty inside here and every run builds
+# versionCode 1 — the same filename with different bytes, which the
+# registry refuses with a 409.
+#
+# Declared in this stage rather than at the top so they don't invalidate
+# the SDK and dependency layers, which is most of the build time.
+ARG GITHUB_RUN_NUMBER
+ARG SOURCE_DATE_EPOCH
+ARG RELEASE_VERSION
+ENV GITHUB_RUN_NUMBER=${GITHUB_RUN_NUMBER} \
+    SOURCE_DATE_EPOCH=${SOURCE_DATE_EPOCH} \
+    RELEASE_VERSION=${RELEASE_VERSION}
+
 COPY app ./app
 
-RUN ./gradlew --no-daemon :app:assembleRelease
+RUN echo "building versionCode=${GITHUB_RUN_NUMBER:-1}" \
+ && ./gradlew --no-daemon :app:assembleRelease
 
 # Sign as a separate step from Gradle so the keystore never reaches a
 # build script, a Gradle cache, or an image layer. BuildKit secrets are
