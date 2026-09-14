@@ -216,26 +216,42 @@ fun Compass(
     /** How far through the card rotation, 0..1, or null when nothing rotates. */
     rotation: Float? = null
 ) {
-    if (!heading.available) return
-
     val palette = LocalAppTheme.current
 
+    // A device with no rotation vector still gets the dial's footprint: the
+    // gestures that cycle the detailed cards and the turn speed hang off this
+    // composable, and returning nothing here took them away with the needle --
+    // leaving the board stuck in whatever mode it was last left in, with no
+    // way to change it. What it does not get is a rose: a fixed card and a
+    // mark pointing at nothing is the decoration this avoids drawing.
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
         Canvas(Modifier.size(34.dp)) {
-            drawRose(heading.degrees, palette.dim, palette.accent)
+            if (heading.available) {
+                drawRose(heading.degrees, palette.dim, palette.accent)
+            } else {
+                // The track the turn sweeps, and on its own the only sign the
+                // dial is there to be pressed.
+                drawCircle(
+                    color = palette.dim.copy(alpha = 0.35f),
+                    radius = size.minDimension / 2f - 1f,
+                    style = Stroke(width = 1.5f)
+                )
+            }
             rotation?.let { drawTurn(it, palette.accent) }
         }
 
-        Text(
-            "${wrap(heading.degrees).roundToInt()}° ${compassPoint(heading.degrees)}",
-            style = MaterialTheme.typography.labelSmall,
-            fontFamily = FontFamily.Monospace,
-            color = palette.dim
-        )
+        if (heading.available) {
+            Text(
+                "${wrap(heading.degrees).roundToInt()}° ${compassPoint(heading.degrees)}",
+                style = MaterialTheme.typography.labelSmall,
+                fontFamily = FontFamily.Monospace,
+                color = palette.dim
+            )
+        }
     }
 }
 
