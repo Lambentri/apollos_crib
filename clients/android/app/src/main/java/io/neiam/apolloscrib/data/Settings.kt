@@ -91,6 +91,20 @@ class Settings(context: Context) {
         get() = prefs.getString(KEY_THEME, "after-dark").orEmpty()
         set(value) = prefs.edit { putString(KEY_THEME, value) }
 
+    /**
+     * Whether the home screen widgets drop their own background and let the
+     * wallpaper through.
+     *
+     * The board's colours stay the theme's -- this is not a second palette,
+     * it is the same one with the ground taken out. The cards keep a faint
+     * wash of their card colour rather than going fully clear: a card with
+     * nothing behind it is unreadable over a photograph, and the wash is
+     * enough to sit the text on without being a panel.
+     */
+    var transparentWidgets: Boolean
+        get() = prefs.getBoolean(KEY_TRANSPARENT_WIDGETS, false)
+        set(value) = prefs.edit { putBoolean(KEY_TRANSPARENT_WIDGETS, value) }
+
     var useTls: Boolean
         get() = prefs.getBoolean(KEY_TLS, false)
         set(value) = prefs.edit { putBoolean(KEY_TLS, value) }
@@ -159,6 +173,7 @@ class Settings(context: Context) {
         private const val KEY_PUBLISH_LOCATION = "publish_location"
         private const val KEY_RICH_CARDS = "rich_cards"
         private const val KEY_ROTATION_MS = "rotation_ms"
+        private const val KEY_TRANSPARENT_WIDGETS = "transparent_widgets"
 
         /**
          * The turns on offer, quickest first. Twelve seconds is the default

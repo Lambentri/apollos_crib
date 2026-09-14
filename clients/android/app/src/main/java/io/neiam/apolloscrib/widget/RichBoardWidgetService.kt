@@ -32,11 +32,14 @@ class RichBoardWidgetService : RemoteViewsService() {
         private val store = VisionStore(context)
         private var cards: List<RichFacts> = emptyList()
         private var palette: AppTheme = appThemeByKey(Settings(context).themeKey)
+        private var transparent: Boolean = Settings(context).transparentWidgets
 
         override fun onCreate() = Unit
 
         override fun onDataSetChanged() {
-            palette = appThemeByKey(Settings(context).themeKey)
+            val settings = Settings(context)
+            palette = appThemeByKey(settings.themeKey)
+            transparent = settings.transparentWidgets
 
             // The Plus board where there is one, as the compact widget does:
             // the same board with more on it, and Basic's own answer for every
@@ -63,7 +66,14 @@ class RichBoardWidgetService : RemoteViewsService() {
             val card = cards.getOrNull(position) ?: return loading()
 
             return RemoteViews(context.packageName, R.layout.widget_rich_card).apply {
-                setInt(R.id.rich_root, "setBackgroundColor", palette.cardBg.toArgb())
+                // A wash rather than nothing when transparent: enough to sit text on
+                // over a photograph, not enough to read as a panel.
+                setInt(
+                    R.id.rich_root,
+                    "setBackgroundColor",
+                    if (transparent) palette.cardBg.copy(alpha = 0.35f).toArgb()
+                    else palette.cardBg.toArgb()
+                )
 
                 setImageViewResource(R.id.rich_icon, card.iconRes)
                 setInt(R.id.rich_icon, "setColorFilter", palette.primary.toArgb())

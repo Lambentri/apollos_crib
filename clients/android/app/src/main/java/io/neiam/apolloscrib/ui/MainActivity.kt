@@ -44,9 +44,9 @@ import androidx.compose.ui.platform.LocalContext
 import io.neiam.apolloscrib.data.Pairing
 import io.neiam.apolloscrib.feed.FeedProvider
 import kotlinx.coroutines.delay
+import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.widget.BoardWidget
 import io.neiam.apolloscrib.widget.RichBoardWidget
-import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
 import io.neiam.apolloscrib.ui.theme.CribTheme
 import io.neiam.apolloscrib.ui.theme.LocalAppTheme
@@ -238,6 +238,34 @@ private fun ConnectionScreen(
         Column {
             Text("TLS", style = MaterialTheme.typography.bodyLarge)
             Switch(checked = tls, onCheckedChange = { tls = it })
+        }
+
+        // The widgets only: the app's own screens keep their ground, which is
+        // what makes the board readable in the hand. A home screen already
+        // has a picture behind it.
+        var transparentWidgets by remember(pairingKey) {
+            mutableStateOf(settings.transparentWidgets)
+        }
+        Column {
+            Text("Transparent widgets", style = MaterialTheme.typography.bodyLarge)
+            Text(
+                "Drops the home screen widgets' background so the wallpaper " +
+                    "shows through. The cards keep a faint wash to sit the text on.",
+                style = MaterialTheme.typography.bodySmall,
+                color = LocalAppTheme.current.dim
+            )
+            Switch(
+                checked = transparentWidgets,
+                onCheckedChange = {
+                    settings.transparentWidgets = it
+                    transparentWidgets = it
+                    // Both widgets redraw now rather than at the next board:
+                    // a setting whose effect waits for a bus is a setting the
+                    // user thinks did nothing.
+                    BoardWidget.refresh(context)
+                    RichBoardWidget.refresh(context)
+                }
+            )
         }
 
         // Opt-in, and the permission is asked for only when it is switched

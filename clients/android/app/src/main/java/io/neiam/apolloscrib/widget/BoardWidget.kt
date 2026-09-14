@@ -37,10 +37,18 @@ class BoardWidget : AppWidgetProvider() {
     }
 
     private fun build(context: Context, widgetId: Int): RemoteViews {
-        val palette = appThemeByKey(Settings(context).themeKey)
+        val settings = Settings(context)
+        val palette = appThemeByKey(settings.themeKey)
 
         return RemoteViews(context.packageName, R.layout.widget_board).apply {
-            setInt(R.id.board_root, "setBackgroundColor", palette.bg.toArgb())
+            // Transparent takes the ground out entirely: the widget frame is
+            // the launcher's, and the cards carry their own wash.
+            setInt(
+                R.id.board_root,
+                "setBackgroundColor",
+                if (settings.transparentWidgets) android.graphics.Color.TRANSPARENT
+                else palette.bg.toArgb()
+            )
             setTextColor(R.id.board_empty, palette.dim.toArgb())
 
             // The factory needs the widget id, and an Intent's extras are not
