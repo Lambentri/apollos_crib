@@ -11,7 +11,8 @@ import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.ui.RichFacts
 import io.neiam.apolloscrib.ui.factsFor
 import io.neiam.apolloscrib.ui.theme.AppTheme
-import io.neiam.apolloscrib.ui.theme.appThemeByKey
+import io.neiam.apolloscrib.ui.theme.appThemeForKey
+import io.neiam.apolloscrib.ui.theme.systemInDarkMode
 
 /**
  * The cards behind the detailed widget.
@@ -31,14 +32,15 @@ class RichBoardWidgetService : RemoteViewsService() {
 
         private val store = VisionStore(context)
         private var cards: List<RichFacts> = emptyList()
-        private var palette: AppTheme = appThemeByKey(Settings(context).themeKey)
+        private var palette: AppTheme =
+            appThemeForKey(Settings(context).themeKey, context.systemInDarkMode())
         private var transparent: Boolean = Settings(context).transparentWidgets
 
         override fun onCreate() = Unit
 
         override fun onDataSetChanged() {
             val settings = Settings(context)
-            palette = appThemeByKey(settings.themeKey)
+            palette = appThemeForKey(settings.themeKey, context.systemInDarkMode())
             transparent = settings.transparentWidgets
 
             // The Plus board where there is one, as the compact widget does:

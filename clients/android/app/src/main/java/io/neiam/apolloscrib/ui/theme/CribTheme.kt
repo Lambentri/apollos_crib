@@ -10,16 +10,16 @@ import io.neiam.apolloscrib.data.Settings
 /**
  * The app's own screens: the ported palette plus B612.
  *
- * Read from settings rather than from the system's light/dark, because the
- * palettes are named things the user picked -- "Her", "Forest" -- not two
- * ends of a switch. [LocalAppTheme] carries the colours Material has no slot
- * for, such as `liveGreen` for a realtime departure.
+ * Read from settings, which holds either a named palette the user picked --
+ * "Her", "Forest" -- or "system", in which case it follows the OS between
+ * the two named light and dark. [LocalAppTheme] carries the colours Material
+ * has no slot for, such as `liveGreen` for a realtime departure.
  */
 @Composable
 fun CribTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     val settings = remember { Settings(context) }
-    CribTheme(theme = appThemeByKey(settings.themeKey), content = content)
+    CribTheme(theme = appThemeForKey(settings.themeKey), content = content)
 }
 
 @Composable

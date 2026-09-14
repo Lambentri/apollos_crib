@@ -11,7 +11,8 @@ import android.widget.RemoteViews
 import io.neiam.apolloscrib.R
 import io.neiam.apolloscrib.mqtt.AnkyraService
 import io.neiam.apolloscrib.ui.MainActivity
-import io.neiam.apolloscrib.ui.theme.appThemeByKey
+import io.neiam.apolloscrib.ui.theme.appThemeForKey
+import io.neiam.apolloscrib.ui.theme.systemInDarkMode
 import io.neiam.apolloscrib.data.Settings
 
 /**
@@ -38,7 +39,7 @@ class RichBoardWidget : AppWidgetProvider() {
 
     private fun build(context: Context, widgetId: Int): RemoteViews {
         val settings = Settings(context)
-        val palette = appThemeByKey(settings.themeKey)
+        val palette = appThemeForKey(settings.themeKey, context.systemInDarkMode())
 
         return RemoteViews(context.packageName, R.layout.widget_rich_board).apply {
             // Transparent takes the ground out entirely: the widget frame is

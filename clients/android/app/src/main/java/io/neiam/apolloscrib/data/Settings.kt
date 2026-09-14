@@ -1,5 +1,6 @@
 package io.neiam.apolloscrib.data
 
+import io.neiam.apolloscrib.ui.theme.SYSTEM_THEME_KEY
 import android.content.Context
 import android.content.SharedPreferences
 import androidx.core.content.edit
@@ -83,12 +84,13 @@ class Settings(context: Context) {
         set(value) = prefs.edit { putInt(KEY_RICH_CARDS, value.coerceIn(0, MAX_RICH_CARDS)) }
 
     /**
-     * Which of the ported palettes the app's own screens use. Not a
-     * light/dark switch: these are the same named themes the Scribus routes
-     * render under, and the user picks one.
+     * Which of the ported palettes the app's own screens use. Mostly named
+     * themes the Scribus routes also render under, which the user picks; the
+     * exception is "system", the default, which follows the OS between the
+     * two palettes named light and dark the way the web frontends do.
      */
     var themeKey: String
-        get() = prefs.getString(KEY_THEME, "after-dark").orEmpty()
+        get() = prefs.getString(KEY_THEME, SYSTEM_THEME_KEY).orEmpty()
         set(value) = prefs.edit { putString(KEY_THEME, value) }
 
     /**

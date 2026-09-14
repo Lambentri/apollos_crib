@@ -50,7 +50,8 @@ import io.neiam.apolloscrib.widget.RichBoardWidget
 import io.neiam.apolloscrib.ui.theme.ALL_THEMES
 import io.neiam.apolloscrib.ui.theme.CribTheme
 import io.neiam.apolloscrib.ui.theme.LocalAppTheme
-import io.neiam.apolloscrib.ui.theme.appThemeByKey
+import io.neiam.apolloscrib.ui.theme.SYSTEM_THEME_KEY
+import io.neiam.apolloscrib.ui.theme.appThemeForKey
 import io.neiam.apolloscrib.data.VisionStore
 import android.content.Intent
 import android.widget.Toast
@@ -89,7 +90,7 @@ class MainActivity : ComponentActivity() {
             // board is what the app is for; the form is a page you go back to.
             var editing by remember(paired.value) { mutableStateOf(!settings.isConfigured) }
 
-            CribTheme(theme = appThemeByKey(themeKey)) {
+            CribTheme(theme = appThemeForKey(themeKey)) {
                 Scaffold { padding ->
                     val modifier = Modifier.fillMaxSize().padding(padding)
                     if (editing) {
@@ -383,6 +384,19 @@ private fun ConnectionScreen(
             modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            // System first, as in the web picker.
+            AssistChip(
+                onClick = { onThemeChange(SYSTEM_THEME_KEY) },
+                label = { Text("System") },
+                colors = if (themeKey == SYSTEM_THEME_KEY) {
+                    AssistChipDefaults.assistChipColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        labelColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    AssistChipDefaults.assistChipColors()
+                }
+            )
             ALL_THEMES.forEach { theme ->
                 AssistChip(
                     onClick = { onThemeChange(theme.key) },

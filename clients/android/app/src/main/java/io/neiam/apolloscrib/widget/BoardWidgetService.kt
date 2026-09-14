@@ -10,7 +10,8 @@ import io.neiam.apolloscrib.data.VisionStore
 import io.neiam.apolloscrib.targets.Preview
 import io.neiam.apolloscrib.targets.Targets
 import io.neiam.apolloscrib.ui.theme.AppTheme
-import io.neiam.apolloscrib.ui.theme.appThemeByKey
+import io.neiam.apolloscrib.ui.theme.appThemeForKey
+import io.neiam.apolloscrib.ui.theme.systemInDarkMode
 
 /** The cards the widget flips through. */
 class BoardWidgetService : RemoteViewsService() {
@@ -22,7 +23,8 @@ private class BoardFactory(private val context: Context) : RemoteViewsService.Re
 
     private val store = VisionStore(context)
     private var cards: List<Preview> = emptyList()
-    private var palette: AppTheme = appThemeByKey(Settings(context).themeKey)
+    private var palette: AppTheme =
+        appThemeForKey(Settings(context).themeKey, context.systemInDarkMode())
     private var transparent: Boolean = Settings(context).transparentWidgets
 
     override fun onCreate() = Unit
@@ -34,7 +36,7 @@ private class BoardFactory(private val context: Context) : RemoteViewsService.Re
      */
     override fun onDataSetChanged() {
         val settings = Settings(context)
-        palette = appThemeByKey(settings.themeKey)
+        palette = appThemeForKey(settings.themeKey, context.systemInDarkMode())
         transparent = settings.transparentWidgets
         // The Plus board where there is one: it carries the extended reading
         // for transit and Basic's own answer for every type Plus does not

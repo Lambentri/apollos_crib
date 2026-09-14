@@ -23,7 +23,7 @@ import io.neiam.apolloscrib.data.Settings
 import io.neiam.apolloscrib.data.VisionStore
 import io.neiam.apolloscrib.ui.BoardScreen
 import io.neiam.apolloscrib.ui.theme.CribTheme
-import io.neiam.apolloscrib.ui.theme.appThemeByKey
+import io.neiam.apolloscrib.ui.theme.appThemeForKey
 import kotlin.math.abs
 
 /**
@@ -68,7 +68,7 @@ class OverlayPanel(
         val content = ComposeView(context).apply {
             setContent {
                 val settings = Settings(context)
-                CribTheme(theme = appThemeByKey(settings.themeKey)) {
+                CribTheme(theme = appThemeForKey(settings.themeKey)) {
                     Surface(modifier = Modifier.fillMaxSize()) {
                         Scaffold { padding ->
                             BoardScreen(
