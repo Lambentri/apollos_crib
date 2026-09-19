@@ -78,6 +78,18 @@ data class AppTheme(
             // it to `primary` so the theme's accent shows up at higher
             // elevations rather than a generic purple.
             surfaceTint = primary,
+            // The rest of Material's slots, which it otherwise fills from its
+            // own baseline palette -- and that baseline is purple and dusty
+            // pink, so they show up as exactly the colours the theme does not
+            // contain. secondaryContainer is the one that bites: it paints the
+            // selected NavigationBar pill and selected chips, so a themed app
+            // with a bottom bar shows a purple pill on every theme.
+            secondaryContainer = primary, onSecondaryContainer = bg,
+            tertiary = accent, onTertiary = bg,
+            tertiaryContainer = cardBg, onTertiaryContainer = content,
+            inversePrimary = primary,
+            inverseSurface = content, inverseOnSurface = bg,
+            surfaceBright = cardBg, surfaceDim = bg,
             outline = dim, outlineVariant = dim.copy(alpha = 0.35f),
         )
     } else {
@@ -94,6 +106,18 @@ data class AppTheme(
             surfaceContainerHigh   = cardBg,
             surfaceContainerHighest = cardBg,
             surfaceTint = primary,
+            // The rest of Material's slots, which it otherwise fills from its
+            // own baseline palette -- and that baseline is purple and dusty
+            // pink, so they show up as exactly the colours the theme does not
+            // contain. secondaryContainer is the one that bites: it paints the
+            // selected NavigationBar pill and selected chips, so a themed app
+            // with a bottom bar shows a purple pill on every theme.
+            secondaryContainer = primary, onSecondaryContainer = bg,
+            tertiary = accent, onTertiary = bg,
+            tertiaryContainer = cardBg, onTertiaryContainer = content,
+            inversePrimary = primary,
+            inverseSurface = content, inverseOnSurface = bg,
+            surfaceBright = cardBg, surfaceDim = bg,
             outline = dim, outlineVariant = dim.copy(alpha = 0.35f),
         )
     }
