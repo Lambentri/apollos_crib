@@ -35,11 +35,15 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
     {:noreply, assign(socket, :cached_items, cached_items)}
   end
 
+  # A cache that is not there, or is busy, is an exit rather than an
+  # exception -- so caught, not rescued.
   defp fetch_cached_items(keryx_id) do
     try do
       RoomSanctum.Worker.KeryxItemCache.get_all_items(keryx_id)
     rescue
       _ -> %{}
+    catch
+      :exit, _ -> %{}
     end
   end
 
@@ -53,9 +57,12 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
   def format_item_preview(data) do
     try do
       encoded = Jason.encode!(data, pretty: true)
-      # Makeup returns an IO list, convert to string and mark as safe HTML
+      # Makeup returns an IO list, convert to string and mark as safe HTML.
+      # The lexer is named because the default is Elixir's, from makeup_elixir,
+      # which this app does not have: left out, every preview raised, and the
+      # page went down wherever a Keryx had seen anything at all.
       encoded
-      |> Makeup.highlight()
+      |> Makeup.highlight(lexer: Makeup.Lexers.JsonLexer)
       |> Phoenix.HTML.raw()
     rescue
       Protocol.UndefinedError ->
