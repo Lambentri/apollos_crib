@@ -10,7 +10,8 @@ defmodule RoomHermesWeb.TopicController do
   Which routing keys a rabbit user may read and write.
 
   Reading is the whole of its own topic: the board, the image beside it, and
-  anything else a Pythiae publishes there.
+  anything else a Pythiae publishes there. A rabbit user may also read every
+  Keryx its account owns -- see `keryx_permitted?/3`.
 
   Writing is confined to an uplink prefix, `<topic>.up.`. A client is not
   allowed to write the topic a Pythiae publishes on, because everything else
@@ -31,7 +32,8 @@ defmodule RoomHermesWeb.TopicController do
         send_resp(conn, :ok, "deny")
 
       user ->
-        if permitted?(user.topic, permission, routing_key) do
+        if permitted?(user.topic, permission, routing_key) or
+             keryx_permitted?(user, permission, routing_key) do
           send_resp(conn, :ok, "allow")
         else
           send_resp(conn, :ok, "deny")
@@ -79,4 +81,33 @@ defmodule RoomHermesWeb.TopicController do
 
   @doc "The channel a client asks for something on."
   def request_prefix(topic), do: topic <> ".publish."
+
+  @doc """
+  Whether a rabbit user may touch a Keryx's routing key -- the keys
+  `RoomSanctum.Configuration.Keryx.topic/1` names.
+
+  Its account has to own the Keryx. Then it may read anything under it --
+  a wildcard included, which is the point -- and write only to its control
+  key, which is how a client asks for a refresh.
+
+      mix run -e 'IO.inspect RoomHermesWeb.TopicController.keryx_permission?("write", "control")'
+  """
+  def keryx_permitted?(%RabbitUser{user_id: uid}, permission, routing_key)
+      when not is_nil(uid) do
+    case Regex.run(~r/^apollos\.keryx\.(\d+)\.(.+)$/, routing_key) do
+      [_, keryx_id, rest] ->
+        keryx_permission?(permission, rest) and
+          Accounts.owns_keryx?(uid, String.to_integer(keryx_id))
+
+      _ ->
+        false
+    end
+  end
+
+  def keryx_permitted?(_user, _permission, _routing_key), do: false
+
+  @doc "The part of the Keryx rule that needs no database: what, under a Keryx, may be done."
+  def keryx_permission?("read", _rest), do: true
+  def keryx_permission?("write", "control"), do: true
+  def keryx_permission?(_permission, _rest), do: false
 end

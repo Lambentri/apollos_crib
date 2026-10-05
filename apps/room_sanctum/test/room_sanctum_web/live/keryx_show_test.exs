@@ -1,6 +1,6 @@
 defmodule RoomSanctumWeb.KeryxShowTest do
   @moduledoc """
-  The Keryx page, and whatever its worker has seen so far.
+  The Keryx page: its topics, and whatever its worker has seen so far.
 
   Builds its own fixtures, as SourceLiveBulkPaintTest does, since
   ConfigurationFixtures predates the required user_id.
@@ -45,7 +45,14 @@ defmodule RoomSanctumWeb.KeryxShowTest do
         user_id: user.id
       })
 
-    %{conn: log_in_user(conn, user), keryx: keryx}
+    %{conn: log_in_user(conn, user), keryx: keryx, query: query}
+  end
+
+  test "shows the topics a client subscribes to", %{conn: conn, keryx: keryx, query: query} do
+    {:ok, _live, html} = live(conn, "/cfg/keryxiae/#{keryx.id}")
+
+    assert html =~ "apollos/keryx/#{keryx.id}/control"
+    assert html =~ "apollos/keryx/#{keryx.id}/bourse/#{query.id}"
   end
 
   # The page asks the Keryx's item cache what it has seen. That cache is a

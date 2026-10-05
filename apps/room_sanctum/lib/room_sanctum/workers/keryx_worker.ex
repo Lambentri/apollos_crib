@@ -5,6 +5,7 @@ defmodule RoomSanctum.Worker.Keryx do
   require Logger
 
   alias RoomSanctum.Configuration
+  alias RoomSanctum.Configuration.Keryx
 
   @registry :zeus
 
@@ -92,7 +93,7 @@ defmodule RoomSanctum.Worker.Keryx do
 
   def handle_info(:subscribe_control, state) do
     if state.keryx do
-      control_topic = "/apollos/keryx/#{state.keryx.name}/control"
+      control_topic = Keryx.control_topic(state.keryx.id)
       queue_name = "keryx_control_#{state.keryx.id}"
 
       case AMQP.Application.get_channel(:default) do
@@ -131,14 +132,16 @@ defmodule RoomSanctum.Worker.Keryx do
   def handle_info({:basic_deliver, payload, _meta}, state) do
     # Handle incoming control messages
     case Poison.decode(payload) do
-      {:ok, %{"action" => "refresh"}} ->
-        Logger.info("Received refresh command for Keryx #{state.id}")
-        query_workers(state.id)
-        {:noreply, state}
-
+      # The narrower match first: a map pattern matches any map with at least
+      # those keys, so the bare refresh would otherwise swallow this one.
       {:ok, %{"action" => "refresh", "query_id" => query_id}} ->
         Logger.info("Received refresh command for Query #{query_id}")
         refresh_single_query(state, query_id)
+        {:noreply, state}
+
+      {:ok, %{"action" => "refresh"}} ->
+        Logger.info("Received refresh command for Keryx #{state.id}")
+        query_workers(state.id)
         {:noreply, state}
 
       _ ->
@@ -311,8 +314,8 @@ defmodule RoomSanctum.Worker.Keryx do
     |> Enum.into(%{})
   end
 
-  defp publish_query_data(keryx_id, name, type, query_id, data, query) when is_list(data) do
-    base_topic = "/apollos/keryx/#{name}/#{type}/#{query_id}"
+  defp publish_query_data(keryx_id, _name, type, query_id, data, query) when is_list(data) do
+    base_topic = query_topic(keryx_id, type, query_id)
 
     # Cache items for the UI
     RoomSanctum.Worker.KeryxItemCache.add_items(keryx_id, query_id, type, data)
@@ -333,7 +336,7 @@ defmodule RoomSanctum.Worker.Keryx do
           data
           |> Enum.each(fn item ->
             item_id = extract_item_id(item, type)
-            item_topic = "#{base_topic}/#{item_id}"
+            item_topic = "#{base_topic}.#{item_id}"
             AMQP.Basic.publish(chan, "amq.topic", item_topic, item |> Poison.encode!())
           end)
         end
@@ -343,9 +346,9 @@ defmodule RoomSanctum.Worker.Keryx do
     end
   end
 
-  defp publish_query_data(_keryx_id, name, type, query_id, data, _query) do
+  defp publish_query_data(keryx_id, _name, type, query_id, data, _query) do
     # Handle non-list data (publish as-is, no caching)
-    topic = "/apollos/keryx/#{name}/#{type}/#{query_id}"
+    topic = query_topic(keryx_id, type, query_id)
 
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
@@ -356,12 +359,15 @@ defmodule RoomSanctum.Worker.Keryx do
     end
   end
 
+  defp query_topic(keryx_id, type, query_id),
+    do: "#{Keryx.topic(keryx_id)}.#{type}.#{query_id}"
+
   # Publish metadata about the query results using BasicMQTT condense
   defp publish_metadata(chan, base_topic, type, query_id, data, query) do
     # Use the existing condense function to get metadata
     metadata = RoomSanctum.Condenser.BasicMQTT.condense({query_id, type}, data, query)
 
-    meta_topic = "#{base_topic}/meta"
+    meta_topic = "#{base_topic}.meta"
     AMQP.Basic.publish(chan, "amq.topic", meta_topic, metadata |> Poison.encode!())
   end
 
@@ -372,7 +378,7 @@ defmodule RoomSanctum.Worker.Keryx do
     |> Enum.group_by(&extract_gtfs_route/1)
     |> Enum.each(fn {route, route_items} ->
       # Publish all items for this route to <base>/<route>
-      route_topic = "#{base_topic}/#{route}"
+      route_topic = "#{base_topic}.#{route}"
       AMQP.Basic.publish(chan, "amq.topic", route_topic, route_items |> Poison.encode!())
 
       # Group by destination within this route
@@ -380,14 +386,14 @@ defmodule RoomSanctum.Worker.Keryx do
       |> Enum.group_by(&extract_gtfs_destination/1)
       |> Enum.each(fn {destination, dest_items} ->
         # Publish items for this route+destination to <base>/<route>/<destination>
-        dest_topic = "#{base_topic}/#{route}/#{destination}"
+        dest_topic = "#{base_topic}.#{route}.#{destination}"
         AMQP.Basic.publish(chan, "amq.topic", dest_topic, dest_items |> Poison.encode!())
 
         # Also publish individual items
         dest_items
         |> Enum.each(fn item ->
           item_id = extract_item_id(item, :gtfs)
-          item_topic = "#{base_topic}/#{route}/#{destination}/#{item_id}"
+          item_topic = "#{base_topic}.#{route}.#{destination}.#{item_id}"
           AMQP.Basic.publish(chan, "amq.topic", item_topic, item |> Poison.encode!())
         end)
       end)

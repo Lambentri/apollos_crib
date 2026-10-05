@@ -114,4 +114,15 @@ defmodule RoomHermes.Accounts do
     from(r in RabbitUser, where: r.username == ^username and r.password == ^password)
     |> Repo.one()
   end
+
+  @doc """
+  Whether an account owns a Keryx.
+
+  Schemaless, because the Keryx is the sanctum's: this app shares its
+  database but not its schemas.
+  """
+  def owns_keryx?(user_id, keryx_id) do
+    from(k in "keryxiae", where: k.id == ^keryx_id and k.user_id == ^user_id)
+    |> Repo.exists?()
+  end
 end

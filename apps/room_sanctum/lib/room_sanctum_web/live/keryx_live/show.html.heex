@@ -47,19 +47,19 @@
           <h3 class="card-title">Control Topic</h3>
           <p class="text-sm opacity-75 mb-2">Publish commands to this topic to control the Keryx worker</p>
           <div class="flex items-center gap-2">
-            <code class="bg-base-300 px-3 py-2 rounded text-sm flex-grow">/apollos/keryx/<%= @keryx.name %>/control</code>
+            <code class="bg-base-300 px-3 py-2 rounded text-sm flex-grow"><%= @mqtt_base %>/control</code>
             <button
               class="btn btn-square btn-sm"
               phx-click={JS.dispatch("phx:copy", to: "#control-topic")}
               title="Copy control topic">
               <i class="fas fa-copy"></i>
             </button>
-            <input type="hidden" id="control-topic" value={"/apollos/keryx/#{@keryx.name}/control"} />
+            <input type="hidden" id="control-topic" value={"#{@mqtt_base}/control"} />
           </div>
           <div class="mt-3 text-xs">
             <p class="font-bold mb-1">Commands:</p>
-            <code class="block bg-base-300 p-2 rounded mb-1">&left"action": "refresh"}</code>
-            <code class="block bg-base-300 p-2 rounded">"action": "refresh", "query_id": 123}</code>
+            <code class="block bg-base-300 p-2 rounded mb-1">&lbrace;"action": "refresh"&rbrace;</code>
+            <code class="block bg-base-300 p-2 rounded">&lbrace;"action": "refresh", "query_id": 123&rbrace;</code>
           </div>
         </div>
       </div>
@@ -78,14 +78,14 @@
                     <% end %>
                   </div>
                   <div class="flex items-center gap-2">
-                    <code class="bg-base-300 px-3 py-2 rounded text-sm flex-grow">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %></code>
+                    <code class="bg-base-300 px-3 py-2 rounded text-sm flex-grow"><%= @mqtt_base %>/<%= q.source.type %>/<%= q.id %></code>
                     <button
                       class="btn btn-square btn-sm"
                       phx-click={JS.dispatch("phx:copy", to: "#topic-#{q.id}")}
                       title="Copy topic">
                       <i class="fas fa-copy"></i>
                     </button>
-                    <input type="hidden" id={"topic-#{q.id}"} value={["/apollos/keryx/", @keryx.name, q.source.type, q.id] |> Enum.join("/")} />
+                    <input type="hidden" id={"topic-#{q.id}"} value={[@mqtt_base, q.source.type, q.id] |> Enum.join("/")} />
                   </div>
                 </div>
                 <div class="flex justify-between items-center">
@@ -116,14 +116,14 @@
                   <div class="ml-4 mt-2">
                     <p class="mb-2">
                       <span class="font-semibold">Metadata:</span>
-                      <code class="bg-base-200 px-2 py-1 rounded ml-1">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/meta</code>
+                      <code class="bg-base-200 px-2 py-1 rounded ml-1"><%= @mqtt_base %>/<%= q.source.type %>/<%= q.id %>/meta</code>
                       <span class="block ml-2 mt-1 text-[10px] opacity-60">
                         Contains condensed data summary and query information (name, metadata)
                       </span>
                     </p>
                     <p class="mb-1">
                       <span class="font-semibold">Individual items:</span>
-                      <code class="bg-base-200 px-2 py-1 rounded ml-1">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/[item-id]</code>
+                      <code class="bg-base-200 px-2 py-1 rounded ml-1"><%= @mqtt_base %>/<%= q.source.type %>/<%= q.id %>/[item-id]</code>
                     </p>
                     <p class="text-xs opacity-60">
                       <%= case q.source.type do %>
@@ -164,8 +164,8 @@
                             <span class="text-[10px] font-semibold">All items for route</span>
                           </div>
                           <div class="flex items-center gap-2 opacity-60">
-                            <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/<%= route %></code>
-                            <input type="hidden" id={"route-topic-#{q.id}-#{route}"} value={"/apollos/keryx/#{@keryx.name}/#{q.source.type}/#{q.id}/#{route}"} />
+                            <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate"><%= @mqtt_base %>/<%= q.source.type %>/<%= q.id %>/<%= route %></code>
+                            <input type="hidden" id={"route-topic-#{q.id}-#{route}"} value={"#{@mqtt_base}/#{q.source.type}/#{q.id}/#{route}"} />
                             <div class="flex gap-0.5 flex-shrink-0">
                               <button
                                 class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
@@ -190,8 +190,8 @@
                               </div>
                             </div>
                             <div class="flex items-center gap-2 opacity-75">
-                              <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/<%= group.route %>/<%= group.destination %></code>
-                              <input type="hidden" id={"mini-topic-#{q.id}-#{route}-#{idx}"} value={"/apollos/keryx/#{@keryx.name}/#{q.source.type}/#{q.id}/#{group.route}/#{group.destination}"} />
+                              <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate"><%= @mqtt_base %>/<%= q.source.type %>/<%= q.id %>/<%= group.route %>/<%= group.destination %></code>
+                              <input type="hidden" id={"mini-topic-#{q.id}-#{route}-#{idx}"} value={"#{@mqtt_base}/#{q.source.type}/#{q.id}/#{group.route}/#{group.destination}"} />
                               <div class="flex gap-0.5 flex-shrink-0">
                                 <button
                                   class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"
@@ -232,8 +232,8 @@
                             </div>
                           </div>
                           <div class="flex items-center gap-2 opacity-75">
-                            <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate">/apollos/keryx/<%= @keryx.name %>/<%= q.source.type %>/<%= q.id %>/<%= group.id %></code>
-                            <input type="hidden" id={"mini-topic-#{q.id}-#{idx}"} value={"/apollos/keryx/#{@keryx.name}/#{q.source.type}/#{q.id}/#{group.id}"} />
+                            <code class="bg-base-300 px-2 py-1 rounded text-[10px] flex-grow truncate"><%= @mqtt_base %>/<%= q.source.type %>/<%= q.id %>/<%= group.id %></code>
+                            <input type="hidden" id={"mini-topic-#{q.id}-#{idx}"} value={"#{@mqtt_base}/#{q.source.type}/#{q.id}/#{group.id}"} />
                             <div class="flex gap-0.5 flex-shrink-0">
                               <button
                                 class="btn btn-ghost btn-xs p-0 min-h-0 h-4 w-4"

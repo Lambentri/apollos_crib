@@ -2,6 +2,7 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
   use RoomSanctumWeb, :live_view_a
 
   alias RoomSanctum.Configuration
+  alias RoomSanctum.Configuration.Keryx
 
   @impl true
   def mount(_params, _session, socket) do
@@ -22,6 +23,7 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
      |> assign(:keryx, keryx)
+     |> assign(:mqtt_base, mqtt_base(keryx))
      |> assign(:queries, queries)
      |> assign(:cached_items, cached_items)}
   end
@@ -108,4 +110,9 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
       end)
     end
   end
+
+  # What a client subscribes to, which is not what the worker publishes to:
+  # RabbitMQ shows an MQTT client the routing key with its dots as slashes.
+  defp mqtt_base(keryx),
+    do: keryx.id |> Keryx.topic() |> Keryx.mqtt_topic()
 end
