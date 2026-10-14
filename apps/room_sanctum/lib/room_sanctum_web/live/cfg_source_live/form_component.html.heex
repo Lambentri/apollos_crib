@@ -153,6 +153,26 @@
                 subway sends <code>098600_5..S03R</code> where the schedule says
                 <code>ASP26GEN-1038-Sunday-00_098600_5..S03R</code>. Leave off unless the
                 feed tester says otherwise; matching on a suffix is looser than matching
+    <div class="form-control">
+        <.input
+            field={gtfs_form[:fleet_marks_raw]}
+            type="textarea"
+            label="Fleet marks"
+            rows="4"
+            value={gtfs_form[:fleet_marks_raw].value ||
+                   RoomSanctum.Configuration.Configs.GTFS.fleet_marks_text(gtfs_form.data)}
+            placeholder={RoomSanctum.Configuration.Configs.GTFS.mbta_new_trains_text()}
+        />
+        <label class="label">
+            <span class="label-text-alt opacity-70">
+                Optional. One <code>Route, Route: low-high, low-high</code> per line, by
+                route id and car number. An arrival whose train has any car in range is
+                marked <code>marked: true</code> in the Plus feed, as is each such car.
+                Needs a vehicle positions feed. The placeholder is the MBTA's new
+                trains, as transitmatters' new-train-tracker counts them.
+            </span>
+        </label>
+    </div>
                 exactly.
             </span>
         </label>

@@ -62,23 +62,152 @@ defmodule RoomSanctum.Configuration.Configs.GTFS do
     # What the form edits: one `Name: value` per line. The stored shape is the
     # map; this is the shape a person can type and read back.
     field :headers_raw, :string, virtual: true
+
+    # Vehicles worth calling out, by route and car number: route id to a list
+    # of inclusive [low, high] ranges. An arrival whose train has any car in
+    # range is marked in the Plus feed, and so is each such car. Written for
+    # the MBTA's new fleets -- see mbta_new_trains_text/0 -- but nothing in it
+    # is specific to them.
+    #
+    # Empty, which is every source that has not asked, marks nothing.
+    field :fleet_marks, :map, default: %{}
+
+    # The form's shape of the same: one `Route, Route: low-high, low-high` per
+    # line, as with the headers.
+    field :fleet_marks_raw, :string, virtual: true
   end
+
+  # The rules transitmatters' new-train-tracker uses, in its server's
+  # chalicelib/fleet.py: CRRC cars on Red and Orange, Type 9 and 10 on the
+  # Green Line, battery buses on the Silver Line. The tracker splits Red into
+  # its two branches; the MBTA's own feed calls both of them Red.
+  @mbta_new_trains """
+  Red: 1900-2151
+  Orange: 1400-1551
+  Green-B, Green-C, Green-D, Green-E: 3900-3923, 4001-4102
+  741, 742, 743, 746, 749, 751: 1294-1299
+  """
 
   def changeset(source, params) do
     source
     |> cast(
       params,
       ~w(url url_rt_sa url_rt_tu url_rt_vp url_rt_shared tz rt_agency
-         rt_trip_id_suffix rt_period_tu rt_period_vp rt_period_sa headers)a
+         rt_trip_id_suffix rt_period_tu rt_period_vp rt_period_sa headers fleet_marks)a
     )
     # Its own cast, with "" kept as a value rather than treated as nothing.
     # Ecto's default empty_values turns an emptied textarea into no change at
     # all, so clearing the box left the old headers in place -- which means an
     # API key could be added through this form and never taken away again.
-    |> cast(params, [:headers_raw], empty_values: [])
+    |> cast(params, [:headers_raw, :fleet_marks_raw], empty_values: [])
     |> validate_required([:url, :tz])
     |> validate_periods()
     |> put_headers()
+    |> put_fleet_marks()
+  end
+
+  @doc "The MBTA's new-train rules, as the form's text."
+  def mbta_new_trains_text, do: String.trim_trailing(@mbta_new_trains)
+
+  @doc """
+  The stored fleet marks as the text the form edits.
+
+  Routes sharing the same ranges are written on one line, so the MBTA rules
+  read back as the four lines they went in as rather than eleven.
+  """
+  def fleet_marks_text(%{fleet_marks: marks}) when is_map(marks) and map_size(marks) > 0 do
+    marks
+    |> Enum.group_by(fn {_route, ranges} -> ranges end, fn {route, _} -> route end)
+    |> Enum.map(fn {ranges, routes} -> {Enum.sort(routes), ranges} end)
+    |> Enum.sort()
+    |> Enum.map_join("\n", fn {routes, ranges} ->
+      Enum.join(routes, ", ") <> ": " <> Enum.map_join(ranges, ", ", &range_text/1)
+    end)
+  end
+
+  def fleet_marks_text(_config), do: ""
+
+  defp range_text([low, low]), do: to_string(low)
+  defp range_text([low, high]), do: "#{low}-#{high}"
+
+  @doc """
+  Parse the fleet marks textarea into route id => [[low, high], ...], or say
+  which line is wrong.
+
+  A line naming a route already named adds to it rather than replacing it.
+  """
+  def parse_fleet_marks(text) when is_binary(text) do
+    text
+    |> String.split(~r/\r?\n/)
+    |> Enum.map(&String.trim/1)
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.reduce_while({:ok, %{}}, fn line, {:ok, acc} ->
+      with [routes, ranges] <- String.split(line, ":", parts: 2),
+           routes = split_list(routes),
+           true <- routes != [],
+           {:ok, ranges} <- parse_ranges(ranges) do
+        acc =
+          Enum.reduce(routes, acc, fn route, acc ->
+            Map.update(acc, route, ranges, &Enum.uniq(&1 ++ ranges))
+          end)
+
+        {:cont, {:ok, acc}}
+      else
+        _ -> {:halt, {:error, line}}
+      end
+    end)
+  end
+
+  def parse_fleet_marks(_text), do: {:ok, %{}}
+
+  defp split_list(text) do
+    text |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+  end
+
+  defp parse_ranges(text) do
+    case split_list(text) do
+      [] ->
+        :error
+
+      parts ->
+        Enum.reduce_while(parts, {:ok, []}, fn part, {:ok, acc} ->
+          case parse_range(part) do
+            {:ok, range} -> {:cont, {:ok, acc ++ [range]}}
+            :error -> {:halt, :error}
+          end
+        end)
+    end
+  end
+
+  defp parse_range(part) do
+    case Regex.run(~r/^(\d+)\s*(?:-\s*(\d+))?$/, part) do
+      [_, low] -> {:ok, [String.to_integer(low), String.to_integer(low)]}
+      [_, low, high] -> ordered(String.to_integer(low), String.to_integer(high))
+      _ -> :error
+    end
+  end
+
+  defp ordered(low, high) when low <= high, do: {:ok, [low, high]}
+  defp ordered(_low, _high), do: :error
+
+  defp put_fleet_marks(changeset) do
+    case fetch_change(changeset, :fleet_marks_raw) do
+      :error ->
+        changeset
+
+      {:ok, text} ->
+        case parse_fleet_marks(text) do
+          {:ok, marks} ->
+            put_change(changeset, :fleet_marks, marks)
+
+          {:error, line} ->
+            add_error(
+              changeset,
+              :fleet_marks_raw,
+              "expected \"Route, Route: low-high, low-high\", got: #{line}"
+            )
+        end
+    end
   end
 
   @doc """

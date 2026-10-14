@@ -320,6 +320,7 @@ defmodule RoomGtfs.Worker do
                   x =
                     x
                     |> merge_occupancy(occupancy_for(config, x.trip_id, stu, vehicles))
+                    |> merge_fleet_mark(config, vehicles)
                     |> merge_schedule_relationship(val.schedule_relationship, stu)
                     |> merge_stop_properties(stu)
 
@@ -402,10 +403,7 @@ defmodule RoomGtfs.Worker do
   # answer, so it reads the same as an absent field -- NOT_ACCEPTING_PASSENGERS
   # is a real answer and is kept.
   def occupancy_for(config, scheduled_trip_id, stu, vehicles) do
-    vehicle =
-      Enum.find(vehicles, fn v ->
-        v.trip_id && trip_id_match?(config, scheduled_trip_id, v.trip_id)
-      end)
+    vehicle = vehicle_for(config, scheduled_trip_id, vehicles)
 
     status =
       occupancy_status(stu && stu.departure_occupancy_status) ||
@@ -423,6 +421,41 @@ defmodule RoomGtfs.Worker do
           pct: occupancy_pct(vehicle && Map.get(vehicle, :occupancy_percentage)),
           carriages: carriages
         }
+    end
+  end
+
+  defp vehicle_for(config, scheduled_trip_id, vehicles) do
+    Enum.find(vehicles, fn v ->
+      v.trip_id && trip_id_match?(config, scheduled_trip_id, v.trip_id)
+    end)
+  end
+
+  @doc false
+  # Whether this train is one the source asked to have called out -- see
+  # RoomGtfs.Fleet. Only a source with rules for this route gets the keys at
+  # all, and only once a vehicle is running the trip: before then there is no
+  # telling which train it will be, which is not the same as "not a new one".
+  def merge_fleet_mark(arrival, config, vehicles) do
+    trip = Map.get(arrival, :trip)
+    route_id = trip && Map.get(trip, :route_id)
+
+    with ranges when ranges != nil <- RoomGtfs.Fleet.rules_for(config, route_id),
+         vehicle when vehicle != nil <- vehicle_for(config, arrival.trip_id, vehicles) do
+      arrival = Map.put(arrival, :marked, RoomGtfs.Fleet.vehicle_marked?(vehicle, ranges))
+
+      case Map.get(arrival, :carriages) do
+        nil ->
+          arrival
+
+        carriages ->
+          Map.put(
+            arrival,
+            :carriages,
+            Enum.map(carriages, &Map.put(&1, :marked, RoomGtfs.Fleet.car_marked?(&1.label, ranges)))
+          )
+      end
+    else
+      _ -> arrival
     end
   end
 
@@ -1101,6 +1134,8 @@ defmodule RoomGtfs.Worker.RT do
   defp place_vehicle(v, stops) do
     base = %{
       vehicle_id: v.vehicle && v.vehicle.id,
+      # What is painted on it, which for the MBTA is the car numbers.
+      label: v.vehicle && v.vehicle.label,
       trip_id: v.trip && v.trip.trip_id,
       route_id: v.trip && v.trip.route_id,
       stop_id: v.stop_id,

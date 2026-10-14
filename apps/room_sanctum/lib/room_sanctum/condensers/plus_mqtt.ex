@@ -39,6 +39,10 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
           name: f.trip.trip_short_name,
           bikes: f.trip.bikes_allowed,
           carriages: Map.get(f, :carriages, []),
+          # One of the vehicles the source's fleet marks call out -- true,
+          # false, or nil where the source set none for this route or no
+          # vehicle has been seen on the trip yet.
+          marked: Map.get(f, :marked),
           # Not running, or running but not calling here -- kept apart,
           # because they are different news to a rider.
           trip_status: Map.get(f, :trip_status),
