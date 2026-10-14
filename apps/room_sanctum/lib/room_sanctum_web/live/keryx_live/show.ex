@@ -67,7 +67,10 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
       |> Makeup.highlight(lexer: Makeup.Lexers.JsonLexer)
       |> Phoenix.HTML.raw()
     rescue
-      Protocol.UndefinedError ->
+      # Anything, not only a missing encoder: Ecto's encoders for an unloaded
+      # association or a schema's __meta__ raise a plain RuntimeError, and a
+      # preview is not worth the page.
+      _ ->
         # If Jason encoding fails, use inspect as fallback
         inspected = inspect(data, pretty: true, limit: 2048)
         String.slice(inspected, 0..2048) <> if String.length(inspected) > 2048, do: "...", else: ""

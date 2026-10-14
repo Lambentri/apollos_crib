@@ -87,4 +87,10 @@ defmodule RoomSanctumWeb.KeryxItemPreviewTest do
   test "falls back to inspect for what JSON cannot say" do
     assert Show.format_item_preview(%{at: {1, 2}}) =~ "{1, 2}"
   end
+
+  test "falls back for an encoder that raises rather than being missing" do
+    unloaded = %Ecto.Association.NotLoaded{__field__: :trip, __owner__: Trip, __cardinality__: :one}
+
+    assert Show.format_item_preview(%{trip: unloaded}) =~ "NotLoaded"
+  end
 end
