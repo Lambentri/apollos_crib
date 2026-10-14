@@ -156,8 +156,22 @@ defmodule RoomSanctum.Worker.Pythiae do
     for a <- state.pythiae.ankyra do
       RoomSanctum.Worker.Ankyra.publish(a, basic)
       if plus, do: RoomSanctum.Worker.Ankyra.publish_plus(a, plus)
+      if discoverable?(state.pythiae), do: discover(a, basic, plus)
     end
   end
+
+  # Home Assistant reads the richest board there is -- Plus where this
+  # Pythiae publishes it, since it is the whole of Basic and more.
+  defp discover(ankyra, _basic, plus) when not is_nil(plus),
+    do: RoomSanctum.Worker.Ankyra.discover_board(ankyra, plus, :plus)
+
+  defp discover(ankyra, basic, nil),
+    do: RoomSanctum.Worker.Ankyra.discover_board(ankyra, basic, :basic)
+
+  # Not a Plani's board. Its entries are whatever is near its client this
+  # minute, and every one would be a device in Home Assistant for ever after.
+  defp discoverable?(%{curr_plani: plani}), do: is_nil(plani)
+  defp discoverable?(_), do: false
 
   defp plus?(%{plus: true}), do: true
   defp plus?(_), do: false

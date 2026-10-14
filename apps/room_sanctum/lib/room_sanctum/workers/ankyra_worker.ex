@@ -22,6 +22,12 @@ defmodule RoomSanctum.Worker.Ankyra do
   @positions_ttl_s 1800
   @positions_kept 64
 
+  # How often a Home Assistant discovery config is sent again when nothing in
+  # it has changed. RabbitMQ keeps no retained message for anything published
+  # over AMQP, so a Home Assistant that has only just connected learns its
+  # devices from this, or from asking -- see `discover/2`.
+  @hass_refresh_s 600
+
   @registry :zeus
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("ankyra" <> opts[:id]))
@@ -47,7 +53,7 @@ defmodule RoomSanctum.Worker.Ankyra do
     )
 
     {:ok,
-     %{id: opts[:id], ankyra: nil, requests: nil, last_request: nil, positions: []}}
+     %{id: opts[:id], ankyra: nil, requests: nil, last_request: nil, positions: [], hass: %{}}}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
@@ -83,6 +89,35 @@ defmodule RoomSanctum.Worker.Ankyra do
     "ankyra#{name}"
     |> via_tuple()
     |> GenServer.cast({:publish_plus, data})
+  end
+
+  @doc """
+  Home Assistant discovery for a board, built here because the topic it is read
+  from is this Ankyra's. `reading` is the topic the board went out on.
+  """
+  def discover_board(name, board, reading) do
+    "ankyra#{name}"
+    |> via_tuple()
+    |> GenServer.cast({:discover_board, board, reading})
+  end
+
+  @doc """
+  Home Assistant discovery, as `{object_id, config}` pairs from
+  `RoomSanctum.Hass`, published under this Ankyra's discovery prefix.
+
+  Sent when a device is new or has changed, and again every ten minutes when
+  it has not, since there is no retained copy for a Home Assistant that
+  connects in between. One that asks -- its birth message, pointed at
+  `<topic>/publish/ha` -- gets everything at once instead of waiting.
+
+  A device's entities only accumulate. A route with nothing due drops out of
+  the board until something is, and dropping its sensor with it would have
+  the dashboard rearrange itself every night; it reads unknown instead.
+  """
+  def discover(name, devices) do
+    "ankyra#{name}"
+    |> via_tuple()
+    |> GenServer.cast({:discover, devices})
   end
 
   @doc """
@@ -174,6 +209,19 @@ defmodule RoomSanctum.Worker.Ankyra do
     end
 
     {:noreply, state}
+  end
+
+  def handle_cast({:discover_board, _board, _reading}, %{ankyra: nil} = state), do: {:noreply, state}
+
+  def handle_cast({:discover_board, board, reading}, state) do
+    devices = RoomSanctum.Hass.board_devices(state.id, state.ankyra.topic, board, reading)
+    handle_cast({:discover, devices}, state)
+  end
+
+  def handle_cast({:discover, _devices}, %{ankyra: nil} = state), do: {:noreply, state}
+
+  def handle_cast({:discover, devices}, state) do
+    {:noreply, Enum.reduce(devices, state, &announce/2)}
   end
 
   def handle_cast({:publish_img, data}, state) do
@@ -308,6 +356,10 @@ defmodule RoomSanctum.Worker.Ankyra do
   # more than enough to feel immediate, and the Pythiae's own tick covers
   # everything else.
   defp serve_request(state, key) do
+    # Home Assistant saying it has (re)started: it has none of its devices
+    # until they are sent again, so forget having sent them. The board that
+    # follows announces its own; a Keryx does on its next tick.
+    state = if String.ends_with?(key, ".ha"), do: %{state | hass: %{}}, else: state
     now = DateTime.utc_now()
 
     if too_soon?(state.last_request, now) do
@@ -392,6 +444,45 @@ defmodule RoomSanctum.Worker.Ankyra do
       topic(id),
       {:ankyra_positions, prune(positions, @positions_shown_s)}
     )
+  end
+
+  # One device's config, if it is new, has changed, or is due again. What was
+  # sent is kept so the next board's components can be merged into it rather
+  # than replacing it.
+  defp announce({object_id, config}, state) do
+    now = System.monotonic_time(:second)
+
+    {config, due?} =
+      case Map.get(state.hass, object_id) do
+        nil ->
+          {config, true}
+
+        %{config: sent, at: at} ->
+          merged = Map.update!(config, :components, &Map.merge(sent.components, &1))
+          {merged, merged != sent or now - at >= @hass_refresh_s}
+      end
+
+    if due? do
+      publish_discovery(state, object_id, config)
+      put_in(state, [:hass, object_id], %{config: config, at: now})
+    else
+      state
+    end
+  end
+
+  defp publish_discovery(state, object_id, config) do
+    case AMQP.Application.get_channel(:default) do
+      {:ok, chan} ->
+        AMQP.Basic.publish(
+          chan,
+          "amq.topic",
+          RoomSanctum.Hass.config_key(state.ankyra.topic, object_id),
+          Jason.encode!(config)
+        )
+
+      {:error, error} ->
+        Logger.warning("ankyra #{state.id}: could not publish discovery: #{inspect(error)}")
+    end
   end
 
   defp too_soon?(nil, _now), do: false

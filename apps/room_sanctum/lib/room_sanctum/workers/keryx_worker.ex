@@ -302,16 +302,43 @@ defmodule RoomSanctum.Worker.Keryx do
 
   # Private helper to query all workers and publish to MQTT
   defp query_all_workers(keryx_q, keryx) do
-    keryx_q
-    |> Enum.map(fn q ->
-      r = execute_query(q)
+    results =
+      keryx_q
+      |> Enum.map(fn q ->
+        r = execute_query(q)
 
-      # Publish to MQTT: full array + individual items
-      publish_query_data(keryx.id, keryx.name, q.source.type, q.id, r, q)
+        # Publish to MQTT: full array + individual items
+        meta = publish_query_data(keryx.id, keryx.name, q.source.type, q.id, r, q)
 
-      {{q.id, q.source.type}, r}
-    end)
+        {{q.id, q.source.type}, r, meta}
+      end)
+
+    discover(keryx, results)
+
+    results
+    |> Enum.map(fn {key, r, _meta} -> {key, r} end)
     |> Enum.into(%{})
+  end
+
+  # Home Assistant discovery for each query's `.meta`, through every Ankyra the
+  # Keryx's account has: those are the rabbit users allowed to read it, and so
+  # the only places a Home Assistant could be listening from. The Ankyra
+  # decides whether anything is new enough to send.
+  defp discover(%Keryx{user_id: nil}, _results), do: :ok
+
+  defp discover(keryx, results) do
+    devices =
+      for {{query_id, type}, _r, meta} <- results, meta do
+        RoomSanctum.Hass.keryx_device(keryx.id, query_id, type, meta)
+      end
+
+    if devices != [] do
+      for ankyra <- RoomSanctum.Accounts.list_users_rabbit({:user, keryx.user_id}) do
+        RoomSanctum.Worker.Ankyra.discover(ankyra.id, devices)
+      end
+    end
+
+    :ok
   end
 
   defp publish_query_data(keryx_id, _name, type, query_id, data, query) when is_list(data) do
@@ -326,7 +353,7 @@ defmodule RoomSanctum.Worker.Keryx do
         AMQP.Basic.publish(chan, "amq.topic", base_topic, data |> Poison.encode!())
 
         # Publish metadata using condense function
-        publish_metadata(chan, base_topic, type, query_id, data, query)
+        metadata = publish_metadata(chan, base_topic, type, query_id, data, query)
 
         # For GTFS, group by route and publish hierarchically
         if type == :gtfs do
@@ -341,8 +368,11 @@ defmodule RoomSanctum.Worker.Keryx do
           end)
         end
 
+        metadata
+
       {:error, error} ->
         Logger.error("Failed to publish to MQTT: #{inspect(error)}")
+        nil
     end
   end
 
@@ -353,9 +383,11 @@ defmodule RoomSanctum.Worker.Keryx do
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
         AMQP.Basic.publish(chan, "amq.topic", topic, data |> Poison.encode!())
+        nil
 
       {:error, error} ->
         Logger.error("Failed to publish to MQTT: #{inspect(error)}")
+        nil
     end
   end
 
@@ -369,6 +401,8 @@ defmodule RoomSanctum.Worker.Keryx do
 
     meta_topic = "#{base_topic}.meta"
     AMQP.Basic.publish(chan, "amq.topic", meta_topic, metadata |> Poison.encode!())
+
+    metadata
   end
 
   # Publish GTFS data hierarchically by route and destination
