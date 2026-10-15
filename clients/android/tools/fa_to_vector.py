@@ -36,6 +36,8 @@ ICONS = [
     "bicycle", "bolt-lightning", "square-parking", "battery-half",
     # Which way to walk to it, on a Plani's cards.
     "location-arrow",
+    # A train the source's fleet marks call out -- the MBTA's new ones.
+    "star",
     # What the sky is doing. A detailed weather card says "Clouds" in words
     # and the word is the smallest part of the answer; these are the picture.
     "cloud", "cloud-sun", "cloud-rain", "cloud-showers-heavy", "cloud-bolt",

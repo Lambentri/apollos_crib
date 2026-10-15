@@ -229,7 +229,7 @@ use PhoenixHTMLHelpers
     <%= if @carriages != [] do %>
       <span class="inline-flex items-center gap-px align-middle" title={carriages_label(@carriages)}>
         <%= for c <- @carriages do %>
-          <span class={"inline-block w-2.5 h-3.5 rounded-sm #{carriage_class(c.occupancy)}"}></span>
+          <span class={"inline-block w-2.5 h-3.5 rounded-sm #{carriage_class(c.occupancy)} #{if Map.get(c, :marked), do: "ring-2 ring-accent"}"}></span>
         <% end %>
       </span>
     <% end %>
@@ -250,10 +250,24 @@ use PhoenixHTMLHelpers
   defp carriage_class(:NOT_BOARDABLE), do: "bg-gray-400"
   defp carriage_class(_), do: "border border-gray-400"
 
+  # Which cars, for a mixed consist: on a platform, that is which end to
+  # stand at.
+  defp marked_label(arrival) do
+    cars = Map.get(arrival, :carriages) || []
+    marked = Enum.filter(cars, &Map.get(&1, :marked))
+
+    if marked != [] and length(marked) < length(cars) do
+      "#{length(marked)} of #{length(cars)} cars new: " <> Enum.map_join(marked, ", ", &(&1.label || "?"))
+    else
+      "New train"
+    end
+  end
+
   defp carriages_label(carriages) do
     carriages
     |> Enum.map(fn c ->
       name = c.label || (c.sequence && "car #{c.sequence}") || "car"
+      name = if Map.get(c, :marked), do: "#{name} (new)", else: name
 
       case c.occupancy do
         nil -> "#{name}: no data"
@@ -399,6 +413,13 @@ use PhoenixHTMLHelpers
               </span>
               <%= if arrival_flag(a) do %>
                 <span class={"badge badge-sm #{flag_class(a)}"}><%= arrival_flag(a) %></span>
+              <% end %>
+              <%!-- One of the trains the source's fleet marks call out. Only
+                    true is drawn: nil is "cannot tell yet", not "old". --%>
+              <%= if Map.get(a, :marked) == true do %>
+                <span class="badge badge-sm badge-accent gap-1" title={marked_label(a)}>
+                  <i class="fa-solid fa-fw fa-star fa-2xs"></i> New
+                </span>
               <% end %>
               <%= if a.delay && a.delay != 0 && !cancelled?(a) do %>
                 <span class="badge badge-sm"><%= delay_label(a.delay) %></span>

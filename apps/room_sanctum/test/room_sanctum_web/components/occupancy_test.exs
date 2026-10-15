@@ -78,6 +78,14 @@ defmodule RoomSanctumWeb.OccupancyTest do
       assert html =~ "car 1: empty"
       assert html =~ "car 2: no data"
     end
+
+    test "a marked carriage is ringed and named as new" do
+      html = strip([Map.put(car(1, :EMPTY), :marked, true), Map.put(car(2, :EMPTY), :marked, false)])
+
+      assert length(String.split(html, "ring-accent")) - 1 == 1
+      assert html =~ "car 1 (new): empty"
+      refute html =~ "car 2 (new)"
+    end
   end
 
   describe "arrival flags" do

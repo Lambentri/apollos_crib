@@ -67,7 +67,13 @@ object GtfsPlusRenderer : SourceRenderer {
             val note = noteOf(arrival)
 
             Stamp(
-                iconRes = if (arrival.live()) R.drawable.fa_tower_broadcast else R.drawable.fa_clock,
+                // The star stands in for the broadcast tower: a marked train
+                // is only known to be one because a vehicle is live on it.
+                iconRes = when {
+                    arrival.marked == true -> R.drawable.fa_star
+                    arrival.live() -> R.drawable.fa_tower_broadcast
+                    else -> R.drawable.fa_clock
+                },
                 text = if (note == null) time else "$time · $note",
                 // Smartspace list rows are plain text, so the glyph cannot
                 // carry the meaning and the word has to.
@@ -81,7 +87,8 @@ object GtfsPlusRenderer : SourceRenderer {
      *
      * Cancellation first: a rider who reads only the time and walks to the
      * stop has been failed by the card. Then lateness, then how full — in the
-     * order that changes what somebody does.
+     * order that changes what somebody does. A marked train comes last: it is
+     * worth knowing, but not over the train being late or full.
      */
     private fun noteOf(arrival: PlusArrival): String? = when {
         arrival.trip_status == "CANCELED" -> "cancelled"
@@ -92,7 +99,7 @@ object GtfsPlusRenderer : SourceRenderer {
                 minutes <= -1 -> "${-minutes} early"
                 else -> null
             }
-        } ?: crowding(arrival)
+        } ?: crowding(arrival) ?: if (arrival.marked == true) "new" else null
     }
 
     private fun crowding(arrival: PlusArrival): String? = when (arrival.occupancy) {

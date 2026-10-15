@@ -184,6 +184,25 @@ class WireTest {
     }
 
     @Test
+    fun `a marked train and its marked cars come through`() {
+        val payload = """
+            {"gtfs_plus-40": [{"route":"Red","arrivals":[
+              {"time":"09:00:00","marked":true,
+               "carriages":[{"label":"1916","marked":true},{"label":"1752","marked":false}]},
+              {"time":"09:10:00"}
+            ]}]}
+        """.trimIndent()
+
+        val (marked, unsaid) = Wire.parse(payload).single()
+            .decode<List<GtfsPlusCondensed>>()!!.single().arrivals
+
+        assertEquals(true, marked.marked)
+        assertEquals(listOf(true, false), marked.carriages!!.map { it.marked })
+        // Absent is not false: no rules, or no vehicle seen on the trip yet.
+        assertEquals(null, unsaid.marked)
+    }
+
+    @Test
     fun `a plus arrival with no realtime claims nothing`() {
         val payload = """
             {"gtfs_plus-12": [{"route":"1","arrivals":[{"time":"09:00:00"}]}]}

@@ -55,6 +55,12 @@ data class PlusArrival(
     val name: String? = null,
     val bikes: String? = null,
     val carriages: List<PlusCarriage>? = null,
+    /**
+     * One of the vehicles the source's fleet marks call out -- the MBTA's new
+     * trains, say. Null is not "no": it is a source with no rules for this
+     * route, or a trip no vehicle has been seen on yet.
+     */
+    val marked: Boolean? = null,
     /** Not running at all: `CANCELED`, `ADDED`, `DUPLICATED`. */
     val trip_status: String? = null,
     /** Running, but not calling here: `SKIPPED`, `NO_DATA`. */
@@ -88,5 +94,7 @@ data class PlusCarriage(
     val id: String? = null,
     val label: String? = null,
     val occupancy: String? = null,
-    val occupancy_pct: Int? = null
+    val occupancy_pct: Int? = null,
+    /** This car is one the fleet marks call out. */
+    val marked: Boolean? = null
 )

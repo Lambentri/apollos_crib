@@ -185,12 +185,30 @@ private fun Arrival(arrival: PlusArrival, dim: Color) {
 
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             val status = statusOf(arrival)
-            if (status != null) {
-                Text(
-                    status,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (cancelled) MaterialTheme.colorScheme.error else dim
-                )
+            if (status != null || arrival.marked == true) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // In the accent, ahead of the status: it is the thing
+                    // somebody who set fleet marks is waiting to see.
+                    if (arrival.marked == true) {
+                        val accent = LocalAppTheme.current.accent
+                        Glyph(R.drawable.fa_star, 12.dp, accent)
+                        Spacer(Modifier.width(4.dp))
+                        Text(
+                            markedOf(arrival),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = accent
+                        )
+                        if (status != null) Spacer(Modifier.width(8.dp))
+                    }
+
+                    if (status != null) {
+                        Text(
+                            status,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = if (cancelled) MaterialTheme.colorScheme.error else dim
+                        )
+                    }
+                }
             }
 
             val detail = listOfNotNull(
@@ -234,6 +252,17 @@ private fun statusOf(arrival: PlusArrival): String? = when {
             else -> "On time"
         }
     }
+}
+
+/**
+ * "New train", or "2 of 6 cars new" for a mixed consist -- which end of the
+ * platform to stand at, if it is the new cars you are after.
+ */
+private fun markedOf(arrival: PlusArrival): String {
+    val cars = arrival.carriages.orEmpty()
+    val marked = cars.count { it.marked == true }
+
+    return if (marked in 1 until cars.size) "$marked of ${cars.size} cars new" else "New train"
 }
 
 // GTFS-RT spells these `FEW_SEATS_AVAILABLE`; nobody says that out loud.
