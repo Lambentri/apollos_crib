@@ -1,0 +1,77 @@
+name: dependency-updates
+# Security updates as pull requests: scripts/dependency-update finds the
+# dependencies with a known vulnerability (osv-scanner, against OSV) that
+# a newer version fixes, bumps them, and keeps one pull request —
+# deps/security-hex, for mix.lock — refreshed in place, closing it once
+# there's nothing left to fix. The pull request is opened by the forge's
+# CI account (gg-security) with this job's own token; its CI (audit.yml
+# among it) is what shows the fixes landed.
+#
+# Hex only: the script handles mix and cargo, and there's no Cargo.lock
+# here. room_sanctum's assets/package-lock.json is audited (audit.yml)
+# but not bumped — that's `npm audit fix` by hand.
+#
+# Weekly, and by hand from the Actions page (`gg ci dispatch
+# dependency-updates`).
+on:
+  schedule:
+    - cron: "47 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: write # push the deps/security-hex branch
+  pull-requests: write # open, refresh and close its pull request
+
+jobs:
+  update:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # The deps/security-hex branch too, to tell whether a refresh
+          # changed anything before pushing it.
+          fetch-depth: 0
+
+      # The Dockerfile says elixir:1.15, but room_scribes declares
+      # `elixir: "~> 1.18"` and Mix won't compile it on anything
+      # older, so 1.18 is the floor the umbrella actually builds on.
+      # OTP and Elixir from builds.hex.pm, the builds setup-beam would
+      # fetch — taken directly, since setup-beam chooses one by ImageOS,
+      # which this runner sets to "selfhosted" over anything a workflow
+      # says.
+      - name: OTP and Elixir
+        env:
+          OTP_VERSION: "27.3.4.9"
+          ELIXIR_VERSION: "1.18.4"
+        run: |
+          ubuntu=$(. /etc/os-release && echo "$VERSION_ID")
+          curl -sSfL "https://builds.hex.pm/builds/otp/ubuntu-${ubuntu}/OTP-${OTP_VERSION}.tar.gz" | tar xz -C /tmp
+          # Installed where it's unpacked: Install's root is its own directory.
+          (cd "/tmp/OTP-${OTP_VERSION}" && ./Install -minimal "/tmp/OTP-${OTP_VERSION}" > /dev/null)
+          curl -sSfL -o /tmp/elixir.zip "https://builds.hex.pm/builds/elixir/v${ELIXIR_VERSION}-otp-${OTP_VERSION%%.*}.zip"
+          unzip -q -d /tmp/elixir /tmp/elixir.zip
+          echo "/tmp/OTP-${OTP_VERSION}/bin" >> "$GITHUB_PATH"
+          echo /tmp/elixir/bin >> "$GITHUB_PATH"
+
+      # Rebar too, as the Dockerfile has it: some deps are rebar projects.
+      - name: Hex and Rebar
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+
+      # Pinned and checked, as in audit.yml; bump both together.
+      - name: Fetch osv-scanner
+        env:
+          OSV_VERSION: v2.6.0
+          OSV_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+        run: |
+          curl -sSfL -o /tmp/osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  /tmp/osv-scanner" | sha256sum -c -
+          chmod +x /tmp/osv-scanner
+
+      - name: Update
+        env:
+          OSV_SCANNER: /tmp/osv-scanner
+          GITHUB_TOKEN: ${{ github.token }}
+        run: scripts/dependency-update --base "${{ github.ref_name }}"

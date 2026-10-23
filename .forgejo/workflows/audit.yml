@@ -1,0 +1,78 @@
+name: audit
+# Known vulnerabilities in what the service is built from: every
+# lockfile in the repository (the umbrella's mix.lock, room_sanctum's
+# assets/package-lock.json) checked against the OSV database
+# (https://osv.dev). A finding fails the run, which is how it gets
+# noticed — the CI page, the panel widget, `gg ci list`. Nightly, since
+# advisories land without anyone pushing, and by hand from the Actions
+# page.
+#
+# On a pull request it compares the lockfiles the pull request changes
+# with the same files on the base branch: it fails only on a
+# vulnerability the pull request brings in, and says what it fixed and
+# what's still there (scripts/osv-diff). A security update PR goes green
+# for what it fixes, not red for what it couldn't.
+#
+# The Android client isn't covered: osv-scanner reads Gradle lockfiles,
+# and the app has a version catalog (gradle/libs.versions.toml) only.
+on:
+  schedule:
+    - cron: "41 6 * * *"
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  osv:
+    runs-on: self-hosted
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Pinned, and checked against the release's published checksum
+      # before it runs: a scanner is a strange thing to take on trust.
+      # To move it on, change both together, from
+      # https://github.com/google/osv-scanner/releases (…_SHA256SUMS).
+      - name: Fetch osv-scanner
+        env:
+          OSV_VERSION: v2.6.0
+          OSV_SHA256: ca69b3d3cd08f889a49dc0a383122f71cc528b83803671df5fd874d97485b108
+        run: |
+          curl -sSfL -o /tmp/osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/${OSV_VERSION}/osv-scanner_linux_amd64"
+          echo "${OSV_SHA256}  /tmp/osv-scanner" | sha256sum -c -
+          chmod +x /tmp/osv-scanner
+
+      # Exit 1 when anything is vulnerable, so the run fails; the table
+      # names each package, its version, and the version that fixes it.
+      - name: Scan the lockfiles
+        if: github.event_name != 'pull_request'
+        run: /tmp/osv-scanner scan source --recursive .
+
+      - name: Scan the lockfiles this pull request changes
+        if: github.event_name == 'pull_request'
+        env:
+          BASE: ${{ github.base_ref }}
+        run: |
+          git fetch --quiet origin "$BASE"
+          changed=$(git diff --name-only "origin/$BASE"...HEAD | grep -E '(^|/)(mix\.lock|Cargo\.lock|package-lock\.json)$' || true)
+          if [ -z "$changed" ]; then
+            echo "No lockfile changed."
+            exit 0
+          fi
+          mkdir -p /tmp/base
+          for f in $changed; do
+            mkdir -p "/tmp/base/$(dirname "$f")"
+            git show "origin/$BASE:$f" > "/tmp/base/$f" 2>/dev/null || true
+          done
+          # 0 and 1 (found some) are both answers; with nothing to scan, none.
+          scan() {
+            if [ $# -eq 0 ]; then echo '{}'; return; fi
+            /tmp/osv-scanner scan source --format json $(printf -- '--lockfile %s ' "$@") || [ $? -eq 1 ]
+          }
+          (cd /tmp/base && scan $(for f in $changed; do [ -s "$f" ] && echo "$f"; done)) > /tmp/base.json
+          scan $changed > /tmp/head.json
+          python3 scripts/osv-diff /tmp/base.json /tmp/head.json
