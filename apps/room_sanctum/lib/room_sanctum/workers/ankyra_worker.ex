@@ -493,7 +493,12 @@ defmodule RoomSanctum.Worker.Ankyra do
     HTTPoison.get(
       String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
       [{"accept", "application/json"}],
-      hackney: [basic_auth: {to_string(cfg[:username]), to_string(cfg[:password])}],
+      # The management API is reached over plain http inside the deployment.
+      # hackney 4 can refuse basic auth over http unless told it is meant.
+      hackney: [
+        basic_auth: {to_string(cfg[:username]), to_string(cfg[:password])},
+        insecure_basic_auth: true
+      ],
       timeout: 2_000,
       recv_timeout: 2_000
     )

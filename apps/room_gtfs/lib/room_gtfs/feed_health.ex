@@ -161,7 +161,10 @@ defmodule RoomGtfs.FeedHealth do
   defp describe(:bad_status), do: "bad_status"
   defp describe(:decode_failed), do: "decode_failed"
   defp describe(:not_protobuf), do: "not_protobuf"
-  defp describe(%HTTPoison.Error{reason: reason}), do: "http_#{reason}"
+  # hackney 4 also answers with tuples ({:closed, _}, TLS alerts) and strings
+  # (a malformed URL), which neither interpolate nor make a closed set.
+  defp describe(%HTTPoison.Error{reason: reason}) when is_atom(reason), do: "http_#{reason}"
+  defp describe(%HTTPoison.Error{}), do: "http_error"
   defp describe({:fetch_crashed, _reason}), do: "crashed"
   defp describe(reason) when is_atom(reason), do: Atom.to_string(reason)
   defp describe(_reason), do: "unknown"

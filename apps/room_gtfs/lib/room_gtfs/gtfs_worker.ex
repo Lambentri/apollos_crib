@@ -1722,11 +1722,15 @@ defmodule RoomGtfs.Worker.Static do
   # That is what the `:checkout_timeout`s on unrelated requests were: not those
   # services being slow, but this download holding the pool. A pool of its own
   # means a bulk transfer can only ever starve another bulk transfer.
+  #
+  # Since hackney 2 a pool's `max_connections` only sizes the idle connections
+  # it keeps, and does not limit how many are open; `max_per_host` does, one
+  # host at a time. Four per host is what the pool used to mean.
   @static_http [
     follow_redirect: true,
     recv_timeout: 300_000,
     timeout: 30_000,
-    hackney: [pool: :gtfs_static]
+    hackney: [pool: :gtfs_static, max_per_host: 4]
   ]
   use GenServer
   require Logger
