@@ -11,11 +11,11 @@ name: dependency-updates
 # here. room_sanctum's assets/package-lock.json is audited (audit.yml)
 # but not bumped — that's `npm audit fix` by hand.
 #
-# Weekly, and by hand from the Actions page (`gg ci dispatch
-# dependency-updates`).
+# Daily, before the nightly audit, and by hand from the Actions page
+# (`gg ci dispatch dependency-updates`).
 on:
   schedule:
-    - cron: "47 5 * * 1"
+    - cron: "47 5 * * *"
   workflow_dispatch:
 
 permissions:
