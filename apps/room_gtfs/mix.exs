@@ -35,7 +35,7 @@ defmodule RoomGtfs.MixProject do
       {:postgrex, "~> 0.17", override: true},
 #      {:ecto_interval, "~> 0.2.5"},
 #      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
-      {:httpoison, "~> 1.8"},
+      {:httpoison, "~> 3.0", override: true},
       {:protobuf, "~> 0.17.0"},
       {:parent, "~> 0.12.1"},
       {:unzip, "~> 0.8"},

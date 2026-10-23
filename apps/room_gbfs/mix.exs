@@ -25,7 +25,7 @@ defmodule RoomGbfs.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:httpoison, "~> 1.8"},
+      {:httpoison, "~> 3.0", override: true},
       {:jason, "~> 1.4"},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}

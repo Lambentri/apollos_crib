@@ -26,7 +26,7 @@ defmodule RoomAirQuality.MixProject do
   defp deps do
     [
       {:csv, "~> 3.0"},
-      {:httpoison, "~> 1.8"},
+      {:httpoison, "~> 3.0", override: true},
       {:parent, "~> 0.12.1"},
       {:timex, "~> 3.7"},
       {:room_sanctum, in_umbrella: true}

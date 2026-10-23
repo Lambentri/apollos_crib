@@ -21,7 +21,7 @@ defmodule RoomDrought.MixProject do
 
   defp deps do
     [
-      {:httpoison, "~> 1.8"},
+      {:httpoison, "~> 3.0", override: true},
       {:jason, "~> 1.4"}
     ]
   end

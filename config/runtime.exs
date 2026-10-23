@@ -174,6 +174,10 @@ if config_env() == :prod do
   #
   # See https://hexdocs.pm/swoosh/Swoosh.html#module-installation for details.
   config :sentry,
+    # Sentry 8's own Sentry.HackneyClient cannot read a hackney 4 response.
+    # Set here rather than in config.exs because RoomSanctum is in every
+    # release but not in every app's own build (room_hermes on its own).
+    client: RoomSanctum.SentryClient,
     dsn: System.get_env("SENTRY_DSN"),
     environment_name: :prod,
     enable_source_code_context: true,
