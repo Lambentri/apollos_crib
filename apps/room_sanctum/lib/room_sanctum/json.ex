@@ -23,7 +23,8 @@ defmodule RoomSanctum.JSON do
 
   @doc """
   `term` with everything Jason would refuse made into what Poison wrote
-  for it. Dates and times are left alone: both write them as ISO 8601.
+  for it, and every map made a `Jason.OrderedObject` in the key order
+  Poison wrote. Dates and times are left alone: both write them as ISO 8601.
   """
   def normalize(%struct{} = value) when struct in [Date, Time, NaiveDateTime, DateTime], do: value
   def normalize(%Jason.Fragment{} = value), do: value
@@ -32,7 +33,16 @@ defmodule RoomSanctum.JSON do
   def normalize(%Range{} = value), do: Enum.to_list(value)
   def normalize(%MapSet{} = value), do: value |> MapSet.to_list() |> normalize()
   def normalize(%_{} = value), do: value |> Map.from_struct() |> normalize()
-  def normalize(value) when is_map(value), do: Map.new(value, fn {k, v} -> {k, normalize(v)} end)
+  # Poison wrote an object's keys in the reverse of the map's own order (it
+  # folds over `Map.keys/1`, prepending), and Jason writes them in that order.
+  # A client that reads a board in the order it arrived -- the Android app
+  # lays its cards out that way -- would see them flip, so the order Poison
+  # wrote is kept.
+  def normalize(value) when is_map(value) do
+    values = :lists.foldl(&[{&1, normalize(Map.fetch!(value, &1))} | &2], [], Map.keys(value))
+    %Jason.OrderedObject{values: values}
+  end
+
   def normalize(value) when is_list(value), do: Enum.map(value, &normalize/1)
   def normalize(value) when is_tuple(value), do: value |> Tuple.to_list() |> normalize()
   def normalize(value), do: value

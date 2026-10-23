@@ -30,10 +30,23 @@ defmodule RoomSanctum.JSONTest do
   end
 
   test "ranges and sets become lists, a URI its string" do
-    assert JSON.encode!(%{r: 1..3, u: URI.parse("https://example.com/x")}) ==
-             ~s({"r":[1,2,3],"u":"https://example.com/x"})
+    # String keys: a small map orders them, so the order written is fixed.
+    assert JSON.encode!(%{"r" => 1..3, "u" => URI.parse("https://example.com/x")}) ==
+             ~s({"u":"https://example.com/x","r":[1,2,3]})
 
     assert JSON.encode!(MapSet.new([{1, 2}])) == ~s([[1,2]])
+  end
+
+  test "an object's keys come out in the order Poison wrote them" do
+    # The reverse of the map's own order. The Android app lays a board's
+    # cards out in the order the keys arrive, so this is what it shows.
+    board = %{
+      "ephem-1" => %{"data" => [1], "query" => %{"name" => "Sky"}},
+      "gtfs-2" => [%{"a" => 1, "b" => 2}]
+    }
+
+    assert JSON.encode!(board) ==
+             ~s({"gtfs-2":[{"b":2,"a":1}],"ephem-1":{"query":{"name":"Sky"},"data":[1]}})
   end
 
   test "pretty printing still works" do
