@@ -176,7 +176,7 @@ defmodule RoomPollen.Worker do
 
     case HTTPoison.get(url, [{"Accept", "application/json"}], recv_timeout: 15_000) do
       {:ok, %{status_code: 200, body: body}} ->
-        case Poison.decode(body) do
+        case Jason.decode(body) do
           {:ok, %{"dailyInfo" => daily}} when is_list(daily) ->
             {:ok, daily}
 

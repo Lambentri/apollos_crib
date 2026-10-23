@@ -124,7 +124,7 @@ defmodule RoomGbfs.Worker do
     case HTTPoison.get(url, [], follow_redirect: true) do
       {:ok, result} ->
         case result.body
-             |> Poison.decode(keys: :atoms) do
+             |> Jason.decode(keys: :atoms) do
           {:ok, json} ->
             case type do
               :sys_info ->
@@ -370,7 +370,7 @@ defmodule RoomGbfs.Worker do
             # decode! here took the whole worker down when the body was not JSON,
             # which is exactly what an unfollowed redirect hands you.
             json_body =
-              case Poison.decode(result.body) do
+              case Jason.decode(result.body) do
                 {:ok, decoded} ->
                   decoded
 
@@ -487,7 +487,7 @@ defmodule RoomGbfs.Worker do
 
         case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
           {:ok, result} ->
-            case result.body |> Poison.decode() do
+            case result.body |> Jason.decode() do
               {:ok, json_body} ->
                 case RoomGbfs.V3.feeds(json_body, cfg.config.lang) do
                   {:ok, _version, feeds} ->

@@ -156,7 +156,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
       sources: cleaned_sources
     }
     
-    json_data = Poison.encode!(export_data, pretty: true)
+    json_data = RoomSanctum.JSON.encode!(export_data, pretty: true)
     
     {:noreply, 
      socket
@@ -176,7 +176,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   end
 
   def handle_event("process-import", %{"file_data" => file_data}, socket) do
-    case Poison.decode(file_data) do
+    case Jason.decode(file_data) do
       {:ok, %{"sources" => sources_data}} ->
         imported_count = import_sources(sources_data, socket.assigns.current_user.id)
         {:noreply, 

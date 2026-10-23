@@ -27,7 +27,8 @@ defmodule RoomGithub.MixProject do
       {:shards, "~> 1.1"},
       {:decorator, "~> 1.4"},
       {:telemetry, "~> 1.0"},
-      {:httpoison, "~> 1.8"}
+      {:httpoison, "~> 1.8"},
+      {:jason, "~> 1.4"}
     ]
   end
 end

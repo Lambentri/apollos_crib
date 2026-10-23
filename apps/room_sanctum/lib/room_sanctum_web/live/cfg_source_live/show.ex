@@ -1427,7 +1427,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   defp getlatlng(coords) do
-    coords |> Tuple.to_list() |> Poison.encode!()
+    coords |> Tuple.to_list() |> RoomSanctum.JSON.encode!()
   end
 
   # How far either side of the picked stop the tester map shows its

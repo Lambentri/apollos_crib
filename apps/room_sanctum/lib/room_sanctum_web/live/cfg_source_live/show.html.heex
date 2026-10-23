@@ -56,7 +56,7 @@ gl_available_projects={@gitlab_available_projects}
                     <%= if @source.meta.tint do %>
                     <i class={"fa fa-circle text-#{@source.meta.tint}-500"}></i>
                     <% end %></h3>
-                <pre><%= @source.config |> Poison.encode!( pretty: true) %></pre>
+                <pre><%= @source.config |> RoomSanctum.JSON.encode!( pretty: true) %></pre>
             </div>
         </div>
     </div>

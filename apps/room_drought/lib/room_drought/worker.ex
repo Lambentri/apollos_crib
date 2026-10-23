@@ -170,7 +170,7 @@ defmodule RoomDrought.Worker do
 
     case HTTPoison.get(url, [{"Accept", "application/json"}], recv_timeout: 15_000) do
       {:ok, %{status_code: 200, body: body}} ->
-        case Poison.decode(body) do
+        case Jason.decode(body) do
           {:ok, [_ | _] = list} ->
             # API returns most-recent first
             {:ok, List.first(list)}

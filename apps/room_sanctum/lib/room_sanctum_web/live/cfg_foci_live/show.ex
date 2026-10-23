@@ -104,6 +104,6 @@ defmodule RoomSanctumWeb.FociLive.Show do
   end
 
   defp getlatlng(%{:place => place}) do
-    place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> Poison.encode!()
+    place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> RoomSanctum.JSON.encode!()
   end
 end

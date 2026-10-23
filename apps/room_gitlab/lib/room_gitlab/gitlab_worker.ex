@@ -189,7 +189,7 @@ defmodule RoomGitlab.Worker do
             {:error, :five_hundred}
 
           200 ->
-            case response.body |> Poison.decode() do
+            case response.body |> Jason.decode() do
               {:ok, decoded} -> {:ok, decoded}
               {:error, error} -> {:error, :decode_json}
             end
@@ -396,7 +396,7 @@ defmodule RoomGitlab.Worker do
         StringIO.close(state[:refs][resp_id][:fd])
         t = state[:refs][resp_id][:type]
 
-        case Poison.decode(str) do
+        case Jason.decode(str) do
           {:ok, decoded} ->
             case state[:refs][resp_id] |> Map.get(:write) do
               false ->

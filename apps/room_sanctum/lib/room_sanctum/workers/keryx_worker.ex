@@ -131,7 +131,7 @@ defmodule RoomSanctum.Worker.Keryx do
 
   def handle_info({:basic_deliver, payload, _meta}, state) do
     # Handle incoming control messages
-    case Poison.decode(payload) do
+    case Jason.decode(payload) do
       # The narrower match first: a map pattern matches any map with at least
       # those keys, so the bare refresh would otherwise swallow this one.
       {:ok, %{"action" => "refresh", "query_id" => query_id}} ->
@@ -350,7 +350,7 @@ defmodule RoomSanctum.Worker.Keryx do
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
         # Publish the full array to the base topic
-        AMQP.Basic.publish(chan, "amq.topic", base_topic, data |> Poison.encode!())
+        AMQP.Basic.publish(chan, "amq.topic", base_topic, data |> RoomSanctum.JSON.encode!())
 
         # Publish metadata using condense function
         metadata = publish_metadata(chan, base_topic, type, query_id, data, query)
@@ -364,7 +364,7 @@ defmodule RoomSanctum.Worker.Keryx do
           |> Enum.each(fn item ->
             item_id = extract_item_id(item, type)
             item_topic = "#{base_topic}.#{item_id}"
-            AMQP.Basic.publish(chan, "amq.topic", item_topic, item |> Poison.encode!())
+            AMQP.Basic.publish(chan, "amq.topic", item_topic, item |> RoomSanctum.JSON.encode!())
           end)
         end
 
@@ -382,7 +382,7 @@ defmodule RoomSanctum.Worker.Keryx do
 
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", topic, data |> Poison.encode!())
+        AMQP.Basic.publish(chan, "amq.topic", topic, data |> RoomSanctum.JSON.encode!())
         nil
 
       {:error, error} ->
@@ -400,7 +400,7 @@ defmodule RoomSanctum.Worker.Keryx do
     metadata = RoomSanctum.Condenser.BasicMQTT.condense({query_id, type}, data, query)
 
     meta_topic = "#{base_topic}.meta"
-    AMQP.Basic.publish(chan, "amq.topic", meta_topic, metadata |> Poison.encode!())
+    AMQP.Basic.publish(chan, "amq.topic", meta_topic, metadata |> RoomSanctum.JSON.encode!())
 
     metadata
   end
@@ -413,7 +413,7 @@ defmodule RoomSanctum.Worker.Keryx do
     |> Enum.each(fn {route, route_items} ->
       # Publish all items for this route to <base>/<route>
       route_topic = "#{base_topic}.#{route}"
-      AMQP.Basic.publish(chan, "amq.topic", route_topic, route_items |> Poison.encode!())
+      AMQP.Basic.publish(chan, "amq.topic", route_topic, route_items |> RoomSanctum.JSON.encode!())
 
       # Group by destination within this route
       route_items
@@ -421,14 +421,14 @@ defmodule RoomSanctum.Worker.Keryx do
       |> Enum.each(fn {destination, dest_items} ->
         # Publish items for this route+destination to <base>/<route>/<destination>
         dest_topic = "#{base_topic}.#{route}.#{destination}"
-        AMQP.Basic.publish(chan, "amq.topic", dest_topic, dest_items |> Poison.encode!())
+        AMQP.Basic.publish(chan, "amq.topic", dest_topic, dest_items |> RoomSanctum.JSON.encode!())
 
         # Also publish individual items
         dest_items
         |> Enum.each(fn item ->
           item_id = extract_item_id(item, :gtfs)
           item_topic = "#{base_topic}.#{route}.#{destination}.#{item_id}"
-          AMQP.Basic.publish(chan, "amq.topic", item_topic, item |> Poison.encode!())
+          AMQP.Basic.publish(chan, "amq.topic", item_topic, item |> RoomSanctum.JSON.encode!())
         end)
       end)
     end)

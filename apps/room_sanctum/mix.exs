@@ -73,7 +73,6 @@ defmodule RoomSanctum.MixProject do
       {:eqrcode, "~> 0.2"},
       {:plug_cowboy, "~> 2.5"},
       {:timex, "~> 3.7.8"},
-      {:poison, "~> 5.0", override: true},
       {:parent, "~> 0.12.1"},
 
       # tz provider, less shitty than tzworld, still shitty for diff reasons

@@ -93,7 +93,7 @@ defmodule RoomPackages.USPS do
     conf = source.config
 
     body =
-      Poison.encode!(%{
+      Jason.encode!(%{
         client_id: conf.apikey_usps_id,
         client_secret: conf.apikey_usps_secret,
         grant_type: "client_credentials"
@@ -104,7 +104,7 @@ defmodule RoomPackages.USPS do
            recv_timeout: 15_000
          ) do
       {:ok, %{status_code: 200, body: raw}} ->
-        decoded = Poison.decode!(raw)
+        decoded = Jason.decode!(raw)
         token = decoded["access_token"]
         expires_in = decoded["expires_in"] |> to_int(3600)
 
@@ -166,7 +166,7 @@ defmodule RoomPackages.USPS do
   def track_many(source, numbers) do
     with {:ok, token} <- token(source) do
       # additionalProperties: false -- only trackingNumber may be sent here.
-      body = Poison.encode!(Enum.map(numbers, &%{trackingNumber: &1}))
+      body = Jason.encode!(Enum.map(numbers, &%{trackingNumber: &1}))
       url = "#{tracking_base()}/tracking/v3r2/tracking"
 
       case HTTPoison.post(url, body,
@@ -178,7 +178,7 @@ defmodule RoomPackages.USPS do
              recv_timeout: 30_000
            ) do
         {:ok, %{status_code: code, body: raw}} when code in [200, 207] ->
-          {:ok, raw |> Poison.decode!() |> List.wrap() |> Enum.map(&summarise(&1, &1["trackingNumber"]))}
+          {:ok, raw |> Jason.decode!() |> List.wrap() |> Enum.map(&summarise(&1, &1["trackingNumber"]))}
 
         {:ok, %{status_code: 400, body: raw}} ->
           Logger.warning("USPS tracking rejected the request: #{String.slice(raw, 0, 300)}")
@@ -289,7 +289,7 @@ defmodule RoomPackages.USPS do
     with :ok <- validate_secret(secret),
          {:ok, token} <- token(source) do
       body =
-        Poison.encode!(%{
+        Jason.encode!(%{
           listenerURL: listener_url,
           secret: secret,
           adminNotification: Enum.map(List.wrap(emails), &%{email: &1}),
@@ -311,7 +311,7 @@ defmodule RoomPackages.USPS do
            ) do
         # POST is idempotent by design: USPS de-duplicates rather than erroring.
         {:ok, %{status_code: code, body: raw}} when code in [200, 201] ->
-          {:ok, Poison.decode!(raw)}
+          {:ok, Jason.decode!(raw)}
 
         {:ok, %{status_code: 401, body: raw}} ->
           Logger.warning("USPS subscribe 401 -- is the subscriptions-tracking scope approved? #{String.slice(raw, 0, 200)}")
@@ -364,7 +364,7 @@ defmodule RoomPackages.USPS do
   it needs decoding twice.
   """
   def parse_notification(%{"payload" => payload} = envelope) when is_binary(payload) do
-    case Poison.decode(payload) do
+    case Jason.decode(payload) do
       {:ok, decoded} ->
         {:ok,
          %{

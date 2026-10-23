@@ -32,6 +32,7 @@ defmodule RoomTidal.MixProject do
       {:decorator, "~> 1.4"},
       {:telemetry, "~> 1.0"},
       {:httpoison, "~> 1.8"},
+      {:jason, "~> 1.4"},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}
 

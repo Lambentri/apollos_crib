@@ -210,7 +210,7 @@ defmodule RoomTreasury.Worker do
              follow_redirect: true
            ) do
         {:ok, %{status_code: 200, body: body}} ->
-          case Poison.decode(body) do
+          case Jason.decode(body) do
             {:ok, decoded} -> {:halt, {:ok, decoded}}
             {:error, _} -> {:cont, :error}
           end

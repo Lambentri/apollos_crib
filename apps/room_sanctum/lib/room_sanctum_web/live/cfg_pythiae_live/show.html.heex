@@ -210,7 +210,7 @@
               </div>
               <div class="w-7/8">
                 <span class="text-secondary font-bold"><%= get_query_data(k |> elem(0), @queries, 64) %></span>
-                <pre><%= condense_for(@preview_mode, k, p) |> Poison.encode!(pretty: true)%></pre>
+                <pre><%= condense_for(@preview_mode, k, p) |> RoomSanctum.JSON.encode!(pretty: true)%></pre>
               </div>
             </div>
             <% end %>

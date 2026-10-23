@@ -26,7 +26,7 @@ defmodule RoomGbfs.MixProject do
   defp deps do
     [
       {:httpoison, "~> 1.8"},
-      {:poison, "~> 5.0", override: true},
+      {:jason, "~> 1.4"},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}
       # {:dep_from_hexpm, "~> 0.3.0"},

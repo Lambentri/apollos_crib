@@ -54,7 +54,7 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
   end
 
   defp parse_and_validate_sources(json_content, user_id) do
-    case Poison.decode(json_content) do
+    case Jason.decode(json_content) do
       {:ok, %{"sources" => sources_data}} ->
         results = 
           sources_data

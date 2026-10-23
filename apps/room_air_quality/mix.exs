@@ -27,7 +27,6 @@ defmodule RoomAirQuality.MixProject do
     [
       {:csv, "~> 3.0"},
       {:httpoison, "~> 1.8"},
-      {:poison, "~> 5.0"},
       {:parent, "~> 0.12.1"},
       {:timex, "~> 3.7"},
       {:room_sanctum, in_umbrella: true}

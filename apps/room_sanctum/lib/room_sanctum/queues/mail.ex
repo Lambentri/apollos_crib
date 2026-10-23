@@ -190,7 +190,7 @@ defmodule RoomSanctum.Queues.Mail do
         case result.status_code do
           200 ->
             now = DateTime.now!("UTC")
-            decoded = result.body |> Poison.decode!()
+            decoded = result.body |> Jason.decode!()
             access_token = decoded |> Map.get("access_token")
             expiry_seconds = decoded |> Map.get("expires_in")
 
@@ -267,7 +267,7 @@ defmodule RoomSanctum.Queues.Mail do
               "credential" => our_creds
             }
           }
-          |> Poison.encode!()
+          |> RoomSanctum.JSON.encode!()
 
         res =
           HTTPoison.post(url, payload, [

@@ -26,6 +26,7 @@ defmodule RoomScribes.MixProject do
   defp deps do
     [
       {:amqp, "~> 4.1"},
+      {:jason, "~> 1.4"},
       {:rabbit_common, "~> 4.0"},
       {:nebulex, "~> 2.4"},
       # => When using :shards as backend

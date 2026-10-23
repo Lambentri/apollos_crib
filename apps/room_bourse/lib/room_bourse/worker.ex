@@ -136,7 +136,7 @@ defmodule RoomBourse.Worker do
   end
 
   defp decode(body, symbol) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"chart" => %{"result" => [%{"meta" => meta} | _]}}} ->
         {:ok, present(meta, symbol)}
 
@@ -149,7 +149,7 @@ defmodule RoomBourse.Worker do
   end
 
   defp describe_error(body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"chart" => %{"error" => %{"description" => description}}}} -> description
       _ -> nil
     end

@@ -185,7 +185,7 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_cast({:publish, data}, state) do
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!())
+        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> RoomSanctum.JSON.encode!())
 
       {:error, error} ->
         IO.inspect(error)
@@ -201,7 +201,7 @@ defmodule RoomSanctum.Worker.Ankyra do
           chan,
           "amq.topic",
           state.ankyra.topic <> ".plus",
-          data |> Poison.encode!()
+          data |> RoomSanctum.JSON.encode!()
         )
 
       {:error, error} ->
@@ -229,7 +229,7 @@ defmodule RoomSanctum.Worker.Ankyra do
 
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic <> ".img", data |> Poison.encode!()) |> IO.inspect
+        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic <> ".img", data |> RoomSanctum.JSON.encode!()) |> IO.inspect
 
       {:error, error} ->
         IO.inspect(error)
@@ -413,7 +413,7 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   defp decode_position(payload) do
-    with {:ok, %{"lat" => lat, "lon" => lon} = fix} <- Poison.decode(payload),
+    with {:ok, %{"lat" => lat, "lon" => lon} = fix} <- Jason.decode(payload),
          true <- is_number(lat) and is_number(lon) do
       %{
         lat: lat,

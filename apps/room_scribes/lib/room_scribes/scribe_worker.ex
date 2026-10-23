@@ -82,7 +82,7 @@ defmodule RoomScribe.Worker do
       wait: sc.wait
     }
 
-    AMQP.Basic.publish(chan, @exchange, sc.resolution, msg |> Poison.encode!())
+    AMQP.Basic.publish(chan, @exchange, sc.resolution, msg |> Jason.encode!())
 
     {:noreply, state}
   end
@@ -102,7 +102,7 @@ defmodule RoomScribe.Worker do
   end
 
   defp consume(channel, tag, redelivered, payload) do
-    decoded = payload |> Poison.decode!(keys: :atoms)
+    decoded = payload |> Jason.decode!(keys: :atoms)
     :ok = Basic.ack channel, tag
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "scribus:#{decoded.id}", {:update, decoded})
     write_cache(decoded.id, decoded)

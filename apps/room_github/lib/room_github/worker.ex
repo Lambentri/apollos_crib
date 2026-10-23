@@ -378,7 +378,7 @@ defmodule RoomGithub.Worker do
   defp follow_pagination(state, _), do: state
 
   defp ingest_response(state, %{type: :repos}, body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, list} when is_list(list) ->
         merged = merge_repo_list(state.available_repos, list)
         filtered = filter_watched(merged, state.inst)
@@ -393,7 +393,7 @@ defmodule RoomGithub.Worker do
   end
 
   defp ingest_response(state, %{type: :runs, full_name: full}, body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"workflow_runs" => runs}} when is_list(runs) ->
         runs = Enum.map(runs, fn r -> Map.put_new_lazy(r, "repository", fn -> %{"full_name" => full} end) end)
         Map.update!(state, :runs, &Map.put(&1, full, runs))
@@ -404,7 +404,7 @@ defmodule RoomGithub.Worker do
   end
 
   defp ingest_response(state, %{type: :jobs, run_id: rid} = ref, body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"jobs" => jobs}} when is_list(jobs) ->
         full = Map.get(ref, :full_name) || full_name_from_runs_state(state, rid)
 

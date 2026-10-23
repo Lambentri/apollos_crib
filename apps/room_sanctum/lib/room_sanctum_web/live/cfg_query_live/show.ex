@@ -343,8 +343,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     # be more than one, since re-pinning used to duplicate them -- and the id.
     queries =
       vision.queries
-      |> Poison.encode!()
-      |> Poison.decode!()
+      |> RoomSanctum.JSON.encode!()
+      |> Jason.decode!()
       |> Enum.reject(fn q -> to_string(get_in(q, ["data", "query"])) == to_string(query_id) end)
 
     query_ids = (vision.query_ids || []) -- [query_id]
@@ -373,7 +373,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
         type: "pinned"
       }
 
-      queries = (vision.queries |> Poison.encode!() |> Poison.decode!()) ++ [new_query]
+      queries = (vision.queries |> RoomSanctum.JSON.encode!() |> Jason.decode!()) ++ [new_query]
 
       # `||` binds looser than `++`, so `vision.query_ids || [] ++ [id]` read as
       # `query_ids || ([] ++ [id])` and handed back the existing list untouched.
