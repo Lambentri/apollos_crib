@@ -107,7 +107,7 @@ defmodule RoomSanctum.MixProject do
       {:sentry, "~> 8.0"},
       # sentry 8 asks for hackney ~> 1.8; RoomSanctum.SentryClient is what
       # makes it work on 4.x.
-      {:hackney, "~> 4.8", override: true},
+      {:hackney, "~> 4.9", override: true},
 
       # Q's and other misc
       {:oban, "~> 2.17"},

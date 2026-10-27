@@ -53,7 +53,7 @@ defmodule ApollosCrib.MixProject do
       {:sentry, "~> 8.0"},
       {:jason, "~> 1.1"},
       # sentry 8 asks for ~> 1.8; see RoomSanctum.SentryClient.
-      {:hackney, "~> 4.8", override: true},
+      {:hackney, "~> 4.9", override: true},
       # wheretz (unmaintained) asks for httpoison ~> 1.6. Overrides only count
       # at the top of the build, so this one is needed as well as the apps' own.
       {:httpoison, "~> 3.0", override: true},

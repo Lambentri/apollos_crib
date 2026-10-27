@@ -40,7 +40,7 @@ defmodule RoomObservatory.MixProject do
       {:plug_cowboy, "~> 2.5"},
       # sentry 8 (via room_sanctum) asks for hackney ~> 1.8; see
       # RoomSanctum.SentryClient.
-      {:hackney, "~> 4.8", override: true},
+      {:hackney, "~> 4.9", override: true},
       {:room_sanctum, in_umbrella: true},
       {:room_hermes, in_umbrella: true},
       # For RoomGtfs.FeedHealth. Realtime feed health is the one thing here that

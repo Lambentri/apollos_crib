@@ -63,7 +63,7 @@ defmodule RoomHermes.MixProject do
       {:sentry, "~> 8.0"},
       # sentry 8 asks for hackney ~> 1.8; RoomSanctum.SentryClient is what
       # makes it work on 4.x.
-      {:hackney, "~> 4.8", override: true},
+      {:hackney, "~> 4.9", override: true},
 
       # makes the configs go Vroom
       {:polymorphic_embed, "~> 5.0.0", override: true},
