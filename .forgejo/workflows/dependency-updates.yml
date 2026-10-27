@@ -22,6 +22,13 @@ permissions:
   contents: write # push the deps/security-hex branch
   pull-requests: write # open, refresh and close its pull request
 
+# A newer push supersedes this run: on a branch or PR the run in
+# progress is cancelled; on master it finishes, and only a run still
+# waiting is replaced.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
 jobs:
   update:
     runs-on: self-hosted
