@@ -32,17 +32,17 @@ jobs:
           # changed anything before pushing it.
           fetch-depth: 0
 
-      # The Dockerfile says elixir:1.15, but room_scribes declares
-      # `elixir: "~> 1.18"` and Mix won't compile it on anything
-      # older, so 1.18 is the floor the umbrella actually builds on.
+      # The same toolchain the Dockerfile builds with (hexpm/elixir
+      # 1.20.4 on OTP 28.5.0.8). room_scribes declares
+      # `elixir: "~> 1.18"`, so 1.18 is the floor the umbrella builds on.
       # OTP and Elixir from builds.hex.pm, the builds setup-beam would
       # fetch — taken directly, since setup-beam chooses one by ImageOS,
       # which this runner sets to "selfhosted" over anything a workflow
       # says.
       - name: OTP and Elixir
         env:
-          OTP_VERSION: "27.3.4.9"
-          ELIXIR_VERSION: "1.18.4"
+          OTP_VERSION: "28.5.0.8"
+          ELIXIR_VERSION: "1.20.4"
         run: |
           ubuntu=$(. /etc/os-release && echo "$VERSION_ID")
           curl -sSfL "https://builds.hex.pm/builds/otp/ubuntu-${ubuntu}/OTP-${OTP_VERSION}.tar.gz" | tar xz -C /tmp
