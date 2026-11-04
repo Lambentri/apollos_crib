@@ -1213,6 +1213,9 @@ defmodule RoomSanctum.Configuration do
   """
   def get_keryx!(id), do: Repo.get!(Keryx, id)
 
+  # Someone else's keryx raises the not-found a missing one does.
+  def get_keryx!({:user, uid}, id), do: Repo.get_by!(Keryx, id: id, user_id: uid)
+
   @doc """
   Creates a keryx.
 

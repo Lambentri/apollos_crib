@@ -469,4 +469,38 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert Repo.reload(theirs)
     end
   end
+
+  describe "the keryx pages" do
+    setup ctx do
+      {:ok, theirs} =
+        Configuration.create_keryx(%{
+          name: "their herald",
+          ttl: 60,
+          query_ids: [query_for(ctx.them).id],
+          user_id: ctx.them.id
+        })
+
+      %{theirs: theirs}
+    end
+
+    test "will not show another user's keryx", ctx do
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.keryx_show_path(ctx.conn, :show, ctx.theirs))
+      end
+    end
+
+    test "will not open another user's keryx for editing", ctx do
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.keryx_index_path(ctx.conn, :edit, ctx.theirs))
+      end
+    end
+
+    test "will not delete another user's keryx", ctx do
+      {:ok, live, _html} = live(ctx.conn, Routes.keryx_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(ctx.theirs.id)})
+
+      assert Repo.reload(ctx.theirs)
+    end
+  end
 end

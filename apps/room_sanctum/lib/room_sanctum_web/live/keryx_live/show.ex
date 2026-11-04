@@ -10,12 +10,13 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
       # Set up periodic refresh of cached items
       Process.send_after(self(), :refresh_cache, 1000)
     end
+
     {:ok, socket}
   end
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    keryx = Configuration.get_keryx!(id)
+    keryx = Configuration.get_keryx!(owner(socket), id)
     queries = Configuration.get_queries!(keryx.query_ids)
     cached_items = fetch_cached_items(keryx.id)
 
@@ -73,7 +74,9 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
       _ ->
         # If Jason encoding fails, use inspect as fallback
         inspected = inspect(data, pretty: true, limit: 2048)
-        String.slice(inspected, 0..2048) <> if String.length(inspected) > 2048, do: "...", else: ""
+
+        String.slice(inspected, 0..2048) <>
+          if String.length(inspected) > 2048, do: "...", else: ""
     end
   end
 
@@ -118,4 +121,7 @@ defmodule RoomSanctumWeb.KeryxLive.Show do
   # RabbitMQ shows an MQTT client the routing key with its dots as slashes.
   defp mqtt_base(keryx),
     do: keryx.id |> Keryx.topic() |> Keryx.mqtt_topic()
+
+  # The keryx comes from the URL, so it is looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end
