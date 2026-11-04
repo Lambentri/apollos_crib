@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Edit Pythiae")
-    |> assign(:pythiae, Configuration.get_pythiae!(id))
+    |> assign(:pythiae, Configuration.get_pythiae!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -42,7 +42,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    pythiae = Configuration.get_pythiae!(id)
+    pythiae = Configuration.get_pythiae!(owner(socket), id)
     {:ok, _} = Configuration.delete_pythiae(pythiae)
 
     {:noreply, stream_delete(socket, :cfg_pythiae, pythiae)}
@@ -56,4 +56,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Index do
   defp list_cfg_pythiae(uid) do
     Configuration.list_cfg_pythiae({:user, uid})
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

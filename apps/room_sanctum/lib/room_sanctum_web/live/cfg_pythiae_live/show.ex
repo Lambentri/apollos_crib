@@ -22,7 +22,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     {:noreply,
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
-     |> assign(:pythiae, Configuration.get_pythiae!(id))
+     |> assign(:pythiae, Configuration.get_pythiae!(owner(socket), id))
      |> assign(:visions, Configuration.list_visions({:user, socket.assigns.current_user.id}))
      |> assign(:foci, Configuration.list_focis({:user, socket.assigns.current_user.id}))
      |> assign(:ankyra, Accounts.list_users_rabbit({:user, socket.assigns.current_user.id}))
@@ -153,35 +153,31 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
   end
 
   @impl true
-  def handle_event("do-publish", %{"id" => id}, socket) do
-    RoomSanctum.Worker.Pythiae.query_current_now(id)
+  # The buttons send the page's own pythiae id; the page's is what is used, so
+  # an event naming another pythiae does not reach it.
+  def handle_event("do-publish", _params, socket) do
+    RoomSanctum.Worker.Pythiae.query_current_now(socket.assigns.pythiae.id)
     {:noreply, socket}
   end
 
-  def handle_event("do-publish-img", %{"id" => id}, socket) do
-    RoomSanctum.Worker.Pythiae.publish_img(id)
+  def handle_event("do-publish-img", _params, socket) do
+    RoomSanctum.Worker.Pythiae.publish_img(socket.assigns.pythiae.id)
     {:noreply, socket}
   end
 
   def handle_event("set-current-vision", %{"id" => vision_id}, socket) do
-    pythiae = socket.assigns.pythiae
-    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_vision: vision_id})
-    {:noreply, socket |> assign(:pythiae, updated)}
+    set_current(socket, :curr_vision, vision_id, socket.assigns.visions)
   end
 
   def handle_event("set-current-foci", %{"id" => foci_id}, socket) do
-    pythiae = socket.assigns.pythiae
-    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_foci: foci_id})
-    {:noreply, socket |> assign(:pythiae, updated)}
+    set_current(socket, :curr_foci, foci_id, socket.assigns.foci)
   end
 
   # Setting a foci was one-way: every foci had a button to become the current
   # one and none of them had a way back, so a Pythiae that had ever been
   # pointed at a place stayed pointed at it.
   def handle_event("set-current-plani", %{"id" => plani_id}, socket) do
-    pythiae = socket.assigns.pythiae
-    {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_plani: plani_id})
-    {:noreply, socket |> assign(:pythiae, updated)}
+    set_current(socket, :curr_plani, plani_id, socket.assigns.plani)
   end
 
   # Back to the vision. Exclusive rather than additive, so unsetting is the
@@ -197,4 +193,18 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
     {:ok, updated} = Configuration.update_pythiae(pythiae, %{curr_foci: nil})
     {:noreply, socket |> assign(:pythiae, updated)}
   end
+
+  # The id is the client's, so it has to be one of the user's own that the
+  # page listed -- not another user's vision, foci or plani.
+  defp set_current(socket, field, id, owned) do
+    if Enum.any?(owned, &(to_string(&1.id) == to_string(id))) do
+      {:ok, updated} = Configuration.update_pythiae(socket.assigns.pythiae, %{field => id})
+      {:noreply, socket |> assign(:pythiae, updated)}
+    else
+      {:noreply, put_flash(socket, :error, "That is not yours to show")}
+    end
+  end
+
+  # The pythiae comes from the URL, so it is looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

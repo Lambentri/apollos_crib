@@ -311,4 +311,80 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert Configuration.get_queries(:source, their_source.id) == []
     end
   end
+
+  # users_rabbit comes from the hermes repo's migrations and is not in the
+  # sanctum test database, and the pages that list Ankyra need it to mount. It
+  # is made inside the test's sandbox transaction, so it goes when the test does.
+  defp users_rabbit!(_ctx) do
+    Repo.query!("""
+    CREATE TABLE IF NOT EXISTS users_rabbit (
+      id bigserial PRIMARY KEY,
+      password varchar,
+      username uuid,
+      topic varchar,
+      client_ids varchar[] DEFAULT '{}',
+      auto_register_clients boolean DEFAULT true,
+      user_id bigint,
+      inserted_at timestamp,
+      updated_at timestamp
+    )
+    """)
+
+    :ok
+  end
+
+  describe "the pythiae pages" do
+    setup :users_rabbit!
+
+    test "will not show another user's pythiae", ctx do
+      theirs = pythiae_for(ctx.them, [])
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.pythiae_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's pythiae for editing", ctx do
+      theirs = pythiae_for(ctx.them, [])
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.pythiae_index_path(ctx.conn, :edit, theirs))
+      end
+    end
+
+    test "will not delete another user's pythiae", ctx do
+      theirs = pythiae_for(ctx.them, [])
+      {:ok, live, _html} = live(ctx.conn, Routes.pythiae_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+
+      assert Repo.reload(theirs)
+    end
+
+    test "will not point the pythiae at another user's vision or foci", ctx do
+      mine = vision_for(ctx.me, "My dash")
+      screen = pythiae_for(ctx.me, [mine.id])
+      their_vision = vision_for(ctx.them, "Their dash")
+      their_foci = foci_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, Routes.pythiae_show_path(ctx.conn, :show, screen))
+
+      render_click(live, "set-current-vision", %{"id" => to_string(their_vision.id)})
+      render_click(live, "set-current-foci", %{"id" => to_string(their_foci.id)})
+
+      screen = Repo.reload!(screen)
+      assert screen.curr_vision == mine.id
+      assert screen.curr_foci == nil
+    end
+
+    test "still points the pythiae at the user's own vision", ctx do
+      first = vision_for(ctx.me, "First")
+      second = vision_for(ctx.me, "Second")
+      screen = pythiae_for(ctx.me, [first.id, second.id])
+      {:ok, live, _html} = live(ctx.conn, Routes.pythiae_show_path(ctx.conn, :show, screen))
+
+      render_click(live, "set-current-vision", %{"id" => to_string(second.id)})
+
+      assert Repo.reload!(screen).curr_vision == second.id
+    end
+  end
 end
