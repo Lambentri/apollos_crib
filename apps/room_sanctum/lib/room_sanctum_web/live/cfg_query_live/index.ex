@@ -71,7 +71,7 @@ defmodule RoomSanctumWeb.QueryLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Query")
-    |> assign(:query, Configuration.get_query!(id))
+    |> assign(:query, Configuration.get_query!({:user, socket.assigns.current_user.id}, id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -174,8 +174,9 @@ defmodule RoomSanctumWeb.QueryLive.Index do
   end
 
   @impl true
+  # The id is the client's, so it is looked up among the user's own queries.
   def handle_event("delete", %{"id" => id}, socket) do
-    query = Configuration.get_query!(id)
+    query = Configuration.get_query!({:user, socket.assigns.current_user.id}, id)
     {:ok, _} = Configuration.delete_query(query)
 
     {:noreply, stream_delete(socket, :cfg_queries, query)}
