@@ -1,6 +1,10 @@
 defmodule RoomSanctum.Configuration.Vision do
   use Ecto.Schema
   import Ecto.Changeset
+  import Ecto.Query, only: [from: 2]
+
+  alias RoomSanctum.Configuration.Query
+  alias RoomSanctum.Repo
 
   schema "cfg_visions" do
     belongs_to :user, RoomSanctum.Accounts.User
@@ -74,15 +78,23 @@ defmodule RoomSanctum.Configuration.Vision do
     end
   end
 
+  # A vision can only point at its owner's queries -- the form's picker only
+  # offers those. Only the ids this change adds are checked: delete_query/1
+  # leaves its id behind on any vision it was on, so a stored vision can
+  # already hold ids with nothing behind them, and it has to stay editable.
   defp validate_queries_have_valid_ids(changeset) do
-    case get_field(changeset, :query_ids) do
-      [_ | _] ->
-        # Validate that all query IDs exist and belong to the user
-        changeset
-
-      _ ->
-        changeset
+    with [_ | _] = ids <- get_change(changeset, :query_ids),
+         [_ | _] = added <- Enum.uniq(ids) -- (changeset.data.query_ids || []),
+         user_id when not is_nil(user_id) <- get_field(changeset, :user_id),
+         [_ | _] <- added -- owned_query_ids(added, user_id) do
+      add_error(changeset, :query_ids, "must be queries you own")
+    else
+      _ -> changeset
     end
+  end
+
+  defp owned_query_ids(ids, user_id) do
+    Repo.all(from q in Query, where: q.id in ^ids and q.user_id == ^user_id, select: q.id)
   end
 end
 
