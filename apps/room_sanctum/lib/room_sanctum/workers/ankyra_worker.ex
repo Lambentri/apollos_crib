@@ -1,6 +1,8 @@
 defmodule RoomSanctum.Worker.Ankyra do
   @moduledoc false
-  use GenServer
+  # Transient: a worker whose rabbit user has been deleted stops normally and
+  # stays stopped, rather than being restarted into the same missing row.
+  use GenServer, restart: :transient
 
   require Logger
 
@@ -180,6 +182,10 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_cast(:refresh_db_cfg, state) do
     p = Accounts.get_rabbit_user!(state[:id])
     {:noreply, state |> Map.put(:ankyra, p) |> listen_for_requests()}
+  rescue
+    # Deleted. Raising here had the supervisor restart it straight back into
+    # the same missing row, until it gave up and took every Ankyra with it.
+    Ecto.NoResultsError -> {:stop, :normal, state}
   end
 
   def handle_cast({:publish, data}, state) do

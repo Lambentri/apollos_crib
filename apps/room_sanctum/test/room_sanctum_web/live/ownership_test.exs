@@ -495,6 +495,15 @@ defmodule RoomSanctumWeb.OwnershipTest do
 
       assert Repo.reload(theirs)
     end
+
+    test "deletes the user's own ankyra", ctx do
+      mine = ankyra_for(ctx.me)
+      {:ok, live, _html} = live(ctx.conn, Routes.ankyra_index_path(ctx.conn, :index))
+
+      render_click(live, "delete", %{"id" => to_string(mine.id)})
+
+      refute Repo.reload(mine)
+    end
   end
 
   defp scribus_for(user) do

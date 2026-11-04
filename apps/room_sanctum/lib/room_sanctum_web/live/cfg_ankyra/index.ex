@@ -42,7 +42,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
     ankyra = Accounts.get_rabbit_user!(owner(socket), id)
-    {:ok, _} = Accounts.delete_rabbit_user!(ankyra)
+    Accounts.delete_rabbit_user!(ankyra)
 
     {:noreply, stream_delete(socket, :ankyras, ankyra)}
   end

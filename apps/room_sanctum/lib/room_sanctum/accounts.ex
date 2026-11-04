@@ -86,6 +86,12 @@ defmodule RoomSanctum.Accounts do
   @doc """
   Deletes a rabbit_user.
 
+  The row is all there is to undo. Nothing is set up on the broker when one
+  is created: RabbitMQ asks room_hermes's HTTP auth backend about every
+  login and topic, and that answers from this table, so once the row is gone
+  the username and password stop working. Its Ankyra worker is told, so it
+  stops rather than finding out on its next re-read.
+
   ## Examples
 
       iex> delete_rabbit_user(rabbit_user)
@@ -96,8 +102,31 @@ defmodule RoomSanctum.Accounts do
 
   """
   def delete_rabbit_user(%RabbitUser{} = rabbit_user) do
-    Repo.delete(rabbit_user)
+    rabbit_user |> Repo.delete() |> tap(&stop_worker/1)
   end
+
+  @doc """
+  Deletes a rabbit_user as `delete_rabbit_user/1` does, raising if it cannot
+  -- `Ecto.StaleEntryError` when it is already gone.
+
+  ## Examples
+
+      iex> delete_rabbit_user!(rabbit_user)
+      %RabbitUser{}
+
+  """
+  def delete_rabbit_user!(%RabbitUser{} = rabbit_user) do
+    deleted = Repo.delete!(rabbit_user)
+    stop_worker({:ok, deleted})
+    deleted
+  end
+
+  # The worker re-reads its row, and stops when there is none. A cast, so it
+  # is a no-op when no worker is running.
+  defp stop_worker({:ok, %RabbitUser{id: id}}),
+    do: RoomSanctum.Worker.Ankyra.refresh_db_cfg(to_string(id))
+
+  defp stop_worker(_result), do: :ok
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking rabbit_user changes.
