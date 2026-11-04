@@ -373,7 +373,6 @@ defmodule RoomGbfs.Worker do
 
   @impl true
   def handle_cast(:refresh_db_cfg, state) do
-    IO.puts("rerere")
     {:noreply, state |> Map.put(:inst, nil)}
   end
 
