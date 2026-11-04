@@ -224,7 +224,7 @@ defmodule RoomGitlab.Worker do
     #    |> IO.inspect()
   end
 
-  defp is_last_hour?(entry_field, hours \\ 1) do
+  defp last_hour?(entry_field, hours \\ 1) do
     case entry_field |> DateTime.from_iso8601() do
       {:ok, dt, _something} ->
         DateTime.compare(dt, DateTime.utc_now() |> DateTime.add(-3600 * hours)) === :gt

@@ -368,17 +368,15 @@ defmodule RoomIcarus.Worker do
     min_alt = numeric(field(query, :alt_min))
     max_alt = numeric(field(query, :alt_max))
 
-    cond do
-      is_nil(min_alt) and is_nil(max_alt) ->
-        list
-
-      true ->
-        Enum.filter(list, fn ac ->
-          case ac["alt_baro"] do
-            alt when is_number(alt) -> above?(alt, min_alt) and below?(alt, max_alt)
-            _ -> is_nil(min_alt)
-          end
-        end)
+    if is_nil(min_alt) and is_nil(max_alt) do
+      list
+    else
+      Enum.filter(list, fn ac ->
+        case ac["alt_baro"] do
+          alt when is_number(alt) -> above?(alt, min_alt) and below?(alt, max_alt)
+          _ -> is_nil(min_alt)
+        end
+      end)
     end
   end
 

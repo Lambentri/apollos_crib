@@ -26,12 +26,8 @@ defmodule RoomWeather.Worker do
     {:ok, %{id: opts[:name], src: c}}
   end
 
-  defp normalize_ll(val) do
-    cond do
-      val < -180 -> val + 360
-      true -> val
-    end
-  end
+  defp normalize_ll(val) when val < -180, do: val + 360
+  defp normalize_ll(val), do: val
 
   def handle_call({:query_weather, query}, _from, state) do
     {lon, lat} = Configuration.place_for!(query).coordinates

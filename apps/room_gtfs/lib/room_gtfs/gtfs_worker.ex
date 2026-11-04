@@ -1018,8 +1018,7 @@ defmodule RoomGtfs.Worker.RT do
 
         feed ->
           feed.entity
-          |> Enum.filter(& &1.alert)
-          |> Enum.filter(fn entity -> alert_active?(entity.alert, now) end)
+          |> Enum.filter(fn entity -> entity.alert && alert_active?(entity.alert, now) end)
           |> Enum.map(&present_alert/1)
       end
 
@@ -1871,8 +1870,7 @@ defmodule RoomGtfs.Worker.Static do
     schema.__schema__(:fields)
     |> List.delete(:id)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k, v} -> cast_col(k, v) end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn {k, v} -> cast_col(k, v) end)
   end
 
   def get_cols_pgtypes(schema, cols) do
@@ -1880,21 +1878,18 @@ defmodule RoomGtfs.Worker.Static do
     |> List.delete(:id)
     |> Enum.filter(fn f -> Enum.member?(cols |> Enum.map(&String.to_atom/1), f) end)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k, v} -> cast_col(k, v) end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn {k, v} -> cast_col(k, v) end)
   end
 
   def csv_cols_to_tmp_cols(cols) do
     cols
-    |> Enum.map(fn x -> "#{x} varchar" end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn x -> "#{x} varchar" end)
   end
 
   def csv_cols_to_tmp_cols(cols, :add) do
     cols
     |> Kernel.++(["inserted_at", "updated_at", "source_id"])
-    |> Enum.map(fn x -> "#{x} varchar" end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn x -> "#{x} varchar" end)
   end
 
   # CSV headers are matched by name against schema fields, so any decoration on

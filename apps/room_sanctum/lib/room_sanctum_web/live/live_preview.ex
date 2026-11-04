@@ -266,7 +266,7 @@ defmodule RoomSanctumWeb.LivePreview do
 
   defp carriages_label(carriages) do
     carriages
-    |> Enum.map(fn c ->
+    |> Enum.map_join(", ", fn c ->
       name = c.label || (c.sequence && "car #{c.sequence}") || "car"
       name = if Map.get(c, :marked), do: "#{name} (new)", else: name
 
@@ -275,7 +275,6 @@ defmodule RoomSanctumWeb.LivePreview do
         status -> "#{name}: #{occupancy_label(status, c.occupancy_pct)}"
       end
     end)
-    |> Enum.join(", ")
   end
 
   @doc """
@@ -1552,7 +1551,7 @@ defmodule RoomSanctumWeb.LivePreview do
     date <> time
   end
 
-  def is_uri(path) do
+  def uri?(path) do
     res = URI.parse(path)
 
     case {res.host, res.scheme} do
@@ -1568,7 +1567,7 @@ defmodule RoomSanctumWeb.LivePreview do
   def p_const(assigns) do
     ~H"""
     <div class="text-xl text-accent">
-    <%= case is_uri(@entries.data.body) do %>
+    <%= case uri?(@entries.data.body) do %>
       <%= true -> %> <img src={@entries.data.body} class="rounded-sm" />
       <%= false -> %> <%= raw do_fmt(@entries.data.body) %>
     <% end %>

@@ -74,7 +74,7 @@ gl_available_projects={@gitlab_available_projects}
                         <% end %>
                         </ul>
                         <br/>
-                        Last Triggered <%= @source.meta |> is_updated %>
+                        Last Triggered <%= @source.meta |> last_run_label %>
                     </div>
                 </div>
             </div>
@@ -90,7 +90,7 @@ gl_available_projects={@gitlab_available_projects}
                             <% end %>
                         </ul>
                         <br/>
-                        Last Triggered <%= @source.meta |> is_updated %>
+                        Last Triggered <%= @source.meta |> last_run_label %>
                     </div>
                 </div>
             </div>
@@ -106,7 +106,7 @@ gl_available_projects={@gitlab_available_projects}
                     <div class="py-1">
                         <%= case @source.type do %>
                     <% :gtfs -> %>
-                        Last Updated <%= @source.meta |> is_updated %>
+                        Last Updated <%= @source.meta |> last_run_label %>
                     <% _default -> %>
                     <% end %>
                     </div>

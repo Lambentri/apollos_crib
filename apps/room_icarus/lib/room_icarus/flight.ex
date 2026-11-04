@@ -113,12 +113,10 @@ defmodule RoomIcarus.Flight do
 
     base = if is_nil(watch.first_seen_at), do: Map.put(base, :first_seen_at, now), else: base
 
-    cond do
-      landed?(watch, aircraft) ->
-        base |> Map.merge(%{state: "landed", landed_at: now, eta: nil})
-
-      true ->
-        Map.put(base, :state, "enroute")
+    if landed?(watch, aircraft) do
+      base |> Map.merge(%{state: "landed", landed_at: now, eta: nil})
+    else
+      Map.put(base, :state, "enroute")
     end
   end
 

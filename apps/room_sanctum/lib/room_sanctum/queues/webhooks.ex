@@ -48,31 +48,34 @@ defmodule RoomSanctum.Queues.Webhooks do
     secret = get_in(source.config |> Map.from_struct(), [:usps_webhook_secret])
     hmac = args["hmac"]
 
-    cond do
-      is_binary(secret) and secret != "" and
-          not RoomPackages.USPS.verify_hmac(
-            hmac || "",
-            data["timestamp"] || "",
-            data["payload"] || "",
-            secret
-          ) ->
-        Logger.warning(
-          "USPS webhook HMAC mismatch for subscription #{inspect(data["subscriptionId"])} -- ignoring"
-        )
+    if hmac_mismatch?(secret, hmac, data) do
+      Logger.warning(
+        "USPS webhook HMAC mismatch for subscription #{inspect(data["subscriptionId"])} -- ignoring"
+      )
 
-        :ok
+      :ok
+    else
+      case RoomPackages.USPS.parse_notification(data) do
+        {:ok, %{number: number, summary: summary}} when is_binary(number) ->
+          RoomSanctum.Configuration.update_source_meta_tracking(source, number, summary)
 
-      true ->
-        case RoomPackages.USPS.parse_notification(data) do
-          {:ok, %{number: number, summary: summary}} when is_binary(number) ->
-            RoomSanctum.Configuration.update_source_meta_tracking(source, number, summary)
+        {:ok, _} ->
+          Logger.warning("USPS webhook had no tracking number")
 
-          {:ok, _} ->
-            Logger.warning("USPS webhook had no tracking number")
-
-          {:error, reason} ->
-            Logger.warning("USPS webhook unparseable: #{inspect(reason)}")
-        end
+        {:error, reason} ->
+          Logger.warning("USPS webhook unparseable: #{inspect(reason)}")
+      end
     end
+  end
+
+  # No secret configured means nothing to check against, so it is not a mismatch.
+  defp hmac_mismatch?(secret, hmac, data) do
+    is_binary(secret) and secret != "" and
+      not RoomPackages.USPS.verify_hmac(
+        hmac || "",
+        data["timestamp"] || "",
+        data["payload"] || "",
+        secret
+      )
   end
 end

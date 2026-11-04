@@ -9,12 +9,8 @@ defmodule RoomEphem.Worker do
 
   @ttl :timer.hours(8)
 
-  defp normalize_ll(val) do
-    cond do
-      val < -180 -> val + 360
-      true -> val
-    end
-  end
+  defp normalize_ll(val) when val < -180, do: val + 360
+  defp normalize_ll(val), do: val
 
   # ── Moon rise/set calculation ────────────────────────────────────────────────
   # Low-precision algorithm (~5–15 min accuracy) based on Jean Meeus,
@@ -24,7 +20,7 @@ defmodule RoomEphem.Worker do
     a = div(14 - m, 12)
     yy = y + 4800 - a
     mm = m + 12 * a - 3
-    d + div(153 * mm + 2, 5) + 365 * yy + div(yy, 4) - div(yy, 100) + div(yy, 400) - 32045 - 0.5
+    d + div(153 * mm + 2, 5) + 365 * yy + div(yy, 4) - div(yy, 100) + div(yy, 400) - 32_045 - 0.5
   end
 
   defp sin_d(deg), do: :math.sin(deg * :math.pi() / 180.0)
@@ -58,8 +54,8 @@ defmodule RoomEphem.Worker do
 
   defp gmst_midnight(jd) do
     d = jd - 2_451_545.0
-    t = d / 36525.0
-    norm_deg(100.4606184 + 36000.77004 * t + 0.000387933 * t * t)
+    t = d / 36_525.0
+    norm_deg(100.4606184 + 36_000.77004 * t + 0.000387933 * t * t)
   end
 
   # Returns {:ok, rise_ut_hours, set_ut_hours} or {:error, reason}

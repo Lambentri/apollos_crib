@@ -12,7 +12,7 @@ defmodule RoomGbfs.Worker do
   @dynamic_refresh_seconds 300
 
   # 1d
-  @static_refresh_seconds 86400
+  @static_refresh_seconds 86_400
 
   # Ten hours, and it always was: this went to `:timer.minutes/1` while being
   # called seconds. Left where it is now that the counts refresh on the five

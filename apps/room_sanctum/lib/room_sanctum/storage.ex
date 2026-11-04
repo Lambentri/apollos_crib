@@ -1009,9 +1009,10 @@ defmodule RoomSanctum.Storage do
     hour = hour |> String.strip() |> String.to_integer()
 
     hour =
-      cond do
-        hour >= 24 -> hour - 24
-        true -> hour
+      if hour >= 24 do
+        hour - 24
+      else
+        hour
       end
 
     hourzf = hour |> Integer.to_string() |> String.pad_leading(2, "0")
@@ -3564,7 +3565,7 @@ defmodule RoomSanctum.Storage do
     foci = Configuration.get_foci!(query.foci_id)
     {lon, lat} = foci.place.coordinates
     tz = WhereTZ.lookup(lat, lon)
-    # todo make this configurable from somewhere
+    # From midnight in the foci's zone; not configurable yet.
     now = DateTime.new!(Date.utc_today(), Time.new!(0, 0, 0), tz)
     max = now |> DateTime.add(query.days * 24 * 60 * 60, :second)
 

@@ -46,7 +46,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
 
   @impl true
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, 10000)
+    Process.send_after(self(), :update, 10_000)
 
     %{data: data, queries: queries} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.vision.id)

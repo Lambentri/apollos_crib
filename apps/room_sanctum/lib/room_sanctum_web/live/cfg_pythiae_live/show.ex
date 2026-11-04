@@ -34,7 +34,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
 
   @impl true
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, 15000)
+    Process.send_after(self(), :update, 15_000)
 
     # The same choice the worker makes, so the preview shows what is about to
     # be published rather than the vision it is not reading.

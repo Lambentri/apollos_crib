@@ -71,7 +71,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_info(:update_sec, socket) do
-    Process.send_after(self(), :update_sec, 10000)
+    Process.send_after(self(), :update_sec, 10_000)
     queries = Configuration.get_queries(:source, socket.assigns.source_id)
     available_tints = get_available_tints(queries)
 
@@ -1353,7 +1353,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   # Fallback timer for vehicle position updates
   @impl true
   def handle_info(:update_vehicle_positions, socket) do
-    Process.send_after(self(), :update_vehicle_positions, 30000)
+    Process.send_after(self(), :update_vehicle_positions, 30_000)
 
     case socket.assigns.source.type do
       :gtfs ->
@@ -1471,7 +1471,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     RoomSanctumWeb.IconHelpers.icon_code(source_type)
   end
 
-  defp is_updated(source_meta) do
+  defp last_run_label(source_meta) do
     case source_meta |> Map.get(:last_run) do
       nil -> "NEVER"
       # |> Timex.format!("%Y-%m-%d @ %H:%M", :strftime)

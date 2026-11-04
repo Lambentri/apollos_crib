@@ -2,7 +2,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   alias RoomSanctum.Storage.AirNow.HourlyObsData
   import MapMerge
 
-  # todo move me
+  # GTFS route_type codes by name. PlusMQTT keeps its own copy of the table.
   defp gtfs_mode(route_type) do
     case route_type do
       "0" -> "LightRail"

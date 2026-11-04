@@ -111,7 +111,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   def rt_group_label(kinds) do
     case Enum.sort(kinds) do
       [:sa, :tu, :vp] -> "Realtime (combined feed)"
-      sorted -> sorted |> Enum.map(&kind_title/1) |> Enum.join(", ")
+      sorted -> Enum.map_join(sorted, ", ", &kind_title/1)
     end
   end
 

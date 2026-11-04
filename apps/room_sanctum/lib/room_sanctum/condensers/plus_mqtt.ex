@@ -144,7 +144,7 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
     data |> Enum.find_value(&Map.get(&1, :stop_id))
   end
 
-  # todo move me -- same table as Basic's, kept here rather than reaching into
+  # Same table as Basic's, kept here rather than reaching into
   # a private function of another condenser.
   defp gtfs_mode(route_type) do
     case route_type do

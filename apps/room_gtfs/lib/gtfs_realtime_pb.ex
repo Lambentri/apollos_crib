@@ -211,7 +211,7 @@ defmodule TransitRealtime.FeedMessage do
   field(:header, 1, required: true, type: TransitRealtime.FeedHeader)
   field(:entity, 2, repeated: true, type: TransitRealtime.FeedEntity)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.FeedHeader do
@@ -238,7 +238,7 @@ defmodule TransitRealtime.FeedHeader do
   field(:timestamp, 3, optional: true, type: :uint64)
   field(:feed_version, 4, optional: true, type: :string, json_name: "feedVersion")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.FeedEntity do
@@ -269,7 +269,7 @@ defmodule TransitRealtime.FeedEntity do
     json_name: "tripModifications"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripUpdate.StopTimeEvent do
@@ -285,7 +285,7 @@ defmodule TransitRealtime.TripUpdate.StopTimeEvent do
   field(:uncertainty, 3, optional: true, type: :int32)
   field(:scheduled_time, 4, optional: true, type: :int64, json_name: "scheduledTime")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripUpdate.StopTimeUpdate.StopTimeProperties do
@@ -313,7 +313,7 @@ defmodule TransitRealtime.TripUpdate.StopTimeUpdate.StopTimeProperties do
     enum: true
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripUpdate.StopTimeUpdate do
@@ -350,7 +350,7 @@ defmodule TransitRealtime.TripUpdate.StopTimeUpdate do
     json_name: "stopTimeProperties"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripUpdate.TripProperties do
@@ -368,7 +368,7 @@ defmodule TransitRealtime.TripUpdate.TripProperties do
   field(:trip_headsign, 5, optional: true, type: :string, json_name: "tripHeadsign")
   field(:trip_short_name, 6, optional: true, type: :string, json_name: "tripShortName")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripUpdate do
@@ -397,7 +397,7 @@ defmodule TransitRealtime.TripUpdate do
     json_name: "tripProperties"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.VehiclePosition.CarriageDetails do
@@ -428,7 +428,7 @@ defmodule TransitRealtime.VehiclePosition.CarriageDetails do
 
   field(:carriage_sequence, 5, optional: true, type: :uint32, json_name: "carriageSequence")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.VehiclePosition do
@@ -487,7 +487,7 @@ defmodule TransitRealtime.VehiclePosition do
     json_name: "multiCarriageDetails"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.Alert do
@@ -591,7 +591,7 @@ defmodule TransitRealtime.Alert do
     json_name: "effectDetail"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TimeRange do
@@ -605,7 +605,7 @@ defmodule TransitRealtime.TimeRange do
   field(:start, 1, optional: true, type: :uint64)
   field(:end, 2, optional: true, type: :uint64)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.Position do
@@ -622,7 +622,7 @@ defmodule TransitRealtime.Position do
   field(:odometer, 4, optional: true, type: :double)
   field(:speed, 5, optional: true, type: :float)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripDescriptor.ModifiedTripSelector do
@@ -638,7 +638,7 @@ defmodule TransitRealtime.TripDescriptor.ModifiedTripSelector do
   field(:start_time, 3, optional: true, type: :string, json_name: "startTime")
   field(:start_date, 4, optional: true, type: :string, json_name: "startDate")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripDescriptor do
@@ -668,7 +668,7 @@ defmodule TransitRealtime.TripDescriptor do
     json_name: "modifiedTrip"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.VehicleDescriptor do
@@ -691,7 +691,7 @@ defmodule TransitRealtime.VehicleDescriptor do
     enum: true
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.EntitySelector do
@@ -709,7 +709,7 @@ defmodule TransitRealtime.EntitySelector do
   field(:stop_id, 5, optional: true, type: :string, json_name: "stopId")
   field(:direction_id, 6, optional: true, type: :uint32, json_name: "directionId")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TranslatedString.Translation do
@@ -723,7 +723,7 @@ defmodule TransitRealtime.TranslatedString.Translation do
   field(:text, 1, required: true, type: :string)
   field(:language, 2, optional: true, type: :string)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TranslatedString do
@@ -736,7 +736,7 @@ defmodule TransitRealtime.TranslatedString do
 
   field(:translation, 1, repeated: true, type: TransitRealtime.TranslatedString.Translation)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TranslatedImage.LocalizedImage do
@@ -751,7 +751,7 @@ defmodule TransitRealtime.TranslatedImage.LocalizedImage do
   field(:media_type, 2, required: true, type: :string, json_name: "mediaType")
   field(:language, 3, optional: true, type: :string)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TranslatedImage do
@@ -768,7 +768,7 @@ defmodule TransitRealtime.TranslatedImage do
     json_name: "localizedImage"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.Shape do
@@ -782,7 +782,7 @@ defmodule TransitRealtime.Shape do
   field(:shape_id, 1, optional: true, type: :string, json_name: "shapeId")
   field(:encoded_polyline, 2, optional: true, type: :string, json_name: "encodedPolyline")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.Stop do
@@ -848,7 +848,7 @@ defmodule TransitRealtime.Stop do
     json_name: "platformCode"
   )
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripModifications.Modification do
@@ -887,7 +887,7 @@ defmodule TransitRealtime.TripModifications.Modification do
   field(:service_alert_id, 5, optional: true, type: :string, json_name: "serviceAlertId")
   field(:last_modified_time, 6, optional: true, type: :uint64, json_name: "lastModifiedTime")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripModifications.SelectedTrips do
@@ -901,7 +901,7 @@ defmodule TransitRealtime.TripModifications.SelectedTrips do
   field(:trip_ids, 1, repeated: true, type: :string, json_name: "tripIds")
   field(:shape_id, 2, optional: true, type: :string, json_name: "shapeId")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.TripModifications do
@@ -922,7 +922,7 @@ defmodule TransitRealtime.TripModifications do
   field(:service_dates, 3, repeated: true, type: :string, json_name: "serviceDates")
   field(:modifications, 4, repeated: true, type: TransitRealtime.TripModifications.Modification)
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.StopSelector do
@@ -936,7 +936,7 @@ defmodule TransitRealtime.StopSelector do
   field(:stop_sequence, 1, optional: true, type: :uint32, json_name: "stopSequence")
   field(:stop_id, 2, optional: true, type: :string, json_name: "stopId")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end
 
 defmodule TransitRealtime.ReplacementStop do
@@ -950,5 +950,5 @@ defmodule TransitRealtime.ReplacementStop do
   field(:travel_time_to_stop, 1, optional: true, type: :int32, json_name: "travelTimeToStop")
   field(:stop_id, 2, optional: true, type: :string, json_name: "stopId")
 
-  extensions([{1000, 2000}, {9000, 10000}])
+  extensions([{1000, 2000}, {9000, 10_000}])
 end

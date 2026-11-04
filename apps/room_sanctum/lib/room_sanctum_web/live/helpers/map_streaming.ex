@@ -31,7 +31,7 @@ defmodule RoomSanctumWeb.Live.Helpers.MapStreaming do
   """
   def stream_map_data(pid, query_function, opts \\ []) do
     batch_size = Keyword.get(opts, :batch_size, 2000)
-    total_records = Keyword.get(opts, :total_records, 14000)
+    total_records = Keyword.get(opts, :total_records, 14_000)
     compress = Keyword.get(opts, :compress, true)
 
     batches = div(total_records, batch_size)
@@ -57,7 +57,9 @@ defmodule RoomSanctumWeb.Live.Helpers.MapStreaming do
 
               send(pid, {:map_data_batch, processed_data, batch})
           end
-        end, max_concurrency: System.schedulers_online())
+        end,
+        max_concurrency: System.schedulers_online()
+      )
 
     async_stream
     |> Stream.run()
@@ -200,7 +202,7 @@ defmodule RoomSanctumWeb.Live.Helpers.MapStreaming do
     %{
       duration_ms: duration,
       batch_size: Keyword.get(opts, :batch_size, 2000),
-      total_records: Keyword.get(opts, :total_records, 14000)
+      total_records: Keyword.get(opts, :total_records, 14_000)
     }
   end
 end

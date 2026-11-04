@@ -62,7 +62,7 @@ defmodule RoomScribe.Worker do
 
   def handle_cast({:request, scribe_id}, state) do
     sc = Configuration.get_scribus!(scribe_id)
-    # todo move to runtime.exs
+    # Read from the environment here rather than from runtime.exs config.
     path = System.get_env("PHX_HOST")
 
     full_path =

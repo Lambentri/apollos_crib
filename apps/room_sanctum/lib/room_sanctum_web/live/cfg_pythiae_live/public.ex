@@ -31,7 +31,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
 
   @impl true
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, 15000)
+    Process.send_after(self(), :update, 15_000)
 
     %{data: data, queries: queries, name: name} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
