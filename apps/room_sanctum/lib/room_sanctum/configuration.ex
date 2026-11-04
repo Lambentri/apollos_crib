@@ -932,6 +932,10 @@ defmodule RoomSanctum.Configuration do
     Repo.all(Scribus)
   end
 
+  def list_cfg_scribus({:user, uid}) do
+    Repo.all(from s in Scribus, where: s.user_id == ^uid)
+  end
+
   @doc """
   Gets a single scribus.
 
@@ -948,20 +952,26 @@ defmodule RoomSanctum.Configuration do
   """
   def get_scribus!(id), do: Repo.get!(Scribus, id)
 
+  # Someone else's scribus raises the not-found a missing one does.
+  def get_scribus!({:user, uid}, id), do: Repo.get_by!(Scribus, id: id, user_id: uid)
+
   @doc """
-  Creates a scribus.
+  Creates a scribus belonging to the given user.
+
+  The owner is set here rather than taken from `attrs`, so a form cannot
+  make one for somebody else.
 
   ## Examples
 
-      iex> create_scribus(%{field: value})
+      iex> create_scribus({:user, uid}, %{field: value})
       {:ok, %Scribus{}}
 
-      iex> create_scribus(%{field: bad_value})
+      iex> create_scribus({:user, uid}, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_scribus(attrs \\ %{}) do
-    %Scribus{}
+  def create_scribus({:user, uid}, attrs \\ %{}) do
+    %Scribus{user_id: uid}
     |> Scribus.changeset(attrs)
     |> Repo.insert()
   end

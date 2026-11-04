@@ -10,12 +10,14 @@ defmodule RoomSanctumWeb.ScribusLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
+    # Looked up among the user's own before anything is subscribed to.
+    scribus = Configuration.get_scribus!({:user, socket.assigns.current_user.id}, id)
     Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "scribus:#{id}")
     {:noreply,
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
      |> assign(:preview, nil)
-     |> assign(:scribus, Configuration.get_scribus!(id))
+     |> assign(:scribus, scribus)
      |> assign(:scribus_id, id)}
   end
 

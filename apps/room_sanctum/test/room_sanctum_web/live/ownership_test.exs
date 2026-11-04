@@ -497,6 +497,107 @@ defmodule RoomSanctumWeb.OwnershipTest do
     end
   end
 
+  defp scribus_for(user) do
+    {:ok, scribus} =
+      Configuration.create_scribus({:user, user.id}, %{
+        name: "Kitchen",
+        resolution: "800x480",
+        vision: vision_for(user, "Board").id,
+        enabled: true,
+        color: :untouched,
+        theme: :inky
+      })
+
+    scribus
+  end
+
+  describe "the scribus pages" do
+    test "list only the user's own scribus", ctx do
+      mine = scribus_for(ctx.me)
+      theirs = scribus_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, Routes.scribus_index_path(ctx.conn, :index))
+
+      assert has_element?(live, "#cfg_scribus-#{mine.id}")
+      refute has_element?(live, "#cfg_scribus-#{theirs.id}")
+    end
+
+    test "show and edit the user's own scribus", ctx do
+      mine = scribus_for(ctx.me)
+
+      assert {:ok, _live, _html} = live(ctx.conn, Routes.scribus_show_path(ctx.conn, :show, mine))
+
+      assert {:ok, _live, _html} =
+               live(ctx.conn, Routes.scribus_index_path(ctx.conn, :edit, mine))
+    end
+
+    test "will not show another user's scribus", ctx do
+      theirs = scribus_for(ctx.them)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.scribus_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's scribus for editing", ctx do
+      theirs = scribus_for(ctx.them)
+
+      for path <- [
+            Routes.scribus_index_path(ctx.conn, :edit, theirs),
+            Routes.scribus_show_path(ctx.conn, :edit, theirs)
+          ] do
+        assert_raise Ecto.NoResultsError, fn -> live(ctx.conn, path) end
+      end
+    end
+
+    test "will not delete another user's scribus", ctx do
+      theirs = scribus_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, Routes.scribus_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+
+      assert Repo.reload(theirs)
+    end
+
+    test "deletes the user's own scribus", ctx do
+      mine = scribus_for(ctx.me)
+      {:ok, live, _html} = live(ctx.conn, Routes.scribus_index_path(ctx.conn, :index))
+
+      render_click(live, "delete", %{"id" => to_string(mine.id)})
+
+      refute Repo.reload(mine)
+    end
+
+    test "a new scribus belongs to whoever made it, whatever the form says", ctx do
+      vision = vision_for(ctx.me, "Board")
+      {:ok, live, _html} = live(ctx.conn, Routes.scribus_index_path(ctx.conn, :new))
+
+      live
+      |> form("#scribus-form")
+      |> render_submit(%{
+        "scribus" => %{
+          "name" => "Hall",
+          "resolution" => "800x480",
+          "vision" => to_string(vision.id),
+          "enabled" => "true",
+          "color" => "untouched",
+          "theme" => "inky",
+          "user_id" => to_string(ctx.them.id)
+        }
+      })
+
+      assert [%{user_id: owner}] = Repo.all(Configuration.Scribus)
+      assert owner == ctx.me.id
+    end
+
+    test "a scribus cannot show another user's vision", ctx do
+      mine = scribus_for(ctx.me)
+      their_vision = vision_for(ctx.them, "Their board")
+
+      assert {:error, _} = Configuration.update_scribus(mine, %{vision: their_vision.id})
+      assert Repo.reload!(mine).vision != their_vision.id
+    end
+  end
+
   describe "the keryx pages" do
     setup ctx do
       {:ok, theirs} =

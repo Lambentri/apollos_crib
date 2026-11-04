@@ -11,7 +11,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
 
     {:ok,
      socket
-     |> stream(:cfg_scribus, Configuration.list_cfg_scribus())
+     |> stream(:cfg_scribus, Configuration.list_cfg_scribus({:user, uid}))
      |> stream(:resolutions, Configuration.list_scribus_resolutions({:user, uid}))
      |> assign(:show_info, false)
      |> assign(:resolution_form, to_form(Configuration.change_scribus_resolution(%ScribusResolution{})))
@@ -26,7 +26,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Edit Scribus")
-    |> assign(:scribus, Configuration.get_scribus!(id))
+    |> assign(:scribus, Configuration.get_scribus!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -48,7 +48,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    scribus = Configuration.get_scribus!(id)
+    scribus = Configuration.get_scribus!(owner(socket), id)
     {:ok, _} = Configuration.delete_scribus(scribus)
 
     {:noreply, stream_delete(socket, :cfg_scribus, scribus)}
@@ -82,4 +82,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
       {:noreply, socket}
     end
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

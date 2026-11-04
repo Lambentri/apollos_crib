@@ -118,7 +118,7 @@ defmodule RoomSanctumWeb.ScribusLive.FormComponent do
   end
 
   defp save_scribus(socket, :new, scribus_params) do
-    case Configuration.create_scribus(scribus_params) do
+    case Configuration.create_scribus({:user, socket.assigns.current_user.id}, scribus_params) do
       {:ok, scribus} ->
         notify_parent({:saved, scribus})
 
