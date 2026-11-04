@@ -565,14 +565,17 @@ defmodule RoomGtfs.Worker do
   defp occupancy_status(status) when is_atom(status), do: status
 
   # A feed may send a number outside the enum the generated module knows; that
-  # is not an occupancy anyone can draw, so it reads as no answer.
-  defp occupancy_status(status) when is_integer(status) do
-    try do
-      TransitRealtime.VehiclePosition.OccupancyStatus.key(status) |> occupancy_status()
-    rescue
-      _ -> nil
+  # is not an occupancy anyone can draw, so it reads as no answer. key/1 hands
+  # an unknown non-negative number back unchanged, so only an atom goes round
+  # again; it raises on a negative one, which never reaches it.
+  defp occupancy_status(status) when is_integer(status) and status >= 0 do
+    case TransitRealtime.VehiclePosition.OccupancyStatus.key(status) do
+      key when is_atom(key) -> occupancy_status(key)
+      _unknown -> nil
     end
   end
+
+  defp occupancy_status(status) when is_integer(status), do: nil
 
   # etc
   def init(opts) do
