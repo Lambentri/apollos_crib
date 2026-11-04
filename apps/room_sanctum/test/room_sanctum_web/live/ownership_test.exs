@@ -188,6 +188,35 @@ defmodule RoomSanctumWeb.OwnershipTest do
     |> Enum.filter(&(is_nil(state) or &1 == state))
   end
 
+  defp import_job!(source, errors \\ []) do
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+    {1, [%{id: job_id}]} =
+      Repo.insert_all(
+        "oban_jobs",
+        [
+          %{
+            state: "executing",
+            queue: "gtfs_import",
+            worker: "RoomGtfs.ImportJob",
+            args: %{"source_id" => source.id},
+            errors: errors,
+            tags: [],
+            meta: %{},
+            attempt: 1,
+            max_attempts: 3,
+            priority: 0,
+            inserted_at: now,
+            scheduled_at: now,
+            attempted_at: now
+          }
+        ],
+        returning: [:id]
+      )
+
+    job_id
+  end
+
   describe "the source pages" do
     test "will not show another user's source", ctx do
       theirs = source_for(ctx.them, "Their markets")
@@ -228,35 +257,23 @@ defmodule RoomSanctumWeb.OwnershipTest do
 
     test "the import queue will not clear another user's job", ctx do
       theirs = gtfs_source_for(ctx.them)
-      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
-
-      {1, [%{id: job_id}]} =
-        Repo.insert_all(
-          "oban_jobs",
-          [
-            %{
-              state: "executing",
-              queue: "gtfs_import",
-              worker: "RoomGtfs.ImportJob",
-              args: %{"source_id" => theirs.id},
-              errors: [],
-              tags: [],
-              meta: %{},
-              attempt: 1,
-              max_attempts: 3,
-              priority: 0,
-              inserted_at: now,
-              scheduled_at: now,
-              attempted_at: now
-            }
-          ],
-          returning: [:id]
-        )
+      job_id = import_job!(theirs)
 
       {:ok, live, _html} = live(ctx.conn, "/cfg/offerings/work")
       render_click(live, "clear", %{"id" => to_string(job_id)})
 
       assert import_jobs(theirs.id) == ["executing"]
+    end
+
+    test "the import queue lists only the user's own jobs", ctx do
+      mine = import_job!(gtfs_source_for(ctx.me))
+      theirs = import_job!(gtfs_source_for(ctx.them), [%{"error" => "their secret failure"}])
+
+      {:ok, live, _html} = live(ctx.conn, "/cfg/offerings/work")
+
+      assert has_element?(live, "#job-#{mine}")
+      refute has_element?(live, "#job-#{theirs}")
+      refute render(live) =~ "their secret failure"
     end
   end
 

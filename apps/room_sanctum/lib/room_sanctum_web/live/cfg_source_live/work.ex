@@ -1,6 +1,7 @@
 defmodule RoomSanctumWeb.SourceLive.Work do
   @moduledoc """
-  What the GTFS import queue is doing, across every source at once.
+  What the GTFS import queue is doing, across every one of the user's sources
+  at once.
 
   The source page shows one feed's progress bar, which is the right view when
   you are looking at one feed. It is the wrong view for the question this
@@ -182,14 +183,18 @@ defmodule RoomSanctumWeb.SourceLive.Work do
     socket
     |> assign(:sources, Enum.sort_by(sources, & &1.name))
     |> assign(:names, names)
-    |> assign(:jobs, jobs())
+    |> assign(:jobs, jobs(Map.keys(names)))
   end
 
-  # The queue's own history. Fifty is enough to cover a night's run of every
-  # feed and its retries without turning the page into a log.
-  defp jobs do
+  # The queue's own history, for the user's own feeds only: the queue is
+  # shared, and its rows carry each feed's error text. Fifty is enough to cover
+  # a night's run of every feed and its retries without turning the page into
+  # a log. Compared as text, since a job's source_id may be stored either way.
+  defp jobs(source_ids) do
+    ids = Enum.map(source_ids, &to_string/1)
+
     from(j in "oban_jobs",
-      where: j.queue == "gtfs_import",
+      where: j.queue == "gtfs_import" and fragment("?->>'source_id'", j.args) in ^ids,
       order_by: [desc: j.id],
       limit: 50,
       select: %{
