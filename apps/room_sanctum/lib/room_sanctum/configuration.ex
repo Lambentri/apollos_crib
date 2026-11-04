@@ -109,10 +109,10 @@ defmodule RoomSanctum.Configuration do
   """
   def create_source(attrs \\ %{}) do
     r = %Source{} |> Source.changeset(attrs) |> Repo.insert()
-    {:ok, d} = r
 
-    case d.type do
-      :packages ->
+    # A refused source is handed back as one, not raised as a MatchError.
+    case r do
+      {:ok, %Source{type: :packages} = d} ->
         ## create main mailbox
         create_taxid(%{source_id: d.id, user: Ecto.UUID.generate(), designator: "mail_main"})
         ## create mailbox for usps handling

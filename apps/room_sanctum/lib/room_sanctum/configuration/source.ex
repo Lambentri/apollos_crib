@@ -3,6 +3,8 @@ defmodule RoomSanctum.Configuration.Source do
   import Ecto.Changeset
   import PolymorphicEmbed
 
+  alias RoomSanctum.Configuration.Ownership
+
   schema "cfg_sources" do
     has_many :mailboxes, RoomSanctum.Configuration.Taxid
     has_many :webhooks, RoomSanctum.Configuration.Agyr
@@ -83,6 +85,9 @@ defmodule RoomSanctum.Configuration.Source do
     |> foreign_key_constraint(:user_id)
     |> cast_polymorphic_embed(:config, required: true)
     |> validate_required([:name, :type, :enabled, :user_id])
+    # A packages source is fed the mail its mailbox source pulls, so it may
+    # only name one of its owner's own.
+    |> Ownership.validate_owned_in(:config, :mailbox_source_id, __MODULE__)
   end
 
   def meta_changeset(meta, attrs \\ %{}) do
