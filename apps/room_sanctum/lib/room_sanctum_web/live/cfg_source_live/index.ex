@@ -236,11 +236,10 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   defp atomize_keys(map) when is_map(map) do
     map
-    |> Enum.map(fn {k, v} ->
+    |> Map.new(fn {k, v} ->
       key = if is_binary(k), do: String.to_existing_atom(k), else: k
       {key, atomize_keys(v)}
     end)
-    |> Enum.into(%{})
   rescue
     # If atom doesn't exist, keep as string
     ArgumentError -> map

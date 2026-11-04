@@ -1087,10 +1087,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Format stations for map display
   defp format_stations(stations, station_statuses \\ [], source_tint \\ nil) do
     # Create a map of station status by station_id for quick lookup
-    status_map =
-      Enum.reduce(station_statuses, %{}, fn status, acc ->
-        Map.put(acc, status.station_id, status)
-      end)
+    status_map = Map.new(station_statuses, &{&1.station_id, &1})
 
     stations
     |> Enum.filter(fn station ->

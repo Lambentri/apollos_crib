@@ -742,12 +742,11 @@ defmodule RoomGtfs.Worker do
       on_timeout: :kill_task
     )
     |> Enum.zip(@stat_names)
-    |> Enum.map(fn
+    |> Map.new(fn
       {{:ok, value}, name} -> {name, value}
       # One count that will not answer should not cost the other ten.
       {{:exit, _reason}, name} -> {name, :unavailable}
     end)
-    |> Enum.into(%{})
   end
 
   # In the source's own timezone: a board in Boston rolls over to the next

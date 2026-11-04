@@ -105,20 +105,17 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
      |> assign(
        :cfg_ankyra_sel,
        list_cfg_ankyra(assigns.current_user.id)
-       |> Enum.map(fn x -> {x.topic, x.id} end)
-       |> Enum.into(%{})
+       |> Map.new(fn x -> {x.topic, x.id} end)
      )
      |> assign(
        :cfg_visions_sel,
        list_cfg_visions(assigns.current_user.id)
-       |> Enum.map(fn x -> {x.name, x.id} end)
-       |> Enum.into(%{})
+       |> Map.new(fn x -> {x.name, x.id} end)
      )
      |> assign(
        :cfg_foci_sel,
        list_cfg_foci(assigns.current_user.id)
-       |> Enum.map(fn x -> {x.name, x.id} end)
-       |> Enum.into(%{})
+       |> Map.new(fn x -> {x.name, x.id} end)
      )
      |> assign(:consts, [
        %Const{

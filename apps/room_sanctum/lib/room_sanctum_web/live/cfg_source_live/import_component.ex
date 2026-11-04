@@ -36,15 +36,15 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
 
   @impl true
   def handle_event("import_sources", _params, socket) do
-    valid_sources = 
+    valid_sources =
       socket.assigns.validation_results
       |> Enum.filter(fn {_source, changeset} -> changeset.valid? end)
       |> Enum.map(fn {{source, _index}, _changeset} -> source end)
 
     imported_count = import_valid_sources(valid_sources)
-    
+
     notify_parent({:sources_imported, imported_count})
-    
+
     {:noreply,
      socket
      |> put_flash(:info, "Successfully imported #{imported_count} sources")
@@ -56,15 +56,15 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
   defp parse_and_validate_sources(json_content, user_id) do
     case Jason.decode(json_content) do
       {:ok, %{"sources" => sources_data}} ->
-        results = 
+        results =
           sources_data
           |> Enum.with_index()
           |> Enum.map(fn {source_data, index} ->
             # Clean the source data for import
-            source_attrs = 
+            source_attrs =
               source_data
               |> Map.delete("id")
-              |> Map.delete("inserted_at") 
+              |> Map.delete("inserted_at")
               |> Map.delete("updated_at")
               |> Map.put("user_id", user_id)
               |> atomize_keys()
@@ -72,16 +72,18 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
             # Create a changeset to validate the source
             source = %Source{}
             changeset = Configuration.change_source(source, source_attrs)
-            
+
             # Paired with its index because the template shows "#3 of 10"
             # next to each result, and a source that fails to parse has no
             # name to identify it by.
             {{source_attrs, index}, changeset}
           end)
-        
-        parsed_sources = Enum.map(results, fn {{source_attrs, _index}, _changeset} -> source_attrs end)
+
+        parsed_sources =
+          Enum.map(results, fn {{source_attrs, _index}, _changeset} -> source_attrs end)
+
         validation_results = results
-        
+
         {:ok, {parsed_sources, validation_results}}
 
       {:ok, _} ->
@@ -104,13 +106,13 @@ defmodule RoomSanctumWeb.SourceLive.ImportComponent do
 
   defp atomize_keys(map) when is_map(map) do
     map
-    |> Enum.map(fn {k, v} ->
+    |> Map.new(fn {k, v} ->
       key = if is_binary(k), do: String.to_existing_atom(k), else: k
       {key, atomize_keys(v)}
     end)
-    |> Enum.into(%{})
   rescue
-    ArgumentError -> map  # If atom doesn't exist, keep as string
+    # If atom doesn't exist, keep as string
+    ArgumentError -> map
   end
 
   defp atomize_keys(value), do: value

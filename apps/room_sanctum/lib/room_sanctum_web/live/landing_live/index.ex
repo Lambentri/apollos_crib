@@ -74,8 +74,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
   defp get_query_data(item, queries, size \\ 8) do
     as_map =
       queries
-      |> Enum.map(fn x -> {x.id, x} end)
-      |> Enum.into(%{})
+      |> Map.new(fn x -> {x.id, x} end)
 
     case Map.get(as_map, item) do
       nil ->

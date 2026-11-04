@@ -293,8 +293,7 @@ defmodule RoomSanctum.Worker.Keryx do
     discover(keryx, results)
 
     results
-    |> Enum.map(fn {key, r, _meta} -> {key, r} end)
-    |> Enum.into(%{})
+    |> Map.new(fn {key, r, _meta} -> {key, r} end)
   end
 
   # Home Assistant discovery for each query's `.meta`, through every Ankyra the

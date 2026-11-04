@@ -286,13 +286,12 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
 
   defp condense_type(:ephem, data) do
     data
-    |> Enum.map(fn f ->
+    |> Map.new(fn f ->
       case Map.get(f, :period) do
         nil -> {:name, f.name}
         _val -> {f.period, f.result}
       end
     end)
-    |> Enum.into(%{})
     |> wrap
   end
 

@@ -69,7 +69,7 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
   end
 
   defp get_query_data(item, queries, size \\ 8) do
-    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+    as_map = Map.new(queries, fn x -> {x.id, x} end)
 
     case Map.get(as_map, item) do
       nil ->
@@ -88,7 +88,7 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
   end
 
   defp get_query_data_icon(item, queries) do
-    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+    as_map = Map.new(queries, fn x -> {x.id, x} end)
 
     case Map.get(as_map, item) do
       nil -> ""
