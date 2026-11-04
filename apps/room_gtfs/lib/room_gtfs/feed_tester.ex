@@ -278,7 +278,7 @@ defmodule RoomGtfs.FeedTester do
   end
 
   defp shown_prefixes(prefixes) do
-    "#{Enum.join(Enum.take(prefixes, 6), ", ")}#{if length(prefixes) > 6, do: ", …", else: ""}"
+    "#{Enum.join(Enum.take(prefixes, 6), ", ")}#{if Enum.count_until(prefixes, 7) > 6, do: ", …", else: ""}"
   end
 
   defp do_check_agency(result, feed, source) do

@@ -2802,7 +2802,7 @@ defmodule RoomGtfs.Debug do
     static_trip_ids = static |> Enum.map(& &1.trip_id)
 
     IO.puts(
-      "#{length(static)} static trips: #{inspect(Enum.take(static_trip_ids, 5))}#{if length(static_trip_ids) > 5, do: " ...", else: ""}"
+      "#{length(static)} static trips: #{inspect(Enum.take(static_trip_ids, 5))}#{if Enum.count_until(static_trip_ids, 6) > 5, do: " ...", else: ""}"
     )
 
     if rt_summary do

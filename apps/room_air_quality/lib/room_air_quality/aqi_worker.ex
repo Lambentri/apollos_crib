@@ -326,7 +326,7 @@ defmodule RoomAirQuality.Worker do
 
       {:error, bad} ->
         new_sample =
-          if length(sample_errs) < 3 do
+          if Enum.count_until(sample_errs, 3) < 3 do
             [{cs.changes[:aqsid] || cs.data.aqsid, bad.errors} | sample_errs]
           else
             sample_errs

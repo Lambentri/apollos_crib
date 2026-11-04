@@ -761,7 +761,7 @@ defmodule RoomSanctum.Storage do
       }
     end)
     # A single point is not a line, and a route with no usable geometry is noise.
-    |> Enum.filter(&(length(&1.points) > 1))
+    |> Enum.filter(&match?([_, _ | _], &1.points))
   end
 
   # Every nth point, with the last one always kept so the line does not stop
