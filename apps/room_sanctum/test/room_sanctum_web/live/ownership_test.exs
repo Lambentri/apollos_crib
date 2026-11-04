@@ -249,4 +249,66 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert import_jobs(theirs.id) == ["executing"]
     end
   end
+
+  defp foci_for(user) do
+    {:ok, foci} =
+      Configuration.create_foci(%{
+        name: "Home",
+        user_id: user.id,
+        place: %Geo.Point{coordinates: {-71.0589, 42.3601}, srid: 4326}
+      })
+
+    foci
+  end
+
+  describe "the foci pages" do
+    test "will not show another user's foci", ctx do
+      theirs = foci_for(ctx.them)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.foci_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's foci for editing", ctx do
+      theirs = foci_for(ctx.them)
+
+      for action <- [:edit, :edit_coords] do
+        assert_raise Ecto.NoResultsError, fn ->
+          live(ctx.conn, Routes.foci_index_path(ctx.conn, action, theirs))
+        end
+      end
+    end
+
+    test "will not delete another user's foci", ctx do
+      theirs = foci_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, Routes.foci_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+
+      assert Repo.reload(theirs)
+    end
+
+    test "will not make queries on another user's source", ctx do
+      mine = foci_for(ctx.me)
+
+      {:ok, their_source} =
+        Configuration.create_source(%{
+          name: "Their sky",
+          notes: "",
+          type: :ephem,
+          enabled: true,
+          user_id: ctx.them.id,
+          config: %{"__type__" => "ephem"}
+        })
+
+      {:ok, live, _html} = live(ctx.conn, Routes.foci_show_path(ctx.conn, :show, mine))
+
+      render_click(live, "create-queries-for-sources", %{
+        "source_ids" => [to_string(their_source.id)]
+      })
+
+      assert Configuration.get_queries(:source, their_source.id) == []
+    end
+  end
 end

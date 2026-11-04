@@ -552,6 +552,9 @@ defmodule RoomSanctum.Configuration do
   """
   def get_foci!(id), do: Repo.get!(Foci, id)
 
+  # Someone else's foci raises the not-found a missing one does.
+  def get_foci!({:user, uid}, id), do: Repo.get_by!(Foci, id: id, user_id: uid)
+
   @doc """
   Where a query is being asked from.
 

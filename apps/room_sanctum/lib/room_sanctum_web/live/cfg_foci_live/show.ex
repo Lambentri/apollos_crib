@@ -12,7 +12,7 @@ defmodule RoomSanctumWeb.FociLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    foci = Configuration.get_foci!(id)
+    foci = Configuration.get_foci!(owner(socket), id)
 
     {:noreply,
      socket
@@ -31,11 +31,15 @@ defmodule RoomSanctumWeb.FociLive.Show do
     foci = socket.assigns.foci
     existing = socket.assigns.existing_queries_by_source
 
+    # Only sources the page offered -- the user's own, of a foci type. The ids
+    # are the client's, and any other is skipped rather than looked up.
+    offered = Map.new(socket.assigns.foci_sources, &{&1.id, &1})
+
     results =
       source_ids
-      |> Enum.map(&Configuration.get_source!/1)
-      |> Enum.filter(&(&1.type in @foci_source_types))
-      |> Enum.reject(&Map.has_key?(existing, &1.id))
+      |> Enum.reject(&Map.has_key?(existing, &1))
+      |> Enum.map(&Map.get(offered, &1))
+      |> Enum.reject(&is_nil/1)
       |> Enum.map(&create_foci_query(&1, foci))
 
     count = Enum.count(results, fn {status, _} -> status == :ok end)
@@ -106,4 +110,7 @@ defmodule RoomSanctumWeb.FociLive.Show do
   defp getlatlng(%{:place => place}) do
     place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> RoomSanctum.JSON.encode!()
   end
+
+  # The foci comes from the URL, so it is looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

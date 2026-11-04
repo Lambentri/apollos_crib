@@ -20,13 +20,13 @@ defmodule RoomSanctumWeb.FociLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Foci")
-    |> assign(:foci, Configuration.get_foci!(id))
+    |> assign(:foci, Configuration.get_foci!(owner(socket), id))
   end
 
   defp apply_action(socket, :edit_coords, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Foci (Coordinates)")
-    |> assign(:foci, Configuration.get_foci!(id))
+    |> assign(:foci, Configuration.get_foci!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -59,7 +59,7 @@ defmodule RoomSanctumWeb.FociLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    foci = Configuration.get_foci!(id)
+    foci = Configuration.get_foci!(owner(socket), id)
     {:ok, _} = Configuration.delete_foci(foci)
 
     {:noreply, stream_delete(socket, :focis, foci)}
@@ -72,4 +72,7 @@ defmodule RoomSanctumWeb.FociLive.Index do
   defp list_focis(uid) do
     Configuration.list_focis({:user, uid})
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end
