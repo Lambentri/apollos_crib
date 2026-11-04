@@ -123,17 +123,28 @@ defmodule RoomGbfs.Worker do
     # the body is an empty redirect page.
     case HTTPoison.get(url, [], follow_redirect: true) do
       {:ok, result} ->
-        case result.body
-             |> Jason.decode(keys: :atoms) do
-          {:ok, json} ->
-            write_feed(type, json, id, dt, lang)
-
-          {:error, info} ->
-            Logger.info(info.reason)
+        case decode_feed(result.body, id, url) do
+          {:ok, json} -> write_feed(type, json, id, dt, lang)
+          :error -> :error
         end
 
       {:error, info} ->
         Logger.info(info.reason)
+    end
+  end
+
+  # A %Jason.DecodeError{} has no :reason -- reading one raised a KeyError of
+  # its own, so a feed that came back as an HTML error page took the worker
+  # down instead of being skipped until the next pass.
+  @doc false
+  def decode_feed(body, id, url) do
+    case Jason.decode(body, keys: :atoms) do
+      {:ok, json} ->
+        {:ok, json}
+
+      {:error, error} ->
+        Logger.error("GBFS::#{id} #{url} returned non-JSON: #{Exception.message(error)}")
+        :error
     end
   end
 
