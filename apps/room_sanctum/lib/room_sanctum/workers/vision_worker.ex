@@ -359,7 +359,7 @@ defmodule RoomSanctum.Worker.Vision do
         []
 
       _val ->
-        level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+        level = field(q.query, :level) || "runs"
 
         if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
           case level do
@@ -383,4 +383,6 @@ defmodule RoomSanctum.Worker.Vision do
       _pid -> worker.read(q.source.id, q.query) || []
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 end

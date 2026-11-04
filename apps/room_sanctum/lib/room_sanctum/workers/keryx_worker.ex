@@ -252,7 +252,7 @@ defmodule RoomSanctum.Worker.Keryx do
         []
 
       _val ->
-        level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+        level = field(q.query, :level) || "runs"
 
         if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
           case level do
@@ -276,6 +276,8 @@ defmodule RoomSanctum.Worker.Keryx do
       _pid -> worker.read(q.source.id, q.query) || []
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   # Private helper to query all workers and publish to MQTT
   defp query_all_workers(keryx_q, keryx) do

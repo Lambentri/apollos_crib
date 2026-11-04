@@ -286,7 +286,7 @@ defmodule RoomGitlab.Worker do
 
   def handle_call({:read_jobs, query}, _from, state) do
     project_ids = jobs_target_ids(query, state)
-    statuses = parse_statuses(Map.get(query, :statuses) || Map.get(query, "statuses"))
+    statuses = parse_statuses(field(query, :statuses))
 
     jobs =
       project_ids
@@ -297,8 +297,8 @@ defmodule RoomGitlab.Worker do
   end
 
   defp jobs_target_ids(query, state) do
-    id = Map.get(query, :id) || Map.get(query, "id")
-    ns = Map.get(query, :namespace) || Map.get(query, "namespace")
+    id = field(query, :id)
+    ns = field(query, :namespace)
 
     cond do
       not is_nil(id) ->
@@ -313,6 +313,8 @@ defmodule RoomGitlab.Worker do
         Map.keys(state[:jobs] || %{})
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   defp parse_statuses(nil), do: :all
   defp parse_statuses(s) when is_list(s), do: s

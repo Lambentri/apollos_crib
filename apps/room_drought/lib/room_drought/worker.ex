@@ -91,7 +91,7 @@ defmodule RoomDrought.Worker do
 
   # Call handlers
   def handle_call({:read, query}, _from, state) do
-    product = Map.get(query, :product) || Map.get(query, "product") || "usdm"
+    product = field(query, :product) || "usdm"
 
     {:reply, read_product(product, query, state), state}
   end
@@ -142,8 +142,8 @@ defmodule RoomDrought.Worker do
   defp usdm_enabled?(_), do: false
 
   defp scope_from_query(query) do
-    fips = Map.get(query, :fips) || Map.get(query, "fips")
-    state = Map.get(query, :state) || Map.get(query, "state")
+    fips = field(query, :fips)
+    state = field(query, :state)
 
     cond do
       is_binary(fips) and fips != "" -> {:county, fips}
@@ -151,6 +151,8 @@ defmodule RoomDrought.Worker do
       true -> nil
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   defp normalize_scope({:county, fips}) when is_binary(fips), do: {:county, fips}
   defp normalize_scope({:state, st}) when is_binary(st), do: {:state, String.upcase(st)}

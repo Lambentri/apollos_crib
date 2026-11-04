@@ -127,7 +127,7 @@ defmodule RoomSanctum.Worker.KeryxItemCache do
   defp extract_item_id(_item, _type), do: generate_stub()
 
   defp item_id_value(item, :pollen) do
-    case Map.get(item, "date") || Map.get(item, :date) do
+    case field(item, :date) do
       %{"year" => y, "month" => m, "day" => d} -> "#{y}-#{m}-#{d}"
       %{year: y, month: m, day: d} -> "#{y}-#{m}-#{d}"
       other -> inspect(other)
@@ -140,7 +140,7 @@ defmodule RoomSanctum.Worker.KeryxItemCache do
   defp item_id_value(item, :icarus) do
     case Map.get(item, "kind") do
       "flight" -> "#{Map.get(item, "callsign")}/#{Map.get(item, "sched_arrival")}"
-      _ -> Map.get(item, "hex") || Map.get(item, :hex)
+      _ -> field(item, :hex)
     end
   end
 
@@ -153,6 +153,9 @@ defmodule RoomSanctum.Worker.KeryxItemCache do
   defp first_value(item, keys) do
     Enum.reduce(keys, nil, fn key, found -> found || Map.get(item, key) end)
   end
+
+  # Decoded-JSON string keys first, then atom keys.
+  defp field(item, key), do: Map.get(item, Atom.to_string(key)) || Map.get(item, key)
 
   defp stubbify(nil), do: generate_stub()
 

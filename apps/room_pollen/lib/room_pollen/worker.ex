@@ -133,15 +133,17 @@ defmodule RoomPollen.Worker do
     # A place if one was handed over, otherwise the foci named in the query.
     anchor =
       RoomSanctum.Configuration.place_for!(query) ||
-        Map.get(query, :foci_id) || Map.get(query, "foci_id")
+        field(query, :foci_id)
 
-    days = days_from_query(Map.get(query, :days) || Map.get(query, "days"))
+    days = days_from_query(field(query, :days))
 
     case resolve_foci(anchor) do
       {lat, lng} -> {lat, lng, days}
       nil -> nil
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   defp days_from_query(n) when is_integer(n) and n in 1..5, do: n
   defp days_from_query(n) when is_binary(n), do: String.to_integer(n) |> max(1) |> min(5)

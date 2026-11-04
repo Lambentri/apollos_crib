@@ -164,10 +164,13 @@ defmodule RoomIcarus.Flight do
   defp near_destination?(_), do: false
 
   defp position_of(pos) do
-    lat = pos["lat"] || pos[:lat]
-    lon = pos["lon"] || pos[:lon]
+    lat = field(pos, :lat)
+    lon = field(pos, :lon)
     if is_number(lat) and is_number(lon), do: {lat, lon}, else: nil
   end
+
+  # Decoded-JSON string keys first, then atom keys.
+  defp field(pos, key), do: Map.get(pos, Atom.to_string(key)) || Map.get(pos, key)
 
   @doc """
   Estimated touchdown from current position, ground speed, and the great-circle

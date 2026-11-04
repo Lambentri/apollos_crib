@@ -507,8 +507,8 @@ defmodule RoomGithub.Worker do
   end
 
   defp target_repos(query, state) do
-    repo = Map.get(query, :repo) || Map.get(query, "repo")
-    owner = Map.get(query, :owner) || Map.get(query, "owner")
+    repo = field(query, :repo)
+    owner = field(query, :owner)
 
     cond do
       is_binary(repo) and repo != "" ->
@@ -523,6 +523,8 @@ defmodule RoomGithub.Worker do
         state.repos |> Enum.map(& &1["full_name"])
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   defp filter_runs_by_status(runs, query) do
     runs

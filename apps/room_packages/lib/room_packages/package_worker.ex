@@ -100,12 +100,12 @@ defmodule RoomPackages.Worker do
   # add another identical entry and the history would be nothing but noise.
   defp changed?(%{entries: entries}, summary) when is_list(entries) do
     last = List.last(entries)
-    last == nil or status_of(last) != summary.status
+    last == nil or field(last, :status) != summary.status
   end
 
   defp changed?(_, _), do: true
 
-  defp status_of(entry), do: Map.get(entry, :status) || Map.get(entry, "status")
+  defp field(entry, key), do: Map.get(entry, key) || Map.get(entry, Atom.to_string(key))
 
   def handle_call({:read, query}, _from, state) do
     {:reply, state.data, state}
