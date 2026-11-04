@@ -126,214 +126,7 @@ defmodule RoomGbfs.Worker do
         case result.body
              |> Jason.decode(keys: :atoms) do
           {:ok, json} ->
-            case type do
-              :sys_info ->
-                Repo.insert(
-                  RoomSanctum.Storage.change_sys_info(
-                    %RoomSanctum.Storage.GBFS.V1.SysInfo{},
-                    json.data
-                    |> RoomGbfs.V3.system_information(lang)
-                    |> Map.put(:source_id, id |> intify)
-                  ),
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :system_id]
-                )
-
-              :stat_info ->
-                data =
-                  json.data.stations
-                  |> Enum.map(&RoomGbfs.V3.station_info(&1, lang))
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
-                    x |> Map.put(:place, point)
-                  end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_station_info(
-                      %RoomSanctum.Storage.GBFS.V1.StationInfo{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.StationInfo,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :station_id]
-                )
-
-              :stat_status ->
-                # v3 dropped the electric count; the types stored from
-                # vehicle_types.json are what puts it back.
-                electric =
-                  id
-                  |> intify()
-                  |> RoomSanctum.Storage.gbfs_vehicle_types()
-                  |> RoomGbfs.V3.electric_type_ids()
-
-                data =
-                  json.data.stations
-                  |> Enum.map(&RoomGbfs.V3.station_status(&1, electric))
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_station_status(
-                      %RoomSanctum.Storage.GBFS.V1.StationStatus{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.StationStatus,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :station_id]
-                )
-
-              :free_bike ->
-                # v3 calls them vehicles and puts them under `vehicles`.
-                data =
-                  (Map.get(json.data, :bikes) || Map.get(json.data, :vehicles) || [])
-                  |> Enum.map(&RoomGbfs.V3.vehicle_status/1)
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
-                    x |> Map.put(:point, point)
-                  end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_free_bike_status(
-                      %RoomSanctum.Storage.GBFS.V1.FreeBikeStatus{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                RoomSanctum.Storage.truncate_free_bike_status(id)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.FreeBikeStatus,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :bike_id]
-                )
-
-              :vehicle_types ->
-                data =
-                  json.data.vehicle_types
-                  |> Enum.map(&RoomGbfs.V3.vehicle_types(&1, lang))
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_vehicle_types(
-                      %RoomSanctum.Storage.GBFS.V1.VehicleTypes{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                RoomSanctum.Storage.truncate_vehicle_types(id)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.VehicleTypes,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :vehicle_type_id]
-                )
-
-              :pricing_plans ->
-                data =
-                  json.data.plans
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_system_pricing_plans(
-                      %RoomSanctum.Storage.GBFS.V1.SystemPricingPlans{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                RoomSanctum.Storage.truncate_system_pricing_plans(id)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.SystemPricingPlans,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :plan_id]
-                )
-
-              :geofencing_zones ->
-                data =
-                  json.data.geofencing_zones.features
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    point = %Geo.MultiPolygon{coordinates: x.geometry.coordinates, srid: 4326}
-                    x |> Map.put(:place, point)
-                  end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_geo_fencing_zones(
-                      %RoomSanctum.Storage.GBFS.V1.GeoFencingZones{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                RoomSanctum.Storage.truncate_geo_fencing_zones(id)
-
-              #                Repo.insert_all(
-              #                  RoomSanctum.Storage.GBFS.V1.GeoFencingZones,
-              #                  data
-              #                )
-
-              :sys_hours ->
-                :ok
-
-              :sys_cal ->
-                :ok
-
-              :sys_regions ->
-                :ok
-
-              :sys_alerts ->
-                data =
-                  json.data.alerts
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    RoomSanctum.Storage.change_gbfs_alert(%RoomSanctum.Storage.GBFS.V1.Alert{}, x).changes
-                    |> inj_iddt(id, dt)
-                  end)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.Alert,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :alert_id]
-                )
-
-              :ebikes_at_stations ->
-                data =
-                  json.data.stations
-                  |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
-                  |> Enum.map(fn x ->
-                    cs =
-                      RoomSanctum.Storage.change_ebikes_at_stations(
-                        %RoomSanctum.Storage.GBFS.V1.EbikesAtStations{},
-                        x
-                      ).changes
-                      |> inj_iddt(id, dt)
-
-                    eb = cs.ebikes |> Enum.map(fn eb -> eb |> Ecto.Changeset.apply_changes() end)
-                    cs |> Map.put(:ebikes, eb)
-                  end)
-
-                RoomSanctum.Storage.truncate_ebikes_at_stations(id)
-
-                Repo.insert_all(
-                  RoomSanctum.Storage.GBFS.V1.EbikesAtStations,
-                  data,
-                  on_conflict: {:replace_all_except, [:id]},
-                  conflict_target: [:source_id, :station_id]
-                )
-            end
+            write_feed(type, json, id, dt, lang)
 
           {:error, info} ->
             Logger.info(info.reason)
@@ -342,6 +135,225 @@ defmodule RoomGbfs.Worker do
       {:error, info} ->
         Logger.info(info.reason)
     end
+  end
+
+  defp write_feed(:sys_info, json, id, _dt, lang) do
+    Repo.insert(
+      RoomSanctum.Storage.change_sys_info(
+        %RoomSanctum.Storage.GBFS.V1.SysInfo{},
+        json.data
+        |> RoomGbfs.V3.system_information(lang)
+        |> Map.put(:source_id, id |> intify)
+      ),
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :system_id]
+    )
+  end
+
+  defp write_feed(:stat_info, json, id, dt, lang) do
+    data =
+      json.data.stations
+      |> Enum.map(&RoomGbfs.V3.station_info(&1, lang))
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
+        x |> Map.put(:place, point)
+      end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_station_info(
+          %RoomSanctum.Storage.GBFS.V1.StationInfo{},
+          x
+        ).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.StationInfo,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :station_id]
+    )
+  end
+
+  defp write_feed(:stat_status, json, id, dt, _lang) do
+    # v3 dropped the electric count; the types stored from
+    # vehicle_types.json are what puts it back.
+    electric =
+      id
+      |> intify()
+      |> RoomSanctum.Storage.gbfs_vehicle_types()
+      |> RoomGbfs.V3.electric_type_ids()
+
+    data =
+      json.data.stations
+      |> Enum.map(&RoomGbfs.V3.station_status(&1, electric))
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_station_status(
+          %RoomSanctum.Storage.GBFS.V1.StationStatus{},
+          x
+        ).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.StationStatus,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :station_id]
+    )
+  end
+
+  defp write_feed(:free_bike, json, id, dt, _lang) do
+    # v3 calls them vehicles and puts them under `vehicles`.
+    data =
+      (Map.get(json.data, :bikes) || Map.get(json.data, :vehicles) || [])
+      |> Enum.map(&RoomGbfs.V3.vehicle_status/1)
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        point = %Geo.Point{coordinates: {x.lon, x.lat}, srid: 4326}
+        x |> Map.put(:point, point)
+      end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_free_bike_status(
+          %RoomSanctum.Storage.GBFS.V1.FreeBikeStatus{},
+          x
+        ).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    RoomSanctum.Storage.truncate_free_bike_status(id)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.FreeBikeStatus,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :bike_id]
+    )
+  end
+
+  defp write_feed(:vehicle_types, json, id, dt, lang) do
+    data =
+      json.data.vehicle_types
+      |> Enum.map(&RoomGbfs.V3.vehicle_types(&1, lang))
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_vehicle_types(
+          %RoomSanctum.Storage.GBFS.V1.VehicleTypes{},
+          x
+        ).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    RoomSanctum.Storage.truncate_vehicle_types(id)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.VehicleTypes,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :vehicle_type_id]
+    )
+  end
+
+  defp write_feed(:pricing_plans, json, id, dt, _lang) do
+    data =
+      json.data.plans
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_system_pricing_plans(
+          %RoomSanctum.Storage.GBFS.V1.SystemPricingPlans{},
+          x
+        ).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    RoomSanctum.Storage.truncate_system_pricing_plans(id)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.SystemPricingPlans,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :plan_id]
+    )
+  end
+
+  defp write_feed(:geofencing_zones, json, id, dt, _lang) do
+    data =
+      json.data.geofencing_zones.features
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        point = %Geo.MultiPolygon{coordinates: x.geometry.coordinates, srid: 4326}
+        x |> Map.put(:place, point)
+      end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_geo_fencing_zones(
+          %RoomSanctum.Storage.GBFS.V1.GeoFencingZones{},
+          x
+        ).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    RoomSanctum.Storage.truncate_geo_fencing_zones(id)
+
+    #                Repo.insert_all(
+    #                  RoomSanctum.Storage.GBFS.V1.GeoFencingZones,
+    #                  data
+    #                )
+  end
+
+  defp write_feed(:sys_hours, _json, _id, _dt, _lang) do
+    :ok
+  end
+
+  defp write_feed(:sys_cal, _json, _id, _dt, _lang) do
+    :ok
+  end
+
+  defp write_feed(:sys_regions, _json, _id, _dt, _lang) do
+    :ok
+  end
+
+  defp write_feed(:sys_alerts, json, id, dt, _lang) do
+    data =
+      json.data.alerts
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        RoomSanctum.Storage.change_gbfs_alert(%RoomSanctum.Storage.GBFS.V1.Alert{}, x).changes
+        |> inj_iddt(id, dt)
+      end)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.Alert,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :alert_id]
+    )
+  end
+
+  defp write_feed(:ebikes_at_stations, json, id, dt, _lang) do
+    data =
+      json.data.stations
+      |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
+      |> Enum.map(fn x ->
+        cs =
+          RoomSanctum.Storage.change_ebikes_at_stations(
+            %RoomSanctum.Storage.GBFS.V1.EbikesAtStations{},
+            x
+          ).changes
+          |> inj_iddt(id, dt)
+
+        eb = cs.ebikes |> Enum.map(fn eb -> eb |> Ecto.Changeset.apply_changes() end)
+        cs |> Map.put(:ebikes, eb)
+      end)
+
+    RoomSanctum.Storage.truncate_ebikes_at_stations(id)
+
+    Repo.insert_all(
+      RoomSanctum.Storage.GBFS.V1.EbikesAtStations,
+      data,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: [:source_id, :station_id]
+    )
   end
 
   def handle_call(_msg, _from, state) do
@@ -356,6 +368,23 @@ defmodule RoomGbfs.Worker do
 
   @tfh 14
 
+  # Each discovery feed this worker writes, in v2's names: what write_data/4
+  # calls it, the event broadcast once it is written, and its step of @tfh.
+  @static_feeds %{
+    "ebikes_at_stations" => {:ebikes_at_stations, :system_information, 3},
+    "system_information" => {:sys_info, :system_information, 4},
+    "station_information" => {:stat_info, :system_information, 5},
+    "station_status" => {:stat_status, :system_information, 6},
+    "free_bike_status" => {:free_bike, :system_information, 7},
+    "system_hours" => {:sys_hours, :system_information, 8},
+    "system_calendar" => {:sys_cal, :system_information, 9},
+    "system_regions" => {:sys_regions, :system_information, 10},
+    "system_alerts" => {:sys_alerts, :system_alerts, 11},
+    "vehicle_types" => {:vehicle_types, :vehicle_types, 12},
+    "system_pricing_plans" => {:pricing_plans, :pricing_plans, 13},
+    "geofencing_zones" => {:geofencing_zones, :geofencing_zones, 14}
+  }
+
   @impl true
   def handle_cast(:update_static, state) do
     cfg = Configuration.get_source!(state.id)
@@ -364,111 +393,8 @@ defmodule RoomGbfs.Worker do
       true ->
         Logger.info("GBFS::#{state.id} updating static info ")
         bcast(state.id, :downloading, 1, @tfh)
-
-        case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
-          {:ok, result} ->
-            # decode! here took the whole worker down when the body was not JSON,
-            # which is exactly what an unfollowed redirect hands you.
-            json_body =
-              case Jason.decode(result.body) do
-                {:ok, decoded} ->
-                  decoded
-
-                {:error, _} ->
-                  Logger.error(
-                    "GBFS::#{state.id} discovery returned non-JSON (HTTP #{result.status_code}) from #{cfg.config.url}"
-                  )
-
-                  %{}
-              end
-
-            case RoomGbfs.V3.feeds(json_body, cfg.config.lang) do
-              {:ok, version, feeds} ->
-                if version == :v3 do
-                  Logger.info("GBFS::#{state.id} discovery is v3")
-                end
-
-                bcast(state.id, :parsing, 2, @tfh)
-
-                feeds
-                # Vehicle types first: station_status needs them stored to
-                # work out how many of its bikes are electric, and operators
-                # list the feeds in whatever order suits them.
-                |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
-                |> Enum.each(fn %{"name" => name, "url" => url} ->
-                  # v3 renamed the loose-vehicle feed; everything below is
-                  # written in v2's names, which is the one dialect this worker
-                  # speaks.
-                  case RoomGbfs.V3.feed_name(name) do
-                    "ebikes_at_stations" ->
-                      write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 3, @tfh)
-
-                    "system_information" ->
-                      write_data(url, :sys_info, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 4, @tfh)
-
-                    "station_information" ->
-                      write_data(url, :stat_info, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 5, @tfh)
-
-                    "station_status" ->
-                      write_data(url, :stat_status, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 6, @tfh)
-
-                    "free_bike_status" ->
-                      write_data(url, :free_bike, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 7, @tfh)
-
-                    "system_hours" ->
-                      write_data(url, :sys_hours, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 8, @tfh)
-
-                    "system_calendar" ->
-                      write_data(url, :sys_cal, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 9, @tfh)
-
-                    "system_regions" ->
-                      write_data(url, :sys_regions, state.id, cfg.config.lang)
-                      bcast(state.id, :system_information, 10, @tfh)
-
-                    "system_alerts" ->
-                      write_data(url, :sys_alerts, state.id, cfg.config.lang)
-                      bcast(state.id, :system_alerts, 11, @tfh)
-
-                    "vehicle_types" ->
-                      write_data(url, :vehicle_types, state.id, cfg.config.lang)
-                      bcast(state.id, :vehicle_types, 12, @tfh)
-
-                    "system_pricing_plans" ->
-                      write_data(url, :pricing_plans, state.id, cfg.config.lang)
-                      bcast(state.id, :pricing_plans, 13, @tfh)
-
-                    "geofencing_zones" ->
-                      write_data(url, :geofencing_zones, state.id, cfg.config.lang)
-                      bcast(state.id, :geofencing_zones, 14, @tfh)
-
-                    otherwise ->
-                      Logger.info("GBFS::#{state.id} System has unhandled file #{otherwise}")
-                  end
-                end)
-
-                {:noreply, state}
-
-              {:error, languages} ->
-                bcast(
-                  state.id,
-                  :language_error,
-                  "Invalid Language Selected, available #{Enum.join(languages, ", ")}, selected: #{cfg.config.lang}"
-                )
-
-                {:noreply, state}
-            end
-
-          {:error, info} ->
-            Logger.info(info.reason)
-            {:noreply, state}
-        end
+        update_static(cfg, state.id)
+        {:noreply, state}
 
       false ->
         bcast(state.id, :disabled)
@@ -484,75 +410,136 @@ defmodule RoomGbfs.Worker do
       true ->
         Logger.info("GBFS::#{state.id} updating realtime info ")
         bcast(state.id, :downloading, 1, 5)
-
-        case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
-          {:ok, result} ->
-            case result.body |> Jason.decode() do
-              {:ok, json_body} ->
-                case RoomGbfs.V3.feeds(json_body, cfg.config.lang) do
-                  {:ok, _version, feeds} ->
-                    bcast(state.id, :parsing, 2, 5)
-
-                    feeds
-                    |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
-                    |> Enum.each(fn %{"name" => name, "url" => url} ->
-                      case RoomGbfs.V3.feed_name(name) do
-                        "station_information" ->
-                          write_data(url, :stat_info, state.id, cfg.config.lang)
-                          bcast(state.id, :system_information, 3, 5)
-
-                        # The counts. Fetched here rather than only on the
-                        # daily static pass, which is how a dock could report
-                        # yesterday's bikes for a whole day.
-                        "station_status" ->
-                          write_data(url, :stat_status, state.id, cfg.config.lang)
-                          bcast(state.id, :system_information, 4, 5)
-
-                        "ebikes_at_stations" ->
-                          write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
-                          bcast(state.id, :system_information, 4, 5)
-
-                        "free_bike_status" ->
-                          write_data(url, :free_bike, state.id, cfg.config.lang)
-                          bcast(state.id, :system_information, 5, 5)
-
-                        _otherwise ->
-                          :ok
-                      end
-                    end)
-
-                    {:noreply, state}
-
-                  {:error, languages} ->
-                    bcast(
-                      state.id,
-                      :language_error,
-                      "Invalid Language Selected, available #{Enum.join(languages, ", ")}, selected: #{cfg.config.lang}"
-                    )
-
-                    {:noreply, state}
-                end
-
-              {:error, error} ->
-                Logger.info(error.data)
-                {:noreply, state}
-            end
-
-          {:error, error} ->
-            Logger.info(error.reason)
-            {:noreply, state}
-        end
+        update_realtime(cfg, state.id)
+        {:noreply, state}
 
       false ->
         bcast(state.id, :disabled)
         {:noreply, state}
     end
-
-    {:noreply, state}
   end
 
   def handle_cast(_msg, state) do
     {:noreply, state}
+  end
+
+  defp update_static(cfg, id) do
+    case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
+      {:ok, result} ->
+        result
+        |> discovery_json(id, cfg.config.url)
+        |> RoomGbfs.V3.feeds(cfg.config.lang)
+        |> write_static_feeds(id, cfg.config.lang)
+
+      {:error, info} ->
+        Logger.info(info.reason)
+    end
+  end
+
+  # decode! here took the whole worker down when the body was not JSON,
+  # which is exactly what an unfollowed redirect hands you.
+  defp discovery_json(result, id, url) do
+    case Jason.decode(result.body) do
+      {:ok, decoded} ->
+        decoded
+
+      {:error, _} ->
+        Logger.error(
+          "GBFS::#{id} discovery returned non-JSON (HTTP #{result.status_code}) from #{url}"
+        )
+
+        %{}
+    end
+  end
+
+  defp write_static_feeds({:ok, version, feeds}, id, lang) do
+    if version == :v3 do
+      Logger.info("GBFS::#{id} discovery is v3")
+    end
+
+    bcast(id, :parsing, 2, @tfh)
+
+    feeds
+    # Vehicle types first: station_status needs them stored to
+    # work out how many of its bikes are electric, and operators
+    # list the feeds in whatever order suits them.
+    |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
+    |> Enum.each(&write_static_feed(&1, id, lang))
+  end
+
+  defp write_static_feeds({:error, languages}, id, lang), do: language_error(id, languages, lang)
+
+  defp write_static_feed(%{"name" => name, "url" => url}, id, lang) do
+    # v3 renamed the loose-vehicle feed; everything below is
+    # written in v2's names, which is the one dialect this worker
+    # speaks.
+    case Map.fetch(@static_feeds, RoomGbfs.V3.feed_name(name)) do
+      {:ok, {type, event, step}} ->
+        write_data(url, type, id, lang)
+        bcast(id, event, step, @tfh)
+
+      :error ->
+        Logger.info("GBFS::#{id} System has unhandled file #{RoomGbfs.V3.feed_name(name)}")
+    end
+  end
+
+  # The feeds the five minute pass refreshes, and each one's step of five.
+  @realtime_feeds %{
+    "station_information" => {:stat_info, 3},
+    # The counts. Fetched here rather than only on the
+    # daily static pass, which is how a dock could report
+    # yesterday's bikes for a whole day.
+    "station_status" => {:stat_status, 4},
+    "ebikes_at_stations" => {:ebikes_at_stations, 4},
+    "free_bike_status" => {:free_bike, 5}
+  }
+
+  defp update_realtime(cfg, id) do
+    case HTTPoison.get(cfg.config.url, [], follow_redirect: true) do
+      {:ok, result} ->
+        case result.body |> Jason.decode() do
+          {:ok, json_body} ->
+            json_body
+            |> RoomGbfs.V3.feeds(cfg.config.lang)
+            |> write_realtime_feeds(id, cfg.config.lang)
+
+          {:error, error} ->
+            Logger.info(error.data)
+        end
+
+      {:error, error} ->
+        Logger.info(error.reason)
+    end
+  end
+
+  defp write_realtime_feeds({:ok, _version, feeds}, id, lang) do
+    bcast(id, :parsing, 2, 5)
+
+    feeds
+    |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
+    |> Enum.each(&write_realtime_feed(&1, id, lang))
+  end
+
+  defp write_realtime_feeds({:error, languages}, id, lang),
+    do: language_error(id, languages, lang)
+
+  defp write_realtime_feed(%{"name" => name, "url" => url}, id, lang) do
+    case Map.fetch(@realtime_feeds, RoomGbfs.V3.feed_name(name)) do
+      {:ok, {type, step}} ->
+        write_data(url, type, id, lang)
+        bcast(id, :system_information, step, 5)
+
+      :error ->
+        :ok
+    end
+  end
+
+  defp language_error(id, languages, lang) do
+    bcast(
+      id,
+      :language_error,
+      "Invalid Language Selected, available #{Enum.join(languages, ", ")}, selected: #{lang}"
+    )
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
