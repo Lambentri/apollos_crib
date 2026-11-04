@@ -17,7 +17,7 @@ defmodule RoomSanctumWeb.PlaniLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Plani")
-    |> assign(:plani, Configuration.get_plani!(id))
+    |> assign(:plani, Configuration.get_plani!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -39,9 +39,12 @@ defmodule RoomSanctumWeb.PlaniLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    plani = Configuration.get_plani!(id)
+    plani = Configuration.get_plani!(owner(socket), id)
     {:ok, _} = Configuration.delete_plani(plani)
 
     {:noreply, stream_delete(socket, :plani, plani)}
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

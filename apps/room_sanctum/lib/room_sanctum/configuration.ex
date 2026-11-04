@@ -709,6 +709,15 @@ defmodule RoomSanctum.Configuration do
 
   def get_plani!(id), do: Repo.get!(Plani, id)
 
+  # Someone else's plani raises the not-found a missing one -- or a junk id --
+  # does.
+  def get_plani!({:user, uid}, id) do
+    case Integer.parse(to_string(id)) do
+      {n, ""} -> Repo.get_by!(Plani, id: n, user_id: uid)
+      _ -> raise Ecto.NoResultsError, queryable: Plani
+    end
+  end
+
   def create_plani(attrs \\ %{}) do
     %Plani{} |> Plani.changeset(attrs) |> Repo.insert() |> announce(:plani)
   end

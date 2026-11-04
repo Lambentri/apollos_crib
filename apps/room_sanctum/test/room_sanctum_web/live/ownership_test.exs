@@ -387,4 +387,45 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert Repo.reload!(screen).curr_vision == second.id
     end
   end
+
+  defp plani_for(user) do
+    {:ok, plani} =
+      Configuration.create_plani(%{
+        name: "Pocket",
+        user_id: user.id,
+        home_foci_id: foci_for(user).id,
+        sources: []
+      })
+
+    plani
+  end
+
+  describe "the plani pages" do
+    setup :users_rabbit!
+
+    test "will not show another user's plani", ctx do
+      theirs = plani_for(ctx.them)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.plani_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's plani for editing", ctx do
+      theirs = plani_for(ctx.them)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.plani_index_path(ctx.conn, :edit, theirs))
+      end
+    end
+
+    test "will not delete another user's plani", ctx do
+      theirs = plani_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, Routes.plani_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+
+      assert Repo.reload(theirs)
+    end
+  end
 end

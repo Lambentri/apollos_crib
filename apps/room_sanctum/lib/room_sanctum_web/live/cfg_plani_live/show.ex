@@ -25,9 +25,9 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     {:noreply,
      socket
      |> assign(:page_title, "Plani")
-     |> assign(:plani, Configuration.get_plani!(id))
-      |> assign(:sources, Configuration.list_cfg_sources({:user, socket.assigns.current_user.id}))
-     |> assign(:pythiae, Configuration.list_pythiae(:plani, id))
+     |> assign(:plani, Configuration.get_plani!(owner(socket), id))
+     |> assign(:sources, Configuration.list_cfg_sources({:user, socket.assigns.current_user.id}))
+     |> assign(:pythiae, own_pythiae(socket, id))
      |> look()}
   end
 
@@ -113,7 +113,8 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
   curvature to show, and the longitude scale is taken at the ring's own
   latitude so it does not go oval further north.
   """
-  def radius_ring(%{anchor: %Geo.Point{coordinates: {lon, lat}}}, radius_m) when is_integer(radius_m) do
+  def radius_ring(%{anchor: %Geo.Point{coordinates: {lon, lat}}}, radius_m)
+      when is_integer(radius_m) do
     d_lat = radius_m / 111_320
     d_lon = radius_m / (111_320 * max(:math.cos(lat * :math.pi() / 180), 0.01))
 
@@ -270,4 +271,15 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
       nil -> nil
     end
   end
+
+  # The pythiae driven by this plani, of the user's own: another user's screen
+  # pointed at it is none of this page's business.
+  defp own_pythiae(socket, id) do
+    :plani
+    |> Configuration.list_pythiae(id)
+    |> Enum.filter(&(&1.user_id == socket.assigns.current_user.id))
+  end
+
+  # The plani comes from the URL, so it is looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end
