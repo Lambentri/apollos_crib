@@ -1,0 +1,60 @@
+name: credo
+# Credo's static analysis (.credo.exs), as a warning: the job runs under
+# `continue-on-error`, so what Credo finds marks the run ⚠ rather than
+# failing it.
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push supersedes this run: on a branch or PR the run in
+# progress is cancelled; on master it finishes, and only a run still
+# waiting is replaced.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+jobs:
+  credo:
+    runs-on: self-hosted
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      # `mix credo` compiles every dependency (not the app), so what the
+      # Dockerfile's builder has for their NIFs.
+      - name: Build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends build-essential git pkg-config libssl-dev
+
+      # OTP and Elixir from builds.hex.pm, the builds setup-beam would
+      # fetch — taken directly, since setup-beam chooses one by ImageOS,
+      # which this runner sets to "selfhosted" over anything a workflow
+      # says.
+      - name: OTP and Elixir
+        env:
+          OTP_VERSION: "28.5.0.8"
+          ELIXIR_VERSION: "1.20.4"
+        run: |
+          ubuntu=$(. /etc/os-release && echo "$VERSION_ID")
+          curl -sSfL "https://builds.hex.pm/builds/otp/ubuntu-${ubuntu}/OTP-${OTP_VERSION}.tar.gz" | tar xz -C /tmp
+          # Installed where it's unpacked: Install's root is its own directory.
+          (cd "/tmp/OTP-${OTP_VERSION}" && ./Install -minimal "/tmp/OTP-${OTP_VERSION}" > /dev/null)
+          curl -sSfL -o /tmp/elixir.zip "https://builds.hex.pm/builds/elixir/v${ELIXIR_VERSION}-otp-${OTP_VERSION%%.*}.zip"
+          unzip -q -d /tmp/elixir /tmp/elixir.zip
+          echo "/tmp/OTP-${OTP_VERSION}/bin" >> "$GITHUB_PATH"
+          echo /tmp/elixir/bin >> "$GITHUB_PATH"
+
+      - name: Dependencies
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+
+      - name: Credo
+        run: mix credo
