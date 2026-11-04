@@ -334,7 +334,13 @@ defmodule RoomSanctum.Configuration do
   end
 
   @doc """
-  Deletes a query.
+  Deletes a query, and takes it off every vision it was on.
+
+  A vision records its queries twice -- the embedded list that renders, and
+  the `query_ids` every "which visions is this on" lookup reads -- and both
+  used to keep the deleted query's id. Both are cleared in the same
+  transaction as the delete, so a vision is never left pointing at a query
+  that is gone; the visions' workers are told once it has committed.
 
   ## Examples
 
@@ -346,8 +352,23 @@ defmodule RoomSanctum.Configuration do
 
   """
   def delete_query(%Query{} = query) do
-    Repo.delete(query)
+    Repo.transaction(fn ->
+      vision_ids = detach_from_visions(query.id)
+
+      case Repo.delete(query) do
+        {:ok, deleted} -> {deleted, vision_ids}
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+    |> announce_detached()
   end
+
+  defp announce_detached({:ok, {deleted, vision_ids}}) do
+    Enum.each(vision_ids, &announce({:ok, %{id: &1}}, :vision))
+    {:ok, deleted}
+  end
+
+  defp announce_detached(error), do: error
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking query changes.
@@ -506,6 +527,46 @@ defmodule RoomSanctum.Configuration do
   end
 
   #
+  # Strips a query from both halves of every vision that holds it, whoever
+  # owns the vision, returning the ids of the visions it touched. Written as
+  # one UPDATE rather than through the changeset: it has to work on whatever
+  # is stored -- embeds duplicated by the old re-pinning, an embed whose query
+  # was saved as a string -- which the changeset would refuse, and a refusal
+  # here would block the delete.
+  defp detach_from_visions(query_id) do
+    id_text = to_string(query_id)
+
+    {_count, ids} =
+      from(v in Vision,
+        where:
+          ^query_id in v.query_ids or
+            fragment(
+              "jsonb_typeof(?) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS e WHERE e->'data'->>'query' = ?)",
+              v.queries,
+              v.queries,
+              ^id_text
+            ),
+        select: v.id,
+        update: [
+          set: [
+            query_ids: fragment("array_remove(?, ?)", v.query_ids, ^query_id),
+            queries:
+              fragment(
+                "CASE WHEN jsonb_typeof(?) = 'array' THEN (SELECT COALESCE(jsonb_agg(e.elem ORDER BY e.ord), '[]'::jsonb) FROM jsonb_array_elements(?) WITH ORDINALITY AS e(elem, ord) WHERE (e.elem->'data'->>'query') IS DISTINCT FROM ?) ELSE ? END",
+                v.queries,
+                v.queries,
+                ^id_text,
+                v.queries
+              ),
+            updated_at: ^NaiveDateTime.truncate(NaiveDateTime.utc_now(), :second)
+          ]
+        ]
+      )
+      |> Repo.update_all([])
+
+    ids
+  end
+
   def get_landing_vision() do
     q =
       from v in Vision,

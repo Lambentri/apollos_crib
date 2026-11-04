@@ -79,9 +79,9 @@ defmodule RoomSanctum.Configuration.Vision do
   end
 
   # A vision can only point at its owner's queries -- the form's picker only
-  # offers those. Only the ids this change adds are checked: delete_query/1
-  # leaves its id behind on any vision it was on, so a stored vision can
-  # already hold ids with nothing behind them, and it has to stay editable.
+  # offers those. Only the ids this change adds are checked: a vision struct
+  # loaded before one of its queries was deleted still holds that id, and it
+  # has to stay editable.
   defp validate_queries_have_valid_ids(changeset) do
     with [_ | _] = ids <- get_change(changeset, :query_ids),
          [_ | _] = added <- Enum.uniq(ids) -- (changeset.data.query_ids || []),

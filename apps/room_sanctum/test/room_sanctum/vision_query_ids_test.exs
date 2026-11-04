@@ -82,9 +82,9 @@ defmodule RoomSanctum.VisionQueryIdsTest do
     {:ok, vision} =
       Configuration.create_vision(%{name: "Mine", user_id: me.id, query_ids: [q.id]})
 
-    # delete_query/1 leaves the id behind on any vision it was pinned to, so
-    # stored visions can already hold ids with nothing behind them. They have
-    # to stay editable.
+    # delete_query/1 takes the id off the stored vision, but this struct was
+    # loaded before it and still holds an id with nothing behind it. It has to
+    # stay editable.
     {:ok, _} = Configuration.delete_query(q)
     assert {:ok, renamed} = Configuration.update_vision_ni(vision, %{name: "Renamed"})
 
