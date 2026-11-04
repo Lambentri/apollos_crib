@@ -93,40 +93,40 @@ defmodule RoomDrought.Worker do
   def handle_call({:read, query}, _from, state) do
     product = Map.get(query, :product) || Map.get(query, "product") || "usdm"
 
-    result =
-      case product do
-        "usdm" ->
-          case scope_from_query(query) do
-            nil ->
-              []
-
-            target ->
-              # Make sure we're tracking it for next refresh
-              GenServer.cast(self(), {:add_target, target})
-
-              case Map.get(state.usdm, target) do
-                nil ->
-                  case fetch_usdm(target) do
-                    {:ok, record} -> [record]
-                    :error -> []
-                  end
-
-                record ->
-                  [record]
-              end
-          end
-
-        product when product in ["csi", "cpc", "gpcc"] ->
-          [%{"product" => product, "status" => "not_yet_implemented"}]
-
-        _ ->
-          []
-      end
-
-    {:reply, result, state}
+    {:reply, read_product(product, query, state), state}
   end
 
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}
+
+  defp read_product("usdm", query, state) do
+    case scope_from_query(query) do
+      nil ->
+        []
+
+      target ->
+        # Make sure we're tracking it for next refresh
+        GenServer.cast(self(), {:add_target, target})
+        read_usdm(target, state)
+    end
+  end
+
+  defp read_product(product, _query, _state) when product in ["csi", "cpc", "gpcc"],
+    do: [%{"product" => product, "status" => "not_yet_implemented"}]
+
+  defp read_product(_product, _query, _state), do: []
+
+  defp read_usdm(target, state) do
+    case Map.get(state.usdm, target) do
+      nil ->
+        case fetch_usdm(target) do
+          {:ok, record} -> [record]
+          :error -> []
+        end
+
+      record ->
+        [record]
+    end
+  end
 
   # Helpers
   defp via(name), do: via_tuple(name)

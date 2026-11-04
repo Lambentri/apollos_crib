@@ -127,17 +127,7 @@ defmodule RoomHermes.Mail.IMAP do
         uids =
           lines
           |> Enum.filter(&String.match?(&1, ~r/^\* SEARCH/i))
-          |> Enum.flat_map(fn line ->
-            line
-            |> String.replace(~r/^\* SEARCH/i, "")
-            |> String.split(~r/\s+/, trim: true)
-            |> Enum.flat_map(fn tok ->
-              case Integer.parse(tok) do
-                {n, ""} -> [n]
-                _ -> []
-              end
-            end)
-          end)
+          |> Enum.flat_map(&search_uids/1)
           |> Enum.sort()
 
         {:ok, conn, uids}
@@ -145,6 +135,18 @@ defmodule RoomHermes.Mail.IMAP do
       {:error, reason} ->
         {:error, {:search_failed, reason}}
     end
+  end
+
+  defp search_uids(line) do
+    line
+    |> String.replace(~r/^\* SEARCH/i, "")
+    |> String.split(~r/\s+/, trim: true)
+    |> Enum.flat_map(fn tok ->
+      case Integer.parse(tok) do
+        {n, ""} -> [n]
+        _ -> []
+      end
+    end)
   end
 
   @doc """
@@ -371,19 +373,23 @@ defmodule RoomHermes.Mail.IMAP do
             {:error, String.trim(trimmed)}
 
           true ->
-            # A line ending in {N} announces exactly N bytes of raw data that
-            # are not line-delimited and may contain anything, including CRLFs.
-            case Regex.run(~r/\{(\d+)\}$/, trimmed) do
-              [_, count] ->
-                case read_literal(conn, String.to_integer(count)) do
-                  {:ok, literal} -> collect(conn, tag, [{:literal, literal}, trimmed | acc])
-                  {:error, reason} -> {:error, reason}
-                end
-
-              nil ->
-                collect(conn, tag, [trimmed | acc])
-            end
+            collect_untagged(conn, tag, trimmed, acc)
         end
+    end
+  end
+
+  # A line ending in {N} announces exactly N bytes of raw data that
+  # are not line-delimited and may contain anything, including CRLFs.
+  defp collect_untagged(conn, tag, trimmed, acc) do
+    case Regex.run(~r/\{(\d+)\}$/, trimmed) do
+      [_, count] ->
+        case read_literal(conn, String.to_integer(count)) do
+          {:ok, literal} -> collect(conn, tag, [{:literal, literal}, trimmed | acc])
+          {:error, reason} -> {:error, reason}
+        end
+
+      nil ->
+        collect(conn, tag, [trimmed | acc])
     end
   end
 

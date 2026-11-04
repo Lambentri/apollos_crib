@@ -59,28 +59,32 @@ defmodule RoomPackages.Worker do
 
       pending
       |> Enum.chunk_every(RoomPackages.USPS.max_batch())
-      |> Enum.each(fn chunk ->
-        numbers = Enum.map(chunk, & &1.number)
+      |> Enum.each(&refresh_chunk(source, &1))
+    end
+  end
 
-        case RoomPackages.USPS.track_many(source, numbers) do
-          {:ok, summaries} ->
-            # Re-read per write: update_source_meta_tracking/3 builds the new
-            # list from the struct it is handed.
-            Enum.reduce(summaries, source, fn summary, src ->
-              existing = Enum.find(src.meta.tracking, &(&1.number == summary.number))
+  defp refresh_chunk(source, chunk) do
+    numbers = Enum.map(chunk, & &1.number)
 
-              if existing && changed?(existing, summary) do
-                Configuration.update_source_meta_tracking(src, summary.number, summary)
-                Configuration.get_source!(src.id)
-              else
-                src
-              end
-            end)
+    case RoomPackages.USPS.track_many(source, numbers) do
+      {:ok, summaries} ->
+        # Re-read per write: update_source_meta_tracking/3 builds the new
+        # list from the struct it is handed.
+        Enum.reduce(summaries, source, &record_summary/2)
 
-          {:error, reason} ->
-            Logger.debug("USPS batch of #{length(numbers)}: #{inspect(reason)}")
-        end
-      end)
+      {:error, reason} ->
+        Logger.debug("USPS batch of #{length(numbers)}: #{inspect(reason)}")
+    end
+  end
+
+  defp record_summary(summary, src) do
+    existing = Enum.find(src.meta.tracking, &(&1.number == summary.number))
+
+    if existing && changed?(existing, summary) do
+      Configuration.update_source_meta_tracking(src, summary.number, summary)
+      Configuration.get_source!(src.id)
+    else
+      src
     end
   end
 

@@ -231,64 +231,67 @@ defmodule RoomGithub.Worker do
   end
 
   # HTTPoison async stream handlers
-  def handle_info(msg, state) do
-    case msg do
-      %HTTPoison.Error{reason: {:closed, :timeout}} ->
+  def handle_info(%HTTPoison.Error{reason: {:closed, :timeout}}, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncStatus{code: 200, id: _id}, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncStatus{code: code, id: rid}, state) do
+    Logger.info("GH::#{state.inst.id} non-200: #{code}")
+
+    ref = state.refs[rid]
+    ref = ref && Map.put(ref, :write, false)
+    refs = if ref, do: Map.put(state.refs, rid, ref), else: state.refs
+    {:noreply, state |> Map.put(:refs, refs)}
+  end
+
+  def handle_info(%HTTPoison.AsyncHeaders{headers: headers, id: rid}, state) do
+    case state.refs[rid] do
+      nil ->
         {:noreply, state}
 
-      %HTTPoison.AsyncStatus{code: 200, id: _id} ->
-        {:noreply, state}
-
-      %HTTPoison.AsyncStatus{code: code, id: rid} ->
-        Logger.info("GH::#{state.inst.id} non-200: #{code}")
-
-        ref = state.refs[rid]
-        ref = ref && Map.put(ref, :write, false)
-        refs = if ref, do: Map.put(state.refs, rid, ref), else: state.refs
-        {:noreply, state |> Map.put(:refs, refs)}
-
-      %HTTPoison.AsyncHeaders{headers: headers, id: rid} ->
-        case state.refs[rid] do
-          nil ->
-            {:noreply, state}
-
-          ref ->
-            ref = Map.put(ref, :next_url, parse_next_link(headers))
-            {:noreply, state |> Map.put(:refs, Map.put(state.refs, rid, ref))}
-        end
-
-      %HTTPoison.AsyncChunk{chunk: chunk, id: rid} ->
-        case state.refs[rid] do
-          nil -> :ok
-          %{fd: fd} -> IO.binwrite(fd, chunk)
-        end
-
-        {:noreply, state}
-
-      %HTTPoison.AsyncEnd{id: rid} ->
-        case state.refs[rid] do
-          nil ->
-            {:noreply, state}
-
-          %{write: false} = ref ->
-            close_buffer(ref.fd)
-            {:noreply, state |> Map.put(:refs, Map.delete(state.refs, rid))}
-
-          ref ->
-            {_, body} = StringIO.contents(ref.fd)
-            close_buffer(ref.fd)
-
-            new_state =
-              state
-              |> ingest_response(ref, body)
-              |> follow_pagination(ref)
-
-            {:noreply, new_state |> Map.put(:refs, Map.delete(new_state.refs, rid))}
-        end
-
-      _ ->
-        {:noreply, state}
+      ref ->
+        ref = Map.put(ref, :next_url, parse_next_link(headers))
+        {:noreply, state |> Map.put(:refs, Map.put(state.refs, rid, ref))}
     end
+  end
+
+  def handle_info(%HTTPoison.AsyncChunk{chunk: chunk, id: rid}, state) do
+    case state.refs[rid] do
+      nil -> :ok
+      %{fd: fd} -> IO.binwrite(fd, chunk)
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncEnd{id: rid}, state) do
+    case state.refs[rid] do
+      nil ->
+        {:noreply, state}
+
+      %{write: false} = ref ->
+        close_buffer(ref.fd)
+        {:noreply, state |> Map.put(:refs, Map.delete(state.refs, rid))}
+
+      ref ->
+        {_, body} = StringIO.contents(ref.fd)
+        close_buffer(ref.fd)
+
+        new_state =
+          state
+          |> ingest_response(ref, body)
+          |> follow_pagination(ref)
+
+        {:noreply, new_state |> Map.put(:refs, Map.delete(new_state.refs, rid))}
+    end
+  end
+
+  def handle_info(_msg, state) do
+    {:noreply, state}
   end
 
   # Helpers

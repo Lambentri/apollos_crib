@@ -137,23 +137,7 @@ defmodule RoomHermes.Mail.ImapWorker do
                 {:ok, 0}
 
               {:ok, conn, uids} ->
-                selected = Enum.take(uids, @max_per_cycle)
-
-                if length(uids) > @max_per_cycle do
-                  Logger.info(
-                    "Mailbox::#{source.id} #{length(uids)} unread, handling #{@max_per_cycle} this cycle"
-                  )
-                end
-
-                {_conn, n} =
-                  Enum.reduce(selected, {conn, 0}, fn uid, {conn, count} ->
-                    case handle_uid(conn, uid, source, consumers) do
-                      {:ok, conn} -> {conn, count + 1}
-                      {:skip, conn} -> {conn, count}
-                    end
-                  end)
-
-                {:ok, n}
+                handle_unseen(conn, uids, source, consumers)
 
               {:error, reason} ->
                 {:error, reason}
@@ -163,6 +147,26 @@ defmodule RoomHermes.Mail.ImapWorker do
         record(source, result)
         result
     end
+  end
+
+  defp handle_unseen(conn, uids, source, consumers) do
+    selected = Enum.take(uids, @max_per_cycle)
+
+    if length(uids) > @max_per_cycle do
+      Logger.info(
+        "Mailbox::#{source.id} #{length(uids)} unread, handling #{@max_per_cycle} this cycle"
+      )
+    end
+
+    {_conn, n} =
+      Enum.reduce(selected, {conn, 0}, fn uid, {conn, count} ->
+        case handle_uid(conn, uid, source, consumers) do
+          {:ok, conn} -> {conn, count + 1}
+          {:skip, conn} -> {conn, count}
+        end
+      end)
+
+    {:ok, n}
   end
 
   @doc """

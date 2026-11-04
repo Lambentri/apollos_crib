@@ -167,51 +167,13 @@ defmodule RoomGitlab.Worker do
 
   defp filter_watched(_projects, _inst), do: []
 
-  defp do_gitlab_req(uri, token, lookup, id \\ nil) do
-    {path, params} =
-      case lookup do
-        # , %{updated_after: DateTime.utc_now |> DateTime.add(-3600 * 7) |> DateTime.truncate(:second) |> DateTime.to_iso8601, order_by: "updated_at"}}
-        :projects -> {"/api/v4/projects", %{simple: true, per_page: 100}}
-        :commits -> {"/api/v4/projects/#{id}/repository/commits/master", %{}}
-        :jobs -> {"/api/v4/projects/#{id}/jobs", %{}}
-      end
-
-    case HTTPoison.get(
-           uri <> path,
-           ["PRIVATE-TOKEN": "#{token}", Accept: "Application/json; Charset=utf-8"],
-           params: params,
-           follow_redirect: true
-         ) do
-      {:ok, response} ->
-        case response.status_code do
-          500 ->
-            Logger.info("Failed to retrieve data from Gitlab due to #{response.body}")
-            {:error, :five_hundred}
-
-          200 ->
-            case response.body |> Jason.decode() do
-              {:ok, decoded} -> {:ok, decoded}
-              {:error, error} -> {:error, :decode_json}
-            end
-
-          404 ->
-            {:error, :four_o_four}
-        end
-
-      {:error, error} ->
-        Logger.info("Failed to retrieve data from Gitlab due to #{error.reason}")
-        {:error, :http}
-    end
-  end
+  # , %{updated_after: DateTime.utc_now |> DateTime.add(-3600 * 7) |> DateTime.truncate(:second) |> DateTime.to_iso8601, order_by: "updated_at"}}
+  defp gitlab_path(:projects, _id), do: {"/api/v4/projects", %{simple: true, per_page: 100}}
+  defp gitlab_path(:commits, id), do: {"/api/v4/projects/#{id}/repository/commits/master", %{}}
+  defp gitlab_path(:jobs, id), do: {"/api/v4/projects/#{id}/jobs", %{}}
 
   defp do_gitlab_reqa(uri, token, lookup, id \\ nil) do
-    {path, params} =
-      case lookup do
-        # , %{updated_after: DateTime.utc_now |> DateTime.add(-3600 * 7) |> DateTime.truncate(:second) |> DateTime.to_iso8601, order_by: "updated_at"}}
-        :projects -> {"/api/v4/projects", %{simple: true, per_page: 100}}
-        :commits -> {"/api/v4/projects/#{id}/repository/commits/master", %{}}
-        :jobs -> {"/api/v4/projects/#{id}/jobs", %{}}
-      end
+    {path, params} = gitlab_path(lookup, id)
 
     HTTPoison.get(
       uri <> path,
@@ -375,68 +337,66 @@ defmodule RoomGitlab.Worker do
     {:reply, [:ok], state}
   end
 
-  def handle_info(msg, state) do
-    #    IO.inspect({:handle_info, msg})
-    case msg do
-      %HTTPoison.Error{reason: {:closed, :timeout}, id: resp_id} ->
-        {:noreply, state}
+  #    IO.inspect({:handle_info, msg})
+  def handle_info(%HTTPoison.Error{reason: {:closed, :timeout}, id: resp_id}, state) do
+    {:noreply, state}
+  end
 
-      %HTTPoison.AsyncStatus{code: status_code, id: resp_id} ->
-        #        IO.inspect(status_code)
+  def handle_info(%HTTPoison.AsyncStatus{code: status_code, id: resp_id}, state) do
+    #        IO.inspect(status_code)
 
-        if status_code == 200 do
-          {:noreply, state}
-        else
-          refs = state[:refs]
-          r = state[:refs][resp_id]
-          r = r |> Map.put(:write, false)
-          refs = refs |> Map.put(resp_id, r)
-          {:noreply, state |> Map.put(:refs, refs)}
-        end
-
-      %HTTPoison.AsyncHeaders{headers: headers, id: resp_id} ->
-        #        IO.inspect(headers)
-        {:noreply, state}
-
-      %HTTPoison.AsyncChunk{chunk: chunk, id: resp_id} ->
-        IO.binwrite(state[:refs][resp_id][:fd], chunk)
-        {:noreply, state}
-
-      %HTTPoison.AsyncEnd{id: resp_id} ->
-        {_, str} = StringIO.contents(state[:refs][resp_id][:fd])
-        StringIO.close(state[:refs][resp_id][:fd])
-        t = state[:refs][resp_id][:type]
-
-        case Jason.decode(str) do
-          {:ok, decoded} ->
-            case state[:refs][resp_id] |> Map.get(:write) do
-              false ->
-                {:noreply, state}
-
-              nil ->
-                case t do
-                  :projects ->
-                    filtered = filter_watched(decoded, state.inst)
-
-                    {:noreply,
-                     state
-                     |> Map.put(:available_projects, decoded)
-                     |> Map.put(:projects, filtered)}
-
-                  x when x in [:commits, :jobs] ->
-                    c = state |> Map.get(t)
-
-                    i = state[:refs][resp_id][:id]
-                    c = c |> Map.put(i, decoded)
-
-                    {:noreply, state |> Map.put(t, c)}
-                end
-            end
-
-          {:error, error} ->
-            {:noreply, state}
-        end
+    if status_code == 200 do
+      {:noreply, state}
+    else
+      refs = state[:refs]
+      r = state[:refs][resp_id]
+      r = r |> Map.put(:write, false)
+      refs = refs |> Map.put(resp_id, r)
+      {:noreply, state |> Map.put(:refs, refs)}
     end
+  end
+
+  def handle_info(%HTTPoison.AsyncHeaders{headers: headers, id: resp_id}, state) do
+    #        IO.inspect(headers)
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncChunk{chunk: chunk, id: resp_id}, state) do
+    IO.binwrite(state[:refs][resp_id][:fd], chunk)
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncEnd{id: resp_id}, state) do
+    {_, str} = StringIO.contents(state[:refs][resp_id][:fd])
+    StringIO.close(state[:refs][resp_id][:fd])
+    t = state[:refs][resp_id][:type]
+
+    case Jason.decode(str) do
+      {:ok, decoded} ->
+        case state[:refs][resp_id] |> Map.get(:write) do
+          false ->
+            {:noreply, state}
+
+          nil ->
+            {:noreply, store_decoded(state, t, state[:refs][resp_id][:id], decoded)}
+        end
+
+      {:error, error} ->
+        {:noreply, state}
+    end
+  end
+
+  defp store_decoded(state, :projects, _id, decoded) do
+    filtered = filter_watched(decoded, state.inst)
+
+    state
+    |> Map.put(:available_projects, decoded)
+    |> Map.put(:projects, filtered)
+  end
+
+  defp store_decoded(state, type, id, decoded) when type in [:commits, :jobs] do
+    c = state |> Map.get(type) |> Map.put(id, decoded)
+    state |> Map.put(type, c)
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}

@@ -95,21 +95,8 @@ defmodule RoomPollen.Worker do
           GenServer.cast(self(), {:add_target, {lat, lng, days}})
 
           case Map.get(state.forecasts, {lat, lng, days}) do
-            nil ->
-              # Lazy fetch on first read
-              case creds(state.inst) do
-                {:ok, key} ->
-                  case fetch_forecast(key, lat, lng, days) do
-                    {:ok, daily_info} -> daily_info
-                    :error -> []
-                  end
-
-                :no_creds ->
-                  []
-              end
-
-            cached ->
-              cached
+            nil -> fetch_on_read(state.inst, lat, lng, days)
+            cached -> cached
           end
       end
 
@@ -117,6 +104,20 @@ defmodule RoomPollen.Worker do
   end
 
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}
+
+  # Lazy fetch on first read
+  defp fetch_on_read(inst, lat, lng, days) do
+    case creds(inst) do
+      {:ok, key} ->
+        case fetch_forecast(key, lat, lng, days) do
+          {:ok, daily_info} -> daily_info
+          :error -> []
+        end
+
+      :no_creds ->
+        []
+    end
+  end
 
   # Helpers
   defp via(name), do: via_tuple(name)
@@ -134,18 +135,17 @@ defmodule RoomPollen.Worker do
       RoomSanctum.Configuration.place_for!(query) ||
         Map.get(query, :foci_id) || Map.get(query, "foci_id")
 
-    days =
-      case Map.get(query, :days) || Map.get(query, "days") do
-        n when is_integer(n) and n in 1..5 -> n
-        n when is_binary(n) -> String.to_integer(n) |> max(1) |> min(5)
-        _ -> 3
-      end
+    days = days_from_query(Map.get(query, :days) || Map.get(query, "days"))
 
     case resolve_foci(anchor) do
       {lat, lng} -> {lat, lng, days}
       nil -> nil
     end
   end
+
+  defp days_from_query(n) when is_integer(n) and n in 1..5, do: n
+  defp days_from_query(n) when is_binary(n), do: String.to_integer(n) |> max(1) |> min(5)
+  defp days_from_query(_), do: 3
 
   defp resolve_foci(nil), do: nil
 

@@ -159,10 +159,8 @@ defmodule RoomBourse.Worker do
   defp present(meta, symbol) do
     price = meta["regularMarketPrice"]
     previous = meta["chartPreviousClose"] || meta["previousClose"]
-    change = if is_number(price) and is_number(previous), do: price - previous
-
-    change_pct =
-      if is_number(change) and is_number(previous) and previous != 0, do: change / previous * 100
+    change = change(price, previous)
+    change_pct = change_pct(change, previous)
 
     %{
       symbol: meta["symbol"] || String.upcase(symbol),
@@ -182,6 +180,17 @@ defmodule RoomBourse.Worker do
       checked_at: DateTime.utc_now() |> DateTime.to_iso8601()
     }
   end
+
+  defp change(price, previous) when is_number(price) and is_number(previous),
+    do: price - previous
+
+  defp change(_price, _previous), do: nil
+
+  defp change_pct(change, previous)
+       when is_number(change) and is_number(previous) and previous != 0,
+       do: change / previous * 100
+
+  defp change_pct(_change, _previous), do: nil
 
   defp direction(change) when is_number(change) and change > 0, do: :up
   defp direction(change) when is_number(change) and change < 0, do: :down
