@@ -39,6 +39,9 @@ defmodule RoomSanctum.Configuration.Pythiae do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias RoomSanctum.Accounts.RabbitUser
+  alias RoomSanctum.Configuration.{Foci, Ownership, Plani, Vision}
+
   schema "cfg_pythiae" do
     field :name, :string
     field :ankyra, {:array, :integer}
@@ -79,5 +82,12 @@ defmodule RoomSanctum.Configuration.Pythiae do
     |> foreign_key_constraint(:curr_foci)
     |> foreign_key_constraint(:curr_plani)
     |> validate_required([:visions, :ankyra, :name])
+    # The form only offers the owner's own; a forged id of someone else's
+    # would show their vision, at their foci, on their Ankyra.
+    |> Ownership.validate_owned(:visions, Vision)
+    |> Ownership.validate_owned(:ankyra, RabbitUser)
+    |> Ownership.validate_owned(:curr_vision, Vision)
+    |> Ownership.validate_owned(:curr_foci, Foci)
+    |> Ownership.validate_owned(:curr_plani, Plani)
   end
 end

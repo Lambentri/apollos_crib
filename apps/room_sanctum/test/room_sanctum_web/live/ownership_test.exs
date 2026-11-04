@@ -136,7 +136,17 @@ defmodule RoomSanctumWeb.OwnershipTest do
 
     test "neither lists nor edits another user's pythiae that holds the vision", ctx do
       mine = vision_for(ctx.me, "My dash")
-      their_screen = pythiae_for(ctx.them, [mine.id])
+      # Planted past the changeset, which no longer lets their pythiae take
+      # someone else's vision -- as one saved before it checked could have.
+      their_screen =
+        Repo.insert!(%Configuration.Pythiae{
+          name: "screen-#{System.unique_integer([:positive])}",
+          user_id: ctx.them.id,
+          ankyra: [],
+          visions: [mine.id],
+          curr_vision: mine.id
+        })
+
       {:ok, live, _html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :show, mine))
       send(live.pid, :update_sec)
       render_click(live, "toggle-pythiae-sel", %{})
