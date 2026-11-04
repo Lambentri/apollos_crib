@@ -1398,9 +1398,10 @@ defmodule RoomSanctum.Storage do
     from(st in StopTime,
       join: t in Trip,
       on: st.trip_id == t.trip_id,
-      where: st.source_id == ^source_id and 
-             t.source_id == ^source_id and
-             st.stop_id == ^stop_id,
+      where:
+        st.source_id == ^source_id and
+          t.source_id == ^source_id and
+          st.stop_id == ^stop_id,
       select: t,
       distinct: true
     )
@@ -1450,31 +1451,43 @@ defmodule RoomSanctum.Storage do
 
     exception = fn type ->
       "gtfs_calendar_dates"
-      |> where([cd], cd.source_id == ^source_id and cd.date == ^date and cd.exception_type == ^type)
+      |> where(
+        [cd],
+        cd.source_id == ^source_id and cd.date == ^date and cd.exception_type == ^type
+      )
     end
 
     from([st, trip: t] in queryable,
       where:
-        (exists(from(c in scheduled, where: c.service_id == parent_as(:trip).service_id, select: 1)) or
+        (exists(
+           from(c in scheduled, where: c.service_id == parent_as(:trip).service_id, select: 1)
+         ) or
            exists(
-             from(cd in exception.(1), where: cd.service_id == parent_as(:trip).service_id, select: 1)
-           ) or
-           not exists(
-             from(c in "gtfs_calendars",
-               where: c.source_id == ^source_id and c.service_id == parent_as(:trip).service_id,
+             from(cd in exception.(1),
+               where: cd.service_id == parent_as(:trip).service_id,
                select: 1
              )
-           ) and
-             not exists(
-               from(cd in "gtfs_calendar_dates",
-                 where: cd.source_id == ^source_id and cd.service_id == parent_as(:trip).service_id,
-                 select: 1
-               )
-             ) or
-           not exists(from(c in scheduled, select: 1)) and
-             not exists(from(cd in exception.(1), select: 1))) and
+           ) or
+           (not exists(
+              from(c in "gtfs_calendars",
+                where: c.source_id == ^source_id and c.service_id == parent_as(:trip).service_id,
+                select: 1
+              )
+            ) and
+              not exists(
+                from(cd in "gtfs_calendar_dates",
+                  where:
+                    cd.source_id == ^source_id and cd.service_id == parent_as(:trip).service_id,
+                  select: 1
+                )
+              )) or
+           (not exists(from(c in scheduled, select: 1)) and
+              not exists(from(cd in exception.(1), select: 1)))) and
           not exists(
-            from(cd in exception.(2), where: cd.service_id == parent_as(:trip).service_id, select: 1)
+            from(cd in exception.(2),
+              where: cd.service_id == parent_as(:trip).service_id,
+              select: 1
+            )
           )
     )
   end
@@ -1488,25 +1501,26 @@ defmodule RoomSanctum.Storage do
   defp weekday_column(7), do: :sunday
 
   defp conditional_where(queryable, source_id, stop_id, timestamp_time_hour, timestamp_time) do
-#    case timestamp_time < timestamp_time_hour do
-#      true ->
-        where(
-          queryable,
-          [st],
-          st.source_id == ^source_id and st.arrival_time >= ^time_to_interval(timestamp_time) and
-            st.arrival_time <= ^time_to_interval(timestamp_time_hour) and st.stop_id == ^stringify(stop_id)
-        )
+    #    case timestamp_time < timestamp_time_hour do
+    #      true ->
+    where(
+      queryable,
+      [st],
+      st.source_id == ^source_id and st.arrival_time >= ^time_to_interval(timestamp_time) and
+        st.arrival_time <= ^time_to_interval(timestamp_time_hour) and
+        st.stop_id == ^stringify(stop_id)
+    )
 
-#      false ->
-#        where(
-#          queryable,
-#          [st],
-#          st.source_id == ^source_id and
-#            ((st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50)) or
-#               (^Time.new!(0, 0, 0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour)) and
-#            st.stop_id == ^stringify(stop_id)
-#        )
-#    end
+    #      false ->
+    #        where(
+    #          queryable,
+    #          [st],
+    #          st.source_id == ^source_id and
+    #            ((st.arrival_time >= ^timestamp_time and st.arrival_time <= ^Time.new!(23, 59, 50)) or
+    #               (^Time.new!(0, 0, 0) <= st.arrival_time and st.arrival_time <= ^timestamp_time_hour)) and
+    #            st.stop_id == ^stringify(stop_id)
+    #        )
+    #    end
   end
 
   defp divrem(num, den) do
@@ -1520,27 +1534,33 @@ defmodule RoomSanctum.Storage do
       else
         %{hours: time.hour, minutes: time.minute, seconds: time.second}
       end
+
     as_seconds = as_interval.hours * 60 * 60 + as_interval.minutes * 60 + as_interval.seconds
     struct(Postgrex.Interval, %{secs: as_seconds})
   end
 
   def interval_to_time(interval) do
-    {h, r1} = divrem(interval, (60*60))
+    {h, r1} = divrem(interval, 60 * 60)
     {m, s} = divrem(r1, 60)
-    h = if h > 23 do
-      h - 24
+
+    h =
+      if h > 23 do
+        h - 24
       else
-      h
-    end
-    Time.new!(h,m,s)
+        h
+      end
+
+    Time.new!(h, m, s)
   end
 
   def fix_arrival_times(res) do
-    res |> Enum.map(fn map -> map |> Map.put(:arrival_time, map.arrival_time.secs |> interval_to_time) end)
+    res
+    |> Enum.map(fn map ->
+      map |> Map.put(:arrival_time, map.arrival_time.secs |> interval_to_time)
+    end)
   end
 
   def get_all_arrivals_for_stop(source_id, stop_id) do
-
   end
 
   @doc """
@@ -1553,7 +1573,13 @@ defmodule RoomSanctum.Storage do
   onto a row we want one field from. Passing it in skips all of that; leaving
   it out still works, and still pays for it.
   """
-  def get_upcoming_arrivals_for_stop(source_id, stop_id, limit \\ 16, timestamp \\ :now, tz \\ nil)
+  def get_upcoming_arrivals_for_stop(
+        source_id,
+        stop_id,
+        limit \\ 16,
+        timestamp \\ :now,
+        tz \\ nil
+      )
 
   def get_upcoming_arrivals_for_stop(source_id, stop_id, limit, timestamp, nil) do
     get_upcoming_arrivals_for_stop(
@@ -2227,7 +2253,6 @@ defmodule RoomSanctum.Storage do
     GBFSAlert.changeset(alert, attrs)
   end
 
-
   alias RoomSanctum.Storage.GBFS.V1.EbikesAtStations
 
   @doc """
@@ -2531,7 +2556,6 @@ defmodule RoomSanctum.Storage do
     |> Repo.delete_all()
   end
 
-
   alias RoomSanctum.Storage.GBFS.V1.SystemPricingPlans
 
   @doc """
@@ -2734,7 +2758,6 @@ defmodule RoomSanctum.Storage do
     |> Repo.delete_all()
   end
 
-
   def get_current_information_for_bikestop(source_id, stop_id) do
     q =
       from st in StationStatus,
@@ -2771,8 +2794,7 @@ defmodule RoomSanctum.Storage do
 
   def count_gbfs_stations(source_id) do
     from(s in StationInfo,
-      where:
-        s.source_id == ^source_id,
+      where: s.source_id == ^source_id,
       select: fragment("count(*)")
     )
     |> Repo.one()
@@ -2780,8 +2802,7 @@ defmodule RoomSanctum.Storage do
 
   def count_gbfs_slots(source_id) do
     from(s in StationStatus,
-      where:
-        s.source_id == ^source_id,
+      where: s.source_id == ^source_id,
       select: fragment("sum(abs(?))", s.num_docks_available)
     )
     |> Repo.one()
@@ -2789,8 +2810,7 @@ defmodule RoomSanctum.Storage do
 
   def count_gbfs_bikes(source_id) do
     from(s in StationStatus,
-      where:
-        s.source_id == ^source_id,
+      where: s.source_id == ^source_id,
       select: fragment("sum(abs(?))", s.num_bikes_available)
     )
     |> Repo.one()
@@ -2798,8 +2818,7 @@ defmodule RoomSanctum.Storage do
 
   def count_gbfs_ebikes(source_id) do
     from(s in StationStatus,
-      where:
-        s.source_id == ^source_id,
+      where: s.source_id == ^source_id,
       select: fragment("sum(abs(?))", s.num_ebikes_available)
     )
     |> Repo.one()
@@ -2807,8 +2826,7 @@ defmodule RoomSanctum.Storage do
 
   def count_free_bikes(source_id) do
     from(s in FreeBikeStatus,
-      where:
-        s.source_id == ^source_id,
+      where: s.source_id == ^source_id,
       select: fragment("count(*)")
     )
     |> Repo.one()
@@ -2816,8 +2834,7 @@ defmodule RoomSanctum.Storage do
 
   def count_free_bikes_types(source_id) do
     from(s in FreeBikeStatus,
-      where:
-        s.source_id == ^source_id,
+      where: s.source_id == ^source_id,
       join: vt in VehicleTypes,
       on: s.vehicle_type_id == vt.vehicle_type_id,
       group_by: vt.form_factor,
@@ -2861,32 +2878,32 @@ defmodule RoomSanctum.Storage do
   """
   def stations_near(source_id, %Geo.Point{} = place, radius) do
     from(st in StationStatus,
-          join: si in StationInfo,
-          on: si.station_id == st.station_id and si.source_id == st.source_id,
-          left_join: eb in EbikesAtStations,
-          on: eb.station_id == st.station_id,
-          where:
-            st.source_id == ^source_id and
-              fragment("ST_DWithin(?::geography, ?::geography, ?)", si.place, ^place, ^radius),
-          order_by: fragment("? <-> ?", si.place, ^place),
-          select: %{
-            is_installed: st.is_installed,
-            is_renting: st.is_renting,
-            is_returning: st.is_returning,
-            last_reported: st.last_reported,
-            num_bikes_available: st.num_bikes_available,
-            num_bikes_disabled: st.num_bikes_disabled,
-            num_docks_available: st.num_docks_available,
-            num_docks_disabled: st.num_docks_disabled,
-            num_ebikes_available: st.num_ebikes_available,
-            station_id: st.station_id,
-            station_status: st.station_status,
-            capacity: si.capacity,
-            lat: si.lat,
-            lon: si.lon,
-            place: si.place,
-            name: si.name,
-            short_name: si.short_name,
+      join: si in StationInfo,
+      on: si.station_id == st.station_id and si.source_id == st.source_id,
+      left_join: eb in EbikesAtStations,
+      on: eb.station_id == st.station_id,
+      where:
+        st.source_id == ^source_id and
+          fragment("ST_DWithin(?::geography, ?::geography, ?)", si.place, ^place, ^radius),
+      order_by: fragment("? <-> ?", si.place, ^place),
+      select: %{
+        is_installed: st.is_installed,
+        is_renting: st.is_renting,
+        is_returning: st.is_returning,
+        last_reported: st.last_reported,
+        num_bikes_available: st.num_bikes_available,
+        num_bikes_disabled: st.num_bikes_disabled,
+        num_docks_available: st.num_docks_available,
+        num_docks_disabled: st.num_docks_disabled,
+        num_ebikes_available: st.num_ebikes_available,
+        station_id: st.station_id,
+        station_status: st.station_status,
+        capacity: si.capacity,
+        lat: si.lat,
+        lon: si.lon,
+        place: si.place,
+        name: si.name,
+        short_name: si.short_name,
         ebikes_info: eb.ebikes
       }
     )
@@ -2930,9 +2947,9 @@ defmodule RoomSanctum.Storage do
 
   def find_free_bikes_around_point(source_id, point, distance) do
     from(f in FreeBikeStatus,
-      where: fragment("ST_DWithin(?, ?, ?)", f.point, ^point, ^distance)
-      and
-      f.source_id == ^source_id,
+      where:
+        fragment("ST_DWithin(?, ?, ?)", f.point, ^point, ^distance) and
+          f.source_id == ^source_id
     )
     |> Repo.all()
   end
@@ -3356,13 +3373,13 @@ defmodule RoomSanctum.Storage do
 
   def nearby_stops(source_id, %Geo.Point{} = point, limit, radius) do
     from(s in Stop,
+      # Only somewhere you can board. A GTFS feed keeps its stairwells,
+      # lifts and pathway nodes in this table too -- location_type 1 to 4 --
+      # and none of them appear in stop_times. The five things nearest a
+      # station entrance are usually five of its own nodes, so without this
+      # the answer is a list of doors with no departures behind any of them.
       where:
         s.source_id == ^source_id and not is_nil(s.stop_lat) and not is_nil(s.stop_lon) and
-          # Only somewhere you can board. A GTFS feed keeps its stairwells,
-          # lifts and pathway nodes in this table too -- location_type 1 to 4 --
-          # and none of them appear in stop_times. The five things nearest a
-          # station entrance are usually five of its own nodes, so without this
-          # the answer is a list of doors with no departures behind any of them.
           (is_nil(s.location_type) or s.location_type in ["", "0"]),
       limit: ^limit,
       order_by: fragment("place <-> ?", ^point)

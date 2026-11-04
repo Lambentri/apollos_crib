@@ -5,7 +5,6 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
   alias RoomSanctum.Accounts
   alias RoomSanctum.Configuration.Pythiae.Const
 
-
   def gen_name() do
     FriendlyID.generate(2, separator: "-")
   end
@@ -92,7 +91,6 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
     {:noreply, socket}
   end
 
-
   @impl true
   def update(%{pythiae: pythiae} = assigns, socket) do
     changeset = Configuration.change_pythiae(pythiae)
@@ -122,8 +120,11 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
        |> Enum.map(fn x -> {x.name, x.id} end)
        |> Enum.into(%{})
      )
-    |> assign(:consts, [
-       %Const{title: "Fun Fact", body: "A Coconut will reach approx 10 meters per second before crushing your skull"},
+     |> assign(:consts, [
+       %Const{
+         title: "Fun Fact",
+         body: "A Coconut will reach approx 10 meters per second before crushing your skull"
+       },
        %Const{title: "Fun Fact", body: "Poseidon will take blood, it's guaranteed."}
      ])}
   end

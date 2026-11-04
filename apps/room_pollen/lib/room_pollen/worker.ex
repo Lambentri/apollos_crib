@@ -60,9 +60,7 @@ defmodule RoomPollen.Worker do
   def handle_cast(:refresh_forecasts, state) do
     case creds(state.inst) do
       {:ok, key} ->
-        Logger.info(
-          "Pollen::#{state.inst.id} refreshing #{MapSet.size(state.targets)} targets"
-        )
+        Logger.info("Pollen::#{state.inst.id} refreshing #{MapSet.size(state.targets)} targets")
 
         new_forecasts =
           state.targets

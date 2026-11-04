@@ -346,6 +346,7 @@ defmodule RoomAirQuality.Worker do
     sh = ts |> DateTime.add(-hours_ago * 60 * 60, :second)
     file_str = sh |> Timex.format!("%Y%m%d%H", :strftime)
     date_str = sh |> Timex.format!("%Y%m%d", :strftime)
+
     "https://s3-us-west-1.amazonaws.com//files.airnowtech.org/airnow/#{sh.year}/#{date_str}/HourlyAQObs_#{file_str}.dat"
   end
 

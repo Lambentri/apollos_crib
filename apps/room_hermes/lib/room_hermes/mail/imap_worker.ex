@@ -193,7 +193,10 @@ defmodule RoomHermes.Mail.ImapWorker do
           {:ok, conn}
 
         {:error, reason} ->
-          Logger.warning("Mailbox::#{source.id} queued uid #{uid} but could not flag it: #{inspect(reason)}")
+          Logger.warning(
+            "Mailbox::#{source.id} queued uid #{uid} but could not flag it: #{inspect(reason)}"
+          )
+
           {:ok, conn}
       end
     else

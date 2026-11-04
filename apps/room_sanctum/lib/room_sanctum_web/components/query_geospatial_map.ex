@@ -5,9 +5,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
   @doc """
   Renders an interactive Leaflet map showing queries based on their geospatial point data.
-  
+
   ## Examples
-  
+
       <.query_geospatial_map queries={@queries} />
       
       <.query_geospatial_map queries={@queries} selected_tint={@tint} />
@@ -32,7 +32,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
   attr :queried_station_ids, :list,
     default: [],
-    doc: "Station ids that already have a query; those markers render as queries and lose the add action."
+    doc:
+      "Station ids that already have a query; those markers render as queries and lose the add action."
 
   attr :add_query_event, :string,
     default: nil,
@@ -50,7 +51,9 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
   attr :vehicle_positions, :list, default: []
   attr :free_bikes, :list, default: []
-  attr :aircraft, :list, default: [],
+
+  attr :aircraft, :list,
+    default: [],
     doc: "ADS-B aircraft as room_icarus normalises them: string keys, lat/lon/track/class."
 
   attr :stations, :list, default: []
@@ -128,13 +131,24 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     """
 
   def query_geospatial_map(assigns) do
-    assigns = 
-      assigns 
+    assigns =
+      assigns
       |> assign(:map_queries, get_mappable_queries(assigns.queries, assigns.query_summaries))
-      |> assign(:map_vehicles, format_vehicle_positions(assigns.vehicle_positions, assigns.route_types))
+      |> assign(
+        :map_vehicles,
+        format_vehicle_positions(assigns.vehicle_positions, assigns.route_types)
+      )
       |> assign(:map_free_bikes, format_free_bikes(assigns.free_bikes))
       |> assign(:map_aircraft, format_aircraft(assigns.aircraft))
-      |> assign(:map_stations, format_stations(assigns.stations, Map.get(assigns, :station_statuses, []), Map.get(assigns, :source_tint, nil)))
+      |> assign(
+        :map_stations,
+        format_stations(
+          assigns.stations,
+          Map.get(assigns, :station_statuses, []),
+          Map.get(assigns, :source_tint, nil)
+        )
+      )
+
     # Sorted, and by a stable key: within a group the order is whatever the feed
     # or the query happened to return, and a marker that changes place in the
     # list is a DOM node LiveView *moves* -- which the map element sees as that
@@ -150,6 +164,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         ],
         fn points -> Enum.sort_by(points, &to_string(&1.id)) end
       )
+
     all_points = Enum.concat(groups)
     # Centre on everything, even any points a cap would drop -- unless the
     # caller named a place to look at.
@@ -181,7 +196,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       |> assign(:zoom, zoom)
       |> assign(:truncated, length(all_points) - length(shown_points))
 
-  ~H"""
+    ~H"""
     <div class={"query-geospatial-map w-full #{@class}"}>
       <%!-- No phx-update here on purpose: the element patches lat/lng/zoom through
             attributeChangedCallback and markers through a MutationObserver, so
@@ -415,26 +430,28 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Helper function to get queries that have geospatial data
   defp get_mappable_queries(queries, summaries) do
     # Debug log all incoming queries
-#    IO.inspect(length(queries), label: "Total queries received")
-    
-    filtered = queries
-    |> Enum.filter(fn query ->
-      # Check if query has geom field, source has point data, or internal query data has coordinates
-      has_geom = query.geom != nil
-      has_source_point = query.source && has_point_data?(query.source)
-      has_query_point = extract_from_query_data(query) != false
-      
-      result = has_geom || has_source_point || has_query_point
-#      IO.inspect({query.id, query.name, has_geom, has_source_point, has_query_point, result}, label: "Query mappability check")
-      result
-    end)
-    
-#    IO.inspect(length(filtered), label: "Filtered mappable queries")
-    
+    #    IO.inspect(length(queries), label: "Total queries received")
+
+    filtered =
+      queries
+      |> Enum.filter(fn query ->
+        # Check if query has geom field, source has point data, or internal query data has coordinates
+        has_geom = query.geom != nil
+        has_source_point = query.source && has_point_data?(query.source)
+        has_query_point = extract_from_query_data(query) != false
+
+        result = has_geom || has_source_point || has_query_point
+
+        #      IO.inspect({query.id, query.name, has_geom, has_source_point, has_query_point, result}, label: "Query mappability check")
+        result
+      end)
+
+    #    IO.inspect(length(filtered), label: "Filtered mappable queries")
+
     mapped = filtered |> Enum.map(&format_query_for_map(&1, Map.get(summaries, &1.id, [])))
-    
-#    IO.inspect(length(mapped), label: "Final mapped queries")
-    
+
+    #    IO.inspect(length(mapped), label: "Final mapped queries")
+
     mapped
   end
 
@@ -448,25 +465,26 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     latitude = Map.get(source, :latitude, nil)
     longitude = Map.get(source, :longitude, nil)
     coordinates = Map.get(source, :coordinates, nil)
-    
-    geom != nil || 
-    (lat != nil && lng != nil) ||
-    (latitude != nil && longitude != nil) ||
-    coordinates != nil
+
+    geom != nil ||
+      (lat != nil && lng != nil) ||
+      (latitude != nil && longitude != nil) ||
+      coordinates != nil
   end
 
   # Format query data for the JavaScript map component
   defp format_query_for_map(query, summary) do
     {lat, lng} = extract_coordinates(query)
-    
+
     # Debug log the coordinate extraction
-#    IO.inspect({query.id, query.name, lat, lng}, label: "Map coordinates for query")
-    
-    tint = cond do
-      query.meta && query.meta.tint -> query.meta.tint
-      query.source && query.source.meta && query.source.meta.tint -> query.source.meta.tint
-      true -> nil
-    end
+    #    IO.inspect({query.id, query.name, lat, lng}, label: "Map coordinates for query")
+
+    tint =
+      cond do
+        query.meta && query.meta.tint -> query.meta.tint
+        query.source && query.source.meta && query.source.meta.tint -> query.source.meta.tint
+        true -> nil
+      end
 
     %{
       id: query.id,
@@ -492,9 +510,10 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         # Handle PostGIS geometry - you may need to adjust this based on your Geo setup
         case query.geom do
           %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-          _ -> {0, 0} # fallback
+          # fallback
+          _ -> {0, 0}
         end
-        
+
       query.source && has_point_data?(query.source) ->
         source = query.source
         geom = Map.get(source, :geom, nil)
@@ -502,25 +521,30 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         lng = Map.get(source, :lng, nil)
         latitude = Map.get(source, :latitude, nil)
         longitude = Map.get(source, :longitude, nil)
-        
+
         cond do
           geom != nil ->
             case geom do
               %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
               _ -> {0, 0}
             end
+
           lat != nil && lng != nil ->
             {lat, lng}
+
           latitude != nil && longitude != nil ->
             {latitude, longitude}
-          true -> {0, 0}
+
+          true ->
+            {0, 0}
         end
 
       # Handle data from the query's underlying stop/thing being queried
       query.query && extract_from_query_data(query) ->
         extract_from_query_data(query)
-        
-      true -> {0, 0}
+
+      true ->
+        {0, 0}
     end
   end
 
@@ -532,11 +556,11 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         cond do
           query.query && Map.has_key?(query.query, :stop) ->
             get_gtfs_stop_coordinates(query.source.id, query.query.stop)
-          
+
           # Check if this is a vehicle position query
           query.source.config && Map.get(query.source.config, :url_rt_vp) ->
             get_gtfs_vehicle_coordinates(query.source.id, query)
-          
+
           true ->
             false
         end
@@ -578,17 +602,23 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Get coordinates for GTFS stop
   defp get_gtfs_stop_coordinates(source_id, stop_id) do
     case RoomSanctum.Storage.get_stop_by_id(source_id, stop_id) do
-      nil -> false
+      nil ->
+        false
+
       stop when stop.stop_lat != nil and stop.stop_lon != nil ->
         {stop.stop_lat, stop.stop_lon}
-      _ -> false
+
+      _ ->
+        false
     end
   end
 
   # Get coordinates for GBFS station
   defp get_gbfs_station_coordinates(source_id, station_id) do
     case RoomSanctum.Storage.get_gbfs_station_by_id(source_id, station_id) do
-      nil -> false
+      nil ->
+        false
+
       station ->
         cond do
           # First try the PostGIS geometry field if it exists
@@ -597,10 +627,13 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
               %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
               _ -> false
             end
+
           # Fall back to separate lat/lon fields
           station.lat != nil && station.lon != nil ->
             {station.lat, station.lon}
-          true -> false
+
+          true ->
+            false
         end
     end
   end
@@ -608,28 +641,34 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Get coordinates for GBFS free bikes in area
   defp get_gbfs_free_bikes_in_area_coordinates(source_id, query_params) do
     # Extract point and radius from query parameters
-    {point, radius} = case query_params do
-      %{point: %Geo.Point{} = geo_point, radius: radius} ->
-        {geo_point, radius}
-      %{lat: lat, lng: lng, radius: radius} when is_number(lat) and is_number(lng) ->
-        {%Geo.Point{coordinates: {lng, lat}}, radius}
-      %{latitude: lat, longitude: lng, radius: radius} when is_number(lat) and is_number(lng) ->
-        {%Geo.Point{coordinates: {lng, lat}}, radius}
-      _ ->
-        {nil, nil}
-    end
-    
+    {point, radius} =
+      case query_params do
+        %{point: %Geo.Point{} = geo_point, radius: radius} ->
+          {geo_point, radius}
+
+        %{lat: lat, lng: lng, radius: radius} when is_number(lat) and is_number(lng) ->
+          {%Geo.Point{coordinates: {lng, lat}}, radius}
+
+        %{latitude: lat, longitude: lng, radius: radius} when is_number(lat) and is_number(lng) ->
+          {%Geo.Point{coordinates: {lng, lat}}, radius}
+
+        _ ->
+          {nil, nil}
+      end
+
     case {point, radius} do
       {%Geo.Point{} = geo_point, radius} when is_number(radius) ->
         # Find bikes in the area using existing Storage function
         case RoomSanctum.Storage.find_free_bikes_around_point(source_id, geo_point, radius) do
-          [] -> 
+          [] ->
             false
+
           bikes when is_list(bikes) ->
             # Return the center point of the query area
             %Geo.Point{coordinates: {lng, lat}} = geo_point
             {lat, lng}
         end
+
       _ ->
         false
     end
@@ -669,26 +708,27 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   defp get_gtfs_vehicle_coordinates(source_id, query) do
     try do
       case RoomGtfs.Worker.get_current_vehicle_positions(source_id) do
-        [] -> 
+        [] ->
           false
-        
+
         vehicles when is_list(vehicles) ->
           # Return the first vehicle position found, or average if multiple
           case List.first(vehicles) do
             %{latitude: lat, longitude: lng} when lat != nil and lng != nil ->
               {lat, lng}
-            _ -> 
+
+            _ ->
               false
           end
-        
-        _ -> 
+
+        _ ->
           false
       end
     rescue
-      _ -> 
+      _ ->
         false
     catch
-      _ -> 
+      _ ->
         false
     end
   end
@@ -696,8 +736,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # Format vehicle positions for map display
   defp format_vehicle_positions(vehicle_positions, route_types \\ %{}) do
     vehicle_positions
-    |> Enum.filter(fn vehicle -> 
-      vehicle.latitude != nil && vehicle.longitude != nil 
+    |> Enum.filter(fn vehicle ->
+      vehicle.latitude != nil && vehicle.longitude != nil
     end)
     |> Enum.map(fn vehicle ->
       %{
@@ -723,7 +763,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         mode: Map.get(vehicle, :mode),
         name: vehicle_label(vehicle),
         timestamp: vehicle.timestamp,
-        icon: "fa-bus" # or different icon based on vehicle type
+        # or different icon based on vehicle type
+        icon: "fa-bus"
       }
     end)
   end
@@ -813,16 +854,20 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       point_of(bike) != nil || (Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil)
     end)
     |> Enum.map(fn bike ->
-      {lat, lng} = cond do
-        point_of(bike) != nil ->
-          case point_of(bike) do
-            %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-            _ -> {0, 0}
-          end
-        Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil ->
-          {Map.get(bike, :lat), Map.get(bike, :lon)}
-        true -> {0, 0}
-      end
+      {lat, lng} =
+        cond do
+          point_of(bike) != nil ->
+            case point_of(bike) do
+              %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
+              _ -> {0, 0}
+            end
+
+          Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil ->
+            {Map.get(bike, :lat), Map.get(bike, :lon)}
+
+          true ->
+            {0, 0}
+        end
 
       # Extract additional fields with defaults
       is_disabled = Map.get(bike, :is_disabled, false)
@@ -859,7 +904,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         # inventing an empty one.
         charge: charge,
         summary: bike_summary(charge, current_range_meters, is_reserved, is_disabled),
-        icon: "fa-bicycle" # bike icon
+        # bike icon
+        icon: "fa-bicycle"
       }
     end)
   end
@@ -884,7 +930,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     percent |> max(0) |> min(100) |> round()
   end
 
-  defp charge_of(_fuel_percent, range, full) when is_number(range) and is_number(full) and full > 0 do
+  defp charge_of(_fuel_percent, range, full)
+       when is_number(range) and is_number(full) and full > 0 do
     (range / full * 100) |> max(0) |> min(100) |> round()
   end
 
@@ -922,14 +969,20 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         label: bike_state_label(charge, reserved, disabled),
         value: charge && "#{charge}%"
       },
-      %{icon: "road", label: "Range", value: is_number(range) && "#{Float.round(range / 1000, 1)} km"}
+      %{
+        icon: "road",
+        label: "Range",
+        value: is_number(range) && "#{Float.round(range / 1000, 1)} km"
+      }
     ]
     |> Enum.reject(fn %{value: value} -> value in [nil, false, ""] end)
   end
 
   defp bike_state_icon(_charge, _reserved, true), do: "ban"
   defp bike_state_icon(_charge, true, _disabled), do: "lock"
-  defp bike_state_icon(charge, _reserved, _disabled), do: get_battery_icon(charge) || "battery-half"
+
+  defp bike_state_icon(charge, _reserved, _disabled),
+    do: get_battery_icon(charge) || "battery-half"
 
   defp bike_state_label(_charge, _reserved, true), do: "Out of service"
   defp bike_state_label(_charge, true, _disabled), do: "Reserved"
@@ -937,35 +990,35 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
 
   @doc """
   Calculate battery information from current_range_meters.
-  
+
   Divides range by the furthest range these feeds report to get an approximate
   battery level percentage,
   then returns appropriate FontAwesome battery icon and color.
-  
+
   Returns {battery_level_percent, icon_class, color}
   """
   def get_battery_info(current_range_meters) when is_number(current_range_meters) do
     battery_level = (current_range_meters / @full_range_m * 100) |> Float.round(1)
 
-    
-    {icon, color} = cond do
-      battery_level < 10 -> {"fa-battery-empty", "black"}
-      battery_level < 30 -> {"fa-battery-quarter", "red"}
-      battery_level < 50 -> {"fa-battery-half", "orange"}
-      battery_level < 80 -> {"fa-battery-three-quarters", "yellow"}
-      true -> {"fa-battery-full", "green"}
-    end
-    
+    {icon, color} =
+      cond do
+        battery_level < 10 -> {"fa-battery-empty", "black"}
+        battery_level < 30 -> {"fa-battery-quarter", "red"}
+        battery_level < 50 -> {"fa-battery-half", "orange"}
+        battery_level < 80 -> {"fa-battery-three-quarters", "yellow"}
+        true -> {"fa-battery-full", "green"}
+      end
+
     {battery_level, icon, color}
   end
-  
+
   def get_battery_info(_), do: {nil, nil, nil}
-  
+
   @doc """
   Get battery icon class for a given battery level percentage.
-  
+
   ## Examples
-  
+
       iex> get_battery_icon(5.0)
       "fa-battery-empty"
       
@@ -990,14 +1043,14 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       true -> "fa-battery-full"
     end
   end
-  
+
   def get_battery_icon(_), do: nil
-  
+
   @doc """
   Get battery color for a given battery level percentage.
-  
+
   ## Examples
-  
+
       iex> get_battery_color(5.0)
       "black"
       
@@ -1022,31 +1075,36 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       true -> "green"
     end
   end
-  
+
   def get_battery_color(_), do: nil
-  
+
   # Format stations for map display
   defp format_stations(stations, station_statuses \\ [], source_tint \\ nil) do
     # Create a map of station status by station_id for quick lookup
-    status_map = Enum.reduce(station_statuses, %{}, fn status, acc ->
-      Map.put(acc, status.station_id, status)
-    end)
+    status_map =
+      Enum.reduce(station_statuses, %{}, fn status, acc ->
+        Map.put(acc, status.station_id, status)
+      end)
 
     stations
-    |> Enum.filter(fn station -> 
-      (station.place != nil) || (station.lat != nil && station.lon != nil)
+    |> Enum.filter(fn station ->
+      station.place != nil || (station.lat != nil && station.lon != nil)
     end)
     |> Enum.map(fn station ->
-      {lat, lng} = cond do
-        station.place != nil ->
-          case station.place do
-            %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-            _ -> {0, 0}
-          end
-        station.lat != nil && station.lon != nil ->
-          {station.lat, station.lon}
-        true -> {0, 0}
-      end
+      {lat, lng} =
+        cond do
+          station.place != nil ->
+            case station.place do
+              %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
+              _ -> {0, 0}
+            end
+
+          station.lat != nil && station.lon != nil ->
+            {station.lat, station.lon}
+
+          true ->
+            {0, 0}
+        end
 
       # Get associated station status
       status = Map.get(status_map, station.station_id, nil)
@@ -1061,7 +1119,8 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
         address: Map.get(station, :address, ""),
         lat: lat,
         lng: lng,
-        tint: source_tint,  # Use the source tint passed from the parent
+        # Use the source tint passed from the parent
+        tint: source_tint,
         # Set where one map holds several sources: the tint map gives each
         # offering its own shape, since fill already means the marker's kind and
         # the outline already means its tint. Nil everywhere else, which draws a

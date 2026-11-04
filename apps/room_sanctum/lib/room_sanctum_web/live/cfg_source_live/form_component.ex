@@ -1,21 +1,21 @@
-
 defmodule RoomSanctumWeb.SourceLive.FormComponent do
   use RoomSanctumWeb, :live_component
 
   alias RoomSanctum.Configuration
 
   @run_period_steps [
-    {1,  86_400},
-    {3,  259_200},
-    {7,  604_800},
+    {1, 86_400},
+    {3, 259_200},
+    {7, 604_800},
     {14, 1_209_600},
     {21, 1_814_400},
-    {28, 2_419_200},
+    {28, 2_419_200}
   ]
 
   def run_period_steps, do: @run_period_steps
 
   defp seconds_to_idx(nil), do: 2
+
   defp seconds_to_idx(secs) do
     @run_period_steps
     |> Enum.with_index()
@@ -24,6 +24,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   end
 
   defp idx_to_seconds(idx) when is_binary(idx), do: idx_to_seconds(String.to_integer(idx))
+
   defp idx_to_seconds(idx) do
     {_, secs} = Enum.at(@run_period_steps, idx, {7, 604_800})
     secs
@@ -211,6 +212,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   def github_poll_steps, do: @github_poll_steps
 
   defp github_secs_to_idx(nil), do: 2
+
   defp github_secs_to_idx(secs) when is_integer(secs) do
     @github_poll_steps
     |> Enum.with_index()
@@ -219,6 +221,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   end
 
   defp github_idx_to_secs(idx) when is_binary(idx), do: github_idx_to_secs(String.to_integer(idx))
+
   defp github_idx_to_secs(idx) do
     {_, secs} = Enum.at(@github_poll_steps, idx, {"1m", 60})
     secs
@@ -302,6 +305,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   def gitlab_poll_steps, do: @gitlab_poll_steps
 
   defp gitlab_secs_to_idx(nil), do: 1
+
   defp gitlab_secs_to_idx(secs) when is_integer(secs) do
     @gitlab_poll_steps
     |> Enum.with_index()
@@ -310,6 +314,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
   end
 
   defp gitlab_idx_to_secs(idx) when is_binary(idx), do: gitlab_idx_to_secs(String.to_integer(idx))
+
   defp gitlab_idx_to_secs(idx) do
     {_, secs} = Enum.at(@gitlab_poll_steps, idx, {"10s", 10})
     secs
@@ -341,7 +346,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> Enum.filter(fn p ->
         Enum.member?(namespaces, get_in(p, ["namespace", "full_path"]) || "")
       end)
-      |> Enum.map(&(to_string(&1["id"])))
+      |> Enum.map(&to_string(&1["id"]))
       |> MapSet.new()
 
     watched = MapSet.union(project_set, namespace_projects) |> MapSet.size()
@@ -407,10 +412,13 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     mailbox_sel =
       Configuration.list_cfg_sources({:type, :mailbox})
       |> Enum.map(&{&1.name, &1.id})
+
     run_period_idx = seconds_to_idx(source.meta && source.meta.run_period)
 
     rt_groups = rt_groups(source.config)
-    rt_idxs = Map.new(rt_groups, fn {_url, kinds} -> {kinds, rt_group_idx(source.config, kinds)} end)
+
+    rt_idxs =
+      Map.new(rt_groups, fn {_url, kinds} -> {kinds, rt_group_idx(source.config, kinds)} end)
 
     gh_secs =
       case source.config do
@@ -494,7 +502,8 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> convert_github_poll_params()
       |> convert_gitlab_poll_params()
 
-    run_period_idx = get_in(source_params, ["meta", "run_period"])
+    run_period_idx =
+      get_in(source_params, ["meta", "run_period"])
       |> then(fn s -> if is_binary(s), do: String.to_integer(s), else: s end)
       |> seconds_to_idx()
 
@@ -505,31 +514,42 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
         _ -> nil
       end
 
-    type = source_params["type"] || (socket.assigns.source.type && to_string(socket.assigns.source.type))
+    type =
+      source_params["type"] ||
+        (socket.assigns.source.type && to_string(socket.assigns.source.type))
 
     changeset =
       socket.assigns.source
       |> Configuration.change_source(source_params)
       |> Map.put(:action, :validate)
 
-    config_for_estimate = Ecto.Changeset.get_field(changeset, :config) || socket.assigns.source.config || %{}
+    config_for_estimate =
+      Ecto.Changeset.get_field(changeset, :config) || socket.assigns.source.config || %{}
 
     {gh_idx, gh_estimate} =
       if type == "github" do
         gh_secs = poll_secs || 60
+
         {github_secs_to_idx(gh_secs),
          github_estimate(config_for_estimate, socket.assigns[:gh_available_repos] || [], gh_secs)}
       else
-        {socket.assigns[:github_poll_idx] || 2, socket.assigns[:github_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
+        {socket.assigns[:github_poll_idx] || 2,
+         socket.assigns[:github_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
       end
 
     {gl_idx, gl_estimate} =
       if type == "gitlab" do
         gl_secs = poll_secs || 10
+
         {gitlab_secs_to_idx(gl_secs),
-         gitlab_estimate(config_for_estimate, socket.assigns[:gl_available_projects] || [], gl_secs)}
+         gitlab_estimate(
+           config_for_estimate,
+           socket.assigns[:gl_available_projects] || [],
+           gl_secs
+         )}
       else
-        {socket.assigns[:gitlab_poll_idx] || 1, socket.assigns[:gitlab_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
+        {socket.assigns[:gitlab_poll_idx] || 1,
+         socket.assigns[:gitlab_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
       end
 
     # Read back from the converted params rather than the changeset: a slider

@@ -112,7 +112,8 @@ defmodule RoomBourse.Worker do
   A single quote, or `{:error, message}` with something worth showing a user.
   """
   def quote_for(symbol) do
-    url = "#{endpoint()}/v8/finance/chart/#{URI.encode(symbol, &URI.char_unreserved?/1)}?range=1d&interval=1d"
+    url =
+      "#{endpoint()}/v8/finance/chart/#{URI.encode(symbol, &URI.char_unreserved?/1)}?range=1d&interval=1d"
 
     # Yahoo returns 404 for unknown symbols with a usable description, so a
     # non-200 body is still worth decoding before giving up on it.
@@ -159,7 +160,9 @@ defmodule RoomBourse.Worker do
     price = meta["regularMarketPrice"]
     previous = meta["chartPreviousClose"] || meta["previousClose"]
     change = if is_number(price) and is_number(previous), do: price - previous
-    change_pct = if is_number(change) and is_number(previous) and previous != 0, do: change / previous * 100
+
+    change_pct =
+      if is_number(change) and is_number(previous) and previous != 0, do: change / previous * 100
 
     %{
       symbol: meta["symbol"] || String.upcase(symbol),
@@ -214,7 +217,8 @@ defmodule RoomBourse.Worker do
 
   # Yahoo rejects requests without a browser-ish agent.
   defp user_agent,
-    do: Application.get_env(:room_bourse, :user_agent, "Mozilla/5.0 (compatible; ApollosCrib/1.0)")
+    do:
+      Application.get_env(:room_bourse, :user_agent, "Mozilla/5.0 (compatible; ApollosCrib/1.0)")
 
   defp normalise(symbol) when is_binary(symbol) do
     case symbol |> String.trim() |> String.upcase() do

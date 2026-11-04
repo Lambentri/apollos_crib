@@ -38,7 +38,6 @@ defmodule RoomSanctum.Worker.Vision do
   # not all leave at once.
   @max_inflight 2
 
-
   def start_link(opts) do
     GenServer.start_link(__MODULE__, opts, name: via_tuple("vision" <> opts[:id]))
   end
@@ -178,7 +177,6 @@ defmodule RoomSanctum.Worker.Vision do
     end
   end
 
-
   # A query that overran. Shut it down, and leave what it answered last time
   # where it is -- a board carrying times from two minutes ago is worth more
   # than one carrying none, and blanking a panel because a source hiccuped is
@@ -260,6 +258,7 @@ defmodule RoomSanctum.Worker.Vision do
       queries: state.vision_q,
       name: if(state.vision, do: state.vision.name, else: "Unknown")
     }
+
     {:reply, response, state}
   end
 

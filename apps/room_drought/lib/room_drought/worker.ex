@@ -60,7 +60,9 @@ defmodule RoomDrought.Worker do
 
   def handle_cast(:refresh_usdm, state) do
     if usdm_enabled?(state.inst) do
-      Logger.info("Drought::#{state.inst.id} refreshing USDM (#{MapSet.size(state.targets)} targets)")
+      Logger.info(
+        "Drought::#{state.inst.id} refreshing USDM (#{MapSet.size(state.targets)} targets)"
+      )
 
       new_usdm =
         state.targets
@@ -130,7 +132,10 @@ defmodule RoomDrought.Worker do
   defp via(name), do: via_tuple(name)
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
-  defp usdm_enabled?(%{enabled: true, config: %{__struct__: @drought_config_module, products: products}})
+  defp usdm_enabled?(%{
+         enabled: true,
+         config: %{__struct__: @drought_config_module, products: products}
+       })
        when is_list(products),
        do: "usdm" in products
 

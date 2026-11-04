@@ -72,14 +72,17 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     Process.send_after(self(), :update_sec, 10000)
     queries = Configuration.get_queries(:source, socket.assigns.source_id)
     available_tints = get_available_tints(queries)
-    
-    # Add free bikes for GBFS sources
-    free_bikes = case socket.assigns.source.type do
-      :gbfs -> Storage.list_gbfs_free_bike_status() 
-               |> Enum.filter(&(&1.source_id == socket.assigns.source_id))
-      _ -> []
-    end
 
+    # Add free bikes for GBFS sources
+    free_bikes =
+      case socket.assigns.source.type do
+        :gbfs ->
+          Storage.list_gbfs_free_bike_status()
+          |> Enum.filter(&(&1.source_id == socket.assigns.source_id))
+
+        _ ->
+          []
+      end
 
     # Add station status for GBFS sources
     station_statuses = Stations.statuses_for_source(socket.assigns.source)
@@ -92,19 +95,22 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
     # Vehicle positions name a route, not a vehicle kind; the type comes from
     # the route table.
-    route_types = case socket.assigns.source.type do
-      :gtfs -> Storage.route_types(socket.assigns.source_id)
-      _ -> %{}
-    end
+    route_types =
+      case socket.assigns.source.type do
+        :gtfs -> Storage.route_types(socket.assigns.source_id)
+        _ -> %{}
+      end
 
     # Extract source tint for stations
-    source_tint = if socket.assigns.source.meta && socket.assigns.source.meta.tint do
-      socket.assigns.source.meta.tint
-    else
-      nil
-    end
-    
-    {:noreply, socket 
+    source_tint =
+      if socket.assigns.source.meta && socket.assigns.source.meta.tint do
+        socket.assigns.source.meta.tint
+      else
+        nil
+      end
+
+    {:noreply,
+     socket
      |> assign(:queries, queries)
      |> assign(:available_tints, available_tints)
      |> assign(:free_bikes, free_bikes)
@@ -153,8 +159,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   def handle_info({:stations_done, source_id, total}, socket) do
     if source_id == socket.assigns.source_id do
-      {:noreply,
-       socket |> assign(:stations_loading, false) |> assign(:station_count, total)}
+      {:noreply, socket |> assign(:stations_loading, false) |> assign(:station_count, total)}
     else
       {:noreply, socket}
     end
@@ -162,17 +167,27 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   def handle_info(:update_tester, socket) do
     Process.send_after(self(), :update_tester, 2000)
+
     case socket.assigns.tester_selected do
-      nil -> {:noreply, socket}
+      nil ->
+        {:noreply, socket}
+
       _otherwise ->
-        data = case socket.assigns.source.type do
-          :gtfs -> RoomGtfs.Worker.query_stop(socket.assigns.source.id, %{stop: socket.assigns.tester_selected})
-          :gbfs -> RoomGbfs.Worker.query_stop(socket.assigns.source.id, %{stop_id: socket.assigns.tester_selected})
-        end
+        data =
+          case socket.assigns.source.type do
+            :gtfs ->
+              RoomGtfs.Worker.query_stop(socket.assigns.source.id, %{
+                stop: socket.assigns.tester_selected
+              })
+
+            :gbfs ->
+              RoomGbfs.Worker.query_stop(socket.assigns.source.id, %{
+                stop_id: socket.assigns.tester_selected
+              })
+          end
+
         {:noreply, socket |> assign(:tester_selected_data, data)}
     end
-
-
   end
 
   @impl true
@@ -184,14 +199,22 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
     # Subscribe to relevant PubSub channels
     case source.type do
-      :gtfs -> 
+      :gtfs ->
         Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs")
         Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs_vehicle_positions:#{id}")
         if connected?(socket), do: Process.send_after(self(), :update_vehicle_positions, 1000)
-      :gbfs -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gbfs")
-      :aqi -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "aqi")
-      :calendar -> Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "ical")
-      _default -> :ok
+
+      :gbfs ->
+        Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gbfs")
+
+      :aqi ->
+        Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "aqi")
+
+      :calendar ->
+        Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "ical")
+
+      _default ->
+        :ok
     end
 
     source_id = String.to_integer(id)
@@ -406,8 +429,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   defp page_title(:show), do: "Offering Detail"
   defp page_title(:edit), do: "Modify Offering"
 
-
-
   # Create a query straight from a station marker's popup. Named after the
   # station so the query is recognisable without opening it.
   @impl true
@@ -462,9 +483,14 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
     preview =
       case {symbol, RoomBourse.Worker.pid(socket.assigns.source_id)} do
-        {"", _} -> nil
-        {_, nil} -> nil
-        {sym, _pid} -> RoomBourse.Worker.read(socket.assigns.source_id, %{symbol: sym}) |> List.first()
+        {"", _} ->
+          nil
+
+        {_, nil} ->
+          nil
+
+        {sym, _pid} ->
+          RoomBourse.Worker.read(socket.assigns.source_id, %{symbol: sym}) |> List.first()
       end
 
     {:noreply,
@@ -561,8 +587,11 @@ defmodule RoomSanctumWeb.SourceLive.Show do
        when is_binary(f) and is_binary(t) do
     result =
       case RoomTreasury.Worker.pid(socket.assigns.source_id) do
-        nil -> nil
-        _pid -> RoomTreasury.Worker.read(socket.assigns.source_id, %{from: f, to: t}) |> List.first()
+        nil ->
+          nil
+
+        _pid ->
+          RoomTreasury.Worker.read(socket.assigns.source_id, %{from: f, to: t}) |> List.first()
       end
 
     assign(socket, :treasury_preview, result)
@@ -588,10 +617,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
       "ical" ->
         RoomCalendar.Worker.update_static_data(id)
+
       "gitlab-projects" ->
         RoomGitlab.Worker.query_projects(id)
+
       "gitlab-commits" ->
         RoomGitlab.Worker.query_commits(id)
+
       "gitlab-jobs" ->
         RoomGitlab.Worker.query_jobs(id, %{})
     end
@@ -602,6 +634,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def handle_event("gitlab-open-config", _params, socket) do
     id = socket.assigns.source_id
+
     available =
       case RoomGitlab.Worker.pid(id) do
         nil -> []
@@ -901,7 +934,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
-#    IO.inspect({type, id})
+    #    IO.inspect({type, id})
 
     stats =
       case type do
@@ -915,8 +948,16 @@ defmodule RoomSanctumWeb.SourceLive.Show do
             stats ->
               %{gtfs: Map.delete(stats, :rt), rt: flatten_rt_stats(Map.get(stats, :rt))}
           end
-        "gbfs" -> %{gbfs: RoomGbfs.Worker.source_stats(id), system: RoomGbfs.Worker.sys_info_as_stats(id), free: RoomGbfs.Worker.free_stats(id)}
-        _otherwise -> %{}
+
+        "gbfs" ->
+          %{
+            gbfs: RoomGbfs.Worker.source_stats(id),
+            system: RoomGbfs.Worker.sys_info_as_stats(id),
+            free: RoomGbfs.Worker.free_stats(id)
+          }
+
+        _otherwise ->
+          %{}
       end
 
     {
@@ -996,99 +1037,112 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def handle_event("add-query", _params, socket) do
     case socket.assigns.source.type do
-      :gbfs -> Configuration.create_query(
-                %{
-                  user_id: socket.assigns.current_user.id,
-                  source_id: socket.assigns.source.id,
-                  name: socket.assigns.tester_selected_name,
-                  query: %{"stop_id": socket.assigns.tester_selected, "__type__": "gbfs"},
-                  public: true
-                }) |> IO.inspect
-      :gtfs -> Configuration.create_query(
-                 %{
-                   user_id: socket.assigns.current_user.id,
-                   source_id: socket.assigns.source.id,
-                   name: socket.assigns.tester_selected_name,
-                   query: %{"stop": socket.assigns.tester_selected, "__type__": "gtfs"},
-                   public: true
-                 }) |> IO.inspect
+      :gbfs ->
+        Configuration.create_query(%{
+          user_id: socket.assigns.current_user.id,
+          source_id: socket.assigns.source.id,
+          name: socket.assigns.tester_selected_name,
+          query: %{stop_id: socket.assigns.tester_selected, __type__: "gbfs"},
+          public: true
+        })
+        |> IO.inspect()
+
+      :gtfs ->
+        Configuration.create_query(%{
+          user_id: socket.assigns.current_user.id,
+          source_id: socket.assigns.source.id,
+          name: socket.assigns.tester_selected_name,
+          query: %{stop: socket.assigns.tester_selected, __type__: "gtfs"},
+          public: true
+        })
+        |> IO.inspect()
     end
 
     {:noreply, socket |> assign(:tester_selected, nil) |> assign(:tester_selected_name, nil)}
   end
 
   @impl true
-  def handle_event("add-query-from-map", %{"station_id" => station_id, "name" => name, "type" => type}, socket) do
+  def handle_event(
+        "add-query-from-map",
+        %{"station_id" => station_id, "name" => name, "type" => type},
+        socket
+      ) do
     case {socket.assigns.source.type, type} do
-      {:gbfs, "station"} -> 
-        Configuration.create_query(
-          %{
-            user_id: socket.assigns.current_user.id,
-            source_id: socket.assigns.source.id,
-            name: "#{name} - Station Query",
-            query: %{"stop_id" => station_id, "__type__" => "gbfs"},
-            public: true
-          }) |> IO.inspect
-          
+      {:gbfs, "station"} ->
+        Configuration.create_query(%{
+          user_id: socket.assigns.current_user.id,
+          source_id: socket.assigns.source.id,
+          name: "#{name} - Station Query",
+          query: %{"stop_id" => station_id, "__type__" => "gbfs"},
+          public: true
+        })
+        |> IO.inspect()
+
       {:gbfs, "area"} ->
         # For free bike area queries, create a radius-based query around the bike location
         # We'll use a default 500m radius, but this could be made configurable
         bike = Enum.find(socket.assigns.free_bikes, &(&1.bike_id == station_id))
+
         if bike do
-          Configuration.create_query(
-            %{
-              user_id: socket.assigns.current_user.id,
-              source_id: socket.assigns.source.id,
-              name: "Free Bikes around #{bike.lat}, #{bike.lon}",
-              query: %{
-                "lat" => bike.lat,
-                "lng" => bike.lon,
-                "radius" => 500,  # 500 meter radius
-                "__type__" => "gbfs"
-              },
-              public: true
-            }) |> IO.inspect
-        end
-        
-      {:gtfs, "stop"} ->
-        Configuration.create_query(
-          %{
+          Configuration.create_query(%{
             user_id: socket.assigns.current_user.id,
             source_id: socket.assigns.source.id,
-            name: "#{name} - Stop Query",
-            query: %{"stop" => station_id, "__type__" => "gtfs"},
+            name: "Free Bikes around #{bike.lat}, #{bike.lon}",
+            query: %{
+              "lat" => bike.lat,
+              "lng" => bike.lon,
+              # 500 meter radius
+              "radius" => 500,
+              "__type__" => "gbfs"
+            },
             public: true
-          }) |> IO.inspect
-          
+          })
+          |> IO.inspect()
+        end
+
+      {:gtfs, "stop"} ->
+        Configuration.create_query(%{
+          user_id: socket.assigns.current_user.id,
+          source_id: socket.assigns.source.id,
+          name: "#{name} - Stop Query",
+          query: %{"stop" => station_id, "__type__" => "gtfs"},
+          public: true
+        })
+        |> IO.inspect()
+
       {:gtfs, "vehicle"} ->
         # For GTFS vehicle position queries, create a vehicle tracking query
-        Configuration.create_query(
-          %{
-            user_id: socket.assigns.current_user.id,
-            source_id: socket.assigns.source.id,
-            name: "#{name}",
-            query: %{"vehicle_id" => station_id, "__type__" => "gtfs_vehicle_positions"},
-            public: true
-          }) |> IO.inspect
-          
+        Configuration.create_query(%{
+          user_id: socket.assigns.current_user.id,
+          source_id: socket.assigns.source.id,
+          name: "#{name}",
+          query: %{"vehicle_id" => station_id, "__type__" => "gtfs_vehicle_positions"},
+          public: true
+        })
+        |> IO.inspect()
+
       {_, "query"} ->
         # For duplicating existing queries, find the original and copy it
-        original_query = Enum.find(socket.assigns.queries, &(&1.id == String.to_integer(station_id)))
+        original_query =
+          Enum.find(socket.assigns.queries, &(&1.id == String.to_integer(station_id)))
+
         if original_query do
-          Configuration.create_query(
-            %{
-              user_id: socket.assigns.current_user.id,
-              source_id: socket.assigns.source.id,
-              name: "Copy of #{original_query.name}",
-              query: original_query.query,
-              public: true
-            }) |> IO.inspect
+          Configuration.create_query(%{
+            user_id: socket.assigns.current_user.id,
+            source_id: socket.assigns.source.id,
+            name: "Copy of #{original_query.name}",
+            query: original_query.query,
+            public: true
+          })
+          |> IO.inspect()
         end
-        
-      _ -> 
-        IO.inspect("Unhandled query creation for type: #{type}, source: #{socket.assigns.source.type}")
+
+      _ ->
+        IO.inspect(
+          "Unhandled query creation for type: #{type}, source: #{socket.assigns.source.type}"
+        )
     end
-    
+
     # Show a temporary success message or update
     {:noreply, socket |> put_flash(:info, "Query created successfully!")}
   end
@@ -1137,8 +1191,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     "#{n} number#{if n == 1, do: "", else: "s"}"
   end
 
-  def handle_event("set-tint", %{"tint"=> tint}, socket) do
-#    IO.inspect({"set-tint", tint, socket.assigns.tint})
+  def handle_event("set-tint", %{"tint" => tint}, socket) do
+    #    IO.inspect({"set-tint", tint, socket.assigns.tint})
     case socket.assigns.tint == tint do
       true -> {:noreply, socket |> assign(:tint, nil)}
       false -> {:noreply, socket |> assign(:tint, tint)}
@@ -1147,13 +1201,15 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
   @impl true
   def handle_event("toggle-view", _params, socket) do
-    new_mode = case socket.assigns.view_mode do
-      :system -> :detail
-      :detail -> :system
-      # Leaving bulk paint by the other button lands on the map, which is
-      # where the tints just set are actually visible.
-      :paint -> :detail
-    end
+    new_mode =
+      case socket.assigns.view_mode do
+        :system -> :detail
+        :detail -> :system
+        # Leaving bulk paint by the other button lands on the map, which is
+        # where the tints just set are actually visible.
+        :paint -> :detail
+      end
+
     {:noreply, socket |> assign(:view_mode, new_mode)}
   end
 
@@ -1183,10 +1239,11 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   # point of the view is working down a list of queries, and a save step you
   # can forget would silently lose the whole pass.
   def handle_event("paint-query", %{"query-id" => id} = params, socket) do
-    tint = case Map.get(params, "tint") do
-      "" -> nil
-      value -> value
-    end
+    tint =
+      case Map.get(params, "tint") do
+        "" -> nil
+        value -> value
+      end
 
     query = Enum.find(socket.assigns.queries, &(to_string(&1.id) == to_string(id)))
 
@@ -1255,7 +1312,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     if socket.assigns.source_id == source_id do
       {:noreply,
        socket
-       |> assign(:vehicle_positions, Storage.with_trip_context(vehicles, socket.assigns.source_id))}
+       |> assign(
+         :vehicle_positions,
+         Storage.with_trip_context(vehicles, socket.assigns.source_id)
+       )}
     else
       {:noreply, socket}
     end
@@ -1299,18 +1359,22 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   @impl true
   def handle_info(:update_vehicle_positions, socket) do
     Process.send_after(self(), :update_vehicle_positions, 30000)
-    
+
     case socket.assigns.source.type do
       :gtfs ->
         vehicles = RoomGtfs.Worker.get_current_vehicle_positions(socket.assigns.source_id)
+
         {:noreply,
-       socket
-       |> assign(:vehicle_positions, Storage.with_trip_context(vehicles, socket.assigns.source_id))}
+         socket
+         |> assign(
+           :vehicle_positions,
+           Storage.with_trip_context(vehicles, socket.assigns.source_id)
+         )}
+
       _ ->
         {:noreply, socket}
     end
   end
-
 
   @impl true
   def handle_info({:gtfs, id, file, complete, total} = info, socket) do
@@ -1415,13 +1479,15 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   defp is_updated(source_meta) do
     case source_meta |> Map.get(:last_run) do
       nil -> "NEVER"
-      val -> val # |> Timex.format!("%Y-%m-%d @ %H:%M", :strftime)
+      # |> Timex.format!("%Y-%m-%d @ %H:%M", :strftime)
+      val -> val
     end
   end
 
   defp condense({id, type}, data) do
     RoomSanctum.Condenser.BasicMQTT.condense_data({id, type}, data)
   end
+
   def preview(condensed, {id, type}) do
     %{data: condensed, id: id, type: type}
   end
@@ -1504,21 +1570,23 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     queries
     |> Enum.flat_map(fn query ->
       tints = []
-      
+
       # Add query tint if it exists
-      tints = if query.meta && query.meta.tint do
-        [query.meta.tint | tints]
-      else
-        tints
-      end
-      
+      tints =
+        if query.meta && query.meta.tint do
+          [query.meta.tint | tints]
+        else
+          tints
+        end
+
       # Add source tint if it exists  
-      tints = if query.source && query.source.meta && query.source.meta.tint do
-        [query.source.meta.tint | tints]
-      else
-        tints
-      end
-      
+      tints =
+        if query.source && query.source.meta && query.source.meta.tint do
+          [query.source.meta.tint | tints]
+        else
+          tints
+        end
+
       tints
     end)
     |> Enum.uniq()
@@ -1526,11 +1594,12 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   defp filter_queries_by_tint(queries, nil), do: queries
+
   defp filter_queries_by_tint(queries, tint) do
     queries
     |> Enum.filter(fn query ->
-      (query.meta && query.meta.tint == tint) || 
-      (query.source && query.source.meta && query.source.meta.tint == tint)
+      (query.meta && query.meta.tint == tint) ||
+        (query.source && query.source.meta && query.source.meta.tint == tint)
     end)
   end
 
@@ -1541,5 +1610,4 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def get_icon_url(false) do
     "/assets/img/marker.png"
   end
-
 end

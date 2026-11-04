@@ -106,15 +106,22 @@ defmodule RoomSanctum.Configuration do
   def create_source(attrs \\ %{}) do
     r = %Source{} |> Source.changeset(attrs) |> Repo.insert()
     {:ok, d} = r
+
     case d.type do
       :packages ->
         ## create main mailbox
-        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate, designator: "mail_main"})
+        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate(), designator: "mail_main"})
         ## create mailbox for usps handling
-        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate, designator: "mail_usps"})
+        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate(), designator: "mail_usps"})
 
         ## create default webhook url
-        create_agyr(%{source_id: d.id, path: Ecto.UUID.generate, user: Ecto.UUID.generate, token: Ecto.UUID.generate, designator: "ups_webhook"})
+        create_agyr(%{
+          source_id: d.id,
+          path: Ecto.UUID.generate(),
+          user: Ecto.UUID.generate(),
+          token: Ecto.UUID.generate(),
+          designator: "ups_webhook"
+        })
 
       _otherwise ->
         :ok
@@ -168,13 +175,16 @@ defmodule RoomSanctum.Configuration do
     s = source.meta
     original_tracking = source.meta.tracking |> Enum.map(fn x -> Map.from_struct(x) end)
     extant_id = original_tracking |> Enum.filter(fn t -> t.number == number end)
+
     case length(extant_id) do
-      0 -> new_entry = %{number: number, type: type, entries: []}
-           new_tracking = List.insert_at(original_tracking, -1 ,new_entry)
-           RoomSanctum.Configuration.update_source_meta(source, %{tracking: new_tracking})
-           new_tracking
+      0 ->
+        new_entry = %{number: number, type: type, entries: []}
+        new_tracking = List.insert_at(original_tracking, -1, new_entry)
+        RoomSanctum.Configuration.update_source_meta(source, %{tracking: new_tracking})
+        new_tracking
+
       _otherwise ->
-          original_tracking
+        original_tracking
     end
   end
 
@@ -385,7 +395,8 @@ defmodule RoomSanctum.Configuration do
   end
 
   def get_visions_nv(:query, id) do
-    from(v in Vision, where: ^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == []) |> Repo.all()
+    from(v in Vision, where: ^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == [])
+    |> Repo.all()
   end
 
   @doc """

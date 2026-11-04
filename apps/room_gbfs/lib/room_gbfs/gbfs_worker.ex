@@ -192,8 +192,8 @@ defmodule RoomGbfs.Worker do
                 )
 
               :free_bike ->
+                # v3 calls them vehicles and puts them under `vehicles`.
                 data =
-                  # v3 calls them vehicles and puts them under `vehicles`.
                   (Map.get(json.data, :bikes) || Map.get(json.data, :vehicles) || [])
                   |> Enum.map(&RoomGbfs.V3.vehicle_status/1)
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
@@ -209,8 +209,8 @@ defmodule RoomGbfs.Worker do
                     |> inj_iddt(id, dt)
                   end)
 
-
                 RoomSanctum.Storage.truncate_free_bike_status(id)
+
                 Repo.insert_all(
                   RoomSanctum.Storage.GBFS.V1.FreeBikeStatus,
                   data,
@@ -231,8 +231,8 @@ defmodule RoomGbfs.Worker do
                     |> inj_iddt(id, dt)
                   end)
 
-
                 RoomSanctum.Storage.truncate_vehicle_types(id)
+
                 Repo.insert_all(
                   RoomSanctum.Storage.GBFS.V1.VehicleTypes,
                   data,
@@ -252,8 +252,8 @@ defmodule RoomGbfs.Worker do
                     |> inj_iddt(id, dt)
                   end)
 
-
                 RoomSanctum.Storage.truncate_system_pricing_plans(id)
+
                 Repo.insert_all(
                   RoomSanctum.Storage.GBFS.V1.SystemPricingPlans,
                   data,
@@ -266,10 +266,10 @@ defmodule RoomGbfs.Worker do
                   json.data.geofencing_zones.features
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
-                    point = %Geo.MultiPolygon{coordinates: x.geometry.coordinates , srid: 4326}
+                    point = %Geo.MultiPolygon{coordinates: x.geometry.coordinates, srid: 4326}
                     x |> Map.put(:place, point)
                   end)
-                  |> IO.inspect
+                  |> IO.inspect()
                   |> Enum.map(fn x ->
                     RoomSanctum.Storage.change_geo_fencing_zones(
                       %RoomSanctum.Storage.GBFS.V1.GeoFencingZones{},
@@ -277,14 +277,14 @@ defmodule RoomGbfs.Worker do
                     ).changes
                     |> inj_iddt(id, dt)
                   end)
-                  |> IO.inspect
-
+                  |> IO.inspect()
 
                 RoomSanctum.Storage.truncate_geo_fencing_zones(id)
-#                Repo.insert_all(
-#                  RoomSanctum.Storage.GBFS.V1.GeoFencingZones,
-#                  data
-#                )
+
+              #                Repo.insert_all(
+              #                  RoomSanctum.Storage.GBFS.V1.GeoFencingZones,
+              #                  data
+              #                )
 
               :sys_hours ->
                 :ok
@@ -316,17 +316,19 @@ defmodule RoomGbfs.Worker do
                   json.data.stations
                   |> Enum.map(fn x -> inj_iddt(x, id, dt) end)
                   |> Enum.map(fn x ->
-                    cs = RoomSanctum.Storage.change_ebikes_at_stations(
-                      %RoomSanctum.Storage.GBFS.V1.EbikesAtStations{},
-                      x
-                    ).changes
-                    |> inj_iddt(id, dt)
+                    cs =
+                      RoomSanctum.Storage.change_ebikes_at_stations(
+                        %RoomSanctum.Storage.GBFS.V1.EbikesAtStations{},
+                        x
+                      ).changes
+                      |> inj_iddt(id, dt)
 
-                    eb = cs.ebikes |> Enum.map(fn eb -> eb |> Ecto.Changeset.apply_changes end)
+                    eb = cs.ebikes |> Enum.map(fn eb -> eb |> Ecto.Changeset.apply_changes() end)
                     cs |> Map.put(:ebikes, eb)
                   end)
 
                 RoomSanctum.Storage.truncate_ebikes_at_stations(id)
+
                 Repo.insert_all(
                   RoomSanctum.Storage.GBFS.V1.EbikesAtStations,
                   data,
@@ -396,62 +398,62 @@ defmodule RoomGbfs.Worker do
                 # list the feeds in whatever order suits them.
                 |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
                 |> Enum.map(fn %{"name" => name, "url" => url} ->
-                # v3 renamed the loose-vehicle feed; everything below is
-                # written in v2's names, which is the one dialect this worker
-                # speaks.
-                case RoomGbfs.V3.feed_name(name) do
-                  "ebikes_at_stations" ->
-                    write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 3, @tfh)
+                  # v3 renamed the loose-vehicle feed; everything below is
+                  # written in v2's names, which is the one dialect this worker
+                  # speaks.
+                  case RoomGbfs.V3.feed_name(name) do
+                    "ebikes_at_stations" ->
+                      write_data(url, :ebikes_at_stations, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 3, @tfh)
 
-                  "system_information" ->
-                    write_data(url, :sys_info, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 4, @tfh)
+                    "system_information" ->
+                      write_data(url, :sys_info, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 4, @tfh)
 
-                  "station_information" ->
-                    write_data(url, :stat_info, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 5, @tfh)
+                    "station_information" ->
+                      write_data(url, :stat_info, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 5, @tfh)
 
-                  "station_status" ->
-                    write_data(url, :stat_status, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 6, @tfh)
+                    "station_status" ->
+                      write_data(url, :stat_status, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 6, @tfh)
 
-                  "free_bike_status" ->
-                    write_data(url, :free_bike, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 7, @tfh)
+                    "free_bike_status" ->
+                      write_data(url, :free_bike, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 7, @tfh)
 
-                  "system_hours" ->
-                    write_data(url, :sys_hours, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 8, @tfh)
+                    "system_hours" ->
+                      write_data(url, :sys_hours, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 8, @tfh)
 
-                  "system_calendar" ->
-                    write_data(url, :sys_cal, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 9, @tfh)
+                    "system_calendar" ->
+                      write_data(url, :sys_cal, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 9, @tfh)
 
-                  "system_regions" ->
-                    write_data(url, :sys_regions, state.id, cfg.config.lang)
-                    bcast(state.id, :system_information, 10, @tfh)
+                    "system_regions" ->
+                      write_data(url, :sys_regions, state.id, cfg.config.lang)
+                      bcast(state.id, :system_information, 10, @tfh)
 
-                  "system_alerts" ->
-                    write_data(url, :sys_alerts, state.id, cfg.config.lang)
-                    bcast(state.id, :system_alerts, 11, @tfh)
+                    "system_alerts" ->
+                      write_data(url, :sys_alerts, state.id, cfg.config.lang)
+                      bcast(state.id, :system_alerts, 11, @tfh)
 
-                  "vehicle_types" ->
-                    write_data(url, :vehicle_types, state.id, cfg.config.lang)
-                    bcast(state.id, :vehicle_types, 12, @tfh)
+                    "vehicle_types" ->
+                      write_data(url, :vehicle_types, state.id, cfg.config.lang)
+                      bcast(state.id, :vehicle_types, 12, @tfh)
 
-                  "system_pricing_plans" ->
-                    write_data(url, :pricing_plans, state.id, cfg.config.lang)
-                    bcast(state.id, :pricing_plans, 13, @tfh)
+                    "system_pricing_plans" ->
+                      write_data(url, :pricing_plans, state.id, cfg.config.lang)
+                      bcast(state.id, :pricing_plans, 13, @tfh)
 
-                  "geofencing_zones" ->
-                    write_data(url, :geofencing_zones, state.id, cfg.config.lang)
-                    bcast(state.id, :geofencing_zones, 14, @tfh)
+                    "geofencing_zones" ->
+                      write_data(url, :geofencing_zones, state.id, cfg.config.lang)
+                      bcast(state.id, :geofencing_zones, 14, @tfh)
 
-                  otherwise ->
-                    Logger.info("GBFS::#{state.id} System has unhandled file #{otherwise}")
-                end
-              end)
+                    otherwise ->
+                      Logger.info("GBFS::#{state.id} System has unhandled file #{otherwise}")
+                  end
+                end)
 
                 {:noreply, state}
 
@@ -559,12 +561,13 @@ defmodule RoomGbfs.Worker do
 
   def sys_info_as_stats(id) do
     s = Storage.get_sys_info!(:src, id)
+
     %{
       name: s.name,
       start_date: s.start_date,
       system_id: s.system_id,
       operator: s.operator,
-      tz: s.timezone,
+      tz: s.timezone
     }
   end
 
@@ -573,15 +576,20 @@ defmodule RoomGbfs.Worker do
       stations: Storage.count_gbfs_stations(id),
       slots: Storage.count_gbfs_slots(id),
       bikes: Storage.count_gbfs_bikes(id),
-      ebikes: Storage.count_gbfs_ebikes(id),
+      ebikes: Storage.count_gbfs_ebikes(id)
     }
   end
 
   def free_stats(id) do
-    details = Storage.count_free_bikes_types(id) |> Enum.map(fn %{cnt: cnt, ff: ff} -> {ff, cnt} end) |> Map.new |> IO.inspect
+    details =
+      Storage.count_free_bikes_types(id)
+      |> Enum.map(fn %{cnt: cnt, ff: ff} -> {ff, cnt} end)
+      |> Map.new()
+      |> IO.inspect()
+
     %{
       free_bikes: Storage.count_free_bikes(id)
-    } |> Map.merge(details)
-
+    }
+    |> Map.merge(details)
   end
 end

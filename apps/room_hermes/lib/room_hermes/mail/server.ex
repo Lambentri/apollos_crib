@@ -21,10 +21,12 @@ defmodule RoomHermes.Mail.Server do
     |> IO.inspect()
 
     mail = parse_mail(data, state)
+
     %{mail: mail, from: from, to: to}
     |> RoomSanctum.Queues.Mail.new()
     |> Oban.insert()
-#    mail_json = Jason.encode!(mail) |> IO.inspect()
+
+    #    mail_json = Jason.encode!(mail) |> IO.inspect()
 
     {:ok, data, state}
   end

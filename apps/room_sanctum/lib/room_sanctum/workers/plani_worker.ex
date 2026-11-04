@@ -154,7 +154,9 @@ defmodule RoomSanctum.Worker.Plani do
               end)
 
             described = Enum.map(entries, fn {_key, _results, q} -> q end)
-            counted = entries |> Enum.map(fn {_k, results, _q} -> length(results) end) |> Enum.sum()
+
+            counted =
+              entries |> Enum.map(fn {_k, results, _q} -> length(results) end) |> Enum.sum()
 
             {data, Enum.reverse(described) ++ queries, found ++ places,
              Map.put(notes, source_id, {:ok, counted})}
@@ -321,6 +323,7 @@ defmodule RoomSanctum.Worker.Plani do
             # empty -- the same call the clients already make.
             for {stop, arrivals} <- by_stop, arrivals != [] do
               key = "#{source_id}:#{stop.stop_id}"
+
               descriptor =
                 described(source, key, stop.stop_name, %{
                   source_id: source_id,
@@ -516,7 +519,7 @@ defmodule RoomSanctum.Worker.Plani do
   @doc false
   # Public only so a test can reach it; nothing outside calls this.
   def compass(%Geo.Point{coordinates: {lon1, lat1}}, lat2, lon2)
-       when is_number(lat2) and is_number(lon2) do
+      when is_number(lat2) and is_number(lon2) do
     # Standing on the thing has no direction, and atan2(0, 0) would answer
     # "north" rather than saying so. Metres, roughly, which is all this needs.
     d_north = (lat2 - lat1) * 111_320

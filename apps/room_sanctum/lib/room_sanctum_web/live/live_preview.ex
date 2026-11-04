@@ -1,8 +1,8 @@
 defmodule RoomSanctumWeb.LivePreview do
   use Phoenix.Component
   import Phoenix.HTML
-import Phoenix.HTML.Form
-use PhoenixHTMLHelpers
+  import Phoenix.HTML.Form
+  use PhoenixHTMLHelpers
   import Phoenix.LiveView.Helpers
 
   defp gtfs_icon(route_str) do
@@ -16,7 +16,7 @@ use PhoenixHTMLHelpers
       "Funicular" -> "fa-mountain"
       "Trolleybus" -> "fa-bus-simple"
       "Monorail" -> "fa-magic"
-      _otherwise ->  "fa-train-tram"
+      _otherwise -> "fa-train-tram"
     end
   end
 
@@ -62,11 +62,11 @@ use PhoenixHTMLHelpers
 
   defp moon_icon(_phase), do: ""
 
-  def tsl(%Time{} = t), do: tsl(t |> Time.to_string)
-  def tsl(st), do: st |> String.slice(0,5)
+  def tsl(%Time{} = t), do: tsl(t |> Time.to_string())
+  def tsl(st), do: st |> String.slice(0, 5)
 
-  def tsls(%Time{} = t), do: tsl(t |> Time.to_string)
-  def tsls(st), do: st |> String.slice(0,8)
+  def tsls(%Time{} = t), do: tsl(t |> Time.to_string())
+  def tsls(st), do: st |> String.slice(0, 8)
 
   defp to_l(direction) do
     idx = (direction / 22.5) |> Kernel.round()
@@ -257,7 +257,8 @@ use PhoenixHTMLHelpers
     marked = Enum.filter(cars, &Map.get(&1, :marked))
 
     if marked != [] and length(marked) < length(cars) do
-      "#{length(marked)} of #{length(cars)} cars new: " <> Enum.map_join(marked, ", ", &(&1.label || "?"))
+      "#{length(marked)} of #{length(cars)} cars new: " <>
+        Enum.map_join(marked, ", ", &(&1.label || "?"))
     else
       "New train"
     end
@@ -1097,20 +1098,24 @@ use PhoenixHTMLHelpers
   defp gitlab_status_icon(_), do: "fa-circle-question"
 
   defp gitlab_format_duration(nil), do: "—"
+
   defp gitlab_format_duration(secs) when is_number(secs) do
     total = round(secs)
+
     cond do
       total < 60 -> "#{total}s"
       total < 3600 -> "#{div(total, 60)}m #{rem(total, 60)}s"
       true -> "#{div(total, 3600)}h #{div(rem(total, 3600), 60)}m"
     end
   end
+
   defp gitlab_format_duration(_), do: "—"
 
   defp gitlab_format_time(iso) when is_binary(iso) do
     case DateTime.from_iso8601(iso) do
       {:ok, dt, _} ->
         secs = DateTime.diff(DateTime.utc_now(), dt)
+
         cond do
           secs < 60 -> "#{secs}s ago"
           secs < 3600 -> "#{div(secs, 60)}m ago"
@@ -1118,9 +1123,11 @@ use PhoenixHTMLHelpers
           true -> "#{div(secs, 86_400)}d ago"
         end
 
-      _ -> iso
+      _ ->
+        iso
     end
   end
+
   defp gitlab_format_time(_), do: "—"
 
   def p_github(assigns) do
@@ -1189,7 +1196,10 @@ use PhoenixHTMLHelpers
   end
 
   defp github_first_line(nil), do: ""
-  defp github_first_line(s) when is_binary(s), do: s |> String.split("\n", parts: 2) |> List.first()
+
+  defp github_first_line(s) when is_binary(s),
+    do: s |> String.split("\n", parts: 2) |> List.first()
+
   defp github_first_line(_), do: ""
 
   defp github_status_class(_status, "success"), do: "badge-success"
@@ -1347,12 +1357,14 @@ use PhoenixHTMLHelpers
   end
 
   defp drought_nonzero?(v) when is_number(v) and v > 0, do: true
+
   defp drought_nonzero?(v) when is_binary(v) do
     case Float.parse(v) do
       {f, _} when f > 0 -> true
       _ -> false
     end
   end
+
   defp drought_nonzero?(_), do: false
 
   defp drought_top_label(:none), do: "no drought"
@@ -1377,9 +1389,12 @@ use PhoenixHTMLHelpers
   defp drought_card_class(:d4), do: "bg-error text-error-content"
 
   defp drought_format_date(nil), do: "—"
+
   defp drought_format_date(s) when is_binary(s) do
     case DateTime.from_iso8601(s) do
-      {:ok, dt, _} -> dt |> DateTime.to_date() |> Date.to_string()
+      {:ok, dt, _} ->
+        dt |> DateTime.to_date() |> Date.to_string()
+
       _ ->
         case NaiveDateTime.from_iso8601(s) do
           {:ok, dt} -> dt |> NaiveDateTime.to_date() |> Date.to_string()
@@ -1387,6 +1402,7 @@ use PhoenixHTMLHelpers
         end
     end
   end
+
   defp drought_format_date(_), do: "—"
 
   def p_pollen(assigns) do
@@ -1531,13 +1547,14 @@ use PhoenixHTMLHelpers
   end
 
   def get_timestamp(trackingentity) do
-    date = trackingentity |> Map.get("localActivityDate") |> String.slice(4,4)
+    date = trackingentity |> Map.get("localActivityDate") |> String.slice(4, 4)
     time = trackingentity |> Map.get("localActivityTime")
     date <> time
   end
 
   def is_uri(path) do
     res = URI.parse(path)
+
     case {res.host, res.scheme} do
       {nil, nil} -> false
       {val, val2} -> true
@@ -1551,15 +1568,17 @@ use PhoenixHTMLHelpers
   def p_const(assigns) do
     ~H"""
     <div class="text-xl text-accent">
-      <%= case is_uri(@entries.data.body) do %>
-        <%= true -> %> <img src={@entries.data.body} class="rounded-sm" />
-        <%= false -> %> <%= raw do_fmt(@entries.data.body) %>
-      <% end %>
+    <%= case is_uri(@entries.data.body) do %>
+      <%= true -> %> <img src={@entries.data.body} class="rounded-sm" />
+      <%= false -> %> <%= raw do_fmt(@entries.data.body) %>
+    <% end %>
     </div>
-      """
+    """
   end
 
-  defp cronos_pad(n) when is_integer(n), do: n |> Integer.to_string() |> String.pad_leading(2, "0")
+  defp cronos_pad(n) when is_integer(n),
+    do: n |> Integer.to_string() |> String.pad_leading(2, "0")
+
   defp cronos_pad(n), do: to_string(n)
 
   defp cronos_date(%NaiveDateTime{} = dt), do: Calendar.strftime(dt, "%-d %b %Y")
@@ -1838,7 +1857,10 @@ use PhoenixHTMLHelpers
   defp icarus_track(track), do: to_string(track)
 
   defp icarus_distance(nil), do: "—"
-  defp icarus_distance(dst) when is_number(dst), do: "#{:erlang.float_to_binary(dst / 1, decimals: 1)}nm"
+
+  defp icarus_distance(dst) when is_number(dst),
+    do: "#{:erlang.float_to_binary(dst / 1, decimals: 1)}nm"
+
   defp icarus_distance(dst), do: to_string(dst)
 
   defp icarus_vert_rate(nil), do: "—"

@@ -5,14 +5,15 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
 
   @impl true
   def mount(_params, _session, socket) do
-    if connected?(socket), do: Process.send_after(self(), :clock, 10); Process.send_after(self(), :update, 500)
+    if connected?(socket), do: Process.send_after(self(), :clock, 10)
+    Process.send_after(self(), :update, 500)
     {:ok, socket}
   end
 
   @impl true
   def handle_info(:update_sec, socket) do
     scribus = Configuration.get_scribus!(:vision, socket.assigns.scribus_id)
-    [w,h] = scribus.resolution |> String.split("x")
+    [w, h] = scribus.resolution |> String.split("x")
     {:noreply, socket |> assign(:scribus, scribus) |> assign(:width, w) |> assign(:height, h)}
   end
 
@@ -20,7 +21,7 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
   def handle_info(:clock, socket) do
     Process.send_after(self(), :clock, 1000)
     tz = socket.assigns.scribus.tz || "UTC"
-    time = DateTime.now!(tz) |> DateTime.to_time
+    time = DateTime.now!(tz) |> DateTime.to_time()
     {:noreply, socket |> assign(:time, time)}
   end
 
@@ -29,19 +30,19 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
     scribus = Configuration.get_scribus!(id)
-    [w,h] = scribus.resolution |> String.split("x")
+    [w, h] = scribus.resolution |> String.split("x")
+
     {:noreply,
-      socket
-      |> assign(:page_title, page_title(socket.assigns.live_action))
-      |> assign(:scribus, scribus)
-      |> assign(:scribus_id, id)
-      |> assign(:curr_vision, "Pending")
-      |> assign(:preview, [])
-      |> assign(:preview_mode, :basic)
-      |> assign(:time, nil)
-      |> assign(:w, "#{w}px")
-      |> assign(:h, "#{h}px")
-    }
+     socket
+     |> assign(:page_title, page_title(socket.assigns.live_action))
+     |> assign(:scribus, scribus)
+     |> assign(:scribus_id, id)
+     |> assign(:curr_vision, "Pending")
+     |> assign(:preview, [])
+     |> assign(:preview_mode, :basic)
+     |> assign(:time, nil)
+     |> assign(:w, "#{w}px")
+     |> assign(:h, "#{h}px")}
   end
 
   @impl true
@@ -51,7 +52,8 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
     %{data: data, queries: queries, name: name} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.scribus.vision)
 
-    {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries) |> assign(:curr_vision, name)}
+    {:noreply,
+     socket |> assign(:preview, data) |> assign(:queries, queries) |> assign(:curr_vision, name)}
   end
 
   defp condense({id, type}, data) do
@@ -94,21 +96,19 @@ defmodule RoomSanctumWeb.ScribusLive.Public do
     end
   end
 
-
   def tss(nil), do: ""
-  def tss(%Time{} = t), do: tss(t |> Time.to_string)
-  def tss(st), do: st |> String.slice(0,5)
+  def tss(%Time{} = t), do: tss(t |> Time.to_string())
+  def tss(st), do: st |> String.slice(0, 5)
 
   def tsss(nil), do: ""
-  def tsss(%Time{} = t), do: tsss(t |> Time.to_string)
+  def tsss(%Time{} = t), do: tsss(t |> Time.to_string())
   def tsss(st), do: st |> String.slice(6..7)
 
   def tssa(nil), do: ""
-  def tssa(%Time{} = t), do: tssa(t |> Time.to_string)
+  def tssa(%Time{} = t), do: tssa(t |> Time.to_string())
   def tssa(st), do: st |> String.slice(6..6)
 
   def tssb(nil), do: ""
-  def tssb(%Time{} = t), do: tssb(t |> Time.to_string)
+  def tssb(%Time{} = t), do: tssb(t |> Time.to_string())
   def tssb(st), do: st |> String.slice(7..7)
-
 end

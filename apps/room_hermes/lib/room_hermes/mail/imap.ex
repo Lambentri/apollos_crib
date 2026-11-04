@@ -316,8 +316,13 @@ defmodule RoomHermes.Mail.IMAP do
   @doc "Turn a protocol failure into something actionable."
   def describe({:connect_failed, :nxdomain}), do: "Host not found - check the server address."
   def describe({:connect_failed, :econnrefused}), do: "Connection refused - check the port."
-  def describe({:connect_failed, :timeout}), do: "Timed out connecting - check host, port and firewall."
-  def describe({:connect_failed, {:tls_alert, _} = alert}), do: "TLS failed: #{inspect(alert)}. If this server uses port 143, turn TLS off."
+
+  def describe({:connect_failed, :timeout}),
+    do: "Timed out connecting - check host, port and firewall."
+
+  def describe({:connect_failed, {:tls_alert, _} = alert}),
+    do: "TLS failed: #{inspect(alert)}. If this server uses port 143, turn TLS off."
+
   def describe({:connect_failed, reason}), do: "Could not connect: #{inspect(reason)}"
 
   def describe({:login_failed, reason}) do
@@ -330,7 +335,9 @@ defmodule RoomHermes.Mail.IMAP do
     end
   end
 
-  def describe({:select_failed, reason}), do: "Could not open that folder: #{inspect(reason)}. Check the folder name."
+  def describe({:select_failed, reason}),
+    do: "Could not open that folder: #{inspect(reason)}. Check the folder name."
+
   def describe({:bad_greeting, text}), do: "Not an IMAP server? It said: #{text}"
   def describe({:search_failed, reason}), do: "Connected, but SEARCH failed: #{inspect(reason)}"
   def describe(other), do: inspect(other)

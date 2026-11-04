@@ -36,10 +36,11 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
     changeset = Configuration.change_foci(foci)
 
     # Extract coordinates if they exist
-    {lat, lng} = case foci.place do
-      %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-      _ -> {nil, nil}
-    end
+    {lat, lng} =
+      case foci.place do
+        %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
+        _ -> {nil, nil}
+      end
 
     {
       :ok,
@@ -120,7 +121,10 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
           |> assign(:latitude, lat)
           |> assign(:longitude, lng)
           |> assign(:coord_input, coords_str)
-          |> put_flash(:info, "Coordinates updated: #{Float.round(lat, 6)}, #{Float.round(lng, 6)}")
+          |> put_flash(
+            :info,
+            "Coordinates updated: #{Float.round(lat, 6)}, #{Float.round(lng, 6)}"
+          )
         }
 
       {:error, reason} ->
@@ -146,7 +150,8 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
     lng_val = parse_float(lng)
 
     case {lat_val, lng_val} do
-      {{:ok, lat_f}, {:ok, lng_f}} when lat_f >= -90 and lat_f <= 90 and lng_f >= -180 and lng_f <= 180 ->
+      {{:ok, lat_f}, {:ok, lng_f}}
+      when lat_f >= -90 and lat_f <= 90 and lng_f >= -180 and lng_f <= 180 ->
         lat_lng_pt = %Geo.Point{
           coordinates: {normalize_ll(lng_f), normalize_ll(lat_f)},
           srid: 4326
@@ -179,6 +184,7 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
   defp parse_float(nil), do: {:error, "empty"}
   defp parse_float(""), do: {:error, "empty"}
   defp parse_float(val) when is_float(val), do: {:ok, val}
+
   defp parse_float(val) when is_binary(val) do
     case Float.parse(val) do
       {float_val, ""} -> {:ok, float_val}
@@ -194,16 +200,17 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
   # - "lat: 42.3736, lng: -71.1097"
   defp parse_coordinates(coords_str) when is_binary(coords_str) do
     coords_str = String.trim(coords_str)
-    
+
     # Remove common prefixes
-    coords_str = coords_str
-    |> String.replace(~r/lat(itude)?:\s*/i, "")
-    |> String.replace(~r/lng|lon(gitude)?:\s*/i, "")
-    |> String.replace(~r/[\[\]\(\)\{\}]/, "")
-    
+    coords_str =
+      coords_str
+      |> String.replace(~r/lat(itude)?:\s*/i, "")
+      |> String.replace(~r/lng|lon(gitude)?:\s*/i, "")
+      |> String.replace(~r/[\[\]\(\)\{\}]/, "")
+
     # Try to split by comma or space
     parts = String.split(coords_str, ~r/[,\s]+/, trim: true)
-    
+
     case parts do
       [lat_str, lng_str] ->
         with {:ok, lat} <- parse_float(lat_str),
@@ -211,22 +218,26 @@ defmodule RoomSanctumWeb.FociLive.FormComponentCoords do
           cond do
             lat < -90 or lat > 90 ->
               {:error, "Latitude must be between -90 and 90"}
+
             lng < -180 or lng > 180 ->
               {:error, "Longitude must be between -180 and 180"}
+
             true ->
               {:ok, {lat, lng}}
           end
         else
           {:error, _} -> {:error, "Invalid coordinate format. Use: latitude, longitude"}
         end
-      
+
       _ ->
-        {:error, "Invalid format. Enter coordinates as: latitude, longitude (e.g., 42.3736, -71.1097)"}
+        {:error,
+         "Invalid format. Enter coordinates as: latitude, longitude (e.g., 42.3736, -71.1097)"}
     end
   end
 
   defp format_coords(nil, _), do: ""
   defp format_coords(_, nil), do: ""
+
   defp format_coords(lat, lng) do
     "#{Float.round(lat, 6)}, #{Float.round(lng, 6)}"
   end

@@ -220,7 +220,8 @@ defmodule RoomGitlab.Worker do
       follow_redirect: true,
       stream_to: self()
     )
-#    |> IO.inspect()
+
+    #    |> IO.inspect()
   end
 
   defp is_last_hour?(entry_field, hours \\ 1) do
@@ -246,7 +247,10 @@ defmodule RoomGitlab.Worker do
       {:noreply, state |> Map.put(:refs, refs)}
     else
       :no_creds ->
-        Logger.warning("GLab::#{state.inst.id} skipping query_projects - config missing url/pat (type/config mismatch?)")
+        Logger.warning(
+          "GLab::#{state.inst.id} skipping query_projects - config missing url/pat (type/config mismatch?)"
+        )
+
         {:noreply, state}
 
       _ ->
@@ -295,7 +299,9 @@ defmodule RoomGitlab.Worker do
   def handle_cast({:query_jobs, _query}, state) do
     with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
          {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
-      Logger.info("GLab::#{state.inst.id} Querying Jobs for #{length(state.projects)} watched projects")
+      Logger.info(
+        "GLab::#{state.inst.id} Querying Jobs for #{length(state.projects)} watched projects"
+      )
 
       all =
         state.projects
@@ -348,15 +354,20 @@ defmodule RoomGitlab.Worker do
 
   defp parse_statuses(nil), do: :all
   defp parse_statuses(s) when is_list(s), do: s
+
   defp parse_statuses(s) when is_binary(s) do
     case String.trim(s) do
-      "" -> :all
-      trimmed -> trimmed |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+      "" ->
+        :all
+
+      trimmed ->
+        trimmed |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
     end
   end
 
   defp filter_by_statuses(jobs, :all), do: jobs
   defp filter_by_statuses(jobs, [single]), do: Enum.filter(jobs, &(&1["status"] == single))
+
   defp filter_by_statuses(jobs, statuses) when is_list(statuses),
     do: Enum.filter(jobs, &Enum.member?(statuses, &1["status"]))
 
@@ -371,7 +382,7 @@ defmodule RoomGitlab.Worker do
         {:noreply, state}
 
       %HTTPoison.AsyncStatus{code: status_code, id: resp_id} ->
-#        IO.inspect(status_code)
+        #        IO.inspect(status_code)
 
         if status_code == 200 do
           {:noreply, state}
@@ -384,7 +395,7 @@ defmodule RoomGitlab.Worker do
         end
 
       %HTTPoison.AsyncHeaders{headers: headers, id: resp_id} ->
-#        IO.inspect(headers)
+        #        IO.inspect(headers)
         {:noreply, state}
 
       %HTTPoison.AsyncChunk{chunk: chunk, id: resp_id} ->

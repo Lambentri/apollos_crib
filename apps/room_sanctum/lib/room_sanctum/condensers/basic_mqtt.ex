@@ -78,6 +78,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   Condenses data without wrapping (legacy format)
   """
   def condense_data({_id, type}, data) when data == [], do: %{}
+
   def condense_data({_id, type}, data) do
     #    if type == :gtfs do
     #      IO.inspect({type, data})
@@ -198,13 +199,13 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
               docks_avail: f.num_docks_available,
               docks_disabled: f.num_docks_disabled,
               capacity: f.capacity,
+              # A left join, so a dock that no e-bike is sitting in comes
+              # back nil rather than empty -- and mapping over that raised,
+              # which killed the condense for the *whole* board rather than
+              # this one dock. A Plani feels it hardest: it breaks a source
+              # out into an entry per dock, so a radius holding one ordinary
+              # unelectrified dock published nothing at all.
               ebikes_info:
-                # A left join, so a dock that no e-bike is sitting in comes
-                # back nil rather than empty -- and mapping over that raised,
-                # which killed the condense for the *whole* board rather than
-                # this one dock. A Plani feels it hardest: it breaks a source
-                # out into an entry per dock, so a radius holding one ordinary
-                # unelectrified dock published nothing at all.
                 (f.ebikes_info || [])
                 |> Enum.map(fn eb ->
                   %{
@@ -220,7 +221,7 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
 
       :tidal ->
         data
-        |> IO.inspect
+        |> IO.inspect()
         |> Enum.group_by(fn x -> x.type end)
         |> Enum.map(fn {extreme, data} ->
           case data do
@@ -326,23 +327,27 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     route_ids = condensed |> Enum.map(& &1.route) |> Enum.uniq()
     # An area query has no one stop, so there is no stop-specific alert to
     # look for -- only the ones on the routes that turned up.
-    stop      = Map.get(query.query, :stop)
+    stop = Map.get(query.query, :stop)
     # A broken out entry is keyed by source *and* stop, so its id is not a
     # source id and the lookup found nothing -- silently, since no alerts and
     # no such source look the same from here. The descriptor names the source
     # when the key cannot.
     source_id = Map.get(query.query, :source_id) || id
-    alerts    = RoomGtfs.Worker.query_alerts(source_id, stop, route_ids)
+    alerts = RoomGtfs.Worker.query_alerts(source_id, stop, route_ids)
 
-    condensed_with_alerts = condensed |> Enum.map(fn route ->
-      route_alerts = Enum.filter(alerts, fn a ->
-        a.route_id == nil || a.route_id == route.route
+    condensed_with_alerts =
+      condensed
+      |> Enum.map(fn route ->
+        route_alerts =
+          Enum.filter(alerts, fn a ->
+            a.route_id == nil || a.route_id == route.route
+          end)
+
+        case route_alerts do
+          [] -> route
+          _ -> Map.put(route, :alerts, route_alerts)
+        end
       end)
-      case route_alerts do
-        [] -> route
-        _  -> Map.put(route, :alerts, route_alerts)
-      end
-    end)
 
     %{
       data: condensed_with_alerts,
@@ -405,5 +410,4 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     |> Map.get(Map.get(bike, :vehicle_type_id))
     |> RoomSanctum.Storage.GBFS.V1.VehicleTypes.label()
   end
-
 end

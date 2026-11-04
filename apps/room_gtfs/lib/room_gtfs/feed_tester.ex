@@ -119,7 +119,11 @@ defmodule RoomGtfs.FeedTester do
       true ->
         Enum.reduce(kinds, result, fn kind, acc ->
           if counts[kind] == 0 do
-            add(acc, :warn, "no #{kind_name(kind)} in this feed, though it is configured for them")
+            add(
+              acc,
+              :warn,
+              "no #{kind_name(kind)} in this feed, though it is configured for them"
+            )
           else
             acc
           end
@@ -462,7 +466,10 @@ defmodule RoomGtfs.FeedTester do
 
   defp describe_failure(:decode_failed, url), do: describe_failure(:not_protobuf, url)
   defp describe_failure(:bad_status, _url), do: "did not answer with HTTP 200"
-  defp describe_failure(%HTTPoison.Error{reason: reason}, _url), do: "could not be reached: #{inspect(reason)}"
+
+  defp describe_failure(%HTTPoison.Error{reason: reason}, _url),
+    do: "could not be reached: #{inspect(reason)}"
+
   defp describe_failure(reason, _url), do: "failed: #{inspect(reason)}"
 
   defp describe_counts(counts) do
@@ -514,8 +521,10 @@ defmodule RoomGtfs.FeedTester do
     |> put_caps(stus, [
       {"live occupancy (per stop)", &set?(&1.departure_occupancy_status)},
       {"skipped stops", &(&1.schedule_relationship == :SKIPPED)},
-      {"track assignment", &(&1.stop_time_properties && set?(&1.stop_time_properties.assigned_stop_id))},
-      {"per-stop headsign", &(&1.stop_time_properties && set?(&1.stop_time_properties.stop_headsign))}
+      {"track assignment",
+       &(&1.stop_time_properties && set?(&1.stop_time_properties.assigned_stop_id))},
+      {"per-stop headsign",
+       &(&1.stop_time_properties && set?(&1.stop_time_properties.stop_headsign))}
     ])
     |> put_caps(events, [
       {"delay", &(&1.delay != nil)},

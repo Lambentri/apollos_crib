@@ -148,7 +148,10 @@ defmodule RoomGithub.Worker do
 
       refs =
         Enum.reduce(active_runs, state.refs, fn run, acc ->
-          full = get_in(run, ["repository", "full_name"]) || full_name_from_runs_state(state, run["id"])
+          full =
+            get_in(run, ["repository", "full_name"]) ||
+              full_name_from_runs_state(state, run["id"])
+
           path = "/repos/#{full}/actions/runs/#{run["id"]}/jobs"
 
           case do_github_req(api_url, pat, path, %{"per_page" => 50}) do
@@ -216,8 +219,12 @@ defmodule RoomGithub.Worker do
   defp current_poll_ms(state) do
     secs =
       case state.inst do
-        %{config: %{__struct__: @github_config_module, poll_seconds: s}} when is_integer(s) and s > 0 -> s
-        _ -> 60
+        %{config: %{__struct__: @github_config_module, poll_seconds: s}}
+        when is_integer(s) and s > 0 ->
+          s
+
+        _ ->
+          60
       end
 
     :timer.seconds(secs)
@@ -371,7 +378,10 @@ defmodule RoomGithub.Worker do
 
   defp follow_pagination(state, %{next_url: url, type: :repos, page: page})
        when is_binary(url) and page >= @max_pages do
-    Logger.warning("GH::#{state.inst.id} hit @max_pages cap (#{@max_pages}); stopping repo pagination")
+    Logger.warning(
+      "GH::#{state.inst.id} hit @max_pages cap (#{@max_pages}); stopping repo pagination"
+    )
+
     state
   end
 
@@ -395,7 +405,11 @@ defmodule RoomGithub.Worker do
   defp ingest_response(state, %{type: :runs, full_name: full}, body) do
     case Jason.decode(body) do
       {:ok, %{"workflow_runs" => runs}} when is_list(runs) ->
-        runs = Enum.map(runs, fn r -> Map.put_new_lazy(r, "repository", fn -> %{"full_name" => full} end) end)
+        runs =
+          Enum.map(runs, fn r ->
+            Map.put_new_lazy(r, "repository", fn -> %{"full_name" => full} end)
+          end)
+
         Map.update!(state, :runs, &Map.put(&1, full, runs))
 
       _ ->

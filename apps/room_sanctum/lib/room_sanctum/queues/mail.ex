@@ -165,7 +165,7 @@ defmodule RoomSanctum.Queues.Mail do
       _otherwise ->
         {:ok, token_expiry, _extra} = DateTime.from_iso8601(conf.token_ups_expiry)
         IO.inspect({"tetete", token_expiry, now, now > token_expiry})
-        comp = DateTime.compare(token_expiry,now)
+        comp = DateTime.compare(token_expiry, now)
         comp == :lt
     end
   end

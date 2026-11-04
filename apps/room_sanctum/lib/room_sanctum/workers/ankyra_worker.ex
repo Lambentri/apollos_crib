@@ -185,7 +185,12 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_cast({:publish, data}, state) do
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> RoomSanctum.JSON.encode!())
+        AMQP.Basic.publish(
+          chan,
+          "amq.topic",
+          state.ankyra.topic,
+          data |> RoomSanctum.JSON.encode!()
+        )
 
       {:error, error} ->
         IO.inspect(error)
@@ -211,7 +216,8 @@ defmodule RoomSanctum.Worker.Ankyra do
     {:noreply, state}
   end
 
-  def handle_cast({:discover_board, _board, _reading}, %{ankyra: nil} = state), do: {:noreply, state}
+  def handle_cast({:discover_board, _board, _reading}, %{ankyra: nil} = state),
+    do: {:noreply, state}
 
   def handle_cast({:discover_board, board, reading}, state) do
     devices = RoomSanctum.Hass.board_devices(state.id, state.ankyra.topic, board, reading)
@@ -229,7 +235,13 @@ defmodule RoomSanctum.Worker.Ankyra do
 
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic <> ".img", data |> RoomSanctum.JSON.encode!()) |> IO.inspect
+        AMQP.Basic.publish(
+          chan,
+          "amq.topic",
+          state.ankyra.topic <> ".img",
+          data |> RoomSanctum.JSON.encode!()
+        )
+        |> IO.inspect()
 
       {:error, error} ->
         IO.inspect(error)
@@ -330,7 +342,8 @@ defmodule RoomSanctum.Worker.Ankyra do
   defp listen_for_requests(state) do
     with {:ok, conn} <- AMQP.Application.get_connection(:default),
          {:ok, chan} <- AMQP.Channel.open(conn),
-         {:ok, %{queue: queue}} <- AMQP.Queue.declare(chan, "", exclusive: true, auto_delete: true),
+         {:ok, %{queue: queue}} <-
+           AMQP.Queue.declare(chan, "", exclusive: true, auto_delete: true),
          :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: request_key(state)),
          :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: uplink_key(state)),
          {:ok, tag} <- AMQP.Basic.consume(chan, queue, self(), no_ack: true) do
@@ -491,7 +504,8 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   defp fetch_connections(url, cfg) do
     HTTPoison.get(
-      String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
+      String.trim_trailing(url, "/") <>
+        "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
       [{"accept", "application/json"}],
       # The management API is reached over plain http inside the deployment.
       # hackney 4 can refuse basic auth over http unless told it is meant.

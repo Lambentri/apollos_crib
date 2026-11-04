@@ -5,13 +5,13 @@ defmodule RoomSanctum.Queues.Webhooks do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"path" => path, "data" => data} = args}) do
-
     case RoomSanctum.Configuration.get_agyr!(:path, path) do
       nil ->
         IO.inspect("non-extant agyr")
 
       agyr ->
         source = RoomSanctum.Configuration.get_source!(agyr.source_id)
+
         case agyr.designator do
           "ups_webhook" ->
             number = data |> Map.get("trackingNumber") |> String.trim()
@@ -50,8 +50,16 @@ defmodule RoomSanctum.Queues.Webhooks do
 
     cond do
       is_binary(secret) and secret != "" and
-          not RoomPackages.USPS.verify_hmac(hmac || "", data["timestamp"] || "", data["payload"] || "", secret) ->
-        Logger.warning("USPS webhook HMAC mismatch for subscription #{inspect(data["subscriptionId"])} -- ignoring")
+          not RoomPackages.USPS.verify_hmac(
+            hmac || "",
+            data["timestamp"] || "",
+            data["payload"] || "",
+            secret
+          ) ->
+        Logger.warning(
+          "USPS webhook HMAC mismatch for subscription #{inspect(data["subscriptionId"])} -- ignoring"
+        )
+
         :ok
 
       true ->

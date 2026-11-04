@@ -1,10 +1,11 @@
 defmodule RoomSanctumWeb.LandingLive.Index do
   use RoomSanctumWeb, :live_view_ca
+
   use LiveViewNative.LiveView,
-      formats: [:jetpack],
-      layouts: [
-        jetpack: {RoomSanctumWeb.Layouts.Jetpack, :app}
-      ]
+    formats: [:jetpack],
+    layouts: [
+      jetpack: {RoomSanctumWeb.Layouts.Jetpack, :app}
+    ]
 
   alias RoomSanctum.Configuration
 

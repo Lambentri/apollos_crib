@@ -123,6 +123,7 @@ defmodule RoomIcarus.Worker do
 
     if watches != [] do
       Logger.info("Icarus::#{state.id} sweeping #{length(watches)} flight watches")
+
       Enum.each(watches, fn watch ->
         maybe_poll(watch)
         Process.sleep(@request_spacing_ms)
@@ -191,6 +192,7 @@ defmodule RoomIcarus.Worker do
   # only actually polled every @flight_poll_seconds.
   defp maybe_poll(watch) do
     now = DateTime.utc_now()
+
     due? =
       is_nil(watch.last_polled_at) or
         DateTime.diff(now, watch.last_polled_at, :second) >= @flight_poll_seconds

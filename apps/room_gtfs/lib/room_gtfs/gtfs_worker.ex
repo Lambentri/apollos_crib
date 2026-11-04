@@ -195,7 +195,9 @@ defmodule RoomGtfs.Worker do
         vehicles
 
       :miss ->
-        "gtfs-rt#{name}" |> via_tuple() |> GenServer.call({:query_vehicle_positions, trips}, timeout)
+        "gtfs-rt#{name}"
+        |> via_tuple()
+        |> GenServer.call({:query_vehicle_positions, trips}, timeout)
     end
   end
 
@@ -341,7 +343,6 @@ defmodule RoomGtfs.Worker do
     end
   end
 
-
   # How long to wait for vehicle positions before giving up on occupancy.
   #
   # Deliberately short. This is the second call query_stop makes to the same
@@ -451,7 +452,10 @@ defmodule RoomGtfs.Worker do
           Map.put(
             arrival,
             :carriages,
-            Enum.map(carriages, &Map.put(&1, :marked, RoomGtfs.Fleet.car_marked?(&1.label, ranges)))
+            Enum.map(
+              carriages,
+              &Map.put(&1, :marked, RoomGtfs.Fleet.car_marked?(&1.label, ranges))
+            )
           )
       end
     else
@@ -747,7 +751,6 @@ defmodule RoomGtfs.Worker do
     |> Enum.into(%{})
   end
 
-
   # In the source's own timezone: a board in Boston rolls over to the next
   # service day at midnight there, not at midnight UTC, and for part of every
   # day the two disagree about which services are running.
@@ -769,7 +772,6 @@ defmodule RoomGtfs.Worker do
 end
 
 defmodule RoomGtfs.Worker.RT do
-
   # A realtime feed is a protobuf of a few hundred kilobytes, fetched on a
   # tick. Explicit rather than left to HTTPoison's five seconds, which is the
   # right number here but should not be a coincidence.
@@ -950,46 +952,58 @@ defmodule RoomGtfs.Worker.RT do
   def handle_call({:query_alerts, stop, route_ids}, _from, state) do
     now = System.os_time(:second)
 
-    alerts = case state.rt_sa do
-      nil -> []
-      feed ->
-        feed.entity
-        |> Enum.filter(& &1.alert)
-        |> Enum.map(& &1.alert)
-        |> Enum.filter(fn alert ->
-          active = case alert.active_period do
-            [] -> true
-            periods -> Enum.any?(periods, fn p ->
-              (p.start == nil || p.start <= now) &&
-              (Map.get(p, :end) == nil || Map.get(p, :end) >= now)
-            end)
-          end
-          relevant = Enum.any?(alert.informed_entity, fn e ->
-            (e.stop_id != nil && e.stop_id == stop) ||
-            (e.route_id != nil && e.route_id in route_ids) ||
-            (e.agency_id != nil && e.stop_id == nil && e.route_id == nil) ||
-            (e.stop_id == nil && e.route_id == nil && e.trip == nil && e.agency_id == nil)
-          end)
-          active && relevant
-        end)
-        |> Enum.map(fn alert ->
-          route_id = Enum.find_value(alert.informed_entity, fn e -> e.route_id end)
+    alerts =
+      case state.rt_sa do
+        nil ->
+          []
 
-          %{
-            effect:      alert.effect |> to_string(),
-            cause:       alert.cause |> to_string(),
-            header:      get_translation(alert.header_text),
-            description: get_translation(alert.description_text),
-            route_id:    route_id,
-            severity:    alert.severity_level |> to_string(),
-            # Whether the alert names this stop, as opposed to reaching it by
-            # naming the line it is on. "Elevator out here" and "delays on the
-            # Red Line" are both true of the stop and are not the same news.
-            stop_specific:
-              Enum.any?(alert.informed_entity, fn e -> e.stop_id != nil and e.stop_id == stop end)
-          }
-        end)
-    end
+        feed ->
+          feed.entity
+          |> Enum.filter(& &1.alert)
+          |> Enum.map(& &1.alert)
+          |> Enum.filter(fn alert ->
+            active =
+              case alert.active_period do
+                [] ->
+                  true
+
+                periods ->
+                  Enum.any?(periods, fn p ->
+                    (p.start == nil || p.start <= now) &&
+                      (Map.get(p, :end) == nil || Map.get(p, :end) >= now)
+                  end)
+              end
+
+            relevant =
+              Enum.any?(alert.informed_entity, fn e ->
+                (e.stop_id != nil && e.stop_id == stop) ||
+                  (e.route_id != nil && e.route_id in route_ids) ||
+                  (e.agency_id != nil && e.stop_id == nil && e.route_id == nil) ||
+                  (e.stop_id == nil && e.route_id == nil && e.trip == nil && e.agency_id == nil)
+              end)
+
+            active && relevant
+          end)
+          |> Enum.map(fn alert ->
+            route_id = Enum.find_value(alert.informed_entity, fn e -> e.route_id end)
+
+            %{
+              effect: alert.effect |> to_string(),
+              cause: alert.cause |> to_string(),
+              header: get_translation(alert.header_text),
+              description: get_translation(alert.description_text),
+              route_id: route_id,
+              severity: alert.severity_level |> to_string(),
+              # Whether the alert names this stop, as opposed to reaching it by
+              # naming the line it is on. "Elevator out here" and "delays on the
+              # Red Line" are both true of the stop and are not the same news.
+              stop_specific:
+                Enum.any?(alert.informed_entity, fn e ->
+                  e.stop_id != nil and e.stop_id == stop
+                end)
+            }
+          end)
+      end
 
     {:reply, alerts, state}
   end
@@ -1041,11 +1055,20 @@ defmodule RoomGtfs.Worker.RT do
       url: get_translation(alert.url),
       route_ids: informed(alert, :route_id),
       stop_ids: informed(alert, :stop_id),
-      agency_wide?: Enum.any?(alert.informed_entity, fn e ->
-        e.route_id in [nil, ""] and e.stop_id in [nil, ""] and e.trip == nil
-      end),
-      starts_at: alert.active_period |> Enum.map(& &1.start) |> Enum.reject(&is_nil/1) |> Enum.min(fn -> nil end),
-      ends_at: alert.active_period |> Enum.map(&Map.get(&1, :end)) |> Enum.reject(&is_nil/1) |> Enum.max(fn -> nil end)
+      agency_wide?:
+        Enum.any?(alert.informed_entity, fn e ->
+          e.route_id in [nil, ""] and e.stop_id in [nil, ""] and e.trip == nil
+        end),
+      starts_at:
+        alert.active_period
+        |> Enum.map(& &1.start)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.min(fn -> nil end),
+      ends_at:
+        alert.active_period
+        |> Enum.map(&Map.get(&1, :end))
+        |> Enum.reject(&is_nil/1)
+        |> Enum.max(fn -> nil end)
     }
   end
 
@@ -1058,30 +1081,37 @@ defmodule RoomGtfs.Worker.RT do
 
   defp get_translation(nil), do: nil
   defp get_translation(%{translation: []}), do: nil
+
   defp get_translation(%{translation: translations}) do
-    t = Enum.find(translations, fn t -> t.language in ["en", "en-US", nil] end) || List.first(translations)
+    t =
+      Enum.find(translations, fn t -> t.language in ["en", "en-US", nil] end) ||
+        List.first(translations)
+
     t && t.text
   end
 
   def handle_call(:stats, _from, state) do
-    {:reply, %{
-      rt_sa: feed_summary(state.rt_sa),
-      rt_tu: feed_summary(state.rt_tu),
-      rt_vp: feed_summary(state.rt_vp),
-    }, state}
+    {:reply,
+     %{
+       rt_sa: feed_summary(state.rt_sa),
+       rt_tu: feed_summary(state.rt_tu),
+       rt_vp: feed_summary(state.rt_vp)
+     }, state}
   end
 
   defp feed_summary(nil), do: %{loaded: false}
+
   defp feed_summary(feed) when is_struct(feed, TransitRealtime.FeedMessage) do
     %{
-      loaded:           true,
+      loaded: true,
       header_timestamp: feed.header.timestamp,
-      entity_count:     length(feed.entity),
-      trip_updates:     Enum.count(feed.entity, & &1.trip_update),
+      entity_count: length(feed.entity),
+      trip_updates: Enum.count(feed.entity, & &1.trip_update),
       vehicle_positions: Enum.count(feed.entity, & &1.vehicle),
-      alerts:           Enum.count(feed.entity, & &1.alert),
+      alerts: Enum.count(feed.entity, & &1.alert)
     }
   end
+
   defp feed_summary(_), do: %{loaded: false}
 
   # Helper function to extract vehicle positions from protobuf data
@@ -1235,7 +1265,6 @@ defmodule RoomGtfs.Worker.RT do
        do: true
 
   defp positioned?(_vehicle), do: false
-
 
   def fetch_rt_url(url, headers \\ []) do
     case HTTPoison.get(url, headers, @rt_http) do
@@ -1468,9 +1497,7 @@ defmodule RoomGtfs.Worker.RT do
     started = System.monotonic_time(:millisecond)
 
     headers =
-      RoomSanctum.Configuration.Configs.GTFS.request_headers(
-        state.inst && state.inst.config
-      )
+      RoomSanctum.Configuration.Configs.GTFS.request_headers(state.inst && state.inst.config)
 
     # Scoped to the owner. Several of one person's sources pointing at one URL
     # still fetch it once between them, which is what this cache is for; two
@@ -1483,6 +1510,7 @@ defmodule RoomGtfs.Worker.RT do
         headers,
         state.inst && state.inst.user_id
       )
+
     took = System.monotonic_time(:millisecond) - started
 
     case result do
@@ -1530,9 +1558,14 @@ defmodule RoomGtfs.Worker.RT do
   """
   def rt_url_for(config, kind)
 
-  def rt_url_for(config, :sa), do: blank(Map.get(config, :url_rt_sa)) || blank(Map.get(config, :url_rt_shared))
-  def rt_url_for(config, :tu), do: blank(Map.get(config, :url_rt_tu)) || blank(Map.get(config, :url_rt_shared))
-  def rt_url_for(config, :vp), do: blank(Map.get(config, :url_rt_vp)) || blank(Map.get(config, :url_rt_shared))
+  def rt_url_for(config, :sa),
+    do: blank(Map.get(config, :url_rt_sa)) || blank(Map.get(config, :url_rt_shared))
+
+  def rt_url_for(config, :tu),
+    do: blank(Map.get(config, :url_rt_tu)) || blank(Map.get(config, :url_rt_shared))
+
+  def rt_url_for(config, :vp),
+    do: blank(Map.get(config, :url_rt_vp)) || blank(Map.get(config, :url_rt_shared))
 
   defp blank(nil), do: nil
   defp blank(""), do: nil
@@ -1650,7 +1683,6 @@ defmodule RoomGtfs.Worker.RT do
     end)
   end
 
-
   def handle_call({:query_realtime, trips, stop}, _from, state) do
     #    IO.inspect(trips)
 
@@ -1709,7 +1741,6 @@ defmodule RoomGtfs.Worker.RT do
 end
 
 defmodule RoomGtfs.Worker.Static do
-
   # A static feed is the whole timetable, and they are enormous: Chicago's is
   # 95 MiB, which is half a minute of transfer on a good link and several on a
   # bad one. Left on HTTPoison's five second default it could not finish, and
@@ -1761,7 +1792,11 @@ defmodule RoomGtfs.Worker.Static do
   end
 
   defp bcast(id, file, complete, total) do
-    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, wire_id(id), file, complete, total})
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      "gtfs",
+      {:gtfs, wire_id(id), file, complete, total}
+    )
   end
 
   defp bcast(id, :disabled) do
@@ -1781,14 +1816,13 @@ defmodule RoomGtfs.Worker.Static do
   defp wire_id(id) when is_integer(id), do: Integer.to_string(id)
 
   def init(opts) do
-
-#    pgopts = RoomSanctum.Repo.config()
-#    {:ok, pid} = Postgrex.start_link(pgopts)
+    #    pgopts = RoomSanctum.Repo.config()
+    #    {:ok, pid} = Postgrex.start_link(pgopts)
 
     {:ok,
      %{
-       id: opts[:name],
-#       pg_pid: pid
+       id: opts[:name]
+       #       pg_pid: pid
      }}
   end
 
@@ -1837,7 +1871,7 @@ defmodule RoomGtfs.Worker.Static do
     schema.__schema__(:fields)
     |> List.delete(:id)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k,v} -> cast_col(k, v) end)
+    |> Enum.map(fn {k, v} -> cast_col(k, v) end)
     |> Enum.join(", ")
   end
 
@@ -1846,7 +1880,7 @@ defmodule RoomGtfs.Worker.Static do
     |> List.delete(:id)
     |> Enum.filter(fn f -> Enum.member?(cols |> Enum.map(&String.to_atom/1), f) end)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k,v} -> cast_col(k, v) end)
+    |> Enum.map(fn {k, v} -> cast_col(k, v) end)
     |> Enum.join(", ")
   end
 
@@ -1861,7 +1895,7 @@ defmodule RoomGtfs.Worker.Static do
     |> Kernel.++(["inserted_at", "updated_at", "source_id"])
     |> Enum.map(fn x -> "#{x} varchar" end)
     |> Enum.join(", ")
-end
+  end
 
   # CSV headers are matched by name against schema fields, so any decoration on
   # the header cell silently drops that column from the import. BART quotes its
@@ -1929,15 +1963,14 @@ end
       |> Enum.to_list()
       |> List.flatten()
       |> List.first()
-      |> String.strip
+      |> String.strip()
       |> String.split(",")
       |> Enum.map(&normalize_header/1)
 
-#    cols_j = ["source_id" |cols_j]
-      cols_j_plus = cols_j ++ ["inserted_at", "updated_at", "source_id"]
+    #    cols_j = ["source_id" |cols_j]
+    cols_j_plus = cols_j ++ ["inserted_at", "updated_at", "source_id"]
 
-#    contents |> Stream.take(500) |> Enum.to_list() |> IO.inspect
-
+    #    contents |> Stream.take(500) |> Enum.to_list() |> IO.inspect
 
     # add truncation here as necessary
     case type do
@@ -1956,18 +1989,44 @@ end
     # set our variables based on the type
     {table, columns, pg_cols} =
       case type do
-        :agencies -> {:gtfs_agencies, [GTFS.Agency |> get_cols(cols_j_plus)], GTFS.Agency |> get_cols_pgtypes(cols_j_plus)}
-        :calendars -> {:gtfs_calendars, [GTFS.Calendar |> get_cols(cols_j_plus)], GTFS.Calendar |> get_cols_pgtypes(cols_j_plus)}
-        :calendar_dates -> {:gtfs_calendar_dates, [GTFS.CalendarDate |> get_cols(cols_j_plus)], GTFS.CalendarDate |> get_cols_pgtypes(cols_j_plus)}
-        :directions -> {:gtfs_directions, [GTFS.Direction |> get_cols(cols_j_plus)], GTFS.Direction |> get_cols_pgtypes(cols_j_plus)}
-        :routes -> {:gtfs_routes, [GTFS.Route |> get_cols(cols_j_plus)], GTFS.Route |> get_cols_pgtypes(cols_j_plus)}
-        :stops -> {:gtfs_stops, [GTFS.Stop |> get_cols(cols_j_plus)], GTFS.Stop |> get_cols_pgtypes(cols_j_plus)}
-        :stop_times -> {:gtfs_stop_times, [GTFS.StopTime |> get_cols(cols_j_plus)], GTFS.StopTime |> get_cols_pgtypes(cols_j_plus)}
-        :trips -> {:gtfs_trips, [GTFS.Trip |> get_cols(cols_j_plus)], GTFS.Trip |> get_cols_pgtypes(cols_j_plus)}
-        :shapes -> {:gtfs_shapes, [GTFS.Shape |> get_cols(cols_j_plus)], GTFS.Shape |> get_cols_pgtypes(cols_j_plus)}
+        :agencies ->
+          {:gtfs_agencies, [GTFS.Agency |> get_cols(cols_j_plus)],
+           GTFS.Agency |> get_cols_pgtypes(cols_j_plus)}
+
+        :calendars ->
+          {:gtfs_calendars, [GTFS.Calendar |> get_cols(cols_j_plus)],
+           GTFS.Calendar |> get_cols_pgtypes(cols_j_plus)}
+
+        :calendar_dates ->
+          {:gtfs_calendar_dates, [GTFS.CalendarDate |> get_cols(cols_j_plus)],
+           GTFS.CalendarDate |> get_cols_pgtypes(cols_j_plus)}
+
+        :directions ->
+          {:gtfs_directions, [GTFS.Direction |> get_cols(cols_j_plus)],
+           GTFS.Direction |> get_cols_pgtypes(cols_j_plus)}
+
+        :routes ->
+          {:gtfs_routes, [GTFS.Route |> get_cols(cols_j_plus)],
+           GTFS.Route |> get_cols_pgtypes(cols_j_plus)}
+
+        :stops ->
+          {:gtfs_stops, [GTFS.Stop |> get_cols(cols_j_plus)],
+           GTFS.Stop |> get_cols_pgtypes(cols_j_plus)}
+
+        :stop_times ->
+          {:gtfs_stop_times, [GTFS.StopTime |> get_cols(cols_j_plus)],
+           GTFS.StopTime |> get_cols_pgtypes(cols_j_plus)}
+
+        :trips ->
+          {:gtfs_trips, [GTFS.Trip |> get_cols(cols_j_plus)],
+           GTFS.Trip |> get_cols_pgtypes(cols_j_plus)}
+
+        :shapes ->
+          {:gtfs_shapes, [GTFS.Shape |> get_cols(cols_j_plus)],
+           GTFS.Shape |> get_cols_pgtypes(cols_j_plus)}
       end
 
-#    IO.inspect({table, columns, pg_cols})
+    #    IO.inspect({table, columns, pg_cols})
     # `Repo.config/0` carries Ecto's `timeout: 15000`, which looks like it would
     # cap the bulk statements below. It does not: DBConnection takes the
     # *transaction's* timeout as the default for statements run inside it, and
@@ -2040,11 +2099,13 @@ end
 
         Postgrex.execute(conn, qs, [])
 
-#        qd = Postgrex.prepare!(conn, "", "DROP TABLE #{tmp_table_name}")
-#        Postgrex.execute(conn, qd, [])
+        #        qd = Postgrex.prepare!(conn, "", "DROP TABLE #{tmp_table_name}")
+        #        Postgrex.execute(conn, qd, [])
       end,
       timeout: :infinity
-    ) |> IO.inspect
+    )
+    |> IO.inspect()
+
     GenServer.stop(pid)
   end
 
@@ -2162,7 +2223,6 @@ end
 
     DateTime.utc_now()
   end
-
 
   # linked_datasets.txt associates GTFS-RT feeds with the schedule that
   # describes them, so a feed that ships one can wire up its own realtime URLs.
@@ -2399,7 +2459,9 @@ end
         body
 
       offset ->
-        <<_::binary-size(offset), _::binary-size(20), comment_len::16-little, _rest::binary>> = body
+        <<_::binary-size(offset), _::binary-size(20), comment_len::16-little, _rest::binary>> =
+          body
+
         declared_end = offset + 22 + comment_len
 
         if byte_size(body) > declared_end do
@@ -2564,7 +2626,7 @@ end
                     |> String.split("\n")
                     |> Enum.map(&replace/1)
                     |> Enum.filter(fn x -> x != "" end)
-                    |> XP.parse_stream
+                    |> XP.parse_stream()
 
                   Logger.info({"datum", as_csv})
                   IO.inspect({"datum", as_csv})
@@ -2651,12 +2713,14 @@ defmodule RoomGtfs.Debug do
   """
   def urls(id) do
     cfg = Configuration.get_source!(id)
+
     %{
-      name:      cfg.name,
+      name: cfg.name,
       url_rt_sa: cfg.config.url_rt_sa,
       url_rt_tu: cfg.config.url_rt_tu,
-      url_rt_vp: cfg.config.url_rt_vp,
-    } |> IO.inspect(label: "RT URLs for source #{id}")
+      url_rt_vp: cfg.config.url_rt_vp
+    }
+    |> IO.inspect(label: "RT URLs for source #{id}")
   end
 
   @doc """
@@ -2665,15 +2729,17 @@ defmodule RoomGtfs.Debug do
   """
   def fetch_url(url) do
     IO.puts("Fetching #{url} ...")
+
     case RoomGtfs.Worker.RT.fetch_rt_url(url) do
       {:ok, feed} ->
         summary = %{
           header_timestamp: feed.header.timestamp,
-          entity_count:     length(feed.entity),
-          trip_updates:     feed.entity |> Enum.count(& &1.trip_update),
+          entity_count: length(feed.entity),
+          trip_updates: feed.entity |> Enum.count(& &1.trip_update),
           vehicle_positions: feed.entity |> Enum.count(& &1.vehicle),
-          alerts:           feed.entity |> Enum.count(& &1.alert),
+          alerts: feed.entity |> Enum.count(& &1.alert)
         }
+
         IO.inspect(summary, label: "Feed summary")
         {:ok, feed}
 
@@ -2688,11 +2754,17 @@ defmodule RoomGtfs.Debug do
   """
   def fetch_all(id) do
     cfg = Configuration.get_source!(id)
-    for {label, url} <- [sa: cfg.config.url_rt_sa, tu: cfg.config.url_rt_tu, vp: cfg.config.url_rt_vp],
+
+    for {label, url} <- [
+          sa: cfg.config.url_rt_sa,
+          tu: cfg.config.url_rt_tu,
+          vp: cfg.config.url_rt_vp
+        ],
         url != nil do
       IO.puts("\n--- #{label} ---")
       fetch_url(url)
     end
+
     :ok
   end
 
@@ -2707,11 +2779,13 @@ defmodule RoomGtfs.Debug do
 
       pid ->
         state = :sys.get_state(pid)
+
         %{
           rt_sa: feed_summary(state.rt_sa),
           rt_tu: feed_summary(state.rt_tu),
-          rt_vp: feed_summary(state.rt_vp),
-        } |> IO.inspect(label: "RT worker state for source #{id}")
+          rt_vp: feed_summary(state.rt_vp)
+        }
+        |> IO.inspect(label: "RT worker state for source #{id}")
     end
   end
 
@@ -2723,15 +2797,22 @@ defmodule RoomGtfs.Debug do
     IO.puts("Running query_stop for source=#{id} stop=#{query.stop} ...")
     results = RoomGtfs.Worker.query_stop(id, query)
     IO.puts("#{length(results)} arrivals:")
+
     for r <- results do
       route_id = get_in(r, [:trip, :route_id]) || get_in(r, [:trip, :route, :route_id]) || "?"
       headsign = get_in(r, [:trip, :trip_headsign]) || "?"
-      live = case Map.get(r, :arrival_time_live_ts) do
-        nil -> ""
-        ts  -> " [LIVE ts=#{ts} delay=#{r.arrival_time_live_delay}s]"
-      end
-      IO.puts("  route=#{route_id}  trip=#{r.trip_id}  to=#{headsign}  arrival=#{r.arrival_time}#{live}")
+
+      live =
+        case Map.get(r, :arrival_time_live_ts) do
+          nil -> ""
+          ts -> " [LIVE ts=#{ts} delay=#{r.arrival_time_live_delay}s]"
+        end
+
+      IO.puts(
+        "  route=#{route_id}  trip=#{r.trip_id}  to=#{headsign}  arrival=#{r.arrival_time}#{live}"
+      )
     end
+
     results
   end
 
@@ -2746,20 +2827,28 @@ defmodule RoomGtfs.Debug do
 
       pid ->
         state = :sys.get_state(pid)
+
         case state.rt_tu do
           nil ->
             IO.puts("rt_tu is nil — no successful fetch yet")
 
           feed ->
             entities = feed.entity |> Enum.filter(& &1.trip_update)
-            entities = if stop_id do
-              entities |> Enum.filter(fn e ->
-                Enum.any?(e.trip_update.stop_time_update, & &1.stop_id == stop_id)
-              end)
-            else
-              entities
-            end
-            IO.puts("#{length(entities)} trip_update entities#{if stop_id, do: " for stop #{stop_id}", else: ""}:")
+
+            entities =
+              if stop_id do
+                entities
+                |> Enum.filter(fn e ->
+                  Enum.any?(e.trip_update.stop_time_update, &(&1.stop_id == stop_id))
+                end)
+              else
+                entities
+              end
+
+            IO.puts(
+              "#{length(entities)} trip_update entities#{if stop_id, do: " for stop #{stop_id}", else: ""}:"
+            )
+
             entities |> IO.inspect(limit: :infinity)
         end
     end
@@ -2774,32 +2863,45 @@ defmodule RoomGtfs.Debug do
     alias RoomSanctum.Storage
 
     IO.puts("\n=== RT state ===")
-    rt_summary = case dbg_pid(id) do
-      :undefined ->
-        IO.puts("RT worker not found!")
-        nil
-      pid ->
-        state = :sys.get_state(pid)
-        IO.puts("rt_tu: #{inspect(feed_summary(state.rt_tu))}")
-        state.rt_tu
-    end
+
+    rt_summary =
+      case dbg_pid(id) do
+        :undefined ->
+          IO.puts("RT worker not found!")
+          nil
+
+        pid ->
+          state = :sys.get_state(pid)
+          IO.puts("rt_tu: #{inspect(feed_summary(state.rt_tu))}")
+          state.rt_tu
+      end
 
     IO.puts("\n=== Static arrivals for stop #{stop} ===")
-    static = Storage.get_upcoming_arrivals_for_stop(id, stop) |> Storage.fix_arrival_times
+    static = Storage.get_upcoming_arrivals_for_stop(id, stop) |> Storage.fix_arrival_times()
     static_trip_ids = static |> Enum.map(& &1.trip_id)
-    IO.puts("#{length(static)} static trips: #{inspect(Enum.take(static_trip_ids, 5))}#{if length(static_trip_ids) > 5, do: " ...", else: ""}")
+
+    IO.puts(
+      "#{length(static)} static trips: #{inspect(Enum.take(static_trip_ids, 5))}#{if length(static_trip_ids) > 5, do: " ...", else: ""}"
+    )
 
     if rt_summary do
       IO.puts("\n=== RT feed trip IDs (sample of 5) ===")
-      rt_trip_ids = rt_summary.entity
+
+      rt_trip_ids =
+        rt_summary.entity
         |> Enum.filter(& &1.trip_update)
         |> Enum.map(& &1.trip_update.trip.trip_id)
+
       IO.puts("#{length(rt_trip_ids)} total RT trip updates")
       IO.puts("Sample: #{inspect(Enum.take(rt_trip_ids, 5))}")
 
       IO.puts("\n=== Trip ID overlap ===")
       matched = MapSet.intersection(MapSet.new(static_trip_ids), MapSet.new(rt_trip_ids))
-      IO.puts("#{MapSet.size(matched)} of #{length(static_trip_ids)} static trips found in RT feed")
+
+      IO.puts(
+        "#{MapSet.size(matched)} of #{length(static_trip_ids)} static trips found in RT feed"
+      )
+
       if MapSet.size(matched) > 0 do
         IO.puts("Matched trip IDs: #{inspect(MapSet.to_list(matched))}")
       else
@@ -2809,18 +2911,24 @@ defmodule RoomGtfs.Debug do
       end
 
       IO.puts("\n=== stop_id format check ===")
-      rt_stop_ids = rt_summary.entity
+
+      rt_stop_ids =
+        rt_summary.entity
         |> Enum.filter(& &1.trip_update)
         |> Enum.flat_map(& &1.trip_update.stop_time_update)
         |> Enum.map(& &1.stop_id)
         |> Enum.uniq()
         |> Enum.take(5)
+
       IO.puts("Static stop_id: #{inspect(stop)}")
       IO.puts("RT stop_ids (sample): #{inspect(rt_stop_ids)}")
-      stop_match = rt_summary.entity
+
+      stop_match =
+        rt_summary.entity
         |> Enum.filter(& &1.trip_update)
         |> Enum.flat_map(& &1.trip_update.stop_time_update)
-        |> Enum.any?(& &1.stop_id == stop)
+        |> Enum.any?(&(&1.stop_id == stop))
+
       IO.puts("stop_id #{inspect(stop)} found in RT feed: #{stop_match}")
     end
 
@@ -2828,12 +2936,14 @@ defmodule RoomGtfs.Debug do
   end
 
   defp feed_summary(nil), do: :not_loaded
+
   defp feed_summary(feed) when is_struct(feed, TransitRealtime.FeedMessage) do
     %{
       header_timestamp: feed.header.timestamp,
-      entity_count:     length(feed.entity),
+      entity_count: length(feed.entity)
     }
   end
+
   defp feed_summary(other), do: {:unexpected, other}
 
   defp dbg_pid(id) do

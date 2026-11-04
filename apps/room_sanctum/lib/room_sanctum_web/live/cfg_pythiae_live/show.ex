@@ -6,6 +6,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
 
   def intersperse([], _), do: []
   def intersperse(_, []), do: []
+
   def intersperse([x | xs], [y | ys]) do
     [y, x | intersperse(xs, ys)]
   end
@@ -42,9 +43,14 @@ defmodule RoomSanctumWeb.PythiaeLive.Show do
 
     data = if is_map(data), do: data, else: Map.new(data)
 
-    shuffled_consts = socket.assigns.pythiae.consts |> Enum.shuffle |> Enum.with_index |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end) |> Map.new
+    shuffled_consts =
+      socket.assigns.pythiae.consts
+      |> Enum.shuffle()
+      |> Enum.with_index()
+      |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end)
+      |> Map.new()
 
-    data = Map.merge(data, shuffled_consts) |> Enum.shuffle
+    data = Map.merge(data, shuffled_consts) |> Enum.shuffle()
 
     {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries)}
   end

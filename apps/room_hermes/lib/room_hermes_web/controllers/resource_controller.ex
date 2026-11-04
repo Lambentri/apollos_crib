@@ -16,6 +16,7 @@ defmodule RoomHermesWeb.ResourceController do
     case {vhost, resource} do
       {"/", "queue"} ->
         IO.puts("qqq")
+
         case name |> String.starts_with?("mqtt-subscription") do
           true -> send_resp(conn, :ok, "allow")
           false -> send_resp(conn, :ok, "deny")

@@ -85,7 +85,9 @@ defmodule RoomPackages.Worker do
   end
 
   defp delivered?(%{entries: entries}) when is_list(entries) do
-    Enum.any?(entries, fn e -> Map.get(e, :delivered) == true or Map.get(e, "delivered") == true end)
+    Enum.any?(entries, fn e ->
+      Map.get(e, :delivered) == true or Map.get(e, "delivered") == true
+    end)
   end
 
   defp delivered?(_), do: false
@@ -106,5 +108,4 @@ defmodule RoomPackages.Worker do
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
-
 end
