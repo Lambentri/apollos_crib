@@ -75,13 +75,15 @@ defmodule RoomCalendar.Worker do
             |> Map.put(:updated_at, dt)
           end)
 
-        Repo.insert_all(
-          RoomSanctum.Storage.ICalendar,
-          data,
-          on_conflict: {:replace_all_except, [:id]},
-          conflict_target: [:source_id, :blob]
-        )
-        |> IO.inspect()
+        {count, _} =
+          Repo.insert_all(
+            RoomSanctum.Storage.ICalendar,
+            data,
+            on_conflict: {:replace_all_except, [:id]},
+            conflict_target: [:source_id, :blob]
+          )
+
+        Logger.debug("iCAL::#{state.id} wrote #{count} entries")
 
       {:error, reason} ->
         IO.puts("error #{reason.reason}")

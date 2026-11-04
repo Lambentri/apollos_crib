@@ -193,7 +193,7 @@ defmodule RoomSanctum.Worker.Ankyra do
         )
 
       {:error, error} ->
-        IO.inspect(error)
+        Logger.warning("ankyra #{state.id}: could not publish: #{inspect(error)}")
     end
 
     {:noreply, state}
@@ -241,10 +241,9 @@ defmodule RoomSanctum.Worker.Ankyra do
           state.ankyra.topic <> ".img",
           data |> RoomSanctum.JSON.encode!()
         )
-        |> IO.inspect()
 
       {:error, error} ->
-        IO.inspect(error)
+        Logger.warning("ankyra #{state.id}: could not publish img: #{inspect(error)}")
     end
 
     {:noreply, state}
@@ -255,9 +254,10 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_info({:basic_cancel_ok, _meta}, state), do: {:noreply, state}
 
   def handle_info({:basic_deliver, payload, %{routing_key: key}}, state) do
-    cond do
-      String.contains?(key, ".up.") -> {:noreply, remember_position(state, payload)}
-      true -> {:noreply, serve_request(state, key)}
+    if String.contains?(key, ".up.") do
+      {:noreply, remember_position(state, payload)}
+    else
+      {:noreply, serve_request(state, key)}
     end
   end
 

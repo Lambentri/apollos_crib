@@ -2,6 +2,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   use RoomSanctumWeb, :live_view_a
   import RoomSanctumWeb.Components.QueryGeospatialMap
 
+  require Logger
+
   alias RoomSanctum.Configuration
   alias RoomSanctum.Storage
   alias RoomSanctumWeb.SourceLive.StationStream
@@ -1045,7 +1047,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           query: %{stop_id: socket.assigns.tester_selected, __type__: "gbfs"},
           public: true
         })
-        |> IO.inspect()
 
       :gtfs ->
         Configuration.create_query(%{
@@ -1055,7 +1056,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           query: %{stop: socket.assigns.tester_selected, __type__: "gtfs"},
           public: true
         })
-        |> IO.inspect()
     end
 
     {:noreply, socket |> assign(:tester_selected, nil) |> assign(:tester_selected_name, nil)}
@@ -1076,7 +1076,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           query: %{"stop_id" => station_id, "__type__" => "gbfs"},
           public: true
         })
-        |> IO.inspect()
 
       {:gbfs, "area"} ->
         # For free bike area queries, create a radius-based query around the bike location
@@ -1097,7 +1096,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
             },
             public: true
           })
-          |> IO.inspect()
         end
 
       {:gtfs, "stop"} ->
@@ -1108,7 +1106,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           query: %{"stop" => station_id, "__type__" => "gtfs"},
           public: true
         })
-        |> IO.inspect()
 
       {:gtfs, "vehicle"} ->
         # For GTFS vehicle position queries, create a vehicle tracking query
@@ -1119,7 +1116,6 @@ defmodule RoomSanctumWeb.SourceLive.Show do
           query: %{"vehicle_id" => station_id, "__type__" => "gtfs_vehicle_positions"},
           public: true
         })
-        |> IO.inspect()
 
       {_, "query"} ->
         # For duplicating existing queries, find the original and copy it
@@ -1134,11 +1130,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
             query: original_query.query,
             public: true
           })
-          |> IO.inspect()
         end
 
       _ ->
-        IO.inspect(
+        Logger.info(
           "Unhandled query creation for type: #{type}, source: #{socket.assigns.source.type}"
         )
     end

@@ -188,7 +188,7 @@ defmodule RoomSanctumWeb.KeryxLive.FormComponent do
          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset) |> IO.inspect())}
+        {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
@@ -203,7 +203,7 @@ defmodule RoomSanctumWeb.KeryxLive.FormComponent do
          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset) |> IO.inspect())}
+        {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 

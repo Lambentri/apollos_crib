@@ -7,7 +7,7 @@ defmodule RoomSanctum.Queues.Webhooks do
   def perform(%Oban.Job{args: %{"path" => path, "data" => data} = args}) do
     case RoomSanctum.Configuration.get_agyr!(:path, path) do
       nil ->
-        IO.inspect("non-extant agyr")
+        Logger.info("Webhook for non-extant agyr #{path}")
 
       agyr ->
         source = RoomSanctum.Configuration.get_source!(agyr.source_id)

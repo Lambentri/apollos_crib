@@ -221,7 +221,6 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
 
       :tidal ->
         data
-        |> IO.inspect()
         |> Enum.group_by(fn x -> x.type end)
         |> Enum.map(fn {extreme, data} ->
           case data do

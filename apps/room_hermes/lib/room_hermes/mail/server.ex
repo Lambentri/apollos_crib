@@ -16,10 +16,6 @@ defmodule RoomHermes.Mail.Server do
   def handle_DATA(from, to, data, state) do
     Logger.info("Received DATA:")
 
-    state
-    |> Map.put(:body, data)
-    |> IO.inspect()
-
     mail = parse_mail(data, state)
 
     %{mail: mail, from: from, to: to}
@@ -62,7 +58,7 @@ defmodule RoomHermes.Mail.Server do
   end
 
   def terminate(reason, state) do
-    IO.inspect({reason, state})
+    Logger.debug("SMTP session ended: #{inspect(reason)}")
     {:ok, reason, state}
   end
 

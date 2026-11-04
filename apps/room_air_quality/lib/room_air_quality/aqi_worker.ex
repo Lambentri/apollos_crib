@@ -129,14 +129,13 @@ defmodule RoomAirQuality.Worker do
           |> Map.put(:inserted_at, datetime)
           |> Map.put(:updated_at, datetime)
         end)
-        |> Stream.map(fn x ->
+        |> Enum.each(fn x ->
           Repo.insert(
             x,
             on_conflict: {:replace_all_except, [:id]},
             conflict_target: [:source_id, :site_name, :parameter_name]
           )
         end)
-        |> Enum.to_list()
 
       :sites ->
         result.body
@@ -201,7 +200,7 @@ defmodule RoomAirQuality.Worker do
           |> Map.put(:inserted_at, datetime)
           |> Map.put(:updated_at, datetime)
         end)
-        |> Enum.map(fn x ->
+        |> Enum.each(fn x ->
           Repo.insert(
             x,
             on_conflict: {:replace_all_except, [:id]},

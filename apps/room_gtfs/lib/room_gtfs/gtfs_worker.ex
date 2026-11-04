@@ -2068,7 +2068,7 @@ defmodule RoomGtfs.Worker.Static do
             []
           )
 
-        Enum.into(contents, stream)
+        contents |> Stream.into(stream) |> Stream.run()
 
         qtc =
           Postgrex.prepare!(
@@ -2104,7 +2104,6 @@ defmodule RoomGtfs.Worker.Static do
       end,
       timeout: :infinity
     )
-    |> IO.inspect()
 
     GenServer.stop(pid)
   end
@@ -2219,7 +2218,7 @@ defmodule RoomGtfs.Worker.Static do
           )
       end
     end)
-    |> Enum.count()
+    |> Stream.run()
 
     DateTime.utc_now()
   end
@@ -2533,7 +2532,7 @@ defmodule RoomGtfs.Worker.Static do
               files
               |> gtfs_entries(id)
               |> Enum.sort_by(&file_to_order(Path.basename(&1.file_name)))
-              |> Enum.map(fn e ->
+              |> Enum.each(fn e ->
                 name = Path.basename(e.file_name)
                 type = file_to_atom(name)
 
@@ -2620,7 +2619,7 @@ defmodule RoomGtfs.Worker.Static do
                  |> :zip.unzip([:memory]) do
               {:ok, files} ->
                 files
-                |> Enum.map(fn {name, data} ->
+                |> Enum.each(fn {name, data} ->
                   as_csv =
                     data
                     |> String.split("\n")
@@ -2629,7 +2628,6 @@ defmodule RoomGtfs.Worker.Static do
                     |> XP.parse_stream()
 
                   Logger.info({"datum", as_csv})
-                  IO.inspect({"datum", as_csv})
 
                   case name do
                     'agency.txt' ->
@@ -2720,7 +2718,7 @@ defmodule RoomGtfs.Debug do
       url_rt_tu: cfg.config.url_rt_tu,
       url_rt_vp: cfg.config.url_rt_vp
     }
-    |> IO.inspect(label: "RT URLs for source #{id}")
+    |> show(label: "RT URLs for source #{id}")
   end
 
   @doc """
@@ -2740,11 +2738,11 @@ defmodule RoomGtfs.Debug do
           alerts: feed.entity |> Enum.count(& &1.alert)
         }
 
-        IO.inspect(summary, label: "Feed summary")
+        show(summary, label: "Feed summary")
         {:ok, feed}
 
       {:error, reason} ->
-        IO.inspect(reason, label: "Fetch failed")
+        show(reason, label: "Fetch failed")
         {:error, reason}
     end
   end
@@ -2785,7 +2783,7 @@ defmodule RoomGtfs.Debug do
           rt_tu: feed_summary(state.rt_tu),
           rt_vp: feed_summary(state.rt_vp)
         }
-        |> IO.inspect(label: "RT worker state for source #{id}")
+        |> show(label: "RT worker state for source #{id}")
     end
   end
 
@@ -2849,7 +2847,7 @@ defmodule RoomGtfs.Debug do
               "#{length(entities)} trip_update entities#{if stop_id, do: " for stop #{stop_id}", else: ""}:"
             )
 
-            entities |> IO.inspect(limit: :infinity)
+            entities |> show(limit: :infinity)
         end
     end
   end
@@ -2952,4 +2950,8 @@ defmodule RoomGtfs.Debug do
       _ -> :undefined
     end
   end
+
+  # Printing is what these IEx helpers are for, not a leftover.
+  # credo:disable-for-next-line Credo.Check.Warning.IoInspect
+  defp show(term, opts), do: IO.inspect(term, opts)
 end

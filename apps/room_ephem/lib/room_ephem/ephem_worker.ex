@@ -100,7 +100,6 @@ defmodule RoomEphem.Worker do
 
   @decorate cacheable(cache: RoomZeus.Cache, opts: [ttl: @ttl])
   def query_ephem(_name, query) do
-    IO.inspect("QEPH")
     {lon, lat} = Configuration.place_for!(query).coordinates
     lat = normalize_ll(lat)
     lon = normalize_ll(lon)

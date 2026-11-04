@@ -76,7 +76,7 @@ defmodule RoomSanctum.Configuration.Vision do
 
   defp validate_queries_have_valid_ids(changeset) do
     case get_field(changeset, :query_ids) do
-      ids when is_list(ids) and length(ids) > 0 ->
+      [_ | _] ->
         # Validate that all query IDs exist and belong to the user
         changeset
 

@@ -12,7 +12,7 @@ defmodule RoomSanctumWeb.DataController do
   def index(conn, data) do
     {path, data} = data |> Map.pop("path")
     {:ok, datas, _conn_details} = Plug.Conn.read_body(conn)
-    IO.inspect(datas)
+    Logger.debug("webhook #{path}: #{datas}")
 
     #    IO.inspect({"PDPDPD", path, data})
     #    %{path: path, data: datas}

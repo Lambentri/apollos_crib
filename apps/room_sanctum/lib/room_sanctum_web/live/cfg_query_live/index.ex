@@ -196,8 +196,6 @@ defmodule RoomSanctumWeb.QueryLive.Index do
   end
 
   def handle_event("set-tint", %{"tint" => tint}, socket) do
-    IO.inspect({"set-tint", tint, socket.assigns.tint})
-
     queries =
       case socket.assigns.tint == tint do
         true ->

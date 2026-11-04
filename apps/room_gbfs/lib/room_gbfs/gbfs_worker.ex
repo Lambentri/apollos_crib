@@ -269,7 +269,6 @@ defmodule RoomGbfs.Worker do
                     point = %Geo.MultiPolygon{coordinates: x.geometry.coordinates, srid: 4326}
                     x |> Map.put(:place, point)
                   end)
-                  |> IO.inspect()
                   |> Enum.map(fn x ->
                     RoomSanctum.Storage.change_geo_fencing_zones(
                       %RoomSanctum.Storage.GBFS.V1.GeoFencingZones{},
@@ -277,7 +276,6 @@ defmodule RoomGbfs.Worker do
                     ).changes
                     |> inj_iddt(id, dt)
                   end)
-                  |> IO.inspect()
 
                 RoomSanctum.Storage.truncate_geo_fencing_zones(id)
 
@@ -397,7 +395,7 @@ defmodule RoomGbfs.Worker do
                 # work out how many of its bikes are electric, and operators
                 # list the feeds in whatever order suits them.
                 |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
-                |> Enum.map(fn %{"name" => name, "url" => url} ->
+                |> Enum.each(fn %{"name" => name, "url" => url} ->
                   # v3 renamed the loose-vehicle feed; everything below is
                   # written in v2's names, which is the one dialect this worker
                   # speaks.
@@ -497,7 +495,7 @@ defmodule RoomGbfs.Worker do
 
                     feeds
                     |> Enum.sort_by(&RoomGbfs.V3.feed_order/1)
-                    |> Enum.map(fn %{"name" => name, "url" => url} ->
+                    |> Enum.each(fn %{"name" => name, "url" => url} ->
                       case RoomGbfs.V3.feed_name(name) do
                         "station_information" ->
                           write_data(url, :stat_info, state.id, cfg.config.lang)
@@ -585,7 +583,6 @@ defmodule RoomGbfs.Worker do
       Storage.count_free_bikes_types(id)
       |> Enum.map(fn %{cnt: cnt, ff: ff} -> {ff, cnt} end)
       |> Map.new()
-      |> IO.inspect()
 
     %{
       free_bikes: Storage.count_free_bikes(id)

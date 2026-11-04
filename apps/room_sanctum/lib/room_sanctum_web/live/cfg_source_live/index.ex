@@ -123,7 +123,6 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   def handle_event("toggle-source-selection", %{"id" => id} = params, socket) do
     source_id = String.to_integer(id)
-    IO.inspect(params, label: "checkbox params")
     # Check if the checkbox is checked by looking for the "value" key
     is_checked = Map.has_key?(params, "value")
 
@@ -133,7 +132,6 @@ defmodule RoomSanctumWeb.SourceLive.Index do
         false -> MapSet.delete(socket.assigns.selected_sources, source_id)
       end
 
-    IO.inspect(selected_sources, label: "updated selection")
     {:noreply, assign(socket, :selected_sources, selected_sources)}
   end
 
@@ -142,9 +140,6 @@ defmodule RoomSanctumWeb.SourceLive.Index do
     all_source_ids =
       socket.assigns.cfg_sources_ids
 
-    IO.inspect(all_source_ids)
-    IO.inspect(MapSet.size(socket.assigns.selected_sources))
-
     selected_sources =
       case MapSet.size(socket.assigns.selected_sources) do
         # Select all
@@ -152,8 +147,6 @@ defmodule RoomSanctumWeb.SourceLive.Index do
         # Deselect all
         _ -> MapSet.new()
       end
-
-    IO.inspect(selected_sources, label: "SELSEOURCE")
 
     {:noreply, assign(socket, :selected_sources, selected_sources)}
   end

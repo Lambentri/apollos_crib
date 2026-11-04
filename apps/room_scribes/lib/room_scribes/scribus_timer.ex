@@ -55,7 +55,6 @@ defmodule RoomScribus.Timer do
   end
 
   def handle_info({:update, scan_data}, state) do
-    IO.inspect("gottem here")
     png = scan_data.png |> Base.decode64!()
     #    {:ok, pixels} = Pixels.read(png) |> IO.inspect
     #    as_grayscale = to_grayscale_again(pixels) |> IO.inspect

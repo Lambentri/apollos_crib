@@ -23,53 +23,14 @@ defmodule RoomSanctum.Queues.Mail do
             "to" => to
           } = args
       }) do
-    IO.inspect({"mmmm", from, subject, to})
+    Logger.debug("Mailer: #{inspect(subject)} from #{inspect(from)} to #{inspect(to)}")
 
     case resolve_taxid(args) do
       nil ->
-        IO.inspect({"Mailer: Unhandled email found", to})
+        Logger.info("Mailer: Unhandled email found for #{inspect(to)}")
 
       taxid ->
-        # get adjacent webhook urls
-
-        IO.inspect(taxid.source_id)
-
-        case taxid.designator do
-          "mail_main" ->
-            extracted =
-              Map.merge(
-                extract_tracking(plain_body),
-                extract_tracking(html_body),
-                fn _k, v1, v2 -> v1 ++ v2 end
-              )
-              |> Enum.map(fn {k, v} -> {k, v |> MapSet.new() |> MapSet.to_list()} end)
-              |> Map.new()
-              |> IO.inspect()
-              |> Enum.map(fn {k, v} ->
-                IO.inspect({k, v})
-
-                case k do
-                  :ups ->
-                    ag = RoomSanctum.Configuration.get_agyr!(:src, taxid.source_id, "ups_webhook")
-                    register_ups(v, ag)
-
-                  :fedex ->
-                    register_fedex(v)
-
-                  :usps ->
-                    register_usps(v, taxid.source_id)
-
-                  :uniuni ->
-                    register_uniuni(v)
-
-                  _otherwise ->
-                    IO.inspect({"owowowow", k, v})
-                end
-              end)
-
-          "mail_usps" ->
-            :usps
-        end
+        handle_designator(taxid, plain_body, html_body)
 
         %{meta: args, body_plain: plain_body, body_html: html_body, mail: taxid.id}
         |> RoomSanctum.Storage.create_taxidae()
@@ -78,6 +39,32 @@ defmodule RoomSanctum.Queues.Mail do
     # save
 
     :ok
+  end
+
+  defp handle_designator(%{designator: "mail_main"} = taxid, plain_body, html_body) do
+    Map.merge(
+      extract_tracking(plain_body),
+      extract_tracking(html_body),
+      fn _k, v1, v2 -> v1 ++ v2 end
+    )
+    |> Enum.map(fn {k, v} -> {k, v |> MapSet.new() |> MapSet.to_list()} end)
+    |> Map.new()
+    |> Enum.each(fn {carrier, numbers} -> register(carrier, numbers, taxid) end)
+  end
+
+  defp handle_designator(%{designator: "mail_usps"}, _plain_body, _html_body), do: :usps
+
+  defp register(:ups, numbers, taxid) do
+    ag = RoomSanctum.Configuration.get_agyr!(:src, taxid.source_id, "ups_webhook")
+    register_ups(numbers, ag)
+  end
+
+  defp register(:fedex, numbers, _taxid), do: register_fedex(numbers)
+  defp register(:usps, numbers, taxid), do: register_usps(numbers, taxid.source_id)
+  defp register(:uniuni, numbers, _taxid), do: register_uniuni(numbers)
+
+  defp register(carrier, numbers, _taxid) do
+    Logger.info("Mailer: no registration for #{inspect(carrier)} #{inspect(numbers)}")
   end
 
   # SMTP has only the envelope to route on, so it matches the local part of the
@@ -164,7 +151,6 @@ defmodule RoomSanctum.Queues.Mail do
 
       _otherwise ->
         {:ok, token_expiry, _extra} = DateTime.from_iso8601(conf.token_ups_expiry)
-        IO.inspect({"tetete", token_expiry, now, now > token_expiry})
         comp = DateTime.compare(token_expiry, now)
         comp == :lt
     end
@@ -229,10 +215,11 @@ defmodule RoomSanctum.Queues.Mail do
         # list from the struct it is given, so reusing a stale one makes each
         # number overwrite the last. Harmless while only one number ever came
         # through; not once a single email can carry several.
-        Enum.reduce(trackings, source, fn t, src ->
-          RoomSanctum.Configuration.create_source_meta_tracking(src, t, :ups)
-          RoomSanctum.Configuration.get_source!(src.id)
-        end)
+        _source =
+          Enum.reduce(trackings, source, fn t, src ->
+            RoomSanctum.Configuration.create_source_meta_tracking(src, t, :ups)
+            RoomSanctum.Configuration.get_source!(src.id)
+          end)
 
         our_scheme =
           case Application.get_env(:room_sanctum, :env) do
@@ -277,7 +264,7 @@ defmodule RoomSanctum.Queues.Mail do
             {"Authorization", "Bearer #{token}"}
           ])
 
-        IO.inspect({"ups-post", res, url, payload})
+        Logger.debug("UPS subscription for #{inspect(trackings)}: #{inspect(res)}")
 
       false ->
         Logger.info("Source #{agyr.source_id} missing API keys for UPS")

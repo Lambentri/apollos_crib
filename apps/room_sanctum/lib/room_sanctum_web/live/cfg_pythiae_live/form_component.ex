@@ -153,8 +153,6 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
   end
 
   defp save_pythiae(socket, :edit, pythiae_params) do
-    IO.inspect(pythiae_params)
-
     case Configuration.update_pythiae(socket.assigns.pythiae, pythiae_params) do
       {:ok, pythiae} ->
         notify_parent({:saved, pythiae})
