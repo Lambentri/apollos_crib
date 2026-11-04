@@ -1067,79 +1067,79 @@ defmodule RoomSanctumWeb.SourceLive.Show do
         %{"station_id" => station_id, "name" => name, "type" => type},
         socket
       ) do
-    case {socket.assigns.source.type, type} do
-      {:gbfs, "station"} ->
-        Configuration.create_query(%{
-          user_id: socket.assigns.current_user.id,
-          source_id: socket.assigns.source.id,
-          name: "#{name} - Station Query",
-          query: %{"stop_id" => station_id, "__type__" => "gbfs"},
-          public: true
-        })
-
-      {:gbfs, "area"} ->
-        # For free bike area queries, create a radius-based query around the bike location
-        # We'll use a default 500m radius, but this could be made configurable
-        bike = Enum.find(socket.assigns.free_bikes, &(&1.bike_id == station_id))
-
-        if bike do
+    created =
+      case {socket.assigns.source.type, type} do
+        {:gbfs, "station"} ->
           Configuration.create_query(%{
             user_id: socket.assigns.current_user.id,
             source_id: socket.assigns.source.id,
-            name: "Free Bikes around #{bike.lat}, #{bike.lon}",
-            query: %{
-              "lat" => bike.lat,
-              "lng" => bike.lon,
-              # 500 meter radius
-              "radius" => 500,
-              "__type__" => "gbfs"
-            },
+            name: "#{name} - Station Query",
+            query: %{"stop_id" => station_id, "__type__" => "gbfs"},
             public: true
           })
-        end
 
-      {:gtfs, "stop"} ->
-        Configuration.create_query(%{
-          user_id: socket.assigns.current_user.id,
-          source_id: socket.assigns.source.id,
-          name: "#{name} - Stop Query",
-          query: %{"stop" => station_id, "__type__" => "gtfs"},
-          public: true
-        })
+        {:gbfs, "area"} ->
+          # For free bike area queries, create a radius-based query around the bike location
+          # We'll use a default 500m radius, but this could be made configurable
+          bike = Enum.find(socket.assigns.free_bikes, &(&1.bike_id == station_id))
 
-      {:gtfs, "vehicle"} ->
-        # For GTFS vehicle position queries, create a vehicle tracking query
-        Configuration.create_query(%{
-          user_id: socket.assigns.current_user.id,
-          source_id: socket.assigns.source.id,
-          name: "#{name}",
-          query: %{"vehicle_id" => station_id, "__type__" => "gtfs_vehicle_positions"},
-          public: true
-        })
+          if bike do
+            Configuration.create_query(%{
+              user_id: socket.assigns.current_user.id,
+              source_id: socket.assigns.source.id,
+              name: "Free Bikes around #{bike.lat}, #{bike.lon}",
+              query: %{
+                "lat" => bike.lat,
+                "lng" => bike.lon,
+                # 500 meter radius
+                "radius" => 500,
+                "__type__" => "gbfs"
+              },
+              public: true
+            })
+          end
 
-      {_, "query"} ->
-        # For duplicating existing queries, find the original and copy it
-        original_query =
-          Enum.find(socket.assigns.queries, &(&1.id == String.to_integer(station_id)))
-
-        if original_query do
+        {:gtfs, "stop"} ->
           Configuration.create_query(%{
             user_id: socket.assigns.current_user.id,
             source_id: socket.assigns.source.id,
-            name: "Copy of #{original_query.name}",
-            query: original_query.query,
+            name: "#{name} - Stop Query",
+            query: %{"stop" => station_id, "__type__" => "gtfs"},
             public: true
           })
-        end
 
-      _ ->
-        Logger.info(
-          "Unhandled query creation for type: #{type}, source: #{socket.assigns.source.type}"
-        )
-    end
+        {:gtfs, "vehicle"} ->
+          # For GTFS vehicle position queries, create a vehicle tracking query
+          Configuration.create_query(%{
+            user_id: socket.assigns.current_user.id,
+            source_id: socket.assigns.source.id,
+            name: "#{name}",
+            query: %{"vehicle_id" => station_id, "__type__" => "gtfs_vehicle_positions"},
+            public: true
+          })
 
-    # Show a temporary success message or update
-    {:noreply, socket |> put_flash(:info, "Query created successfully!")}
+        {_, "query"} ->
+          # For duplicating existing queries, find the original and copy it
+          original_query =
+            Enum.find(socket.assigns.queries, &(&1.id == String.to_integer(station_id)))
+
+          if original_query do
+            Configuration.create_query(%{
+              user_id: socket.assigns.current_user.id,
+              source_id: socket.assigns.source.id,
+              name: "Copy of #{original_query.name}",
+              query: original_query.query,
+              public: true
+            })
+          end
+
+        _ ->
+          Logger.info(
+            "Unhandled query creation for type: #{type}, source: #{socket.assigns.source.type}"
+          )
+      end
+
+    {:noreply, created_flash(socket, created, name)}
   end
 
   @impl true
@@ -1258,6 +1258,18 @@ defmodule RoomSanctumWeb.SourceLive.Show do
         {:noreply, socket}
     end
   end
+
+  # Only an inserted query is a success. A changeset that failed validation,
+  # a bike or query that was no longer there to copy, and a type nothing
+  # handles all used to be reported as created too.
+  defp created_flash(socket, {:ok, _query}, _name),
+    do: put_flash(socket, :info, "Query created successfully!")
+
+  defp created_flash(socket, {:error, %Ecto.Changeset{}}, name),
+    do: put_flash(socket, :error, "Could not create a query for #{name}.")
+
+  defp created_flash(socket, _nothing, name),
+    do: put_flash(socket, :error, "Nothing to create a query from for #{name}.")
 
   defp percent(num, denom) do
     (num / denom * 100)
