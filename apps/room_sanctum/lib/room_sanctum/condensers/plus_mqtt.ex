@@ -146,21 +146,20 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
 
   # Same table as Basic's, kept here rather than reaching into
   # a private function of another condenser.
-  defp gtfs_mode(route_type) do
-    case route_type do
-      "0" -> "LightRail"
-      "1" -> "Subway"
-      "2" -> "Rail"
-      "3" -> "Bus"
-      "4" -> "Ferry"
-      "5" -> "CableCar"
-      "6" -> "Gondola"
-      "7" -> "Funicular"
-      "11" -> "Trolleybus"
-      "12" -> "Monorail"
-      _ -> "Unknown"
-    end
-  end
+  @gtfs_modes %{
+    "0" => "LightRail",
+    "1" => "Subway",
+    "2" => "Rail",
+    "3" => "Bus",
+    "4" => "Ferry",
+    "5" => "CableCar",
+    "6" => "Gondola",
+    "7" => "Funicular",
+    "11" => "Trolleybus",
+    "12" => "Monorail"
+  }
+
+  defp gtfs_mode(route_type), do: Map.get(@gtfs_modes, route_type, "Unknown")
 
   defp livetime(nil, _tz), do: nil
 

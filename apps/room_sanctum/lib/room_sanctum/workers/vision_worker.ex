@@ -308,98 +308,79 @@ defmodule RoomSanctum.Worker.Vision do
       :skip
   end
 
-  defp query_one(q) do
-    case q.source.type do
-      :gtfs ->
-        RoomGtfs.Worker.query_stop(q.source.id, q.query)
+  # Workers that may not be running: one that is not has nothing to read.
+  @readers %{
+    drought: RoomDrought.Worker,
+    pollen: RoomPollen.Worker,
+    icarus: RoomIcarus.Worker,
+    mailbox: RoomHermes.Mail.ImapWorker,
+    treasury: RoomTreasury.Worker,
+    bourse: RoomBourse.Worker
+  }
 
-      :gbfs ->
-        RoomGbfs.Worker.query_stop(q.source.id, q.query)
+  defp query_one(%{source: %{type: :gtfs}} = q),
+    do: RoomGtfs.Worker.query_stop(q.source.id, q.query)
 
-      :tidal ->
-        RoomTidal.Worker.query_tides(q.source.id, q.query)
+  defp query_one(%{source: %{type: :gbfs}} = q),
+    do: RoomGbfs.Worker.query_stop(q.source.id, q.query)
 
-      :weather ->
-        RoomWeather.Worker.query_weather(q.source.id, q.query)
+  defp query_one(%{source: %{type: :tidal}} = q),
+    do: RoomTidal.Worker.query_tides(q.source.id, q.query)
 
-      :aqi ->
-        RoomAirQuality.Worker.query_place(q.source.id, q.query)
+  defp query_one(%{source: %{type: :weather}} = q),
+    do: RoomWeather.Worker.query_weather(q.source.id, q.query)
 
-      :ephem ->
-        RoomEphem.Worker.query_ephem(q.source.id, q.query)
+  defp query_one(%{source: %{type: :aqi}} = q),
+    do: RoomAirQuality.Worker.query_place(q.source.id, q.query)
 
-      :calendar ->
-        RoomCalendar.Worker.query_calendar(q.source.id, q.query)
+  defp query_one(%{source: %{type: :ephem}} = q),
+    do: RoomEphem.Worker.query_ephem(q.source.id, q.query)
 
-      :cronos ->
-        RoomCronos.Worker.query_cronos(q.id, q.query)
+  defp query_one(%{source: %{type: :calendar}} = q),
+    do: RoomCalendar.Worker.query_calendar(q.source.id, q.query)
 
-      :gitlab ->
-        case RoomGitlab.Worker.pid(q.source.id) do
-          nil ->
-            []
+  defp query_one(%{source: %{type: :cronos}} = q),
+    do: RoomCronos.Worker.query_cronos(q.id, q.query)
 
-          _val ->
-            (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
-               RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
+  defp query_one(%{source: %{type: :gitlab}} = q) do
+    case RoomGitlab.Worker.pid(q.source.id) do
+      nil ->
+        []
+
+      _val ->
+        (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
+           RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
+    end
+  end
+
+  defp query_one(%{source: %{type: :github}} = q) do
+    case RoomGithub.Worker.pid(q.source.id) do
+      nil ->
+        []
+
+      _val ->
+        level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+
+        if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
+          case level do
+            "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
+            _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
+          end
+        else
+          []
         end
+    end
+  end
 
-      :github ->
-        case RoomGithub.Worker.pid(q.source.id) do
-          nil ->
-            []
+  defp query_one(%{source: %{type: :packages}} = q),
+    do: RoomPackages.Worker.read(q.source.id, q.query)
 
-          _val ->
-            level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+  defp query_one(%{source: %{type: type}} = q) when is_map_key(@readers, type) do
+    worker = Map.fetch!(@readers, type)
 
-            if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
-              case level do
-                "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
-                _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
-              end
-            else
-              []
-            end
-        end
-
-      :packages ->
-        RoomPackages.Worker.read(q.source.id, q.query)
-
-      :drought ->
-        case RoomDrought.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomDrought.Worker.read(q.source.id, q.query) || []
-        end
-
-      :pollen ->
-        case RoomPollen.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomPollen.Worker.read(q.source.id, q.query) || []
-        end
-
-      :icarus ->
-        case RoomIcarus.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomIcarus.Worker.read(q.source.id, q.query) || []
-        end
-
-      :mailbox ->
-        case RoomHermes.Mail.ImapWorker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomHermes.Mail.ImapWorker.read(q.source.id, q.query) || []
-        end
-
-      :treasury ->
-        case RoomTreasury.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomTreasury.Worker.read(q.source.id, q.query) || []
-        end
-
-      :bourse ->
-        case RoomBourse.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomBourse.Worker.read(q.source.id, q.query) || []
-        end
+    case worker.pid(q.source.id) do
+      nil -> []
+      _pid -> worker.read(q.source.id, q.query) || []
     end
   end
 end

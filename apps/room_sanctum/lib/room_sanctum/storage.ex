@@ -610,20 +610,22 @@ defmodule RoomSanctum.Storage do
   # spec's list is left alone rather than guessed at.
   defp mode_label(nil), do: nil
 
+  @mode_labels %{
+    "0" => "Tram",
+    "1" => "Subway",
+    "2" => "Rail",
+    "3" => "Bus",
+    "4" => "Ferry",
+    "5" => "Cable tram",
+    "6" => "Aerial lift",
+    "7" => "Funicular",
+    "11" => "Trolleybus",
+    "12" => "Monorail"
+  }
+
   defp mode_label(route_type) do
-    case to_string(route_type) do
-      "0" -> "Tram"
-      "1" -> "Subway"
-      "2" -> "Rail"
-      "3" -> "Bus"
-      "4" -> "Ferry"
-      "5" -> "Cable tram"
-      "6" -> "Aerial lift"
-      "7" -> "Funicular"
-      "11" -> "Trolleybus"
-      "12" -> "Monorail"
-      other -> other
-    end
+    route_type = to_string(route_type)
+    Map.get(@mode_labels, route_type, route_type)
   end
 
   @doc """
@@ -1458,38 +1460,48 @@ defmodule RoomSanctum.Storage do
       )
     end
 
-    from([st, trip: t] in queryable,
-      where:
-        (exists(
-           from(c in scheduled, where: c.service_id == parent_as(:trip).service_id, select: 1)
-         ) or
-           exists(
-             from(cd in exception.(1),
-               where: cd.service_id == parent_as(:trip).service_id,
-               select: 1
-             )
-           ) or
-           (not exists(
-              from(c in "gtfs_calendars",
-                where: c.source_id == ^source_id and c.service_id == parent_as(:trip).service_id,
-                select: 1
-              )
-            ) and
-              not exists(
-                from(cd in "gtfs_calendar_dates",
-                  where:
-                    cd.source_id == ^source_id and cd.service_id == parent_as(:trip).service_id,
-                  select: 1
-                )
-              )) or
-           (not exists(from(c in scheduled, select: 1)) and
-              not exists(from(cd in exception.(1), select: 1)))) and
-          not exists(
-            from(cd in exception.(2),
-              where: cd.service_id == parent_as(:trip).service_id,
-              select: 1
-            )
+    listed = dynamic([], ^service_in(scheduled) or ^service_in(exception.(1)))
+    unmentioned = service_unmentioned(source_id)
+    stale = nothing_running(scheduled, exception.(1))
+    removed = service_in(exception.(2))
+
+    where(queryable, ^dynamic([], (^listed or ^unmentioned or ^stale) and not (^removed)))
+  end
+
+  # The trip's service is one of the rows of this calendar query.
+  defp service_in(calendar_query) do
+    dynamic(
+      [],
+      exists(
+        from(c in calendar_query, where: c.service_id == parent_as(:trip).service_id, select: 1)
+      )
+    )
+  end
+
+  # Neither file says anything about the trip's service.
+  defp service_unmentioned(source_id) do
+    dynamic(
+      [],
+      not exists(
+        from(c in "gtfs_calendars",
+          where: c.source_id == ^source_id and c.service_id == parent_as(:trip).service_id,
+          select: 1
+        )
+      ) and
+        not exists(
+          from(cd in "gtfs_calendar_dates",
+            where: cd.source_id == ^source_id and cd.service_id == parent_as(:trip).service_id,
+            select: 1
           )
+        )
+    )
+  end
+
+  # Nothing at all runs today: the source's service data has gone stale.
+  defp nothing_running(scheduled, added) do
+    dynamic(
+      [],
+      not exists(from(c in scheduled, select: 1)) and not exists(from(cd in added, select: 1))
     )
   end
 

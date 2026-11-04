@@ -201,110 +201,79 @@ defmodule RoomSanctum.Worker.Keryx do
   end
 
   # Execute a single query
-  defp execute_query(q) do
-    case q.source.type do
-      :gtfs ->
-        RoomGtfs.Worker.query_stop(q.source.id, q.query)
+  # Workers that may not be running: one that is not has nothing to read.
+  @readers %{
+    drought: RoomDrought.Worker,
+    pollen: RoomPollen.Worker,
+    icarus: RoomIcarus.Worker,
+    mailbox: RoomHermes.Mail.ImapWorker,
+    treasury: RoomTreasury.Worker,
+    bourse: RoomBourse.Worker
+  }
 
-      :gbfs ->
-        RoomGbfs.Worker.query_stop(q.source.id, q.query)
+  defp execute_query(%{source: %{type: :gtfs}} = q),
+    do: RoomGtfs.Worker.query_stop(q.source.id, q.query)
 
-      :tidal ->
-        RoomTidal.Worker.query_tides(q.source.id, q.query)
+  defp execute_query(%{source: %{type: :gbfs}} = q),
+    do: RoomGbfs.Worker.query_stop(q.source.id, q.query)
 
-      :weather ->
-        RoomWeather.Worker.query_weather(
-          q.source.id,
-          q.query
-        )
+  defp execute_query(%{source: %{type: :tidal}} = q),
+    do: RoomTidal.Worker.query_tides(q.source.id, q.query)
 
-      :aqi ->
-        RoomAirQuality.Worker.query_place(
-          q.source.id,
-          q.query
-        )
+  defp execute_query(%{source: %{type: :weather}} = q),
+    do: RoomWeather.Worker.query_weather(q.source.id, q.query)
 
-      :ephem ->
-        RoomEphem.Worker.query_ephem(
-          q.source.id,
-          q.query
-        )
+  defp execute_query(%{source: %{type: :aqi}} = q),
+    do: RoomAirQuality.Worker.query_place(q.source.id, q.query)
 
-      :calendar ->
-        RoomCalendar.Worker.query_calendar(
-          q.source.id,
-          q.query
-        )
+  defp execute_query(%{source: %{type: :ephem}} = q),
+    do: RoomEphem.Worker.query_ephem(q.source.id, q.query)
 
-      :cronos ->
-        RoomCronos.Worker.query_cronos(q.id, q.query)
+  defp execute_query(%{source: %{type: :calendar}} = q),
+    do: RoomCalendar.Worker.query_calendar(q.source.id, q.query)
 
-      :gitlab ->
-        case RoomGitlab.Worker.pid(q.source.id) do
-          nil ->
-            []
+  defp execute_query(%{source: %{type: :cronos}} = q),
+    do: RoomCronos.Worker.query_cronos(q.id, q.query)
 
-          _val ->
-            (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
-               RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
+  defp execute_query(%{source: %{type: :gitlab}} = q) do
+    case RoomGitlab.Worker.pid(q.source.id) do
+      nil ->
+        []
+
+      _val ->
+        (Process.alive?(RoomGitlab.Worker.pid(q.source.id)) &&
+           RoomGitlab.Worker.read_jobs(q.source.id, q.query)) || []
+    end
+  end
+
+  defp execute_query(%{source: %{type: :github}} = q) do
+    case RoomGithub.Worker.pid(q.source.id) do
+      nil ->
+        []
+
+      _val ->
+        level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+
+        if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
+          case level do
+            "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
+            _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
+          end
+        else
+          []
         end
+    end
+  end
 
-      :github ->
-        case RoomGithub.Worker.pid(q.source.id) do
-          nil ->
-            []
+  defp execute_query(%{source: %{type: :packages}} = q),
+    do: RoomPackages.Worker.read(q.source.id, q.query)
 
-          _val ->
-            level = Map.get(q.query, :level) || Map.get(q.query, "level") || "runs"
+  defp execute_query(%{source: %{type: type}} = q) when is_map_key(@readers, type) do
+    worker = Map.fetch!(@readers, type)
 
-            if Process.alive?(RoomGithub.Worker.pid(q.source.id)) do
-              case level do
-                "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
-                _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
-              end
-            else
-              []
-            end
-        end
-
-      :packages ->
-        RoomPackages.Worker.read(q.source.id, q.query)
-
-      :drought ->
-        case RoomDrought.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomDrought.Worker.read(q.source.id, q.query) || []
-        end
-
-      :pollen ->
-        case RoomPollen.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomPollen.Worker.read(q.source.id, q.query) || []
-        end
-
-      :icarus ->
-        case RoomIcarus.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomIcarus.Worker.read(q.source.id, q.query) || []
-        end
-
-      :mailbox ->
-        case RoomHermes.Mail.ImapWorker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomHermes.Mail.ImapWorker.read(q.source.id, q.query) || []
-        end
-
-      :treasury ->
-        case RoomTreasury.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomTreasury.Worker.read(q.source.id, q.query) || []
-        end
-
-      :bourse ->
-        case RoomBourse.Worker.pid(q.source.id) do
-          nil -> []
-          _pid -> RoomBourse.Worker.read(q.source.id, q.query) || []
-        end
+    case worker.pid(q.source.id) do
+      nil -> []
+      _pid -> worker.read(q.source.id, q.query) || []
     end
   end
 
@@ -496,55 +465,37 @@ defmodule RoomSanctum.Worker.Keryx do
     end
   end
 
+  # Where each type keeps the field an item's id is read from, in order of
+  # preference. A type not listed falls back to the common id fields,
+  # @default_id_keys.
+  @id_keys %{
+    gtfs: [:trip_id, "trip_id"],
+    # Use the name field for GBFS instead of station_id
+    gbfs: [:name, "name", :station_id, "station_id"],
+    weather: [:time, "time", :dt, "dt"],
+    tidal: [:t, "t", :time, "time"],
+    aqi: [:parameter, "parameter"],
+    calendar: [:uid, "uid", :id, "id"],
+    ephem: [:name, "name"],
+    cronos: [:id, "id", :name, "name"],
+    gitlab: [:id, "id"],
+    packages: [:tracking_number, "tracking_number", :id, "id"]
+  }
+
+  @default_id_keys [:id, "id", :uid, "uid"]
+
   # Extract and stubbify an identifier from an item based on its type
   defp extract_item_id(item, type) when is_map(item) do
-    # Try to find a suitable ID field based on the data type
-    id_value =
-      case type do
-        :gtfs ->
-          Map.get(item, :trip_id) || Map.get(item, "trip_id")
-
-        :gbfs ->
-          # Use the name field for GBFS instead of station_id
-          Map.get(item, :name) || Map.get(item, "name") || Map.get(item, :station_id) ||
-            Map.get(item, "station_id")
-
-        :weather ->
-          Map.get(item, :time) || Map.get(item, "time") || Map.get(item, :dt) ||
-            Map.get(item, "dt")
-
-        :tidal ->
-          Map.get(item, :t) || Map.get(item, "t") || Map.get(item, :time) || Map.get(item, "time")
-
-        :aqi ->
-          Map.get(item, :parameter) || Map.get(item, "parameter")
-
-        :calendar ->
-          Map.get(item, :uid) || Map.get(item, "uid") || Map.get(item, :id) || Map.get(item, "id")
-
-        :ephem ->
-          Map.get(item, :name) || Map.get(item, "name")
-
-        :cronos ->
-          Map.get(item, :id) || Map.get(item, "id") || Map.get(item, :name) ||
-            Map.get(item, "name")
-
-        :gitlab ->
-          Map.get(item, :id) || Map.get(item, "id")
-
-        :packages ->
-          Map.get(item, :tracking_number) || Map.get(item, "tracking_number") ||
-            Map.get(item, :id) || Map.get(item, "id")
-
-        _ ->
-          # Fallback: try common ID fields
-          Map.get(item, :id) || Map.get(item, "id") || Map.get(item, :uid) || Map.get(item, "uid")
-      end
-
-    stubbify(id_value)
+    stubbify(first_value(item, Map.get(@id_keys, type, @default_id_keys)))
   end
 
   defp extract_item_id(_item, _type), do: generate_stub()
+
+  # The first of the keys that holds a value wins -- an `a || b || ...` chain
+  # over them.
+  defp first_value(item, keys) do
+    Enum.reduce(keys, nil, fn key, found -> found || Map.get(item, key) end)
+  end
 
   # Convert a value into a URL-safe stub
   defp stubbify(nil), do: generate_stub()

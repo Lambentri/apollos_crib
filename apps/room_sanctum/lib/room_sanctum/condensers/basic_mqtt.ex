@@ -3,21 +3,20 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
   import MapMerge
 
   # GTFS route_type codes by name. PlusMQTT keeps its own copy of the table.
-  defp gtfs_mode(route_type) do
-    case route_type do
-      "0" -> "LightRail"
-      "1" -> "Subway"
-      "2" -> "Rail"
-      "3" -> "Bus"
-      "4" -> "Ferry"
-      "5" -> "CableCar"
-      "6" -> "Gondola"
-      "7" -> "Funicular"
-      "11" -> "Trolleybus"
-      "12" -> "Monorail"
-      _ -> "Unknown"
-    end
-  end
+  @gtfs_modes %{
+    "0" => "LightRail",
+    "1" => "Subway",
+    "2" => "Rail",
+    "3" => "Bus",
+    "4" => "Ferry",
+    "5" => "CableCar",
+    "6" => "Gondola",
+    "7" => "Funicular",
+    "11" => "Trolleybus",
+    "12" => "Monorail"
+  }
+
+  defp gtfs_mode(route_type), do: Map.get(@gtfs_modes, route_type, "Unknown")
 
   defp wrap(item) do
     [item]
@@ -84,239 +83,230 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
     #      IO.inspect({type, data})
     #    end
 
-    case type do
-      :gtfs ->
-        data
-        |> Enum.map(fn f ->
-          %{
-            time: f.arrival_time,
-            time_live: f.arrival_time_live_ts,
-            destination: f.trip.trip_headsign,
-            direction: f.trip.direction.direction,
-            route: f.trip.route_id,
-            presentation: route_presentation(f.trip.route, f.trip.route_id),
-            mode: f.trip.route.route_type |> gtfs_mode,
-            tz: f.tz,
-            bearing: Map.get(f, :bearing)
-          }
-        end)
-        |> Enum.reduce(%{}, fn %{
-                                 time: time,
-                                 time_live: time_live,
-                                 destination: dest,
-                                 direction: dir,
-                                 route: route,
-                                 presentation: presentation,
-                                 mode: mode,
-                                 tz: tz,
-                                 bearing: bearing
-                               },
-                               acc ->
-          update_in(acc, [{route, dest, dir}], fn
-            nil ->
-              %{
-                route: route,
-                dest: dest,
-                dir: dir,
-                mode: mode,
-                times: [time],
-                times_live: [livetime(time_live, tz)],
-                bearing: bearing
-              }
-              |> Map.merge(presentation)
-
-            refs ->
-              %{
-                refs
-                | times: [time | refs.times],
-                  times_live: [livetime(time_live, tz) | refs.times_live],
-                  # A blended Plani groups a route across every stop it calls
-                  # at inside the radius, so these times can come from two
-                  # places at once. Agreeing keeps the bearing; disagreeing
-                  # drops it, because "north east" would then be true of only
-                  # some of the departures under it.
-                  bearing: if(refs.bearing == bearing, do: bearing, else: nil)
-              }
-          end)
-        end)
-        |> Enum.map(fn {_k, v} ->
-          case Enum.any?(v.times_live, fn x -> x != nil end) do
-            true ->
-              v
-              |> Map.put(:times, v.times |> Enum.reverse())
-              |> Map.put(:times_live, v.times_live |> Enum.reverse())
-
-            false ->
-              v |> Map.put(:times, v.times |> Enum.reverse()) |> Map.delete(:times_live)
-          end
-        end)
-        # Only a Plani has a bearing to give, and only for a stop far enough
-        # away to have one. Dropped rather than published as null, so a
-        # vision's payload is byte for byte what it always was.
-        |> Enum.map(fn route ->
-          if route.bearing, do: route, else: Map.delete(route, :bearing)
-        end)
-
-      :gbfs ->
-        # A bike names its type by an id of the feed's own choosing -- Bay
-        # Wheels' e-bike is "2" -- so the types are resolved once for the list
-        # rather than every bike being labelled with a number.
-        vehicle_types = gbfs_vehicle_types(data)
-
-        data
-        |> Enum.map(fn
-          # An area query answers with loose bikes rather than a dock, and a
-          # bike has none of a station's fields -- no name, no capacity,
-          # nothing to dock. Told apart by what came back rather than by the
-          # query, since the condenser is only ever handed the answer.
-          %{bike_id: bike_id} = b ->
-            %{
-              kind: :free_bike,
-              name: vehicle_label(vehicle_types, b) || bike_id,
-              # What kind of thing it is, so a client can draw a car as a car.
-              # The name already says "Car", but a name is read and an icon is
-              # glanced at, and these cards are built to be glanced at.
-              form_factor: vehicle_form_factor(vehicle_types, b),
-              id: bike_id,
-              lat: b.lat,
-              lon: b.lon,
-              range_m: b.current_range_meters,
-              fuel_pct: b.current_fuel_percent,
-              reserved: b.is_reserved,
-              disabled: b.is_disabled
-            }
-            |> with_dir(b)
-
-          f ->
-            %{
-              name: f.name,
-              id: f.station_id,
-              avail: f.num_bikes_available,
-              avail_elec: f.num_ebikes_available,
-              # Same reasoning: a feed that does not break its count down by
-              # motor leaves these null, and subtracting one raises.
-              avail_std: (f.num_bikes_available || 0) - (f.num_ebikes_available || 0),
-              docks_avail: f.num_docks_available,
-              docks_disabled: f.num_docks_disabled,
-              capacity: f.capacity,
-              # A left join, so a dock that no e-bike is sitting in comes
-              # back nil rather than empty -- and mapping over that raised,
-              # which killed the condense for the *whole* board rather than
-              # this one dock. A Plani feels it hardest: it breaks a source
-              # out into an entry per dock, so a radius holding one ordinary
-              # unelectrified dock published nothing at all.
-              ebikes_info:
-                (f.ebikes_info || [])
-                |> Enum.map(fn eb ->
-                  %{
-                    name: eb.displayed_number,
-                    battery_pct: eb.battery_charge_percentage,
-                    range_mi_cons: eb.range_estimate.conservative_range_miles,
-                    range_me_est: eb.range_estimate.estimated_range_miles
-                  }
-                end)
-            }
-            |> with_dir(f)
-        end)
-
-      :tidal ->
-        data
-        |> Enum.group_by(fn x -> x.type end)
-        |> Enum.map(fn {extreme, data} ->
-          case data do
-            [first, second] ->
-              k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
-              k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
-              kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
-              kv2 = "second_#{extreme |> String.downcase()}v" |> String.to_atom()
-              %{k1 => first.t |> time, k2 => second.t |> time, kv1 => first.v, kv2 => second.v}
-
-            [solo] ->
-              k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
-              kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
-              %{k1 => solo.t |> time, kv1 => solo.v}
-          end
-        end)
-        |> Enum.reduce(&Map.merge/2)
-        |> wrap
-
-      :weather ->
-        data
-        |> Enum.map(fn f ->
-          %{
-            name: f.name,
-            weather: List.first(f.weather).main,
-            temp: f.main.temp,
-            feel: f.main.feels_like,
-            hum: f.main.humidity,
-            pressure: f.main.pressure,
-            wind: f.wind,
-            visibility: f |> Map.get(:visibility),
-            units: f.units
-          }
-        end)
-
-      :aqi ->
-        data
-        |> Enum.map(fn f ->
-          pairs = HourlyObsData.compile_pairs(f)
-          pairs ||| %{name: f.reporting_areas |> List.first()}
-        end)
-
-      :ephem ->
-        data
-        |> Enum.map(fn f ->
-          case Map.get(f, :period) do
-            nil -> {:name, f.name}
-            _val -> {f.period, f.result}
-          end
-        end)
-        |> Enum.into(%{})
-        |> wrap
-
-      :calendar ->
-        data
-        |> Enum.map(fn f ->
-          %{
-            date_start: f.date_start |> DateTime.to_date(),
-            description: f.blob["description"]
-          }
-        end)
-
-      :cronos ->
-        data
-
-      :gitlab ->
-        data
-
-      :github ->
-        data
-
-      :drought ->
-        data
-
-      :pollen ->
-        data
-
-      :icarus ->
-        data
-
-      :mailbox ->
-        data
-
-      :treasury ->
-        data
-
-      :bourse ->
-        data
-
-      :packages ->
-        data
-
-      :const ->
-        data
-    end
+    condense_type(type, data)
   end
+
+  # Published as they come.
+  @passthrough [
+    :cronos,
+    :gitlab,
+    :github,
+    :drought,
+    :pollen,
+    :icarus,
+    :mailbox,
+    :treasury,
+    :bourse,
+    :packages,
+    :const
+  ]
+
+  defp condense_type(:gtfs, data) do
+    data
+    |> Enum.map(fn f ->
+      %{
+        time: f.arrival_time,
+        time_live: f.arrival_time_live_ts,
+        destination: f.trip.trip_headsign,
+        direction: f.trip.direction.direction,
+        route: f.trip.route_id,
+        presentation: route_presentation(f.trip.route, f.trip.route_id),
+        mode: f.trip.route.route_type |> gtfs_mode,
+        tz: f.tz,
+        bearing: Map.get(f, :bearing)
+      }
+    end)
+    |> Enum.reduce(%{}, fn %{
+                             time: time,
+                             time_live: time_live,
+                             destination: dest,
+                             direction: dir,
+                             route: route,
+                             presentation: presentation,
+                             mode: mode,
+                             tz: tz,
+                             bearing: bearing
+                           },
+                           acc ->
+      update_in(acc, [{route, dest, dir}], fn
+        nil ->
+          %{
+            route: route,
+            dest: dest,
+            dir: dir,
+            mode: mode,
+            times: [time],
+            times_live: [livetime(time_live, tz)],
+            bearing: bearing
+          }
+          |> Map.merge(presentation)
+
+        refs ->
+          %{
+            refs
+            | times: [time | refs.times],
+              times_live: [livetime(time_live, tz) | refs.times_live],
+              # A blended Plani groups a route across every stop it calls
+              # at inside the radius, so these times can come from two
+              # places at once. Agreeing keeps the bearing; disagreeing
+              # drops it, because "north east" would then be true of only
+              # some of the departures under it.
+              bearing: if(refs.bearing == bearing, do: bearing, else: nil)
+          }
+      end)
+    end)
+    |> Enum.map(fn {_k, v} ->
+      case Enum.any?(v.times_live, fn x -> x != nil end) do
+        true ->
+          v
+          |> Map.put(:times, v.times |> Enum.reverse())
+          |> Map.put(:times_live, v.times_live |> Enum.reverse())
+
+        false ->
+          v |> Map.put(:times, v.times |> Enum.reverse()) |> Map.delete(:times_live)
+      end
+    end)
+    # Only a Plani has a bearing to give, and only for a stop far enough
+    # away to have one. Dropped rather than published as null, so a
+    # vision's payload is byte for byte what it always was.
+    |> Enum.map(fn route ->
+      if route.bearing, do: route, else: Map.delete(route, :bearing)
+    end)
+  end
+
+  defp condense_type(:gbfs, data) do
+    # A bike names its type by an id of the feed's own choosing -- Bay
+    # Wheels' e-bike is "2" -- so the types are resolved once for the list
+    # rather than every bike being labelled with a number.
+    vehicle_types = gbfs_vehicle_types(data)
+
+    data
+    |> Enum.map(fn
+      # An area query answers with loose bikes rather than a dock, and a
+      # bike has none of a station's fields -- no name, no capacity,
+      # nothing to dock. Told apart by what came back rather than by the
+      # query, since the condenser is only ever handed the answer.
+      %{bike_id: bike_id} = b ->
+        %{
+          kind: :free_bike,
+          name: vehicle_label(vehicle_types, b) || bike_id,
+          # What kind of thing it is, so a client can draw a car as a car.
+          # The name already says "Car", but a name is read and an icon is
+          # glanced at, and these cards are built to be glanced at.
+          form_factor: vehicle_form_factor(vehicle_types, b),
+          id: bike_id,
+          lat: b.lat,
+          lon: b.lon,
+          range_m: b.current_range_meters,
+          fuel_pct: b.current_fuel_percent,
+          reserved: b.is_reserved,
+          disabled: b.is_disabled
+        }
+        |> with_dir(b)
+
+      f ->
+        %{
+          name: f.name,
+          id: f.station_id,
+          avail: f.num_bikes_available,
+          avail_elec: f.num_ebikes_available,
+          # Same reasoning: a feed that does not break its count down by
+          # motor leaves these null, and subtracting one raises.
+          avail_std: (f.num_bikes_available || 0) - (f.num_ebikes_available || 0),
+          docks_avail: f.num_docks_available,
+          docks_disabled: f.num_docks_disabled,
+          capacity: f.capacity,
+          # A left join, so a dock that no e-bike is sitting in comes
+          # back nil rather than empty -- and mapping over that raised,
+          # which killed the condense for the *whole* board rather than
+          # this one dock. A Plani feels it hardest: it breaks a source
+          # out into an entry per dock, so a radius holding one ordinary
+          # unelectrified dock published nothing at all.
+          ebikes_info:
+            (f.ebikes_info || [])
+            |> Enum.map(fn eb ->
+              %{
+                name: eb.displayed_number,
+                battery_pct: eb.battery_charge_percentage,
+                range_mi_cons: eb.range_estimate.conservative_range_miles,
+                range_me_est: eb.range_estimate.estimated_range_miles
+              }
+            end)
+        }
+        |> with_dir(f)
+    end)
+  end
+
+  defp condense_type(:tidal, data) do
+    data
+    |> Enum.group_by(fn x -> x.type end)
+    |> Enum.map(fn {extreme, data} ->
+      case data do
+        [first, second] ->
+          k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+          k2 = "second_#{extreme |> String.downcase()}" |> String.to_atom()
+          kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
+          kv2 = "second_#{extreme |> String.downcase()}v" |> String.to_atom()
+          %{k1 => first.t |> time, k2 => second.t |> time, kv1 => first.v, kv2 => second.v}
+
+        [solo] ->
+          k1 = "first_#{extreme |> String.downcase()}" |> String.to_atom()
+          kv1 = "first_#{extreme |> String.downcase()}v" |> String.to_atom()
+          %{k1 => solo.t |> time, kv1 => solo.v}
+      end
+    end)
+    |> Enum.reduce(&Map.merge/2)
+    |> wrap
+  end
+
+  defp condense_type(:weather, data) do
+    data
+    |> Enum.map(fn f ->
+      %{
+        name: f.name,
+        weather: List.first(f.weather).main,
+        temp: f.main.temp,
+        feel: f.main.feels_like,
+        hum: f.main.humidity,
+        pressure: f.main.pressure,
+        wind: f.wind,
+        visibility: f |> Map.get(:visibility),
+        units: f.units
+      }
+    end)
+  end
+
+  defp condense_type(:aqi, data) do
+    data
+    |> Enum.map(fn f ->
+      pairs = HourlyObsData.compile_pairs(f)
+      pairs ||| %{name: f.reporting_areas |> List.first()}
+    end)
+  end
+
+  defp condense_type(:ephem, data) do
+    data
+    |> Enum.map(fn f ->
+      case Map.get(f, :period) do
+        nil -> {:name, f.name}
+        _val -> {f.period, f.result}
+      end
+    end)
+    |> Enum.into(%{})
+    |> wrap
+  end
+
+  defp condense_type(:calendar, data) do
+    data
+    |> Enum.map(fn f ->
+      %{
+        date_start: f.date_start |> DateTime.to_date(),
+        description: f.blob["description"]
+      }
+    end)
+  end
+
+  defp condense_type(type, data) when type in @passthrough, do: data
 
   @doc """
   Condenses data and wraps it with query information

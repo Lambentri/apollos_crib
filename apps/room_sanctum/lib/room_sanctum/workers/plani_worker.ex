@@ -296,110 +296,7 @@ defmodule RoomSanctum.Worker.Plani do
   defp ask(source_id, %Geo.Point{} = anchor, plani) do
     source = Configuration.get_source!(:bare, source_id)
 
-    case source.type do
-      :gtfs ->
-        stops = Storage.nearby_stops(source_id, anchor, plani.limit, plani.radius)
-
-        by_stop =
-          Enum.map(stops, fn stop ->
-            arrivals =
-              source_id
-              |> arrivals_at(stop.stop_id, source.config)
-              |> Enum.sort_by(& &1.arrival_time)
-
-            # Which way the stop lies, carried on each arrival: the condenser
-            # groups arrivals into routes and only it knows which end up
-            # together, so the bearing has to travel with them.
-            bearing = compass(anchor, Map.get(stop, :stop_lat), Map.get(stop, :stop_lon))
-
-            {stop, Enum.map(arrivals, &Map.put(&1, :bearing, bearing))}
-          end)
-          |> nearest_per_route(plani)
-
-        entries =
-          if plani.break_out do
-            # One entry per stop, named after it, the way a vision's queries
-            # are. A stop with nothing due is left out rather than published
-            # empty -- the same call the clients already make.
-            for {stop, arrivals} <- by_stop, arrivals != [] do
-              key = "#{source_id}:#{stop.stop_id}"
-
-              descriptor =
-                described(source, key, stop.stop_name, %{
-                  source_id: source_id,
-                  stop: stop.stop_id
-                })
-
-              {{key, :gtfs}, arrivals, descriptor}
-            end
-          else
-            blended =
-              by_stop
-              |> Enum.flat_map(fn {_stop, arrivals} -> arrivals end)
-              |> Enum.sort_by(& &1.arrival_time)
-              |> Enum.take(16)
-
-            [{{source_id, :gtfs}, blended, described(source)}]
-          end
-
-        {entries, places(stops, source, :stop)}
-
-      :gbfs ->
-        # Both, because a source does not say which kind it is. A docked
-        # system answers with docks and a dockless one with loose bikes, and
-        # asking only for the latter left a city full of docks looking empty.
-        # Both come back closest-first, so the cap keeps the nearest rather
-        # than whichever the feed happened to list first. Capped separately:
-        # they are different things, and one starving the other would make a
-        # docked system with loose bikes in it look like it had no docks.
-        bikes =
-          Storage.free_bikes_near(source_id, anchor, plani.radius)
-          |> cap(plani.bike_limit)
-          |> Enum.map(&toward(&1, anchor))
-
-        docks =
-          Storage.stations_near(source_id, anchor, plani.radius)
-          |> cap(plani.bike_limit)
-          |> Enum.map(&toward(&1, anchor))
-
-        entries =
-          if plani.break_out do
-            # A dock is a place, so it gets its own entry. Loose bikes are not
-            # -- they are a count of what is lying about nearby -- so they stay
-            # together under the source.
-            per_dock =
-              for dock <- docks do
-                key = "#{source_id}:#{dock.station_id}"
-                {{key, :gbfs}, [dock], described(source, key, dock.name, %{source_id: source_id})}
-              end
-
-            if bikes == [],
-              do: per_dock,
-              else: [{{source_id, :gbfs}, bikes, described(source)} | per_dock]
-          else
-            [{{source_id, :gbfs}, bikes ++ docks, described(source)}]
-          end
-
-        {entries, places(bikes, source, :bike) ++ places(docks, source, :dock)}
-
-      :aqi ->
-        readings = Storage.nearby_aqi_stations(source_id, anchor, plani.limit)
-        {[{{source_id, :aqi}, readings, described(source)}], places(readings, source, :monitor)}
-
-      type when type in @asked_at_a_point ->
-        # Answered *at* the anchor rather than near it. These name a foci in a
-        # vision -- the weather at home, sunrise at home -- and the only thing
-        # a Plani changes is where "at" is. The query is the anchor itself,
-        # which `Configuration.place_for!/1` prefers over a foci id.
-        results = ask_at(type, source_id, %{place: anchor})
-        {[{{source_id, type}, results, described(source)}], []}
-
-      other ->
-        # Sources with nothing located in them. Left out rather than guessed
-        # at; the page says what it could not draw.
-        Logger.debug("plani: no spatial answer for a #{other} source")
-        nil
-    end
+    ask_source(source.type, source_id, source, anchor, plani)
   rescue
     # `catch` takes throws and exits and lets a raise straight through, so one
     # source with no config, or a stop id that has gone, took the whole worker
@@ -413,6 +310,114 @@ defmodule RoomSanctum.Worker.Plani do
   end
 
   defp ask(_source_id, _anchor, _plani), do: nil
+
+  defp ask_source(:gtfs, source_id, source, anchor, plani) do
+    stops = Storage.nearby_stops(source_id, anchor, plani.limit, plani.radius)
+
+    by_stop =
+      Enum.map(stops, fn stop ->
+        arrivals =
+          source_id
+          |> arrivals_at(stop.stop_id, source.config)
+          |> Enum.sort_by(& &1.arrival_time)
+
+        # Which way the stop lies, carried on each arrival: the condenser
+        # groups arrivals into routes and only it knows which end up
+        # together, so the bearing has to travel with them.
+        bearing = compass(anchor, Map.get(stop, :stop_lat), Map.get(stop, :stop_lon))
+
+        {stop, Enum.map(arrivals, &Map.put(&1, :bearing, bearing))}
+      end)
+      |> nearest_per_route(plani)
+
+    entries =
+      if plani.break_out do
+        # One entry per stop, named after it, the way a vision's queries
+        # are. A stop with nothing due is left out rather than published
+        # empty -- the same call the clients already make.
+        for {stop, arrivals} <- by_stop, arrivals != [] do
+          key = "#{source_id}:#{stop.stop_id}"
+
+          descriptor =
+            described(source, key, stop.stop_name, %{
+              source_id: source_id,
+              stop: stop.stop_id
+            })
+
+          {{key, :gtfs}, arrivals, descriptor}
+        end
+      else
+        blended =
+          by_stop
+          |> Enum.flat_map(fn {_stop, arrivals} -> arrivals end)
+          |> Enum.sort_by(& &1.arrival_time)
+          |> Enum.take(16)
+
+        [{{source_id, :gtfs}, blended, described(source)}]
+      end
+
+    {entries, places(stops, source, :stop)}
+  end
+
+  defp ask_source(:gbfs, source_id, source, anchor, plani) do
+    # Both, because a source does not say which kind it is. A docked
+    # system answers with docks and a dockless one with loose bikes, and
+    # asking only for the latter left a city full of docks looking empty.
+    # Both come back closest-first, so the cap keeps the nearest rather
+    # than whichever the feed happened to list first. Capped separately:
+    # they are different things, and one starving the other would make a
+    # docked system with loose bikes in it look like it had no docks.
+    bikes =
+      Storage.free_bikes_near(source_id, anchor, plani.radius)
+      |> cap(plani.bike_limit)
+      |> Enum.map(&toward(&1, anchor))
+
+    docks =
+      Storage.stations_near(source_id, anchor, plani.radius)
+      |> cap(plani.bike_limit)
+      |> Enum.map(&toward(&1, anchor))
+
+    entries =
+      if plani.break_out do
+        # A dock is a place, so it gets its own entry. Loose bikes are not
+        # -- they are a count of what is lying about nearby -- so they stay
+        # together under the source.
+        per_dock =
+          for dock <- docks do
+            key = "#{source_id}:#{dock.station_id}"
+            {{key, :gbfs}, [dock], described(source, key, dock.name, %{source_id: source_id})}
+          end
+
+        if bikes == [],
+          do: per_dock,
+          else: [{{source_id, :gbfs}, bikes, described(source)} | per_dock]
+      else
+        [{{source_id, :gbfs}, bikes ++ docks, described(source)}]
+      end
+
+    {entries, places(bikes, source, :bike) ++ places(docks, source, :dock)}
+  end
+
+  defp ask_source(:aqi, source_id, source, anchor, plani) do
+    readings = Storage.nearby_aqi_stations(source_id, anchor, plani.limit)
+    {[{{source_id, :aqi}, readings, described(source)}], places(readings, source, :monitor)}
+  end
+
+  defp ask_source(type, source_id, source, anchor, _plani) when type in @asked_at_a_point do
+    # Answered *at* the anchor rather than near it. These name a foci in a
+    # vision -- the weather at home, sunrise at home -- and the only thing
+    # a Plani changes is where "at" is. The query is the anchor itself,
+    # which `Configuration.place_for!/1` prefers over a foci id.
+    results = ask_at(type, source_id, %{place: anchor})
+    {[{{source_id, type}, results, described(source)}], []}
+  end
+
+  defp ask_source(other, _source_id, _source, _anchor, _plani) do
+    # Sources with nothing located in them. Left out rather than guessed
+    # at; the page says what it could not draw.
+    Logger.debug("plani: no spatial answer for a #{other} source")
+    nil
+  end
 
   # What the condensers expect alongside the data: a vision hands them a query,
   # so a Plani hands them something query-shaped. The empty `query` matters --
