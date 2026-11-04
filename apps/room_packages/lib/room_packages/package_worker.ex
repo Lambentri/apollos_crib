@@ -57,13 +57,17 @@ defmodule RoomPackages.Worker do
         source.meta.tracking
         |> Enum.filter(fn t -> t.type == :usps and not delivered?(t) end)
 
+      # Each batch starts from the source the last one left behind:
+      # update_source_meta_tracking/3 rewrites the whole list from the struct
+      # it is handed, so a batch working from the pre-poll copy would put
+      # every earlier batch's entries back the way they were.
       pending
       |> Enum.chunk_every(RoomPackages.USPS.max_batch())
-      |> Enum.each(&refresh_chunk(source, &1))
+      |> Enum.reduce(source, &refresh_chunk/2)
     end
   end
 
-  defp refresh_chunk(source, chunk) do
+  defp refresh_chunk(chunk, source) do
     numbers = Enum.map(chunk, & &1.number)
 
     case RoomPackages.USPS.track_many(source, numbers) do
@@ -74,6 +78,7 @@ defmodule RoomPackages.Worker do
 
       {:error, reason} ->
         Logger.debug("USPS batch of #{length(numbers)}: #{inspect(reason)}")
+        source
     end
   end
 
