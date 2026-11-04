@@ -51,6 +51,7 @@ defmodule ApollosCrib.MixProject do
   defp deps do
     [
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      {:ex_slop, "~> 0.4", only: [:dev, :test], runtime: false},
       {:sentry, "~> 8.0"},
       {:jason, "~> 1.1"},
       # sentry 8 asks for ~> 1.8; see RoomSanctum.SentryClient.
