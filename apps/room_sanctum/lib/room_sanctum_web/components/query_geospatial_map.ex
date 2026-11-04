@@ -508,36 +508,10 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     cond do
       query.geom != nil ->
         # Handle PostGIS geometry - you may need to adjust this based on your Geo setup
-        case query.geom do
-          %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-          # fallback
-          _ -> {0, 0}
-        end
+        point_lat_lng(query.geom)
 
       query.source && has_point_data?(query.source) ->
-        source = query.source
-        geom = Map.get(source, :geom, nil)
-        lat = Map.get(source, :lat, nil)
-        lng = Map.get(source, :lng, nil)
-        latitude = Map.get(source, :latitude, nil)
-        longitude = Map.get(source, :longitude, nil)
-
-        cond do
-          geom != nil ->
-            case geom do
-              %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-              _ -> {0, 0}
-            end
-
-          lat != nil && lng != nil ->
-            {lat, lng}
-
-          latitude != nil && longitude != nil ->
-            {latitude, longitude}
-
-          true ->
-            {0, 0}
-        end
+        source_coordinates(query.source)
 
       # Handle data from the query's underlying stop/thing being queried
       query.query && extract_from_query_data(query) ->
@@ -548,48 +522,82 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     end
   end
 
+  defp point_lat_lng(%Geo.Point{coordinates: {lng, lat}}), do: {lat, lng}
+  # fallback
+  defp point_lat_lng(_geom), do: {0, 0}
+
+  defp source_coordinates(source) do
+    geom = Map.get(source, :geom, nil)
+    lat = Map.get(source, :lat, nil)
+    lng = Map.get(source, :lng, nil)
+    latitude = Map.get(source, :latitude, nil)
+    longitude = Map.get(source, :longitude, nil)
+
+    cond do
+      geom != nil ->
+        point_lat_lng(geom)
+
+      lat != nil && lng != nil ->
+        {lat, lng}
+
+      latitude != nil && longitude != nil ->
+        {latitude, longitude}
+
+      true ->
+        {0, 0}
+    end
+  end
+
   # Extract coordinates from the internal query data (stops, stations, etc.)
   defp extract_from_query_data(query) do
     case query.source.type do
       :gtfs ->
-        # For GTFS, get coordinates from the stop being queried or vehicle positions
-        cond do
-          query.query && Map.has_key?(query.query, :stop) ->
-            get_gtfs_stop_coordinates(query.source.id, query.query.stop)
-
-          # Check if this is a vehicle position query
-          query.source.config && Map.get(query.source.config, :url_rt_vp) ->
-            get_gtfs_vehicle_coordinates(query.source.id, query)
-
-          true ->
-            false
-        end
+        gtfs_query_coordinates(query)
 
       :gbfs ->
-        # A station query is placed at its dock; an area query is placed at the
-        # foci it is drawn around, which is also where its radius is centred.
-        # Mode first: an area query still carries the stop_id field, it is just
-        # empty, and asking about the field rather than the mode sent every
-        # area query looking for a station called "".
-        cond do
-          query.query && Map.get(query.query, :mode) == :area ->
-            foci_coordinates(query)
-
-          query.query && Map.get(query.query, :stop_id) not in [nil, ""] ->
-            get_gbfs_station_coordinates(query.source.id, query.query.stop_id)
-
-          query.query && (Map.has_key?(query.query, :radius) || Map.has_key?(query.query, :point)) ->
-            get_gbfs_free_bikes_in_area_coordinates(query.source.id, query.query)
-
-          true ->
-            false
-        end
+        gbfs_query_coordinates(query)
 
       # Everything else that knows where it is says so with a foci: aqi,
       # weather, tidal, ephem, pollen, drought and icarus area queries all
       # carry one, and used to fall through to "not mappable".
       _ ->
         foci_coordinates(query)
+    end
+  end
+
+  # For GTFS, get coordinates from the stop being queried or vehicle positions
+  defp gtfs_query_coordinates(query) do
+    cond do
+      query.query && Map.has_key?(query.query, :stop) ->
+        get_gtfs_stop_coordinates(query.source.id, query.query.stop)
+
+      # Check if this is a vehicle position query
+      query.source.config && Map.get(query.source.config, :url_rt_vp) ->
+        get_gtfs_vehicle_coordinates(query.source.id, query)
+
+      true ->
+        false
+    end
+  end
+
+  # A station query is placed at its dock; an area query is placed at the
+  # foci it is drawn around, which is also where its radius is centred.
+  # Mode first: an area query still carries the stop_id field, it is just
+  # empty, and asking about the field rather than the mode sent every
+  # area query looking for a station called "".
+  defp gbfs_query_coordinates(query) do
+    cond do
+      query.query && Map.get(query.query, :mode) == :area ->
+        foci_coordinates(query)
+
+      query.query && Map.get(query.query, :stop_id) not in [nil, ""] ->
+        get_gbfs_station_coordinates(query.source.id, query.query.stop_id)
+
+      query.query && (Map.has_key?(query.query, :radius) || Map.has_key?(query.query, :point)) ->
+        get_gbfs_free_bikes_in_area_coordinates(query.source.id, query.query)
+
+      true ->
+        false
     end
   end
 
@@ -638,23 +646,21 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
     end
   end
 
+  defp area_of(%{point: %Geo.Point{} = geo_point, radius: radius}), do: {geo_point, radius}
+
+  defp area_of(%{lat: lat, lng: lng, radius: radius}) when is_number(lat) and is_number(lng),
+    do: {%Geo.Point{coordinates: {lng, lat}}, radius}
+
+  defp area_of(%{latitude: lat, longitude: lng, radius: radius})
+       when is_number(lat) and is_number(lng),
+       do: {%Geo.Point{coordinates: {lng, lat}}, radius}
+
+  defp area_of(_query_params), do: {nil, nil}
+
   # Get coordinates for GBFS free bikes in area
   defp get_gbfs_free_bikes_in_area_coordinates(source_id, query_params) do
     # Extract point and radius from query parameters
-    {point, radius} =
-      case query_params do
-        %{point: %Geo.Point{} = geo_point, radius: radius} ->
-          {geo_point, radius}
-
-        %{lat: lat, lng: lng, radius: radius} when is_number(lat) and is_number(lng) ->
-          {%Geo.Point{coordinates: {lng, lat}}, radius}
-
-        %{latitude: lat, longitude: lng, radius: radius} when is_number(lat) and is_number(lng) ->
-          {%Geo.Point{coordinates: {lng, lat}}, radius}
-
-        _ ->
-          {nil, nil}
-      end
+    {point, radius} = area_of(query_params)
 
     case {point, radius} do
       {%Geo.Point{} = geo_point, radius} when is_number(radius) ->
@@ -842,6 +848,19 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
   # with `Map.get`; these two were the exception.
   defp point_of(bike), do: Map.get(bike, :point) || Map.get(bike, :place)
 
+  defp bike_position(bike) do
+    cond do
+      point_of(bike) != nil ->
+        point_lat_lng(point_of(bike))
+
+      Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil ->
+        {Map.get(bike, :lat), Map.get(bike, :lon)}
+
+      true ->
+        {0, 0}
+    end
+  end
+
   # Format free bikes for map display
   defp format_free_bikes(free_bikes) do
     # A feed declares how far each of its vehicle types can go -- Bay Wheels
@@ -854,20 +873,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       point_of(bike) != nil || (Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil)
     end)
     |> Enum.map(fn bike ->
-      {lat, lng} =
-        cond do
-          point_of(bike) != nil ->
-            case point_of(bike) do
-              %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-              _ -> {0, 0}
-            end
-
-          Map.get(bike, :lat) != nil && Map.get(bike, :lon) != nil ->
-            {Map.get(bike, :lat), Map.get(bike, :lon)}
-
-          true ->
-            {0, 0}
-        end
+      {lat, lng} = bike_position(bike)
 
       # Extract additional fields with defaults
       is_disabled = Map.get(bike, :is_disabled, false)
@@ -1091,20 +1097,7 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       station.place != nil || (station.lat != nil && station.lon != nil)
     end)
     |> Enum.map(fn station ->
-      {lat, lng} =
-        cond do
-          station.place != nil ->
-            case station.place do
-              %Geo.Point{coordinates: {lng, lat}} -> {lat, lng}
-              _ -> {0, 0}
-            end
-
-          station.lat != nil && station.lon != nil ->
-            {station.lat, station.lon}
-
-          true ->
-            {0, 0}
-        end
+      {lat, lng} = station_position(station)
 
       # Get associated station status
       status = Map.get(status_map, station.station_id, nil)
@@ -1135,23 +1128,38 @@ defmodule RoomSanctumWeb.Components.QueryGeospatialMap do
       }
 
       # Add station status fields if available
-      if status do
-        station_data
-        # What the dock currently holds, for the popup -- which otherwise says
-        # only where the dock is, next to a button offering to query it.
-        |> Map.put(:summary, dock_summary(status, station))
-        |> Map.put(:num_bikes_available, status.num_bikes_available)
-        |> Map.put(:num_ebikes_available, status.num_ebikes_available)
-        |> Map.put(:num_docks_available, status.num_docks_available)
-        |> Map.put(:is_installed, status.is_installed)
-        |> Map.put(:is_renting, status.is_renting)
-        |> Map.put(:is_returning, status.is_returning)
-        |> Map.put(:station_status, status.station_status)
-        |> Map.put(:last_reported, status.last_reported)
-      else
-        station_data
-      end
+      with_status(station_data, status, station)
     end)
+  end
+
+  defp station_position(station) do
+    cond do
+      station.place != nil ->
+        point_lat_lng(station.place)
+
+      station.lat != nil && station.lon != nil ->
+        {station.lat, station.lon}
+
+      true ->
+        {0, 0}
+    end
+  end
+
+  defp with_status(station_data, nil, _station), do: station_data
+
+  defp with_status(station_data, status, station) do
+    station_data
+    # What the dock currently holds, for the popup -- which otherwise says
+    # only where the dock is, next to a button offering to query it.
+    |> Map.put(:summary, dock_summary(status, station))
+    |> Map.put(:num_bikes_available, status.num_bikes_available)
+    |> Map.put(:num_ebikes_available, status.num_ebikes_available)
+    |> Map.put(:num_docks_available, status.num_docks_available)
+    |> Map.put(:is_installed, status.is_installed)
+    |> Map.put(:is_renting, status.is_renting)
+    |> Map.put(:is_returning, status.is_returning)
+    |> Map.put(:station_status, status.station_status)
+    |> Map.put(:last_reported, status.last_reported)
   end
 
   # A dock in the same label/value shape a query summary uses, so one popup

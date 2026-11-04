@@ -105,113 +105,7 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 5000)
 
-    result =
-      case socket.assigns.query.source.type do
-        :gtfs ->
-          RoomGtfs.Worker.query_stop(socket.assigns.query.source.id, socket.assigns.query.query)
-
-        :gbfs ->
-          RoomGbfs.Worker.query_stop(socket.assigns.query.source.id, socket.assigns.query.query)
-
-        :tidal ->
-          RoomTidal.Worker.query_tides(socket.assigns.query.source.id, socket.assigns.query.query)
-
-        :weather ->
-          RoomWeather.Worker.query_weather(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :aqi ->
-          RoomAirQuality.Worker.query_place(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :ephem ->
-          RoomEphem.Worker.query_ephem(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :calendar ->
-          RoomCalendar.Worker.query_calendar(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :cronos ->
-          RoomCronos.Worker.query_cronos(
-            # we want the query's name here
-            socket.assigns.query.id,
-            socket.assigns.query.query
-          )
-
-        :gitlab ->
-          RoomGitlab.Worker.read_jobs(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :github ->
-          level = Map.get(socket.assigns.query.query, :level) || "runs"
-
-          case level do
-            "jobs" ->
-              RoomGithub.Worker.read_jobs(
-                socket.assigns.query.source.id,
-                socket.assigns.query.query
-              )
-
-            _ ->
-              RoomGithub.Worker.read_runs(
-                socket.assigns.query.source.id,
-                socket.assigns.query.query
-              )
-          end
-
-        :packages ->
-          RoomPackages.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :drought ->
-          RoomDrought.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :pollen ->
-          RoomPollen.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :icarus ->
-          RoomIcarus.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :mailbox ->
-          RoomHermes.Mail.ImapWorker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :treasury ->
-          RoomTreasury.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :bourse ->
-          RoomBourse.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-      end
+    result = preview_for(socket.assigns.query)
 
     query = socket.assigns.query
 
@@ -225,6 +119,55 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:gbfs_docks, MapData.stations_for(query, result))
      |> assign(:nearby_stations, nearby_stations(query))}
   end
+
+  # Workers answering through read/2.
+  @readers %{
+    packages: RoomPackages.Worker,
+    drought: RoomDrought.Worker,
+    pollen: RoomPollen.Worker,
+    icarus: RoomIcarus.Worker,
+    mailbox: RoomHermes.Mail.ImapWorker,
+    treasury: RoomTreasury.Worker,
+    bourse: RoomBourse.Worker
+  }
+
+  defp preview_for(%{source: %{type: :gtfs}} = q),
+    do: RoomGtfs.Worker.query_stop(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :gbfs}} = q),
+    do: RoomGbfs.Worker.query_stop(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :tidal}} = q),
+    do: RoomTidal.Worker.query_tides(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :weather}} = q),
+    do: RoomWeather.Worker.query_weather(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :aqi}} = q),
+    do: RoomAirQuality.Worker.query_place(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :ephem}} = q),
+    do: RoomEphem.Worker.query_ephem(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :calendar}} = q),
+    do: RoomCalendar.Worker.query_calendar(q.source.id, q.query)
+
+  # we want the query's name here
+  defp preview_for(%{source: %{type: :cronos}} = q),
+    do: RoomCronos.Worker.query_cronos(q.id, q.query)
+
+  defp preview_for(%{source: %{type: :gitlab}} = q),
+    do: RoomGitlab.Worker.read_jobs(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :github}} = q) do
+    case Map.get(q.query, :level) || "runs" do
+      "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
+      _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
+    end
+  end
+
+  defp preview_for(%{source: %{type: type}} = q) when is_map_key(@readers, type),
+    do: Map.fetch!(@readers, type).read(q.source.id, q.query)
 
   # For an air quality query, the answer is one station -- so the neighbours
   # are the context that makes it readable: whether the number is local or the

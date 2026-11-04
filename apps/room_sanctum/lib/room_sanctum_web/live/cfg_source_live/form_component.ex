@@ -261,20 +261,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
     watched = MapSet.union(repo_set, owner_repos) |> MapSet.size()
 
-    {watched, source} =
-      cond do
-        watched > 0 ->
-          {watched, if(owners == [], do: :exact, else: :partial)}
-
-        owners != [] ->
-          {0, :partial}
-
-        repos == [] and owners == [] and available_repos != [] ->
-          {length(available_repos), :exact}
-
-        true ->
-          {0, :unknown}
-      end
+    {watched, source} = watched_count(watched, repos, owners, available_repos)
 
     cycles_per_hour = div(3600, max(poll_seconds, 1))
     # 1 runs poll per repo per cycle + ~1 jobs poll per repo (one active run avg)
@@ -285,6 +272,25 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
   defp github_estimate(_, _, _),
     do: %{watched: 0, calls: 0, source: :unknown, cycles: 0}
+
+  # The watched count both estimates report, and how sure of it they are. Named
+  # are the repos or projects listed one by one, groups the owners or
+  # namespaces listed whole.
+  defp watched_count(watched, named, groups, available) do
+    cond do
+      watched > 0 ->
+        {watched, if(groups == [], do: :exact, else: :partial)}
+
+      groups != [] ->
+        {0, :partial}
+
+      named == [] and groups == [] and available != [] ->
+        {length(available), :exact}
+
+      true ->
+        {0, :unknown}
+    end
+  end
 
   def github_estimate_class(calls) when calls >= 4500, do: "text-error"
   def github_estimate_class(calls) when calls >= 2500, do: "text-warning"
@@ -351,20 +357,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
     watched = MapSet.union(project_set, namespace_projects) |> MapSet.size()
 
-    {watched, source} =
-      cond do
-        watched > 0 ->
-          {watched, if(namespaces == [], do: :exact, else: :partial)}
-
-        namespaces != [] ->
-          {0, :partial}
-
-        projects == [] and namespaces == [] and available_projects != [] ->
-          {length(available_projects), :exact}
-
-        true ->
-          {0, :unknown}
-      end
+    {watched, source} = watched_count(watched, projects, namespaces, available_projects)
 
     cycles_per_hour = div(3600, max(poll_seconds, 1))
     # 1 jobs poll per project per cycle
@@ -507,12 +500,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> then(fn s -> if is_binary(s), do: String.to_integer(s), else: s end)
       |> seconds_to_idx()
 
-    poll_secs =
-      case get_in(source_params, ["config", "poll_seconds"]) do
-        s when is_integer(s) -> s
-        s when is_binary(s) -> String.to_integer(s)
-        _ -> nil
-      end
+    poll_secs = poll_secs(get_in(source_params, ["config", "poll_seconds"]))
 
     type =
       source_params["type"] ||
@@ -526,31 +514,8 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
     config_for_estimate =
       Ecto.Changeset.get_field(changeset, :config) || socket.assigns.source.config || %{}
 
-    {gh_idx, gh_estimate} =
-      if type == "github" do
-        gh_secs = poll_secs || 60
-
-        {github_secs_to_idx(gh_secs),
-         github_estimate(config_for_estimate, socket.assigns[:gh_available_repos] || [], gh_secs)}
-      else
-        {socket.assigns[:github_poll_idx] || 2,
-         socket.assigns[:github_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
-      end
-
-    {gl_idx, gl_estimate} =
-      if type == "gitlab" do
-        gl_secs = poll_secs || 10
-
-        {gitlab_secs_to_idx(gl_secs),
-         gitlab_estimate(
-           config_for_estimate,
-           socket.assigns[:gl_available_projects] || [],
-           gl_secs
-         )}
-      else
-        {socket.assigns[:gitlab_poll_idx] || 1,
-         socket.assigns[:gitlab_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
-      end
+    {gh_idx, gh_estimate} = github_poll(type, poll_secs, config_for_estimate, socket.assigns)
+    {gl_idx, gl_estimate} = gitlab_poll(type, poll_secs, config_for_estimate, socket.assigns)
 
     # Read back from the converted params rather than the changeset: a slider
     # the user has just dragged is in the params, and its label has to move with
@@ -559,20 +524,7 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
 
     rt_idxs =
       Map.new(rt_groups, fn {_url, kinds} ->
-        # From the converted params, not the changeset: a slider just dragged is
-        # in the params, and its label has to move with it.
-        seconds =
-          kinds
-          |> Enum.map(&get_in(source_params, ["config", "rt_period_#{&1}"]))
-          |> Enum.reject(&is_nil/1)
-
-        idx =
-          case seconds do
-            [] -> rt_group_idx(config_for_estimate, kinds)
-            values -> values |> Enum.map(&to_seconds/1) |> Enum.min() |> rt_secs_to_idx()
-          end
-
-        {kinds, idx}
+        {kinds, rt_idx(kinds, source_params, config_for_estimate)}
       end)
 
     {:noreply,
@@ -598,6 +550,50 @@ defmodule RoomSanctumWeb.SourceLive.FormComponent do
       |> convert_gitlab_poll_params()
 
     save_source(socket, socket.assigns.action, source_params)
+  end
+
+  defp poll_secs(s) when is_integer(s), do: s
+  defp poll_secs(s) when is_binary(s), do: String.to_integer(s)
+  defp poll_secs(_), do: nil
+
+  # The slider position and call estimate for a GitHub source; any other type
+  # keeps what it had.
+  defp github_poll("github", poll_secs, config, assigns) do
+    gh_secs = poll_secs || 60
+
+    {github_secs_to_idx(gh_secs),
+     github_estimate(config, assigns[:gh_available_repos] || [], gh_secs)}
+  end
+
+  defp github_poll(_type, _poll_secs, _config, assigns) do
+    {assigns[:github_poll_idx] || 2,
+     assigns[:github_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
+  end
+
+  defp gitlab_poll("gitlab", poll_secs, config, assigns) do
+    gl_secs = poll_secs || 10
+
+    {gitlab_secs_to_idx(gl_secs),
+     gitlab_estimate(config, assigns[:gl_available_projects] || [], gl_secs)}
+  end
+
+  defp gitlab_poll(_type, _poll_secs, _config, assigns) do
+    {assigns[:gitlab_poll_idx] || 1,
+     assigns[:gitlab_estimate] || %{watched: 0, calls: 0, source: :unknown, cycles: 0}}
+  end
+
+  # From the converted params, not the changeset: a slider just dragged is
+  # in the params, and its label has to move with it.
+  defp rt_idx(kinds, source_params, config) do
+    seconds =
+      kinds
+      |> Enum.map(&get_in(source_params, ["config", "rt_period_#{&1}"]))
+      |> Enum.reject(&is_nil/1)
+
+    case seconds do
+      [] -> rt_group_idx(config, kinds)
+      values -> values |> Enum.map(&to_seconds/1) |> Enum.min() |> rt_secs_to_idx()
+    end
   end
 
   defp save_source(socket, :edit, source_params) do

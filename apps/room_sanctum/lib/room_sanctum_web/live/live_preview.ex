@@ -5,20 +5,19 @@ defmodule RoomSanctumWeb.LivePreview do
   use PhoenixHTMLHelpers
   import Phoenix.LiveView.Helpers
 
-  defp gtfs_icon(route_str) do
-    case route_str do
-      "LightRail" -> "fa-train-tram"
-      "Subway" -> "fa-train-subway"
-      "Rail" -> "fa-train"
-      "Bus" -> "fa-bus"
-      "Ferry" -> "fa-ferry"
-      "CableCar" -> "fa-cable-car"
-      "Funicular" -> "fa-mountain"
-      "Trolleybus" -> "fa-bus-simple"
-      "Monorail" -> "fa-magic"
-      _otherwise -> "fa-train-tram"
-    end
-  end
+  @gtfs_icons %{
+    "LightRail" => "fa-train-tram",
+    "Subway" => "fa-train-subway",
+    "Rail" => "fa-train",
+    "Bus" => "fa-bus",
+    "Ferry" => "fa-ferry",
+    "CableCar" => "fa-cable-car",
+    "Funicular" => "fa-mountain",
+    "Trolleybus" => "fa-bus-simple",
+    "Monorail" => "fa-magic"
+  }
+
+  defp gtfs_icon(route_str), do: Map.get(@gtfs_icons, route_str, "fa-train-tram")
 
   defp weather_icon(status) do
     case status do
@@ -68,29 +67,16 @@ defmodule RoomSanctumWeb.LivePreview do
   def tsls(%Time{} = t), do: tsl(t |> Time.to_string())
   def tsls(st), do: st |> String.slice(0, 8)
 
+  # Sixteen points, with N again at the end for the bearings that round up to 360.
+  @compass {"N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE", "S", "SSW", "SW", "WSW", "W", "WNW",
+            "NW", "NNW", "N"}
+
   defp to_l(direction) do
     idx = (direction / 22.5) |> Kernel.round()
-
-    case idx do
-      0 -> "N"
-      1 -> "NNE"
-      2 -> "NE"
-      3 -> "ENE"
-      4 -> "E"
-      5 -> "ESE"
-      6 -> "SE"
-      7 -> "SSE"
-      8 -> "S"
-      9 -> "SSW"
-      10 -> "SW"
-      11 -> "WSW"
-      12 -> "W"
-      13 -> "WNW"
-      14 -> "NW"
-      15 -> "NNW"
-      16 -> "N"
-    end
+    compass_point(idx)
   end
+
+  defp compass_point(idx) when idx in 0..16, do: elem(@compass, idx)
 
   @doc """
   A route drawn as the agency draws it.
