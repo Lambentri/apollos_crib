@@ -24,7 +24,10 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     vision_id = String.to_integer(to_string(socket.assigns.vision_id))
 
     socket
-    |> assign(:pythiae, Configuration.get_pythiae(:vision, vision_id))
+    |> assign(
+      :pythiae,
+      Configuration.get_pythiae(:vision, vision_id, socket.assigns.current_user.id)
+    )
     |> assign(
       :avail_pythiae,
       Configuration.get_pythiae_nv(:vision, vision_id, socket.assigns.current_user.id)
@@ -36,7 +39,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
     {:noreply,
      socket
      |> assign(:page_title, page_title(socket.assigns.live_action))
-     |> assign(:vision, Configuration.get_vision!(id))
+     |> assign(:vision, Configuration.get_vision!(owner(socket), id))
      |> assign(:vision_id, id)
      |> assign(:preview, [])
      |> assign(:queries, [])
@@ -122,8 +125,8 @@ defmodule RoomSanctumWeb.VisionLive.Show do
   end
 
   def handle_event("add-to-pythiae", %{"pythiae" => id}, socket) do
-    id
-    |> Configuration.get_pythiae!()
+    owner(socket)
+    |> Configuration.get_pythiae!(id)
     |> show_vision(socket)
   end
 
@@ -158,7 +161,7 @@ defmodule RoomSanctumWeb.VisionLive.Show do
   end
 
   def handle_event("remove-from-pythiae", %{"pythiae" => id}, socket) do
-    pythiae = Configuration.get_pythiae!(id)
+    pythiae = Configuration.get_pythiae!(owner(socket), id)
     vision_id = String.to_integer(to_string(socket.assigns.vision_id))
     visions = (pythiae.visions || []) -- [vision_id]
 
@@ -285,4 +288,8 @@ defmodule RoomSanctumWeb.VisionLive.Show do
   def preview(condensed, {id, type}) do
     %{data: condensed, id: id, type: type}
   end
+
+  # The vision, and any pythiae an event names, are looked up among the
+  # user's own: ids from the URL or the client are not trusted.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

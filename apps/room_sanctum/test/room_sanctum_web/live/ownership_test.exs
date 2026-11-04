@@ -79,4 +79,76 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert Repo.reload(theirs)
     end
   end
+
+  defp vision_for(user, name) do
+    {:ok, vision} = Configuration.create_vision(%{name: name, user_id: user.id})
+    vision
+  end
+
+  defp pythiae_for(user, visions) do
+    {:ok, pythiae} =
+      Configuration.create_pythiae(%{
+        name: "screen-#{System.unique_integer([:positive])}",
+        user_id: user.id,
+        ankyra: [],
+        visions: visions,
+        curr_vision: List.first(visions)
+      })
+
+    pythiae
+  end
+
+  describe "the vision pages" do
+    test "will not show another user's vision", ctx do
+      theirs = vision_for(ctx.them, "Their dash")
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.vision_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's vision for editing", ctx do
+      theirs = vision_for(ctx.them, "Their dash")
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.vision_index_path(ctx.conn, :edit, theirs))
+      end
+    end
+
+    test "will not delete another user's vision", ctx do
+      theirs = vision_for(ctx.them, "Their dash")
+      {:ok, live, _html} = live(ctx.conn, Routes.vision_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+
+      assert Repo.reload(theirs)
+    end
+
+    test "will not put the vision on another user's pythiae", ctx do
+      mine = vision_for(ctx.me, "My dash")
+      their_screen = pythiae_for(ctx.them, [])
+      {:ok, live, _html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :show, mine))
+
+      forge(live, "add-to-pythiae", %{"pythiae" => to_string(their_screen.id)})
+
+      assert Repo.reload!(their_screen).visions == []
+    end
+
+    test "neither lists nor edits another user's pythiae that holds the vision", ctx do
+      mine = vision_for(ctx.me, "My dash")
+      their_screen = pythiae_for(ctx.them, [mine.id])
+      {:ok, live, _html} = live(ctx.conn, Routes.vision_show_path(ctx.conn, :show, mine))
+      send(live.pid, :update_sec)
+      render_click(live, "toggle-pythiae-sel", %{})
+
+      refute has_element?(
+               live,
+               ~s([phx-click="remove-from-pythiae"][phx-value-pythiae="#{their_screen.id}"])
+             )
+
+      forge(live, "remove-from-pythiae", %{"pythiae" => to_string(their_screen.id)})
+
+      assert Repo.reload!(their_screen).visions == [mine.id]
+    end
+  end
 end

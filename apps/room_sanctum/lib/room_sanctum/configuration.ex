@@ -393,6 +393,9 @@ defmodule RoomSanctum.Configuration do
   """
   def get_vision!(id), do: Repo.get!(Vision, id)
 
+  # Someone else's vision raises the not-found a missing one does.
+  def get_vision!({:user, uid}, id), do: Repo.get_by!(Vision, id: id, user_id: uid)
+
   def get_vision(id), do: Repo.get(Vision, id)
 
   def get_vision({:user, uid}, id), do: Repo.get_by(Vision, id: id, user_id: uid)
@@ -680,6 +683,9 @@ defmodule RoomSanctum.Configuration do
   """
   def get_pythiae!(id), do: Repo.get!(Pythiae, id)
 
+  # Someone else's pythiae raises the not-found a missing one does.
+  def get_pythiae!({:user, uid}, id), do: Repo.get_by!(Pythiae, id: id, user_id: uid)
+
   alias RoomSanctum.Configuration.Plani
 
   @doc "Every Plani, for the supervisor that keeps a worker per one."
@@ -746,6 +752,10 @@ defmodule RoomSanctum.Configuration do
 
   def get_pythiae(:vision, id) do
     from(p in Pythiae, where: ^id in p.visions) |> Repo.all()
+  end
+
+  def get_pythiae(:vision, id, user_id) do
+    from(p in Pythiae, where: p.user_id == ^user_id and ^id in p.visions) |> Repo.all()
   end
 
   @doc """
