@@ -3,7 +3,7 @@ defmodule RoomSanctum.Configuration.Vision do
   import Ecto.Changeset
   import Ecto.Query, only: [from: 2]
 
-  alias RoomSanctum.Configuration.Query
+  alias RoomSanctum.Configuration.{Ownership, Query}
   alias RoomSanctum.Repo
 
   schema "cfg_visions" do
@@ -34,7 +34,25 @@ defmodule RoomSanctum.Configuration.Vision do
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
     |> validate_queries_have_valid_ids()
+    |> validate_embedded_queries_owned()
     |> validate_queries_are_distinct()
+  end
+
+  # The rows are what the vision's worker actually runs, so the same rule as
+  # query_ids holds for them: a row added with another user's query in it
+  # would show that user's results here.
+  defp validate_embedded_queries_owned(changeset) do
+    added =
+      embedded_query_ids(get_field(changeset, :queries)) --
+        embedded_query_ids(changeset.data.queries)
+
+    Ownership.validate_added(changeset, :queries, added, Query)
+  end
+
+  defp embedded_query_ids(queries) do
+    queries
+    |> List.wrap()
+    |> Enum.map(fn query -> query.data && Map.get(query.data, :query) end)
   end
 
   # A query belongs on a vision once. Twice is never deliberate -- the same

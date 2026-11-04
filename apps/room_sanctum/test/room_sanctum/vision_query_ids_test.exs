@@ -100,4 +100,44 @@ defmodule RoomSanctum.VisionQueryIdsTest do
                query_ids: renamed.query_ids ++ [theirs.id]
              })
   end
+
+  # The rows are what the vision's worker runs, so they follow the same rule.
+  defp row(query_id, order) do
+    %{
+      "type" => "pinned",
+      "data" => %{"__type__" => "pinned", "query" => query_id, "order" => order}
+    }
+  end
+
+  test "a row naming another user's query is refused" do
+    me = user()
+    mine = query(me)
+    theirs = query(user())
+
+    assert {:error, changeset} =
+             Configuration.create_vision(%{
+               "name" => "Mine",
+               "user_id" => me.id,
+               "queries" => %{"0" => row(mine.id, 0), "1" => row(theirs.id, 1)}
+             })
+
+    assert %{queries: ["must be your own"]} = errors_on(changeset)
+
+    assert {:ok, vision} =
+             Configuration.create_vision(%{
+               "name" => "Mine",
+               "user_id" => me.id,
+               "queries" => %{"0" => row(mine.id, 0)}
+             })
+
+    assert {:error, _} =
+             Configuration.update_vision(vision, %{
+               "queries" => %{"0" => row(mine.id, 0), "1" => row(theirs.id, 1)}
+             })
+
+    assert {:ok, _} =
+             Configuration.update_vision(vision, %{
+               "queries" => %{"0" => row(mine.id, 0), "1" => row(query(me).id, 1)}
+             })
+  end
 end

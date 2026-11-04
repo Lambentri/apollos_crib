@@ -24,7 +24,7 @@ defmodule RoomSanctum.Configuration.Ownership do
   """
   def validate_owned(changeset, field, schema) do
     added = List.wrap(get_change(changeset, field)) -- List.wrap(Map.get(changeset.data, field))
-    check(changeset, field, added, schema)
+    validate_added(changeset, field, added, schema)
   end
 
   @doc """
@@ -38,7 +38,8 @@ defmodule RoomSanctum.Configuration.Ownership do
 
       new ->
         old = embedded(Map.get(changeset.data, embed), key)
-        check(changeset, embed, List.wrap(embedded(new, key)) -- List.wrap(old), schema)
+        added = List.wrap(embedded(new, key)) -- List.wrap(old)
+        validate_added(changeset, embed, added, schema)
     end
   end
 
@@ -46,7 +47,12 @@ defmodule RoomSanctum.Configuration.Ownership do
   defp embedded(%{} = struct, key), do: Map.get(struct, key)
   defp embedded(nil, _key), do: nil
 
-  defp check(changeset, field, added, schema) do
+  @doc """
+  The check itself, for ids gathered some other way: refuse the change, with
+  an error on `field`, if any of `added` is not a `schema` row of the record's
+  owner.
+  """
+  def validate_added(changeset, field, added, schema) do
     with [_ | _] = ids <- added |> Enum.reject(&is_nil/1) |> Enum.uniq(),
          user_id when not is_nil(user_id) <- get_field(changeset, :user_id),
          [_ | _] <- ids -- owned_ids(schema, ids, user_id) do

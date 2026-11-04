@@ -113,18 +113,21 @@ defmodule RoomSanctumWeb.QueryShowOwnershipTest do
 
   test "unpinning from another user's vision by a forged event is refused", ctx do
     # Stored before the vision changeset checked ownership: their vision
-    # holding my query. Only its owner gets to take it off.
+    # holding my query. Only its owner gets to take it off. Written straight
+    # to the row, since the changeset now refuses it in both places.
     embed = %{
       "id" => nil,
       "type" => "pinned",
       "data" => %{"order" => 0, "query" => ctx.my_query.id, "__type__" => "pinned"}
     }
 
-    {:ok, theirs} =
-      ctx.theirs
-      |> Configuration.change_vision(%{queries: [embed]})
-      |> Ecto.Changeset.put_change(:query_ids, [ctx.my_query.id])
-      |> Repo.update()
+    Repo.query!("UPDATE cfg_visions SET queries = $1, query_ids = $2 WHERE id = $3", [
+      [embed],
+      [ctx.my_query.id],
+      ctx.theirs.id
+    ])
+
+    theirs = Repo.reload!(ctx.theirs)
 
     live = open_panel(ctx.conn, ctx.my_query)
     render_click(live, "remove-from", %{"vision" => to_string(theirs.id)})
