@@ -85,7 +85,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    q = Configuration.get_query!(id)
+    # Only the user's own: anyone else's raises the not-found a missing id does.
+    q = Configuration.get_query!(owner(socket), id)
 
     {:noreply,
      socket
@@ -216,8 +217,9 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   defp from_foci(_query, _q), do: []
 
   def handle_info(:update_sec, socket) do
-    visions = Configuration.get_visions(:query, socket.assigns.query_id)
-    nv = Configuration.get_visions_nv(:query, socket.assigns.query_id)
+    user_id = socket.assigns.current_user.id
+    visions = Configuration.get_visions(:query, socket.assigns.query_id, user_id)
+    nv = Configuration.get_visions_nv(:query, socket.assigns.query_id, user_id)
     {:noreply, socket |> assign(:visions, visions) |> assign(:avail_visions, nv)}
   end
 
@@ -253,12 +255,15 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
   end
 
+  # The vision id comes from the client, so it is looked up among the user's
+  # own: the list only offers those, but nothing stops an event naming another.
   def handle_event("add-to", %{"vision" => vision}, socket) do
     Process.send_after(self(), :update_sec, 200)
 
-    vision
-    |> Configuration.get_vision!()
-    |> pin_query(socket)
+    case Configuration.get_vision(owner(socket), vision) do
+      nil -> {:noreply, put_flash(socket, :error, "No such vision")}
+      vision -> pin_query(vision, socket)
+    end
   end
 
   # Create a vision around this query, for when the one you want does not exist
@@ -288,7 +293,13 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_event("remove-from", %{"vision" => vision}, socket) do
     Process.send_after(self(), :update_sec, 200)
 
-    vision = Configuration.get_vision!(vision)
+    case Configuration.get_vision(owner(socket), vision) do
+      nil -> {:noreply, put_flash(socket, :error, "No such vision")}
+      vision -> unpin_query(vision, socket)
+    end
+  end
+
+  defp unpin_query(vision, socket) do
     query_id = String.to_integer(socket.assigns.query_id)
 
     # Both halves again: drop every embed pointing at this query -- there may
@@ -353,6 +364,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_event("toggle-preview-raw", _params, socket) do
     {:noreply, socket |> assign(:preview_raw, !socket.assigns.preview_raw)}
   end
+
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 
   defp page_title(:show), do: "Query Detail"
   defp page_title(:edit), do: "Modify Query"

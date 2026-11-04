@@ -280,6 +280,11 @@ defmodule RoomSanctum.Configuration do
   """
   def get_query!(id), do: Repo.get!(Query, id) |> Repo.preload(:source)
 
+  # Someone else's query raises the same Ecto.NoResultsError a missing one
+  # does, so a page built on this cannot be used to tell the two apart.
+  def get_query!({:user, uid}, id),
+    do: Query |> Repo.get_by!(id: id, user_id: uid) |> Repo.preload(:source)
+
   def get_queries!(ids) do
     from(q in Query, where: q.id in ^ids) |> Repo.all() |> Repo.preload(:source)
   end
@@ -390,12 +395,23 @@ defmodule RoomSanctum.Configuration do
 
   def get_vision(id), do: Repo.get(Vision, id)
 
-  def get_visions(:query, id) do
-    from(v in Vision, where: ^id in v.query_ids) |> Repo.all()
+  def get_vision({:user, uid}, id), do: Repo.get_by(Vision, id: id, user_id: uid)
+
+  @doc """
+  The user's visions a query is on, and (`get_visions_nv/3`) the ones it is
+  not -- the ones it could be pinned to. Both are scoped to the user: the query
+  page lists them, and another user's visions are not theirs to see or pin to.
+  """
+  def get_visions(:query, id, user_id) do
+    from(v in Vision, where: v.user_id == ^user_id and ^id in v.query_ids) |> Repo.all()
   end
 
-  def get_visions_nv(:query, id) do
-    from(v in Vision, where: ^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == [])
+  def get_visions_nv(:query, id, user_id) do
+    from(v in Vision,
+      where:
+        v.user_id == ^user_id and
+          (^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == [])
+    )
     |> Repo.all()
   end
 
@@ -735,10 +751,9 @@ defmodule RoomSanctum.Configuration do
   @doc """
   The pythiae a vision is *not* on -- the ones it could be added to.
 
-  Scoped to the user, unlike its opposite number for visions
-  (`get_visions_nv/2`), which lists every vision in the database regardless of
-  who owns it. A pythiae is a screen on somebody's wall; offering to put your
-  vision on one belonging to someone else is not a feature.
+  Scoped to the user, like its opposite number for visions
+  (`get_visions_nv/3`). A pythiae is a screen on somebody's wall; offering to
+  put your vision on one belonging to someone else is not a feature.
   """
   def get_pythiae_nv(:vision, id, user_id) do
     from(p in Pythiae,
