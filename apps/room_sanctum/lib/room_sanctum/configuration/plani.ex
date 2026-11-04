@@ -14,6 +14,9 @@ defmodule RoomSanctum.Configuration.Plani do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias RoomSanctum.Accounts.RabbitUser
+  alias RoomSanctum.Configuration.{Foci, Ownership, Source}
+
   schema "cfg_plani" do
     field :name, :string
     belongs_to :user, RoomSanctum.Accounts.User
@@ -102,6 +105,12 @@ defmodule RoomSanctum.Configuration.Plani do
     |> validate_home_tint()
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:home_foci_id)
+    # The form only offers the owner's own. Anything else would ask another
+    # user's sources, follow their client's position, or call their foci home.
+    |> Ownership.validate_owned(:home_foci_id, Foci)
+    |> Ownership.validate_owned(:home_foci_ids, Foci)
+    |> Ownership.validate_owned(:ankyra_id, RabbitUser)
+    |> Ownership.validate_owned(:sources, Source)
   end
 
   # A tint that is not one of the offered colours renders as an unstyled dot
