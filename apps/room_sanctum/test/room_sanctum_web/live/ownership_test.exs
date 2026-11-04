@@ -151,4 +151,102 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert Repo.reload!(their_screen).visions == [mine.id]
     end
   end
+
+  defp gtfs_source_for(user) do
+    {:ok, source} =
+      Configuration.create_source(%{
+        name: "Their buses",
+        notes: "",
+        type: :gtfs,
+        enabled: true,
+        user_id: user.id,
+        config: %{"__type__" => "gtfs", "url" => "https://e.test/g.zip", "tz" => "UTC"}
+      })
+
+    source
+  end
+
+  defp import_jobs(source_id, state \\ nil) do
+    import Ecto.Query
+
+    from(j in "oban_jobs",
+      where:
+        j.queue == "gtfs_import" and fragment("(?->>'source_id')::int", j.args) == ^source_id,
+      select: j.state
+    )
+    |> Repo.all()
+    |> Enum.filter(&(is_nil(state) or &1 == state))
+  end
+
+  describe "the source pages" do
+    test "will not show another user's source", ctx do
+      theirs = source_for(ctx.them, "Their markets")
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.source_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's source for editing", ctx do
+      theirs = source_for(ctx.them, "Their markets")
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.source_index_path(ctx.conn, :edit, theirs))
+      end
+    end
+
+    test "will neither delete nor disable another user's source", ctx do
+      theirs = source_for(ctx.them, "Their markets")
+      {:ok, live, _html} = live(ctx.conn, Routes.source_index_path(ctx.conn, :index))
+
+      forge(live, "toggle-source-enabled", %{"id" => to_string(theirs.id), "current" => "true"})
+      assert Repo.reload!(theirs).enabled
+
+      {:ok, live, _html} = live(ctx.conn, Routes.source_index_path(ctx.conn, :index))
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+      assert Repo.reload(theirs)
+    end
+
+    test "the import queue will not queue another user's feed", ctx do
+      theirs = gtfs_source_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, "/cfg/offerings/work")
+
+      render_click(live, "requeue", %{"id" => to_string(theirs.id)})
+
+      assert import_jobs(theirs.id) == []
+    end
+
+    test "the import queue will not clear another user's job", ctx do
+      theirs = gtfs_source_for(ctx.them)
+      now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
+
+      {1, [%{id: job_id}]} =
+        Repo.insert_all(
+          "oban_jobs",
+          [
+            %{
+              state: "executing",
+              queue: "gtfs_import",
+              worker: "RoomGtfs.ImportJob",
+              args: %{"source_id" => theirs.id},
+              errors: [],
+              tags: [],
+              meta: %{},
+              attempt: 1,
+              max_attempts: 3,
+              priority: 0,
+              inserted_at: now,
+              scheduled_at: now,
+              attempted_at: now
+            }
+          ],
+          returning: [:id]
+        )
+
+      {:ok, live, _html} = live(ctx.conn, "/cfg/offerings/work")
+      render_click(live, "clear", %{"id" => to_string(job_id)})
+
+      assert import_jobs(theirs.id) == ["executing"]
+    end
+  end
 end

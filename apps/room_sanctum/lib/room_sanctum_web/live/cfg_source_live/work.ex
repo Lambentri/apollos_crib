@@ -80,9 +80,17 @@ defmodule RoomSanctumWeb.SourceLive.Work do
     end
   end
 
-
   @impl true
   def handle_info(_msg, socket), do: {:noreply, socket}
+
+  # A job id the client sends is only acted on if it is one of the import jobs
+  # this page listed, for one of the user's own feeds -- not any Oban job.
+  defp own_job?(socket, id) do
+    case Enum.find(socket.assigns.jobs, &(to_string(&1.id) == to_string(id))) do
+      nil -> false
+      job -> mine?(socket, source_id(job))
+    end
+  end
 
   defp mine?(socket, id) do
     case Integer.parse(to_string(id)) do
@@ -92,8 +100,9 @@ defmodule RoomSanctumWeb.SourceLive.Work do
   end
 
   @impl true
+  # Only the user's own feeds: the id is the client's.
   def handle_event("requeue", %{"id" => id}, socket) do
-    case RoomGtfs.Worker.update_static_data(String.to_integer(id)) do
+    case mine?(socket, id) && RoomGtfs.Worker.update_static_data(String.to_integer(id)) do
       {:ok, %{conflict?: true}} ->
         {:noreply, socket |> put_flash(:info, "That feed already has an import outstanding")}
 
@@ -121,7 +130,7 @@ defmodule RoomSanctumWeb.SourceLive.Work do
   """
   @impl true
   def handle_event("clear", %{"id" => id}, socket) do
-    case Oban.cancel_job(String.to_integer(id)) do
+    case own_job?(socket, id) && Oban.cancel_job(String.to_integer(id)) do
       :ok ->
         {:noreply,
          socket

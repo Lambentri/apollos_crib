@@ -55,6 +55,10 @@ defmodule RoomSanctum.Configuration do
   """
   def get_source!(:bare, id), do: Repo.get!(Source, id)
 
+  # Someone else's source raises the not-found a missing one does.
+  def get_source!({:user, uid}, id),
+    do: Source |> Repo.get_by!(id: id, user_id: uid) |> Repo.preload([:mailboxes, :webhooks])
+
   @doc """
   Subscribe to config changes for one record, so a worker can be told rather
   than asking.

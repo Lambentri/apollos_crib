@@ -197,7 +197,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
     # Not inspected. This struct now carries a source's request headers, and an
     # API key printed to the logs on every page load is a secret in a place
     # nobody thinks to look for one.
-    source = Configuration.get_source!(id)
+    source = Configuration.get_source!(owner(socket), id)
 
     # Subscribe to relevant PubSub channels
     case source.type do
@@ -602,10 +602,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   defp preview_treasury(socket), do: assign(socket, :treasury_preview, nil)
 
   @impl true
-  def handle_event("do-update", %{"type" => type, "id" => id}, socket) do
-    id =
-      id
-      |> String.to_integer()
+  # The buttons send the page's own source id; the page's is what is used, so
+  # an event naming another source does not reach it.
+  def handle_event("do-update", %{"type" => type}, socket) do
+    id = socket.assigns.source_id
 
     case type do
       "gtfs" ->
@@ -935,7 +935,8 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
-  def handle_event("do-stats", %{"type" => type, "id" => id}, socket) do
+  def handle_event("do-stats", %{"type" => type}, socket) do
+    id = to_string(socket.assigns.source_id)
     #    IO.inspect({type, id})
 
     stats =
@@ -1011,13 +1012,13 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   end
 
   @impl true
-  def handle_event("do-gbfs-search", %{"name" => name, "id" => id}, socket) do
-    results = Storage.list_gbfs_station_information(id, name)
+  def handle_event("do-gbfs-search", %{"name" => name}, socket) do
+    results = Storage.list_gbfs_station_information(to_string(socket.assigns.source_id), name)
     {:noreply, socket |> assign(:tester_results, results)}
   end
 
-  def handle_event("do-gtfs-search", %{"name" => name, "id" => id}, socket) do
-    results = Storage.list_stops(id, name)
+  def handle_event("do-gtfs-search", %{"name" => name}, socket) do
+    results = Storage.list_stops(to_string(socket.assigns.source_id), name)
     {:noreply, socket |> assign(:tester_results, results)}
   end
 
@@ -1617,4 +1618,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
   def get_icon_url(false) do
     "/assets/img/marker.png"
   end
+
+  # The source comes from the URL, so it is looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

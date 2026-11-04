@@ -29,7 +29,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Offering")
-    |> assign(:source, Configuration.get_source!(id))
+    |> assign(:source, Configuration.get_source!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -75,7 +75,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    source = Configuration.get_source!(id)
+    source = Configuration.get_source!(owner(socket), id)
     {:ok, _} = Configuration.delete_source(source)
 
     {:noreply, stream_delete(socket, :cfg_sources, source)}
@@ -83,8 +83,8 @@ defmodule RoomSanctumWeb.SourceLive.Index do
 
   def handle_event("toggle-source-enabled", %{"id" => id, "current" => current}, socket) do
     curr_bool = current |> String.to_existing_atom()
-    src_og = Configuration.get_source!(id)
-    {:ok, src} = Configuration.toggle_source!(id, not curr_bool)
+    src_og = Configuration.get_source!(owner(socket), id)
+    {:ok, src} = Configuration.toggle_source!(src_og.id, not curr_bool)
 
     icon = """
     <i class="fas #{get_icon(src.type)}"></i>
@@ -272,4 +272,7 @@ defmodule RoomSanctumWeb.SourceLive.Index do
       true -> false
     end
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end
