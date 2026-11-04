@@ -164,6 +164,10 @@ defmodule RoomPollen.Worker do
         _ -> nil
       end
     rescue
+      # Not just a missing row (Ecto.NoResultsError): a malformed id raises
+      # Ecto.Query.CastError and a database fault raises its own errors, and
+      # every one of them means there is no foci to anchor on.
+      # credo:disable-for-next-line ExSlop.Check.Warning.BlanketRescue
       _ -> nil
     end
   end

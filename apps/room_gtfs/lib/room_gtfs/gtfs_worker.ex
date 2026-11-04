@@ -1288,6 +1288,10 @@ defmodule RoomGtfs.Worker.RT do
       try do
         {:ok, TransitRealtime.FeedMessage.decode(body)}
       rescue
+        # Garbage bytes can fail the decoder in more ways than
+        # Protobuf.DecodeError, and any of them is just a feed that did not
+        # decode; the caller handles {:error, :decode_failed}.
+        # credo:disable-for-next-line ExSlop.Check.Warning.RescueWithoutReraise
         e ->
           Logger.warning("failed to decode gtfs-rt protobuf from #{url}: #{inspect(e)}")
           {:error, :decode_failed}
