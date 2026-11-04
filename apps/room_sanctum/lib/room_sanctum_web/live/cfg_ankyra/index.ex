@@ -19,7 +19,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Ankyra")
-    |> assign(:ankyra, Accounts.get_rabbit_user!(id))
+    |> assign(:ankyra, Accounts.get_rabbit_user!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -41,7 +41,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    ankyra = Accounts.get_rabbit_user!(id)
+    ankyra = Accounts.get_rabbit_user!(owner(socket), id)
     {:ok, _} = Accounts.delete_rabbit_user!(ankyra)
 
     {:noreply, stream_delete(socket, :ankyras, ankyra)}
@@ -55,4 +55,7 @@ defmodule RoomSanctumWeb.AnkyraLive.Index do
   defp list_ankyras(uid) do
     Accounts.list_users_rabbit({:user, uid})
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

@@ -44,6 +44,9 @@ defmodule RoomSanctum.Accounts do
   """
   def get_rabbit_user!(id), do: Repo.get!(RabbitUser, id)
 
+  # Someone else's raises the not-found a missing one does.
+  def get_rabbit_user!({:user, uid}, id), do: Repo.get_by!(RabbitUser, id: id, user_id: uid)
+
   @doc """
   Creates a rabbit_user.
 

@@ -428,4 +428,45 @@ defmodule RoomSanctumWeb.OwnershipTest do
       assert Repo.reload(theirs)
     end
   end
+
+  defp ankyra_for(user) do
+    {:ok, ankyra} =
+      Accounts.create_rabbit_user(%{
+        username: Ecto.UUID.generate(),
+        password: "hunter2",
+        topic: "Their-Topic",
+        user_id: user.id
+      })
+
+    ankyra
+  end
+
+  describe "the ankyra pages" do
+    setup :users_rabbit!
+
+    test "will not show another user's ankyra", ctx do
+      theirs = ankyra_for(ctx.them)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.ankyra_show_path(ctx.conn, :show, theirs))
+      end
+    end
+
+    test "will not open another user's ankyra for editing", ctx do
+      theirs = ankyra_for(ctx.them)
+
+      assert_raise Ecto.NoResultsError, fn ->
+        live(ctx.conn, Routes.ankyra_index_path(ctx.conn, :edit, theirs))
+      end
+    end
+
+    test "will not delete another user's ankyra", ctx do
+      theirs = ankyra_for(ctx.them)
+      {:ok, live, _html} = live(ctx.conn, Routes.ankyra_index_path(ctx.conn, :index))
+
+      forge(live, "delete", %{"id" => to_string(theirs.id)})
+
+      assert Repo.reload(theirs)
+    end
+  end
 end
