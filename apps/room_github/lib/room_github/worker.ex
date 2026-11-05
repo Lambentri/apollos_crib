@@ -231,8 +231,17 @@ defmodule RoomGithub.Worker do
   end
 
   # HTTPoison async stream handlers
-  def handle_info(%HTTPoison.Error{reason: {:closed, :timeout}}, state) do
-    {:noreply, state}
+  def handle_info(%HTTPoison.Error{id: rid}, state) do
+    close_conn(rid)
+
+    case Map.pop(state.refs, rid) do
+      {nil, _refs} ->
+        {:noreply, state}
+
+      {ref, refs} ->
+        close_buffer(ref.fd)
+        {:noreply, %{state | refs: refs}}
+    end
   end
 
   def handle_info(%HTTPoison.AsyncStatus{code: 200, id: _id}, state) do
@@ -269,6 +278,8 @@ defmodule RoomGithub.Worker do
   end
 
   def handle_info(%HTTPoison.AsyncEnd{id: rid}, state) do
+    close_conn(rid)
+
     case state.refs[rid] do
       nil ->
         {:noreply, state}
@@ -302,6 +313,15 @@ defmodule RoomGithub.Worker do
 
   defp close_buffer(fd), do: StringIO.close(fd)
 
+  # Each request has a connection of its own, which nothing else will use once
+  # its response is over; left open, an HTTP/2 one would stay up for good.
+  defp close_conn(conn) do
+    :hackney.close(conn)
+  catch
+    # Already gone: an HTTP/1 one stops with the process HTTPoison streams through.
+    :exit, _ -> :ok
+  end
+
   @max_pages 20
 
   defp do_github_req(api_url, pat, path, params) do
@@ -320,7 +340,12 @@ defmodule RoomGithub.Worker do
 
     case HTTPoison.get(url, headers,
            follow_redirect: true,
-           stream_to: self()
+           stream_to: self(),
+           # hackney 4 tags async messages with the connection's pid, and a
+           # pooled HTTP/2 connection carries every concurrent request to the
+           # host, so their responses would all arrive under one id. A
+           # connection of its own gives each request an id of its own.
+           hackney: [pool: false]
          ) do
       {:ok, ref} ->
         {:ok, ref}
