@@ -32,7 +32,7 @@ defmodule RoomObservatory.MixProject do
   # lie about the architecture that outlives whoever wrote it.
   defp deps do
     [
-      {:prom_ex, "~> 1.11.0"},
+      {:prom_ex, "~> 1.12.0"},
       # PromEx's own metrics_server is Plug.Cowboy-based. That is the right
       # choice *here* — unlike the Bandit-based apps in this fleet, cowboy is
       # already in this release via Phoenix 1.7 — so it is declared rather than
