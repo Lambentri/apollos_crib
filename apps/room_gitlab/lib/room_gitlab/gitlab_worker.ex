@@ -172,7 +172,22 @@ defmodule RoomGitlab.Worker do
   defp gitlab_path(:commits, id), do: {"/api/v4/projects/#{id}/repository/commits/master", %{}}
   defp gitlab_path(:jobs, id), do: {"/api/v4/projects/#{id}/jobs", %{}}
 
-  defp do_gitlab_reqa(uri, token, lookup, id \\ nil) do
+  # Starts a request and files `entry` under its id. One that can't start
+  # (the host unreachable, say) is logged and left out; the next poll tries
+  # again.
+  defp start_req(refs, state, url, pat, {lookup, id}, entry) do
+    case do_gitlab_reqa(url, pat, lookup, id) do
+      {:ok, ref} ->
+        {:ok, fd} = StringIO.open("")
+        Map.put(refs, ref.id, Map.put(entry, :fd, fd))
+
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        Logger.warning("GLab::#{state.inst.id} #{lookup} request failed: #{inspect(reason)}")
+        refs
+    end
+  end
+
+  defp do_gitlab_reqa(uri, token, lookup, id) do
     {path, params} = gitlab_path(lookup, id)
 
     HTTPoison.get(
@@ -204,10 +219,7 @@ defmodule RoomGitlab.Worker do
 
     with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
          {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
-      {:ok, ref} = do_gitlab_reqa(url, pat, :projects)
-      {:ok, fd} = StringIO.open("")
-      refs = state |> Map.get(:refs)
-      refs = refs |> Map.put(ref.id, %{fd: fd, type: :projects})
+      refs = start_req(state.refs, state, url, pat, {:projects, nil}, %{type: :projects})
 
       {:noreply, state |> Map.put(:refs, refs)}
     else
@@ -240,17 +252,12 @@ defmodule RoomGitlab.Worker do
   def handle_cast(:query_commits, state) do
     with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
          {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
-      all =
-        state.projects
-        |> Enum.map(fn p ->
+      refs =
+        Enum.reduce(state.projects, state.refs, fn p, acc ->
           Logger.info("GLab::#{state.inst.id} Querying Commits for #{p["name"]}")
-          {:ok, ref} = do_gitlab_reqa(url, pat, :commits, p["id"])
-          {:ok, fd} = StringIO.open("")
-          {ref.id, %{fd: fd, type: :commits, id: p["id"]}}
+          start_req(acc, state, url, pat, {:commits, p["id"]}, %{type: :commits, id: p["id"]})
         end)
-        |> Map.new()
 
-      refs = state |> Map.get(:refs) |> Map.merge(all)
       {:noreply, state |> Map.put(:refs, refs)}
     else
       _ -> {:noreply, state}
@@ -268,18 +275,13 @@ defmodule RoomGitlab.Worker do
         "GLab::#{state.inst.id} Querying Jobs for #{length(state.projects)} watched projects"
       )
 
-      all =
-        state.projects
-        |> Enum.map(fn p ->
+      refs =
+        Enum.reduce(state.projects, state.refs, fn p, acc ->
           id = p["id"]
           Logger.debug("GLab::#{state.inst.id} Querying Jobs for #{id}")
-          {:ok, ref} = do_gitlab_reqa(url, pat, :jobs, id)
-          {:ok, fd} = StringIO.open("")
-          {ref.id, %{fd: fd, type: :jobs, id: id}}
+          start_req(acc, state, url, pat, {:jobs, id}, %{type: :jobs, id: id})
         end)
-        |> Map.new()
 
-      refs = state |> Map.get(:refs) |> Map.merge(all)
       {:noreply, state |> Map.put(:refs, refs)}
     else
       _ ->

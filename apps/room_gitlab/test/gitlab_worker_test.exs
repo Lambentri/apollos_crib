@@ -84,6 +84,17 @@ defmodule RoomGitlab.WorkerTest do
     end
   end
 
+  test "a GitLab it can't reach skips the poll instead of crashing", %{state: state} do
+    # A port nothing listens on: the request fails before it starts.
+    {:ok, sock} = :gen_tcp.listen(0, [])
+    {:ok, port} = :inet.port(sock)
+    :ok = :gen_tcp.close(sock)
+    state = put_in(state.inst.config.url, "http://127.0.0.1:#{port}")
+
+    assert {:noreply, state} = query_jobs(state, [11, 22])
+    assert state.refs == %{}
+  end
+
   test "what still arrives for a request after its end is dropped", %{state: state} do
     # Its connection, already gone.
     conn = spawn(fn -> :ok end)
