@@ -84,6 +84,33 @@ defmodule RoomGitlab.WorkerTest do
     end
   end
 
+  test "what still arrives for a request after its end is dropped", %{state: state} do
+    # Its connection, already gone.
+    conn = spawn(fn -> :ok end)
+    {:ok, fd} = StringIO.open("")
+    state = %{state | refs: %{conn => %{fd: fd, type: :jobs, id: 22}}}
+
+    state =
+      Enum.reduce(
+        [
+          %HTTPoison.AsyncStatus{id: conn, code: 200},
+          %HTTPoison.AsyncChunk{id: conn, chunk: ~s([{"id":"22"}])},
+          %HTTPoison.AsyncEnd{id: conn},
+          # A second response under the same id, as two requests sharing a
+          # connection used to bring.
+          %HTTPoison.AsyncStatus{id: conn, code: 503},
+          %HTTPoison.AsyncChunk{id: conn, chunk: "unavailable"},
+          %HTTPoison.AsyncEnd{id: conn},
+          %HTTPoison.Error{id: conn, reason: :closed}
+        ],
+        state,
+        &handle_info/2
+      )
+
+    assert state.jobs == %{22 => [%{"id" => "22"}]}
+    assert state.refs == %{}
+  end
+
   defp query_jobs(state, project_ids) do
     projects = for id <- project_ids, do: %{"id" => id}
     Worker.handle_cast({:query_jobs, %{}}, %{state | projects: projects})

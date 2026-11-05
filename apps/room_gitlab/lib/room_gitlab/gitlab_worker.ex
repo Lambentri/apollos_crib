@@ -344,54 +344,65 @@ defmodule RoomGitlab.Worker do
     {:reply, [:ok], state}
   end
 
-  #    IO.inspect({:handle_info, msg})
-  def handle_info(%HTTPoison.Error{reason: {:closed, :timeout}, id: resp_id}, state) do
+  # A request's buffer goes from state.refs when its response ends or fails,
+  # so anything that still arrives for it afterwards is dropped.
+  def handle_info(%HTTPoison.Error{id: resp_id}, state) do
     close_conn(resp_id)
-    {:noreply, state}
-  end
 
-  def handle_info(%HTTPoison.AsyncStatus{code: status_code, id: resp_id}, state) do
-    #        IO.inspect(status_code)
+    case Map.pop(state.refs, resp_id) do
+      {nil, _refs} ->
+        {:noreply, state}
 
-    if status_code == 200 do
-      {:noreply, state}
-    else
-      refs = state[:refs]
-      r = state[:refs][resp_id]
-      r = r |> Map.put(:write, false)
-      refs = refs |> Map.put(resp_id, r)
-      {:noreply, state |> Map.put(:refs, refs)}
+      {ref, refs} ->
+        StringIO.close(ref.fd)
+        {:noreply, %{state | refs: refs}}
     end
   end
 
-  def handle_info(%HTTPoison.AsyncHeaders{headers: headers, id: resp_id}, state) do
-    #        IO.inspect(headers)
+  def handle_info(%HTTPoison.AsyncStatus{code: 200}, state), do: {:noreply, state}
+
+  def handle_info(%HTTPoison.AsyncStatus{id: resp_id}, state) do
+    case state.refs do
+      %{^resp_id => ref} ->
+        {:noreply, %{state | refs: Map.put(state.refs, resp_id, Map.put(ref, :write, false))}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_info(%HTTPoison.AsyncHeaders{}, state) do
     {:noreply, state}
   end
 
   def handle_info(%HTTPoison.AsyncChunk{chunk: chunk, id: resp_id}, state) do
-    IO.binwrite(state[:refs][resp_id][:fd], chunk)
+    case state.refs do
+      %{^resp_id => %{fd: fd}} -> IO.binwrite(fd, chunk)
+      _ -> :ok
+    end
+
     {:noreply, state}
   end
 
   def handle_info(%HTTPoison.AsyncEnd{id: resp_id}, state) do
     close_conn(resp_id)
-    {_, str} = StringIO.contents(state[:refs][resp_id][:fd])
-    StringIO.close(state[:refs][resp_id][:fd])
-    t = state[:refs][resp_id][:type]
 
-    case Jason.decode(str) do
-      {:ok, decoded} ->
-        case state[:refs][resp_id] |> Map.get(:write) do
-          false ->
-            {:noreply, state}
-
-          nil ->
-            {:noreply, store_decoded(state, t, state[:refs][resp_id][:id], decoded)}
-        end
-
-      {:error, error} ->
+    case Map.pop(state.refs, resp_id) do
+      {nil, _refs} ->
         {:noreply, state}
+
+      {ref, refs} ->
+        {:ok, {_input, body}} = StringIO.close(ref.fd)
+        {:noreply, store_response(%{state | refs: refs}, ref, body)}
+    end
+  end
+
+  defp store_response(state, %{write: false}, _body), do: state
+
+  defp store_response(state, ref, body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> store_decoded(state, ref.type, ref[:id], decoded)
+      {:error, _error} -> state
     end
   end
 
