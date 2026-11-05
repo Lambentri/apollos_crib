@@ -111,6 +111,13 @@ defmodule RoomGitlab.WorkerTest do
     assert state.refs == %{}
   end
 
+  test "a message it has no use for is ignored", %{state: state} do
+    redirect = %HTTPoison.AsyncRedirect{id: self(), to: "https://example.com/", headers: []}
+
+    assert Worker.handle_info(:unexpected, state) == {:noreply, state}
+    assert Worker.handle_info(redirect, state) == {:noreply, state}
+  end
+
   defp query_jobs(state, project_ids) do
     projects = for id <- project_ids, do: %{"id" => id}
     Worker.handle_cast({:query_jobs, %{}}, %{state | projects: projects})

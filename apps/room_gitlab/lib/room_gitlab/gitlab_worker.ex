@@ -397,6 +397,11 @@ defmodule RoomGitlab.Worker do
     end
   end
 
+  def handle_info(msg, state) do
+    Logger.debug("GLab::#{state.id} ignoring #{inspect(msg)}")
+    {:noreply, state}
+  end
+
   defp store_response(state, %{write: false}, _body), do: state
 
   defp store_response(state, ref, body) do
