@@ -180,7 +180,12 @@ defmodule RoomGitlab.Worker do
       ["PRIVATE-TOKEN": "#{token}", Accept: "Application/json; Charset=utf-8"],
       params: params,
       follow_redirect: true,
-      stream_to: self()
+      stream_to: self(),
+      # hackney 4 tags async messages with the connection's pid, and a pooled
+      # HTTP/2 connection carries every concurrent request to the host, so
+      # their responses would all arrive under one id. A connection of its
+      # own gives each request an id of its own.
+      hackney: [pool: false]
     )
 
     #    |> IO.inspect()
@@ -341,6 +346,7 @@ defmodule RoomGitlab.Worker do
 
   #    IO.inspect({:handle_info, msg})
   def handle_info(%HTTPoison.Error{reason: {:closed, :timeout}, id: resp_id}, state) do
+    close_conn(resp_id)
     {:noreply, state}
   end
 
@@ -369,6 +375,7 @@ defmodule RoomGitlab.Worker do
   end
 
   def handle_info(%HTTPoison.AsyncEnd{id: resp_id}, state) do
+    close_conn(resp_id)
     {_, str} = StringIO.contents(state[:refs][resp_id][:fd])
     StringIO.close(state[:refs][resp_id][:fd])
     t = state[:refs][resp_id][:type]
@@ -386,6 +393,15 @@ defmodule RoomGitlab.Worker do
       {:error, error} ->
         {:noreply, state}
     end
+  end
+
+  # Each request has a connection of its own, which nothing else will use once
+  # its response is over; left open, an HTTP/2 one would stay up for good.
+  defp close_conn(conn) do
+    :hackney.close(conn)
+  catch
+    # Already gone: an HTTP/1 one stops with the process HTTPoison streams through.
+    :exit, _ -> :ok
   end
 
   defp store_decoded(state, :projects, _id, decoded) do
