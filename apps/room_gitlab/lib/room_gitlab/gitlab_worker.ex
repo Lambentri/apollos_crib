@@ -187,8 +187,6 @@ defmodule RoomGitlab.Worker do
       # own gives each request an id of its own.
       hackney: [pool: false]
     )
-
-    #    |> IO.inspect()
   end
 
   defp last_hour?(entry_field, hours \\ 1) do

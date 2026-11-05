@@ -17,8 +17,6 @@ defmodule RoomHermesWeb.ResourceController do
   end
 
   defp decide("/", "queue", name, _permission) do
-    IO.puts("qqq")
-
     case name |> String.starts_with?("mqtt-subscription") do
       true -> "allow"
       false -> "deny"

@@ -237,8 +237,6 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   def handle_cast({:publish_img, data}, state) do
-    IO.puts("and here")
-
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
         AMQP.Basic.publish(

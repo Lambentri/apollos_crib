@@ -385,7 +385,6 @@ defmodule RoomAirQuality.Worker do
   end
 
   def handle_cast(:refresh_db_cfg, state) do
-    IO.puts("rerere")
     {:noreply, state}
   end
 

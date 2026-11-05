@@ -86,7 +86,7 @@ defmodule RoomCalendar.Worker do
         Logger.debug("iCAL::#{state.id} wrote #{count} entries")
 
       {:error, reason} ->
-        IO.puts("error #{reason.reason}")
+        Logger.warning("iCAL::#{state.id} fetch failed: #{inspect(reason.reason)}")
     end
 
     {:noreply, state}
