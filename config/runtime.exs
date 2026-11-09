@@ -220,3 +220,18 @@ config :room_sanctum, :basemap,
        attribution: System.get_env("TILE_ATTRIBUTION"),
        subdomains: System.get_env("TILE_SUBDOMAINS"),
        max_zoom: System.get_env("TILE_MAX_ZOOM")
+
+# Scribus resolutions are the browser-ctl MutantDeployment's mutations,
+# read and changed through the mutant operator's HTTP API.
+config :room_sanctum, RoomSanctum.Mutants,
+  url: System.get_env("MUTANT_API_URL"),
+  token: System.get_env("MUTANT_API_TOKEN"),
+  namespace: System.get_env("MUTANT_NAMESPACE", "apollos-crib"),
+  mutant_deployment: System.get_env("MUTANT_DEPLOYMENT", "browser-snap-mutant")
+
+# Users who may start and stop Scribus resolutions.
+config :room_sanctum,
+  admin_emails:
+    System.get_env("CRIB_ADMIN_EMAILS", "")
+    |> String.split(",", trim: true)
+    |> Enum.map(&String.trim/1)

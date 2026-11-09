@@ -49,27 +49,54 @@
 
 <div class="card card-compact w-full bg-base-100 shadow-xl mx-6 my-4">
   <div class="card-body">
-    <h3 class="card-title">Resolutions</h3>
-    <p class="text-sm opacity-70">Resolutions available when configuring a Scribus.</p>
+    <div class="flex items-center justify-between">
+      <h3 class="card-title">Resolutions</h3>
+      <button type="button" phx-click="refresh-resolutions" class="btn btn-ghost btn-sm" title="Refresh">
+        <i class="fas fa-fw fa-rotate"></i>
+      </button>
+    </div>
+    <p class="text-sm opacity-70">
+      The browser-ctl snappers running in the cluster. A Scribus can use any that is Ready.
+      Ones marked <span class="badge badge-sm badge-ghost">git</span> are set in the MutantDeployment manifest and change there.
+    </p>
+
+    <div :if={@resolutions_error} class="alert alert-warning text-sm">
+      <i class="fas fa-fw fa-triangle-exclamation"></i> Resolutions unavailable: <%= @resolutions_error %>
+    </div>
 
     <table class="table table-compact w-full">
       <thead>
         <tr>
           <th>Name</th>
-          <th>Width</th>
-          <th>Height</th>
-          <th></th>
+          <th>Resolution</th>
+          <th>Snappers</th>
+          <th>State</th>
+          <th :if={@admin?}></th>
         </tr>
       </thead>
-      <tbody id="resolutions" phx-update="stream">
-        <tr :for={{id, r} <- @streams.resolutions} id={id}>
-          <td><%= r.name %></td>
-          <td><%= r.width %></td>
-          <td><%= r.height %></td>
+      <tbody id="resolutions">
+        <tr :for={r <- @resolutions} id={"resolution-#{r.label}"}>
           <td>
+            <%= r.label %>
+            <span :if={r.source == :inline} class="badge badge-sm badge-ghost">git</span>
+          </td>
+          <td><%= r.resolution %></td>
+          <td><%= r.ready %>/<%= r.instances %></td>
+          <td>
+            <span class={[
+              "badge badge-sm",
+              r.state == "Ready" && "badge-success",
+              r.state == "Progressing" && "badge-info",
+              r.state not in ["Ready", "Progressing"] && "badge-error"
+            ]}>
+              <%= r.state %>
+            </span>
+          </td>
+          <td :if={@admin?}>
             <.link
-              phx-click={JS.push("delete-resolution", value: %{id: r.id}) |> hide("##{id}")}
-              data-confirm="Delete this resolution?"
+              :if={r.source == :resource}
+              phx-click={JS.push("delete-resolution", value: %{label: r.label})}
+              data-confirm={"Stop the #{r.resolution} snappers? Any Scribus using it stops updating."}
               class="text-error"
             >
               <i class="fas fa-fw fa-trash"></i>
@@ -79,12 +106,13 @@
       </tbody>
     </table>
 
-    <.form for={@resolution_form} phx-submit="add-resolution" class="flex gap-2 items-end mt-2">
+    <.form :if={@admin?} for={@resolution_form} phx-submit="add-resolution" class="flex gap-2 items-end mt-2">
       <.input field={@resolution_form[:name]} type="text" label="Name" placeholder="InkPad 5" />
-      <.input field={@resolution_form[:width]} type="number" label="Width" />
-      <.input field={@resolution_form[:height]} type="number" label="Height" />
+      <.input field={@resolution_form[:width]} type="number" label="Width" min="1" />
+      <.input field={@resolution_form[:height]} type="number" label="Height" min="1" />
+      <.input field={@resolution_form[:instances]} type="number" label="Snappers" min="1" />
       <button type="submit" class="btn btn-secondary btn-sm">
-        <i class="fas fa-fw fa-plus"></i> Add
+        <i class="fas fa-fw fa-plus"></i> Start
       </button>
     </.form>
   </div>

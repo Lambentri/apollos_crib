@@ -123,6 +123,20 @@ defmodule RoomSanctum.Accounts do
   ## Database getters
 
   @doc """
+  Whether `user` is an admin: their email is in `CRIB_ADMIN_EMAILS`
+  (comma-separated, case-insensitive). Admins can do what touches shared
+  infrastructure, such as starting or stopping a Scribus resolution.
+  """
+  def admin?(%User{email: email}) when is_binary(email) do
+    email = String.downcase(email)
+
+    Application.get_env(:room_sanctum, :admin_emails, [])
+    |> Enum.any?(&(String.downcase(&1) == email))
+  end
+
+  def admin?(_), do: false
+
+  @doc """
   Gets a user by email.
 
   ## Examples

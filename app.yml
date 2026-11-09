@@ -133,6 +133,24 @@ spec:
                 href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>
                 contributors
 
+            # Scribus resolutions come from the browser-snap-mutant
+            # MutantDeployment via the mutant operator's API. The token is
+            # a copy, in this namespace, of the operator's mutantops-api
+            # secret (mutants namespace).
+            - name: MUTANT_API_URL
+              value: http://mutantops-api.mutants.svc
+            - name: MUTANT_API_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: mutantops-api
+                  key: token
+                  optional: true
+
+            # Comma-separated emails of users who may start and stop
+            # Scribus resolutions.
+            - name: CRIB_ADMIN_EMAILS
+              value: ""
+
           name: apollos-crib
           ports:
             - containerPort: 4000

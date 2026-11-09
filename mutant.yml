@@ -1,0 +1,55 @@
+apiVersion: neiam.org/v1
+kind: MutantDeployment
+metadata:
+  name: browser-snap-mutant
+  namespace: apollos-crib
+spec:
+  deployment:
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: browser-snap
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app: snap
+      template:
+        metadata:
+          labels:
+            app: snap
+        spec:
+          imagePullSecrets:
+            - name: gitlabgmp
+
+          containers:
+            - name: snap
+              image: r.g.gmp.io/lambentri/browser-ctl:latest
+              env:
+              - name: AMQP_USER
+                valueFrom:
+                  secretKeyRef:
+                    name: rabbitmq-default-user
+                    key: username
+
+              - name: AMQP_PASS
+                valueFrom:
+                  secretKeyRef:
+                    name: rabbitmq-default-user
+                    key: password
+
+              - name: SNAP_MQ
+                value: amqp://$(AMQP_USER):$(AMQP_PASS)@rabbitmq:5672
+  mutations:
+    - label: pinenote-h
+      env:
+        SNAP_RES: "1872x1404"
+      instances: 1
+    - label: radxa-8-hd
+      env:
+        SNAP_RES: "1280x800"
+      instances: 3
+    - label: lilygo47
+      env:
+        SNAP_RES: "960x540"
+      instances: 1
