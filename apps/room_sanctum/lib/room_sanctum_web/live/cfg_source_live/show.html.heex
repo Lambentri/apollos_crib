@@ -53,9 +53,7 @@ gl_available_projects={@gitlab_available_projects}
         <div class="card card-compact w-3/4 bg-base-100 shadow-xl m-2">
             <div class="card-body">
                 <h3 class="card-title">Config
-                    <%= if @source.meta.tint do %>
-                    <i class={"fa fa-circle text-#{@source.meta.tint}-500"}></i>
-                    <% end %></h3>
+                    <.tint_dot tint={@source.meta.tint} label={@source.meta.tint_label} /></h3>
                 <pre><%= @source.config |> Poison.encode!( pretty: true) %></pre>
             </div>
         </div>

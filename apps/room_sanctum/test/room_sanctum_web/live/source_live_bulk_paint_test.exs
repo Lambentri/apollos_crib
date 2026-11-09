@@ -211,6 +211,48 @@ defmodule RoomSanctumWeb.SourceLiveBulkPaintTest do
       html = live |> element("button", "Bulk Paint") |> render_click()
       assert html =~ "text-sky-500"
     end
+
+    test "repainting a query keeps the subgroup it was labelled with", %{
+      conn: conn,
+      source: source,
+      queries: [q | _]
+    } do
+      # Bulk paint sets a colour and says nothing about the label, so the
+      # label has to survive being repainted -- otherwise a pass over the
+      # grid would quietly flatten every subgroup on the source.
+      {:ok, _} =
+        Configuration.update_query(q, %{
+          "meta" => %{"tint" => "sky", "tint_label" => "watchlist"}
+        })
+
+      {:ok, live, _html} = live(conn, Routes.source_show_path(conn, :show, source))
+      live |> element("button", "Bulk Paint") |> render_click()
+      live |> element(~s{input[name="tint-#{q.id}"][value="rose"]}) |> render_click()
+
+      reloaded = Configuration.get_query!(q.id)
+      assert reloaded.meta.tint == "rose"
+      assert reloaded.meta.tint_label == "watchlist"
+    end
+
+    test "painting a query back to no tint clears the subgroup with it", %{
+      conn: conn,
+      source: source,
+      queries: [q | _]
+    } do
+      # A label subdivides a colour; with the colour gone it labels nothing.
+      {:ok, _} =
+        Configuration.update_query(q, %{
+          "meta" => %{"tint" => "sky", "tint_label" => "watchlist"}
+        })
+
+      {:ok, live, _html} = live(conn, Routes.source_show_path(conn, :show, source))
+      live |> element("button", "Bulk Paint") |> render_click()
+      live |> element(~s{input[name="tint-#{q.id}"][value=""]}) |> render_click()
+
+      reloaded = Configuration.get_query!(q.id)
+      assert reloaded.meta.tint == nil
+      assert reloaded.meta.tint_label == nil
+    end
   end
 
   describe "empty source" do

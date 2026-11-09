@@ -43,23 +43,14 @@
       <div class="card-body">
         <h3 class="card-title">
             Query
-          <%= cond do %>
-            <% @query.meta && @query.meta.tint && @query.source.meta.tint -> %>
-              <!-- Both query and source tints - use fa-stack -->
-              <span class="fa-stack">
-                <i class={"fa-solid fa-circle fa-fw fa-stack-1x z-30 text-#{@query.source.meta.tint}-500"}></i>
-                <i class={"fa-solid fa-circle fa-fw z-40 fa-stack-1x text-#{@query.meta.tint}-500"} data-fa-transform="shrink-3 right-4"></i>
-
-              </span>
-            <% @query.meta && @query.meta.tint -> %>
-              <!-- Query tint only -->
-              <i class={"fa-solid fa-circle text-#{@query.meta.tint}-500"}></i>
-            <% @query.source.meta.tint -> %>
-              <!-- Source tint only -->
-              <i class={"fa-solid fa-circle text-#{@query.source.meta.tint}-500"}></i>
-            <% true -> %>
-              <!-- No tints -->
-          <% end %>
+          <%!-- The query's own colour wrapping its offering's: the row is
+                about the query, and the offering is the context it sits in. --%>
+          <.tint_nest
+            tint={@query.meta && @query.meta.tint}
+            label={@query.meta && @query.meta.tint_label}
+            inner_tint={@query.source.meta.tint}
+            inner_label={@query.source.meta.tint_label}
+          />
         </h3>
         <pre><%= @query.query |> Poison.encode!( pretty: true) %></pre>
       </div>
@@ -202,7 +193,7 @@
         <%= for v <- @visions do %>
           <div class="flex gap-2 mx-2">
             <%= live_patch to: Routes.vision_show_path(@socket, :show, v.id), class: "btn btn-primary gap-2 grow" do %>
-              <.tint_dot tint={v.meta && v.meta.tint} />
+              <.tint_dot tint={v.meta && v.meta.tint} label={v.meta && v.meta.tint_label} />
               <%= v.name %>
             <% end %>
             <%!-- Only while the panel is open, so the usual view of "the
@@ -226,7 +217,7 @@
                     way the visions this query already belongs to do. --%>
               <%= for v <- @avail_visions do %>
                 <div class="btn btn-secondary gap-2 float-left mx-2" phx-click="add-to" phx-value-vision={v.id}>
-                  <.tint_dot tint={v.meta && v.meta.tint} />
+                  <.tint_dot tint={v.meta && v.meta.tint} label={v.meta && v.meta.tint_label} />
                   <%= v.name %>
                 </div>
               <% end %>

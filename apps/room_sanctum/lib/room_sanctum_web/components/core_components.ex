@@ -904,19 +904,100 @@ defmodule RoomSanctumWeb.CoreComponents do
   end
 
   @doc """
-  The coloured dot marking a tinted source, query or vision.
+  The coloured dot marking a tinted source, query or vision, and the subgroup
+  it is in when it has one.
 
   Renders nothing when there is no tint, so callers can hand it whatever a
   meta embed holds -- including a nil embed -- without guarding first.
 
-      <.tint_dot tint={@vision.meta && @vision.meta.tint} />
+  A tint with no subgroup is the bare dot it has always been. A tint with one
+  becomes a badge: a pale pill in the tint holding the dot, with a deeper pill
+  inside it holding the word. The nesting draws the containment the data
+  actually has -- a subgroup living inside a colour -- rather than setting the
+  two side by side as equals.
+
+      <.tint_dot tint={@vision.meta && @vision.meta.tint} label={@vision.meta && @vision.meta.tint_label} />
   """
   attr :tint, :string, default: nil
-  attr :class, :string, default: ""
+  attr :label, :string, default: nil
+  attr :class, :string, default: "", doc: "extra classes for the badge as a whole"
+  attr :rest, :global
 
   def tint_dot(assigns) do
     ~H"""
-    <i :if={@tint not in [nil, ""]} class={"fa-solid fa-circle text-#{@tint}-500 #{@class}"}></i>
+    <span
+      :if={@tint not in [nil, ""]}
+      class={[
+        "inline-flex items-center align-middle",
+        @label not in [nil, ""] && tint_badge(@tint),
+        @class
+      ]}
+      {@rest}
+    >
+      <i class={"fa-solid fa-circle text-#{@tint}-500"}></i>
+      <span :if={@label not in [nil, ""]} class={tint_badge_word(@tint)}><%= @label %></span>
+    </span>
     """
+  end
+
+  @doc """
+  A query's own tint with its offering's nested inside it.
+
+  A query wears two colours at once and they mean different things: its own,
+  and the one belonging to the offering it is asked of. Drawn side by side
+  they read as two peers; drawn one inside the other they read as what they
+  are, a query carrying the offering it came from.
+
+  The query is the outer badge because the row is about the query -- the
+  offering is the context it sits in. Either colour may be missing: with only
+  the offering tinted there is nothing to nest inside, so it stands alone.
+
+      <.tint_nest
+        tint={@query.meta && @query.meta.tint}
+        label={@query.meta && @query.meta.tint_label}
+        inner_tint={@query.source.meta.tint}
+        inner_label={@query.source.meta.tint_label}
+      />
+  """
+  attr :tint, :string, default: nil, doc: "the query's own tint"
+  attr :label, :string, default: nil
+  attr :inner_tint, :string, default: nil, doc: "its offering's tint"
+  attr :inner_label, :string, default: nil
+  attr :class, :string, default: ""
+  attr :rest, :global, doc: "applied to the outer badge"
+
+  attr :inner_rest, :map,
+    default: %{},
+    doc: "applied to the nested badge, so each half can filter by its own colour"
+
+  def tint_nest(assigns) do
+    ~H"""
+    <%= cond do %>
+      <% @tint not in [nil, ""] -> %>
+        <span
+          class={["inline-flex items-center align-middle", tint_badge(@tint), @class]}
+          {@rest}
+        >
+          <i class={"fa-solid fa-circle text-#{@tint}-500"}></i>
+          <span :if={@label not in [nil, ""]} class={tint_badge_word(@tint)}><%= @label %></span>
+          <.tint_dot tint={@inner_tint} label={@inner_label} {@inner_rest} />
+        </span>
+      <% true -> %>
+        <%!-- Nothing of the query's own to wrap it in, so the offering's
+              badge stands where the pair would have been. --%>
+        <.tint_dot tint={@inner_tint} label={@inner_label} class={@class} {@inner_rest} />
+    <% end %>
+    """
+  end
+
+  # The two halves of the nesting, in one place so a badge cannot drift from
+  # the one nested in it. Every shade here is safelisted in
+  # tailwind.config.js -- see RoomSanctum.Tints.
+  defp tint_badge(tint) do
+    "gap-1 rounded-full border border-#{tint}-300 bg-#{tint}-50 px-1 py-px"
+  end
+
+  defp tint_badge_word(tint) do
+    "rounded-full bg-#{tint}-100 px-1.5 text-xs font-medium leading-4 text-#{tint}-800"
   end
 end

@@ -9,6 +9,11 @@ defmodule RoomSanctum.Configuration.Foci do
     # As on a source: a colour that says these belong together, without making
     # a group out of it. A Plani can follow a tint of foci as its homes.
     field :tint, :string
+
+    # Which subgroup of that tint. A colour says "these belong together"; the
+    # label says which corner of it, so a Plani can follow the homes and not
+    # the errands without spending a second colour on them.
+    field :tint_label, :string
     belongs_to :user, RoomSanctum.Accounts.User
 
     timestamps()
@@ -17,10 +22,11 @@ defmodule RoomSanctum.Configuration.Foci do
   @doc false
   def changeset(foci, attrs) do
     foci
-    |> cast(attrs, [:name, :place, :user_id, :tint])
+    |> cast(attrs, [:name, :place, :user_id, :tint, :tint_label])
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :place])
     |> validate_tint()
+    |> RoomSanctum.Tints.put_label()
   end
 
   # An unknown tint renders as an unstyled dot rather than failing, which is

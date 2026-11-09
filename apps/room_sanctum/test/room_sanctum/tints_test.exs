@@ -46,6 +46,68 @@ defmodule RoomSanctum.TintsTest do
     refute Tints.valid?(nil)
   end
 
+  describe "subgroup labels" do
+    test "a label is stored trimmed, and blank is no label at all" do
+      assert Tints.normalize_label("  transit ") == "transit"
+      assert Tints.normalize_label("transit") == "transit"
+
+      # A form posts "" for a field nobody typed in, which has to mean the
+      # same as never having had one.
+      assert Tints.normalize_label("") == nil
+      assert Tints.normalize_label("   ") == nil
+      assert Tints.normalize_label(nil) == nil
+    end
+
+    test "following a tint with no narrowing takes all of it" do
+      # What every follow meant before labels existed, and what one that names
+      # no subgroup goes on meaning -- so no Plani changes behaviour under it.
+      assert Tints.follows?("sky", nil, "sky", [])
+      assert Tints.follows?("sky", "transit", "sky", [])
+      assert Tints.follows?("sky", "transit", "sky", nil)
+
+      refute Tints.follows?("amber", "transit", "sky", [])
+    end
+
+    test "narrowing to a subgroup takes only that subgroup" do
+      assert Tints.follows?("sky", "transit", "sky", ["transit"])
+      assert Tints.follows?("sky", "weather", "sky", ["transit", "weather"])
+
+      refute Tints.follows?("sky", "weather", "sky", ["transit"])
+
+      # The unlabelled ones are left behind, or the narrowing would do no work.
+      refute Tints.follows?("sky", nil, "sky", ["transit"])
+
+      # And the colour still has to match.
+      refute Tints.follows?("amber", "transit", "sky", ["transit"])
+    end
+
+    test "labels match however they were capitalised" do
+      assert Tints.follows?("sky", "Transit", "sky", ["transit"])
+      assert Tints.follows?("sky", " transit ", "sky", ["TRANSIT"])
+    end
+
+    test "following nothing follows nothing, labels or no labels" do
+      refute Tints.follows?("sky", "transit", nil, [])
+      refute Tints.follows?("sky", "transit", "", ["transit"])
+    end
+
+    test "the subgroups on offer are the ones actually worn under that tint" do
+      pairs = [
+        {"sky", "transit"},
+        {"sky", "Transit"},
+        {"sky", "weather"},
+        {"sky", nil},
+        {"amber", "errands"},
+        {nil, "orphan"}
+      ]
+
+      assert Tints.labels_in_use(pairs, "sky") == ["transit", "weather"]
+      assert Tints.labels_in_use(pairs, "amber") == ["errands"]
+      assert Tints.labels_in_use(pairs, "rose") == []
+      assert Tints.labels_in_use(pairs, nil) == []
+    end
+  end
+
   @tag :stylesheet
   test "every offered tint has its classes in the built stylesheet" do
     case File.read(@css) do

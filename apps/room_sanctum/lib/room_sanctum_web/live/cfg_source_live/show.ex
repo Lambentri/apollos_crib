@@ -1190,7 +1190,14 @@ defmodule RoomSanctumWeb.SourceLive.Show do
 
     query = Enum.find(socket.assigns.queries, &(to_string(&1.id) == to_string(id)))
 
-    case query && Configuration.update_query(query, %{"meta" => %{"tint" => tint}}) do
+    # The meta embed has no primary key, so casting a map over it replaces the
+    # whole thing rather than merging into it -- anything not named here is
+    # gone. Painting is about the colour, so the subgroup label is carried
+    # through by hand; it only falls away when the colour does, which is what
+    # a label with nothing to subdivide should do anyway.
+    meta = %{"tint" => tint, "tint_label" => tint && query && query.meta && query.meta.tint_label}
+
+    case query && Configuration.update_query(query, %{"meta" => meta}) do
       {:ok, _updated} ->
         queries = Configuration.get_queries(:source, socket.assigns.source_id)
 

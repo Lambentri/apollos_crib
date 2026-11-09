@@ -52,6 +52,17 @@
                     </label>
                 </div>
             </div>
+            <%!-- Optional, and only means anything with a tint under it: a
+                  Plani following a colour can narrow to one of these. --%>
+            <div class="form-control mt-2" :if={@form[:tint].value not in [nil, ""]}>
+                <.input
+                    field={@form[:tint_label]}
+                    type="text"
+                    label="Subgroup"
+                    placeholder="optional -- e.g. home, errands"
+                    maxlength={RoomSanctum.Tints.label_max_length()}
+                />
+            </div>
         </div>
     </div>
     <div>

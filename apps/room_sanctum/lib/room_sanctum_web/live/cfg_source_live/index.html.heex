@@ -157,9 +157,17 @@
             <% end %>
         </td>
         <td>
-            <%= if source.meta.tint do %>
-            <i class={"fa fa-circle fa-fw text-#{source.meta.tint}-500"} phx-click="set-tint" phx-value-tint={source.meta.tint} ></i>
-            <% end %>
+            <%!-- The badge as a whole is the click target: the list filters
+                  by colour, and the subgroup is what it says rather than what
+                  it filters on. --%>
+            <.tint_dot
+              tint={source.meta.tint}
+              label={source.meta.tint_label}
+              class="cursor-pointer"
+              title={"Show only #{source.meta.tint}"}
+              phx-click="set-tint"
+              phx-value-tint={source.meta.tint}
+            />
         </td>
         <td class={"bg-#{@tint}-500"}>
           <span>

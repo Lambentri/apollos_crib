@@ -11,6 +11,8 @@ defmodule RoomSanctum.Configuration.Vision do
 
     embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
       field :tint, :string
+      # Which subgroup of that tint -- see RoomSanctum.Tints.
+      field :tint_label, :string
     end
 
     timestamps()
@@ -49,8 +51,9 @@ defmodule RoomSanctum.Configuration.Vision do
 
   def meta_changeset(meta, attrs \\ %{}) do
     meta
-    |> cast(attrs, [:tint])
+    |> cast(attrs, [:tint, :tint_label])
     |> validate_tint()
+    |> RoomSanctum.Tints.put_label()
   end
 
   # A tint that is not in the palette has no stylesheet behind it, so it would

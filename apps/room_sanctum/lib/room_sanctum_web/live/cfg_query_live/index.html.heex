@@ -96,23 +96,24 @@
         </td>
         <td><%= query.name %></td>
         <td>
-          <%= cond do %>
-            <% query.meta && query.meta.tint && query.source.meta.tint -> %>
-              <!-- Both query and source tints - use fa-stack -->
-              <span class="fa-stack cursor-pointer" phx-click="set-tint" phx-value-tint={query.meta.tint}>
-                <i class={"fa-solid fa-circle fa-2x fa-fw fa-stack-1x z-30 text-#{query.source.meta.tint}-500"} data-fa-transform="shrink-3"></i>
-                <i class={"fa-solid fa-circle fa-2x fa-fw z-40 fa-stack-1x text-#{query.meta.tint}-500"} data-fa-transform="shrink-4 right-4"></i>
-
-              </span>
-            <% query.meta && query.meta.tint -> %>
-              <!-- Query tint only -->
-              <i class={"fa-solid fa-circle fa-2x fa-fw text-#{query.meta.tint}-500 cursor-pointer"} phx-click="set-tint" phx-value-tint={query.meta.tint} data-fa-transform="shrink-3"></i>
-            <% query.source.meta.tint -> %>
-              <!-- Source tint only -->
-              <i class={"fa-solid fa-circle text-#{query.source.meta.tint}-500 cursor-pointer"} phx-click="set-tint" phx-value-tint={query.source.meta.tint}></i>
-            <% true -> %>
-              <!-- No tints -->
-          <% end %>
+          <%!-- Each half filters by its own colour, which is what the two
+                stacked circles used to do. --%>
+          <.tint_nest
+            tint={query.meta && query.meta.tint}
+            label={query.meta && query.meta.tint_label}
+            inner_tint={query.source.meta.tint}
+            inner_label={query.source.meta.tint_label}
+            class="cursor-pointer"
+            title={"Show only #{query.meta && query.meta.tint}"}
+            phx-click="set-tint"
+            phx-value-tint={query.meta && query.meta.tint}
+            inner_rest={%{
+              "class" => "cursor-pointer",
+              "title" => "Show only #{query.source.meta.tint}",
+              "phx-click" => "set-tint",
+              "phx-value-tint" => query.source.meta.tint
+            }}
+          />
         </td>
         <td>
           <span>

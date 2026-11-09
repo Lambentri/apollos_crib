@@ -183,7 +183,7 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
     [
       {"Home foci", :text, foci_name(plani.home_foci_id)},
       {"Other homes", :text, other_homes(plani)},
-      {"Homes wearing tint", :text, plani.home_tint},
+      {"Homes wearing tint", :text, tint_summary(plani.home_tint, plani.home_tint_labels)},
       {"Go home after", :text, "#{plani.home_after_mins || 5} minutes"},
       {"Ankyra", :text, plani.ankyra_id && "##{plani.ankyra_id}"},
       {"Client", :text, plani.client_id},
@@ -192,9 +192,16 @@ defmodule RoomSanctumWeb.PlaniLive.Show do
       {"Bikes and docks per source", :text, plani.bike_limit || "all within the radius"},
       {"One card per stop", :flag, plani.break_out},
       {"One stop per line", :flag, plani.nearest_per_route},
-      {"Following tint", :text, plani.follow_tint}
+      {"Following tint", :text, tint_summary(plani.follow_tint, plani.follow_tint_labels)}
     ]
   end
+
+  # The colour, and which subgroups of it -- because "sky" and "sky, narrowed
+  # to transit" cover different sources and the row would read the same
+  # otherwise.
+  defp tint_summary(tint, _labels) when tint in [nil, ""], do: nil
+  defp tint_summary(tint, labels) when labels in [nil, []], do: tint
+  defp tint_summary(tint, labels), do: "#{tint} (#{Enum.join(labels, ", ")})"
 
   # The named extras, without repeating the first one back at the reader.
   defp other_homes(%{home_foci_ids: ids, home_foci_id: first}) when is_list(ids) do

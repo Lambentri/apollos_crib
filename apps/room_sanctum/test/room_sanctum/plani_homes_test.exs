@@ -6,9 +6,14 @@ defmodule RoomSanctum.PlaniHomesTest do
 
   defp pt(lon, lat), do: %Geo.Point{coordinates: {lon, lat}, srid: 4326}
 
-  defp house, do: %{id: 1, name: "House", tint: "sky", place: pt(-71.10, 42.39)}
-  defp office, do: %{id: 2, name: "Office", tint: "sky", place: pt(-71.06, 42.36)}
-  defp cabin, do: %{id: 3, name: "Cabin", tint: "amber", place: pt(-72.50, 43.10)}
+  defp house,
+    do: %{id: 1, name: "House", tint: "sky", tint_label: "sleep", place: pt(-71.10, 42.39)}
+
+  defp office,
+    do: %{id: 2, name: "Office", tint: "sky", tint_label: "work", place: pt(-71.06, 42.36)}
+
+  defp cabin,
+    do: %{id: 3, name: "Cabin", tint: "amber", tint_label: nil, place: pt(-72.50, 43.10)}
   defp all, do: [house(), office(), cabin()]
 
   describe "which foci are home" do
@@ -32,6 +37,34 @@ defmodule RoomSanctum.PlaniHomesTest do
       plani = %Plani{home_foci_id: 1, home_foci_ids: [2], home_tint: "sky"}
 
       assert Plani.homes_for(plani, all()) == [1, 2]
+    end
+
+    test "a tint narrowed to a subgroup takes only that corner of it" do
+      # Both are sky; only one is where you sleep.
+      assert Plani.homes_for(%Plani{home_tint: "sky", home_tint_labels: ["sleep"]}, all()) == [1]
+      assert Plani.homes_for(%Plani{home_tint: "sky", home_tint_labels: ["work"]}, all()) == [2]
+    end
+
+    test "narrowing to several takes each of them" do
+      plani = %Plani{home_tint: "sky", home_tint_labels: ["work", "sleep"]}
+
+      assert Plani.homes_for(plani, all()) == [1, 2]
+    end
+
+    test "narrowing leaves behind what wears the tint with no subgroup" do
+      unlabelled = %{id: 4, name: "Gym", tint: "sky", tint_label: nil, place: pt(-71.07, 42.37)}
+
+      plani = %Plani{home_tint: "sky", home_tint_labels: ["sleep"]}
+
+      assert Plani.homes_for(plani, all() ++ [unlabelled]) == [1]
+    end
+
+    test "a foci that predates labels is still caught by an unnarrowed follow" do
+      # No :tint_label key at all, which is what a struct built before the
+      # column existed looks like in a test fixture.
+      old = %{id: 5, name: "Old", tint: "sky", place: pt(-71.08, 42.38)}
+
+      assert Plani.homes_for(%Plani{home_tint: "sky"}, [old]) == [5]
     end
   end
 

@@ -27,18 +27,21 @@
     <tr>
       <th>Name</th>
       <th>Queries</th>
-
+      <th>Tint</th>
       <th></th>
     </tr>
   </thead>
   <tbody id="visions">
     <%= for {id, vision} <- @streams.visions do %>
       <tr id={"vision-#{vision.id}"}>
-        <td>
-          <.tint_dot tint={vision.meta && vision.meta.tint} class="mr-2" />
-          <%= vision.name %>
-        </td>
+        <td><%= vision.name %></td>
         <td>$query</td>
+        <td>
+          <.tint_dot
+            tint={vision.meta && vision.meta.tint}
+            label={vision.meta && vision.meta.tint_label}
+          />
+        </td>
 
         <td>
           <span>

@@ -83,7 +83,7 @@
                   </button>
                   <% vision = vision_by_id(v, @visions) %>
                   <a href={Routes.vision_show_path(@socket, :show, v)} class="text-sm hover:underline btn btn-sm btn-secondary gap-2">
-                    <.tint_dot tint={vision && vision.meta && vision.meta.tint} />
+                    <.tint_dot tint={vision && vision.meta && vision.meta.tint} label={vision && vision.meta && vision.meta.tint_label} />
                     <%= (vision && vision.name) || "Vision ##{v}" %>
                   </a>
                 </div>
@@ -144,7 +144,7 @@
             <% current = vision_by_id(@pythiae.curr_vision, @visions) %>
             <%= if current do %>
               <a href={Routes.vision_show_path(@socket, :show, current.id)} class="text-sm hover:underline btn btn-secondary gap-2">
-                <.tint_dot tint={current.meta && current.meta.tint} />
+                <.tint_dot tint={current.meta && current.meta.tint} label={current.meta && current.meta.tint_label} />
                 <%= current.name %>
               </a>
             <% else %>

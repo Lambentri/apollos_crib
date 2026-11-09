@@ -59,6 +59,16 @@ defmodule RoomSanctumWeb.VisionLive.FormComponent do
                 </span>
               </label>
             </div>
+            <%!-- Free text, and only means anything with a tint under it:
+                  it subdivides the colour rather than replacing it. --%>
+            <.input
+              :if={meta[:tint].value not in [nil, ""]}
+              field={meta[:tint_label]}
+              type="text"
+              label="Subgroup"
+              placeholder="optional -- which corner of that tint"
+              maxlength={RoomSanctum.Tints.label_max_length()}
+            />
           </div>
         </.inputs_for>
 

@@ -41,6 +41,8 @@ defmodule RoomSanctum.Configuration.Query do
 
     embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
       field :tint, :string
+      # Which subgroup of that tint -- see RoomSanctum.Tints.
+      field :tint_label, :string
     end
 
     timestamps()
@@ -59,6 +61,7 @@ defmodule RoomSanctum.Configuration.Query do
 
   def meta_changeset(meta, attrs \\ %{}) do
     meta
-    |> cast(attrs, [:tint])
+    |> cast(attrs, [:tint, :tint_label])
+    |> RoomSanctum.Tints.put_label()
   end
 end

@@ -37,6 +37,15 @@
           <span class="bg-stone-950"></span>
           <.input field={meta_nested[:tint]} type="hidden" label="Tint"/>
           <.input field={meta_nested[:tint]} type="radio" label="Tint" options={@tint_opts} prompt="color this" checked_value={meta_nested.params["tint"]} />
+          <%!-- Free text, and only means anything with a tint under it:
+               a Plani following a colour can narrow to one of these. --%>
+          <.input
+              field={meta_nested[:tint_label]}
+              type="text"
+              label="Subgroup"
+              placeholder="optional -- which corner of that tint"
+              maxlength={RoomSanctum.Tints.label_max_length()}
+          />
       </div>
       </.inputs_for>
     </div>

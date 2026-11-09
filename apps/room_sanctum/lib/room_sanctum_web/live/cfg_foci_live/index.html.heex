@@ -38,7 +38,7 @@
   <thead>
     <tr>
       <th>Name</th>
-
+      <th>Tint</th>
       <th></th>
     </tr>
   </thead>
@@ -46,7 +46,9 @@
     <%= for {id, foci} <- @streams.focis do %>
       <tr id={"foci-#{foci.id}"}>
         <td><%= foci.name %></td>
-
+        <td>
+          <.tint_dot tint={foci.tint} label={foci.tint_label} />
+        </td>
         <td>
           <span>
             <.ib icon="fa-eye" to={Routes.foci_show_path(@socket, :show, foci)} function={:live_redirect}></.ib>

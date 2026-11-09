@@ -65,6 +65,8 @@ defmodule RoomSanctum.Configuration.Source do
       field :last_run, :utc_datetime
       field :run_period, :integer
       field :tint, :string
+      # Which subgroup of that tint -- see RoomSanctum.Tints.
+      field :tint_label, :string
       embeds_many :tracking, Tracking, on_replace: :delete, primary_key: :false do
         field :number, :string
         field :type, Ecto.Enum, values: [:ups, :fedex, :usps, :uniuni]
@@ -87,7 +89,8 @@ defmodule RoomSanctum.Configuration.Source do
 
   def meta_changeset(meta, attrs \\ %{}) do
     meta
-    |> cast(attrs, [:last_run, :run_period, :tint])
+    |> cast(attrs, [:last_run, :run_period, :tint, :tint_label])
+    |> RoomSanctum.Tints.put_label()
     |> cast_embed(:tracking, required: false, with: &tracking_changeset/2)
   end
 

@@ -28,6 +28,11 @@ defmodule RoomSanctum.Configuration.Plani do
     field :home_foci_ids, {:array, :integer}, default: []
     field :home_tint, :string
 
+    # Narrowed to these subgroups of it, or the whole tint when empty. A
+    # colour of foci that has grown to mean two things -- the places you sleep
+    # and the places you shop -- can be followed a corner at a time.
+    field :home_tint_labels, {:array, :string}, default: []
+
     # How long a client may say nothing before the anchor goes home. Five
     # minutes suits a phone in a pocket on a bus; half an hour suits one that
     # only reports when it is opened.
@@ -45,6 +50,9 @@ defmodule RoomSanctum.Configuration.Plani do
     # A source tinted later joins without the Plani being edited, which is
     # what makes this a shortcut rather than a bulk select.
     field :follow_tint, :string
+
+    # As with the homes: the subgroups of that tint to take, or all of them.
+    field :follow_tint_labels, {:array, :string}, default: []
     field :radius, :integer, default: 800
     field :limit, :integer, default: 5
 
@@ -76,11 +84,13 @@ defmodule RoomSanctum.Configuration.Plani do
       :home_foci_id,
       :home_foci_ids,
       :home_tint,
+      :home_tint_labels,
       :home_after_mins,
       :ankyra_id,
       :client_id,
       :sources,
       :follow_tint,
+      :follow_tint_labels,
       :radius,
       :limit,
       :break_out,
@@ -100,6 +110,8 @@ defmodule RoomSanctum.Configuration.Plani do
     |> validate_inclusion(:home_after_mins, [5, 10, 15, 20, 25, 30])
     |> validate_tint()
     |> validate_home_tint()
+    |> RoomSanctum.Tints.put_labels(:follow_tint, :follow_tint_labels)
+    |> RoomSanctum.Tints.put_labels(:home_tint, :home_tint_labels)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:home_foci_id)
   end
@@ -126,7 +138,8 @@ defmodule RoomSanctum.Configuration.Plani do
 
   @doc """
   Every foci this Plani calls home: the first one, any others it names, and
-  any wearing its home tint.
+  any wearing its home tint -- narrowed, if it names any, to the subgroups of
+  that tint it follows.
 
   In that order and deduplicated, so `home_foci_id` stays the one a Plani with
   no position falls back to -- which is what it has always been, and what
@@ -134,10 +147,9 @@ defmodule RoomSanctum.Configuration.Plani do
   """
   def homes_for(%__MODULE__{} = plani, all_foci) do
     tinted =
-      case plani.home_tint do
-        blank when blank in [nil, ""] -> []
-        tint -> all_foci |> Enum.filter(&(&1.tint == tint)) |> Enum.map(& &1.id)
-      end
+      all_foci
+      |> Enum.filter(&follows_home?(plani, &1))
+      |> Enum.map(& &1.id)
 
     ([plani.home_foci_id] ++ (plani.home_foci_ids || []) ++ tinted)
     |> Enum.reject(&is_nil/1)
@@ -146,21 +158,39 @@ defmodule RoomSanctum.Configuration.Plani do
 
   @doc """
   Every source this Plani asks: the ones it names, and the ones wearing its
-  tint.
+  tint -- narrowed, if it names any, to the subgroups of that tint it
+  follows.
 
   A union rather than a choice, so following a tint can be a shortcut to most
   of a list with one or two named on top of it.
   """
   def sources_for(%__MODULE__{} = plani, all_sources) do
     tinted =
-      case plani.follow_tint do
-        nil -> []
-        "" -> []
-        tint -> all_sources |> Enum.filter(&(tint_of(&1) == tint)) |> Enum.map(& &1.id)
-      end
+      all_sources
+      |> Enum.filter(&follows_source?(plani, &1))
+      |> Enum.map(& &1.id)
 
     (plani.sources ++ tinted) |> Enum.uniq()
   end
 
+  defp follows_home?(plani, foci) do
+    RoomSanctum.Tints.follows?(
+      foci.tint,
+      Map.get(foci, :tint_label),
+      plani.home_tint,
+      plani.home_tint_labels
+    )
+  end
+
+  defp follows_source?(plani, source) do
+    RoomSanctum.Tints.follows?(
+      tint_of(source),
+      label_of(source),
+      plani.follow_tint,
+      plani.follow_tint_labels
+    )
+  end
+
   defp tint_of(source), do: source.meta && Map.get(source.meta, :tint)
+  defp label_of(source), do: source.meta && Map.get(source.meta, :tint_label)
 end

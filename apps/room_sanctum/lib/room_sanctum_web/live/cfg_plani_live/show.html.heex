@@ -167,6 +167,9 @@
           <p class="text-sm mb-1">
             <.tint_dot tint={@plani.follow_tint} /> following everything tinted
             <span class="font-mono"><%= @plani.follow_tint %></span>
+            <%= if @plani.follow_tint_labels not in [nil, []] do %>
+              under <span class="font-mono"><%= Enum.join(@plani.follow_tint_labels, ", ") %></span>
+            <% end %>
           </p>
         <% end %>
         <div class="flex flex-col gap-1">
@@ -174,7 +177,7 @@
             :for={source <- asked}
             class="flex items-center gap-2 rounded-lg bg-base-200 px-3 py-2"
           >
-            <.tint_dot tint={source.meta && source.meta.tint} />
+            <.tint_dot tint={source.meta && source.meta.tint} label={source.meta && source.meta.tint_label} />
             <i class={"fas fa-fw #{RoomSanctumWeb.IconHelpers.icon(source.type)}"}></i>
             <a href={Routes.source_show_path(@socket, :show, source)} class="hover:underline">
               <%= source.name %>

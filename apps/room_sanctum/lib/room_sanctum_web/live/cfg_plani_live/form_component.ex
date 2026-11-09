@@ -63,6 +63,13 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
           </label>
         </div>
 
+        <%!-- Only the subgroups that exist under the chosen colour, so
+              narrowing is a pick rather than a spelling test. --%>
+        <.subgroup_picker
+          field={@form[:home_tint_labels]}
+          labels={foci_subgroups(@cfg_foci, @form[:home_tint].value)}
+        />
+
         <label class="label label-text mt-2">And these in particular</label>
         <div class="flex flex-wrap gap-2">
           <label :for={foci <- @cfg_foci} class="cursor-pointer">
@@ -74,7 +81,7 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
               checked={to_string(foci.id) in Enum.map(List.wrap(@form[:home_foci_ids].value), &to_string/1)}
             />
             <span class="badge badge-lg gap-2 peer-checked:badge-accent">
-              <.tint_dot tint={foci.tint} />
+              <.tint_dot tint={foci.tint} label={foci.tint_label} />
               <%= foci.name %>
             </span>
           </label>
@@ -152,6 +159,11 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
           selecting.
         </p>
 
+        <.subgroup_picker
+          field={@form[:follow_tint_labels]}
+          labels={source_subgroups(@cfg_sources, @form[:follow_tint].value)}
+        />
+
         <label class="label label-text mt-2">And these in particular</label>
         <div class="flex flex-wrap gap-2">
           <label :for={source <- @cfg_sources} class="cursor-pointer">
@@ -167,7 +179,7 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
               "peer-checked:border-accent peer-checked:bg-accent/10",
               not spatial?(source.type) && "opacity-40"
             ]}>
-              <.tint_dot tint={source.meta && source.meta.tint} />
+              <.tint_dot tint={source.meta && source.meta.tint} label={source.meta && source.meta.tint_label} />
               <i class={"fas fa-fw #{RoomSanctumWeb.IconHelpers.icon(source.type)}"}></i>
               <%= source.name %>
               <%= cond do %>
@@ -243,6 +255,63 @@ defmodule RoomSanctumWeb.PlaniLive.FormComponent do
       </.simple_form>
     </div>
     """
+  end
+
+  # Which subgroups of the followed tint to narrow to.
+  #
+  # Renders nothing when the tint has none, which is every tint until somebody
+  # labels something -- so a Plani that predates labels shows exactly the form
+  # it always did. None ticked is the whole tint, and stays the meaning of a
+  # follow that names no subgroup.
+  attr :field, Phoenix.HTML.FormField, required: true
+  attr :labels, :list, default: []
+
+  defp subgroup_picker(assigns) do
+    ~H"""
+    <div :if={@labels != []} class="mt-2">
+      <label class="label label-text">Narrowed to these subgroups</label>
+      <%!-- Unticking every box posts no key at all, and the old list would
+            stand. The blank entry keeps the key there; it is dropped on the
+            way into the changeset. --%>
+      <input type="hidden" name={@field.name <> "[]"} value="" />
+      <div class="flex flex-wrap gap-2">
+        <label :for={label <- @labels} class="cursor-pointer">
+          <input
+            type="checkbox"
+            name={@field.name <> "[]"}
+            value={label}
+            class="sr-only peer"
+            checked={narrowed?(@field.value, label)}
+          />
+          <span class="badge badge-lg peer-checked:badge-accent"><%= label %></span>
+        </label>
+      </div>
+      <p class="text-xs text-base-content/60">
+        None ticked takes the whole colour. Ticking some takes only those, and
+        leaves behind whatever wears the tint with no subgroup.
+      </p>
+    </div>
+    """
+  end
+
+  # The subgroups actually worn under a tint.
+  defp foci_subgroups(focis, tint) do
+    focis |> Enum.map(&{&1.tint, &1.tint_label}) |> subgroups(tint)
+  end
+
+  defp source_subgroups(sources, tint) do
+    sources
+    |> Enum.map(&{&1.meta && &1.meta.tint, &1.meta && &1.meta.tint_label})
+    |> subgroups(tint)
+  end
+
+  defp subgroups(pairs, tint), do: RoomSanctum.Tints.labels_in_use(pairs, to_string(tint))
+
+  # Matched the way a follow matches them, so a box ticked under one spelling
+  # still shows ticked beside another.
+  defp narrowed?(chosen, label) do
+    key = String.downcase(label)
+    chosen |> List.wrap() |> Enum.any?(&(is_binary(&1) and String.downcase(&1) == key))
   end
 
   @impl true
