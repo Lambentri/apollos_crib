@@ -1,15 +1,15 @@
 defmodule RoomSanctum.Mutants do
   @moduledoc """
-  Scribus resolutions, backed by the browser-ctl MutantDeployment.
+  Scribus resolutions, backed by the variants of the browser-ctl Mutation.
 
-  Each browser-ctl mutation runs snappers bound to the routing key in its
-  `SNAP_RES`, and the scribe worker publishes to exactly that key -- so the
-  mutations *are* the resolutions a Scribus can use. They are read from, and
-  created and deleted through, the mutant operator's HTTP API rather than
-  kept in a table that could drift from what is actually running.
+  Each variant runs snappers bound to the routing key in its `SNAP_RES`, and
+  the scribe worker publishes to exactly that key -- so the variants *are*
+  the resolutions a Scribus can use. They are read from, and started and
+  stopped through, the mutant operator's HTTP API rather than kept in a
+  table that could drift from what is actually running.
 
-  Mutations declared inline in the MutantDeployment (its manifest, in git)
-  are listed but read-only: the operator refuses to delete them.
+  A Mutation synced by Argo CD is listed but read-only: the operator
+  refuses to change it.
   """
 
   require Logger
@@ -17,8 +17,8 @@ defmodule RoomSanctum.Mutants do
   @env "SNAP_RES"
 
   defmodule Resolution do
-    @moduledoc "One running (or starting) browser-ctl mutation."
-    defstruct [:label, :resolution, :width, :height, :instances, :ready, :state, :source]
+    @moduledoc "One running (or starting) browser-ctl variant."
+    defstruct [:label, :resolution, :width, :height, :instances, :ready, :state, :read_only]
 
     @type t :: %__MODULE__{
             label: String.t(),
@@ -28,7 +28,7 @@ defmodule RoomSanctum.Mutants do
             instances: integer(),
             ready: integer(),
             state: String.t(),
-            source: :inline | :resource
+            read_only: boolean()
           }
 
     def display(%__MODULE__{label: label, resolution: res}), do: "#{label} (#{res})"
@@ -37,7 +37,7 @@ defmodule RoomSanctum.Mutants do
   @doc "Every resolution, in label order."
   @spec list_resolutions() :: {:ok, [Resolution.t()]} | {:error, String.t()}
   def list_resolutions do
-    with {:ok, body} <- request(:get, "/mutations") do
+    with {:ok, body} <- request(:get, "/variants") do
       {:ok,
        body
        |> Enum.flat_map(&to_resolution/1)
@@ -66,7 +66,7 @@ defmodule RoomSanctum.Mutants do
   end
 
   @doc """
-  Starts a resolution: a new mutation running `instances` snappers at
+  Starts a resolution: a new variant running `instances` snappers at
   `width`x`height`, labelled from `name`.
   """
   @spec create_resolution(String.t(), integer(), integer(), integer()) ::
@@ -84,18 +84,18 @@ defmodule RoomSanctum.Mutants do
       true ->
         body = %{label: label, env: %{@env => "#{width}x#{height}"}, instances: instances}
 
-        with {:ok, _} <- request(:post, "/mutations", body), do: {:ok, label}
+        with {:ok, _} <- request(:post, "/variants", body), do: {:ok, label}
     end
   end
 
   @doc "Stops a resolution started through `create_resolution/4`."
   @spec delete_resolution(String.t()) :: :ok | {:error, String.t()}
   def delete_resolution(label) do
-    with {:ok, _} <- request(:delete, "/mutations/" <> URI.encode_www_form(label)), do: :ok
+    with {:ok, _} <- request(:delete, "/variants/" <> URI.encode_www_form(label)), do: :ok
   end
 
   @doc """
-  The mutation label for a display name: lowercase alphanumerics and '-',
+  The variant label for a display name: lowercase alphanumerics and '-',
   as the operator requires (it becomes part of a Deployment name).
 
       iex> RoomSanctum.Mutants.label_for("InkPad 5 (landscape)")
@@ -110,7 +110,7 @@ defmodule RoomSanctum.Mutants do
     |> String.trim_trailing("-")
   end
 
-  # A mutation without SNAP_RES is not a resolution a Scribus can target.
+  # A variant without SNAP_RES is not a resolution a Scribus can target.
   defp to_resolution(%{"label" => label, "env" => %{@env => res}} = m) do
     {w, h} = parse(res)
     status = m["status"] || %{}
@@ -124,7 +124,9 @@ defmodule RoomSanctum.Mutants do
         instances: m["instances"],
         ready: status["readyReplicas"] || 0,
         state: status["state"] || "Unknown",
-        source: if(get_in(m, ["source", "kind"]) == "inline", do: :inline, else: :resource)
+        # A Mutation Argo CD syncs changes in git; the operator refuses to
+        # change it here.
+        read_only: Map.get(m, "readOnly", false)
       }
     ]
   end
@@ -151,7 +153,7 @@ defmodule RoomSanctum.Mutants do
       url ->
         full =
           String.trim_trailing(url, "/") <>
-            "/api/v1/namespaces/#{cfg[:namespace]}/mutantdeployments/#{cfg[:mutant_deployment]}" <>
+            "/api/v1/namespaces/#{cfg[:namespace]}/mutations/#{cfg[:mutation]}" <>
             path
 
         headers =

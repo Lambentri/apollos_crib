@@ -57,7 +57,7 @@
     </div>
     <p class="text-sm opacity-70">
       The browser-ctl snappers running in the cluster. A Scribus can use any that is Ready.
-      Ones marked <span class="badge badge-sm badge-ghost">git</span> are set in the MutantDeployment manifest and change there.
+      Ones marked <span class="badge badge-sm badge-ghost">git</span> are declared in the deployment repo and change there.
     </p>
 
     <div :if={@resolutions_error} class="alert alert-warning text-sm">
@@ -78,7 +78,7 @@
         <tr :for={r <- @resolutions} id={"resolution-#{r.label}"}>
           <td>
             <%= r.label %>
-            <span :if={r.source == :inline} class="badge badge-sm badge-ghost">git</span>
+            <span :if={r.read_only} class="badge badge-sm badge-ghost">git</span>
           </td>
           <td><%= r.resolution %></td>
           <td><%= r.ready %>/<%= r.instances %></td>
@@ -94,7 +94,7 @@
           </td>
           <td :if={@admin?}>
             <.link
-              :if={r.source == :resource}
+              :if={not r.read_only}
               phx-click={JS.push("delete-resolution", value: %{label: r.label})}
               data-confirm={"Stop the #{r.resolution} snappers? Any Scribus using it stops updating."}
               class="text-error"
