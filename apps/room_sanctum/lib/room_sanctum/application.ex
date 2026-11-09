@@ -7,6 +7,10 @@ defmodule RoomSanctum.Application do
 
   @impl true
   def start(_type, _args) do
+    # The :logger handlers named under this app's config -- in prod, Sentry's
+    # crash reporting (see config/prod.exs). Nothing elsewhere.
+    Logger.add_handlers(:room_sanctum)
+
     children = [
       # Start the Ecto repository
       RoomSanctum.Repo,

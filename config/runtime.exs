@@ -182,7 +182,18 @@ if config_env() == :prod do
     environment_name: :prod,
     tags: %{
       env: "production"
-    }
+    },
+    # Oban catches what a job raises, so a failing job never reaches the
+    # logger handler as a crash. Reported on its last attempt only: a feed
+    # that is down for one retry is not news, one that has used them all is.
+    # Here rather than prod.exs because a release cannot carry a function in
+    # its compiled config.
+    integrations: [
+      oban: [
+        capture_errors: true,
+        should_report_error_callback: fn _worker, job -> job.attempt >= job.max_attempts end
+      ]
+    ]
 
   else
 

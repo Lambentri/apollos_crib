@@ -61,10 +61,6 @@ config :tailwind,
     cd: Path.expand("../assets", __DIR__)
   ]
 
-# Configures Elixir's Logger
-config :logger,
-  backends: [:console, Sentry.LoggerBackend]
-
 config :logger, :console,
   format: "$time $metadata[$level] $message\n",
   metadata: [:request_id]

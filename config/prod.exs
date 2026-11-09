@@ -113,3 +113,20 @@ config :logger, level: :info
 config :sentry,
   enable_source_code_context: true,
   root_source_code_paths: Path.wildcard(Path.expand("../apps/*", __DIR__))
+
+# Crashes outside a web request -- a worker's GenServer dying, a Task, an Oban
+# job's process -- reach Sentry only through a :logger handler; Sentry.PlugCapture
+# sees requests and nothing else. RoomSanctum.Application attaches this at
+# startup. Crash reports only, not logged errors (capture_log_messages stays
+# false), and rate-limited, because a worker in a restart loop logs the same
+# crash every second. Cowboy and Bandit are left out by default, since
+# PlugCapture has already reported those.
+config :room_sanctum, :logger, [
+  {:handler, :sentry_handler, Sentry.LoggerHandler,
+   %{
+     config: %{
+       capture_metadata: [:request_id, :mfa],
+       rate_limiting: [max_events: 10, interval: 60_000]
+     }
+   }}
+]
