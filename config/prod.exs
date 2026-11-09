@@ -105,3 +105,11 @@ config :logger, level: :info
 #       force_ssl: [hsts: true]
 #
 # Check `Plug.SSL` for all available options in `force_ssl`.
+
+# Source lines alongside Sentry's stack traces. Since sentry 10 they come from
+# a map the Dockerfile builds with `mix sentry.package_source_code` before the
+# release, which reads this file -- not runtime.exs, which only a running
+# release loads. Every app, so one added later is not left out.
+config :sentry,
+  enable_source_code_context: true,
+  root_source_code_paths: Path.wildcard(Path.expand("../apps/*", __DIR__))

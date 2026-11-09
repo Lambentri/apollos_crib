@@ -33,12 +33,14 @@ defmodule RoomGtfs.MixProject do
       # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
       # override holds when this app is built or tested on its own.
       {:decimal, "~> 3.2", override: true},
+      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
+      # mix.exs. Repeated here for the same reason as decimal.
+      {:httpoison, "~> 3.0", override: true},
       {:csv, "~> 3.0"},
       {:nimble_csv, "~> 1.2"},
       {:postgrex, "~> 0.17", override: true},
 #      {:ecto_interval, "~> 0.2.5"},
 #      {:ecto_interval, git: "https://github.com/mathiasose/ecto_interval.git"},
-      {:httpoison, "~> 1.8"},
       {:protobuf, "~> 0.17.0"},
       {:parent, "~> 0.12.1"},
       {:unzip, "~> 0.8"},

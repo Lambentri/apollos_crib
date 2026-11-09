@@ -40,6 +40,9 @@ defmodule RoomSanctum.MixProject do
       # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
       # override holds when this app is built or tested on its own.
       {:decimal, "~> 3.2", override: true},
+      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
+      # mix.exs. Repeated here for the same reason as decimal.
+      {:httpoison, "~> 3.0", override: true},
       {:bcrypt_elixir, "~> 3.2"},
       {:phoenix, "~> 1.7"},
       {:phoenix_ecto, "~> 4.6"},
@@ -101,11 +104,12 @@ defmodule RoomSanctum.MixProject do
 
       # hermes
       #      {:room_hermes, in_umbrella: true}
-      {:httpoison, "~> 1.8"},
       {:amqp, "~> 4.1"},
       {:amqp_client, "~> 4.2"},
       {:rabbit_common, "~> 4.0"},
-      {:sentry, "~> 8.0"},
+      {:sentry, "~> 14.0"},
+      # Sentry's default HTTP client; optional in its own deps, so named here.
+      {:finch, "~> 0.21"},
 
       # Q's and other misc
       {:oban, "~> 2.17"},

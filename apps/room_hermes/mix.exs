@@ -40,6 +40,9 @@ defmodule RoomHermes.MixProject do
       # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
       # override holds when this app is built or tested on its own.
       {:decimal, "~> 3.2", override: true},
+      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
+      # mix.exs. Repeated here for the same reason as decimal.
+      {:httpoison, "~> 3.0", override: true},
       {:phoenix, "~> 1.7"},
       {:phoenix_view, "~> 2.0"},
       {:phoenix_ecto, "~> 4.4"},
@@ -63,7 +66,9 @@ defmodule RoomHermes.MixProject do
       {:plug_cowboy, "~> 2.5"},
 
       #     {:room_sanctum, in_umbrella: true},
-      {:sentry, "~> 8.0"},
+      {:sentry, "~> 14.0"},
+      # Sentry's default HTTP client; optional in its own deps, so named here.
+      {:finch, "~> 0.21"},
 
       # makes the configs go Vroom
       {:polymorphic_embed, "~> 5.0.0", override: true},

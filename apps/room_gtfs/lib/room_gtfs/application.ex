@@ -55,6 +55,15 @@ defmodule RoomGtfs.Application do
   # from hackney's default so that a slow transit feed cannot exhaust the pool
   # every other client in this umbrella is also using -- which is what the
   # `:checkout_timeout`s on GitHub and the weather were.
+  #
+  # All of that was hackney 1, where a pool's max_connections capped how many
+  # requests ran through it at once. hackney 4 does not pool HTTPS connections
+  # at all and caps concurrency per host (max_per_host, 50 by default), so the
+  # sizes below are now only how many idle plain-HTTP connections are kept,
+  # and the keep-alive `timeout` is held to two seconds whatever is asked for.
+  # One feed can no longer starve another host, which is what the pools were
+  # for. The static downloads are still one at a time: the gtfs_import Oban
+  # queue runs a single job, and that is what bounds them now.
   defp rt_pool do
     :hackney_pool.child_spec(:gtfs_rt, max_connections: 32, timeout: 20_000)
   end

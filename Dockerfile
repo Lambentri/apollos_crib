@@ -1,4 +1,7 @@
-FROM docker.io/elixir:1.15-alpine
+# Elixir 1.17+ and OTP 27+ are what httpoison 3 and hackney 4 need; this is
+# the pair dev runs on. Not pinned to the patch: the 1.20.x-otp-28-alpine tags
+# have shipped without an amd64 image, while this one carries it.
+FROM docker.io/elixir:1.20-otp-28-alpine
 MAINTAINER Gabe <gmp@gmp.io>
 ARG app_name=apollos_crib
 ARG phoenix_subdir=.
@@ -20,6 +23,8 @@ RUN cd ${phoenix_subdir}/apps/room_sanctum/assets \
     && mix assets.deploy \
     && cd ../../ \
 RUN mix download_data
+# The source lines Sentry sends with a stack trace; config/prod.exs says which.
+RUN mix sentry.package_source_code
 RUN mix release ${app_name} \
     && mv _build/${build_env}/rel/${app_name} /opt/release \
     && mv /opt/release/bin/${app_name} /opt/release/bin/start_server

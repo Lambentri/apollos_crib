@@ -28,13 +28,15 @@ defmodule RoomTidal.MixProject do
       # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
       # override holds when this app is built or tested on its own.
       {:decimal, "~> 3.2", override: true},
+      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
+      # mix.exs. Repeated here for the same reason as decimal.
+      {:httpoison, "~> 3.0", override: true},
       {:nebulex, "~> 2.4"},
       # => When using :shards as backend
       {:shards, "~> 1.0"},
       # => When using Caching Annotations
       {:decorator, "~> 1.4"},
       {:telemetry, "~> 1.0"},
-      {:httpoison, "~> 1.8"},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}
 

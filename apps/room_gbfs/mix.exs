@@ -28,7 +28,9 @@ defmodule RoomGbfs.MixProject do
       # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
       # override holds when this app is built or tested on its own.
       {:decimal, "~> 3.2", override: true},
-      {:httpoison, "~> 1.8"},
+      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
+      # mix.exs. Repeated here for the same reason as decimal.
+      {:httpoison, "~> 3.0", override: true},
       {:poison, "~> 5.0", override: true},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}

@@ -493,7 +493,14 @@ defmodule RoomSanctum.Worker.Ankyra do
     HTTPoison.get(
       String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
       [{"accept", "application/json"}],
-      hackney: [basic_auth: {to_string(cfg[:username]), to_string(cfg[:password])}],
+      # The management API is plain HTTP inside the cluster (and on localhost
+      # in dev). hackney 4 lets that through by default today, but httpoison 3
+      # asks for the opt-in, and without it a later default would refuse
+      # quietly here -- the rescue below turns the error into "checking".
+      hackney: [
+        basic_auth: {to_string(cfg[:username]), to_string(cfg[:password])},
+        insecure_basic_auth: true
+      ],
       timeout: 2_000,
       recv_timeout: 2_000
     )
