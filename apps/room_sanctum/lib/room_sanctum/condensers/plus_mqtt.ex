@@ -9,11 +9,15 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
   arrival whole rather than flattening it into parallel lists, so the view can
   say all of it about the arrival it belongs to.
 
+  Calendar keeps Basic's entry and adds the event's time, end, place and
+  whether it repeats.
+
   Only the types with more to say are written here; everything else is Basic's
   answer, unchanged.
   """
 
   alias RoomSanctum.Condenser.BasicMQTT
+  alias RoomSanctum.Storage.ICalendar
 
   @doc """
   Condenses data without wrapping (legacy format)
@@ -84,6 +88,29 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
     |> attach_alerts(id, stop_of(data))
   end
 
+  # Basic's entry, kept whole so a Basic reader of a Plus board loses nothing,
+  # and the rest of the event beside it. Still keyed "calendar": the shape
+  # only grows.
+  def condense_data({id, :calendar}, data) do
+    basic = BasicMQTT.condense_data({id, :calendar}, data)
+
+    Enum.zip_with(basic, data, fn b, f ->
+      all_day = ICalendar.all_day?(f)
+
+      Map.merge(b, %{
+        all_day: all_day,
+        # A date for an all-day entry, its last day inclusive; otherwise the
+        # local time with its offset.
+        start: if(all_day, do: b.date_start, else: ICalendar.local(f.date_start, f.tz)),
+        end: if(all_day, do: ICalendar.local_last_date(f), else: ICalendar.local(f.date_end, f.tz)),
+        location: f.blob["location"],
+        # One date of a series; the others are entries of their own.
+        repeats: not is_nil(f.blob["rrule"]),
+        tz: f.tz
+      })
+    end)
+  end
+
   def condense_data({id, type}, data), do: BasicMQTT.condense_data({id, type}, data)
 
   @doc """
@@ -92,6 +119,15 @@ defmodule RoomSanctum.Condenser.PlusMQTT do
   def condense({id, :gtfs}, data, query) do
     %{
       data: condense_data({id, :gtfs}, data),
+      query: %{name: query.name, meta: query.meta || %{}}
+    }
+  end
+
+  # Wrapped here rather than handed to Basic's condense/3, which would condense
+  # with Basic's own reading and drop everything the clause above adds.
+  def condense({id, :calendar}, data, query) do
+    %{
+      data: condense_data({id, :calendar}, data),
       query: %{name: query.name, meta: query.meta || %{}}
     }
   end

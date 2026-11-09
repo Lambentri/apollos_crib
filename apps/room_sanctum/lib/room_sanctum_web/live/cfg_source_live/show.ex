@@ -64,6 +64,10 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:treasury_preview, nil)
       |> assign(:bourse_symbol, nil)
       |> assign(:bourse_preview, nil)
+      |> assign(:ical_preview, nil)
+      |> assign(:ical_previewing, false)
+      |> assign(:ical_stored, [])
+      |> assign(:ical_stored_total, 0)
     }
   end
 
@@ -112,8 +116,18 @@ defmodule RoomSanctumWeb.SourceLive.Show do
      |> assign(:route_types, route_types)
      |> assign(:aircraft, aircraft)
      |> assign(:alerts, alerts)
-     |> assign(:source_tint, source_tint)}
+     |> assign(:source_tint, source_tint)
+     # Update runs in the worker and says nothing when it finishes, so the
+     # stored list catches up on the tick instead.
+     |> assign_ical_stored()}
   end
+
+  defp assign_ical_stored(%{assigns: %{source: %{type: :calendar, id: id}}} = socket) do
+    {entries, total} = Storage.upcoming_icalendar_entries(id)
+    socket |> assign(:ical_stored, entries) |> assign(:ical_stored_total, total)
+  end
+
+  defp assign_ical_stored(socket), do: socket
 
   @impl true
   # Read the source's places in the background, folding each page in as it
@@ -216,6 +230,7 @@ defmodule RoomSanctumWeb.SourceLive.Show do
       |> assign(:queries, queries)
       |> assign(:available_tints, get_available_tints(queries))
       |> assign(:focis, focis)
+      |> assign_ical_stored()
     }
   end
 
@@ -453,6 +468,84 @@ defmodule RoomSanctumWeb.SourceLive.Show do
         {:noreply, put_flash(socket, :error, "Could not add a query for #{name}")}
     end
   end
+
+  # --- calendar feed preview -------------------------------------------
+
+  # A live fetch of the configured URL, stored nowhere: whether it is a
+  # calendar at all, and what is coming up in it. Async, since a slow host
+  # would otherwise hold the whole page for the length of the request.
+  @impl true
+  def handle_event("ical-preview", _params, socket) do
+    url = socket.assigns.source.config.url
+
+    {:noreply,
+     socket
+     |> assign(:ical_previewing, true)
+     |> start_async(:ical_preview, fn -> RoomCalendar.Worker.preview(url) end)}
+  end
+
+  def handle_event("ical-preview-dismiss", _params, socket) do
+    {:noreply, assign(socket, :ical_preview, nil)}
+  end
+
+  @impl true
+  def handle_async(:ical_preview, {:ok, result}, socket) do
+    {:noreply, socket |> assign(:ical_previewing, false) |> assign(:ical_preview, result)}
+  end
+
+  def handle_async(:ical_preview, {:exit, reason}, socket) do
+    {:noreply,
+     socket
+     |> assign(:ical_previewing, false)
+     |> assign(:ical_preview, {:error, "preview crashed: #{inspect(reason)}"})}
+  end
+
+  # A previewed occurrence and a stored entry carry the same fields, one as
+  # RoomCalendar.Occurrences gives it and one as the row's JSON.
+  defp ical_row(%Storage.ICalendar{date_start: s, date_end: e, blob: blob} = entry),
+    do: %{
+      start: s, end: e, all_day: Storage.ICalendar.all_day?(entry),
+      summary: blob["summary"], location: blob["location"], repeats: !!blob["rrule"]
+    }
+
+  defp ical_row(%{start: _} = o), do: o |> Map.put(:repeats, !!o.rrule)
+
+  attr :entries, :list, required: true
+
+  defp ical_entries(assigns) do
+    ~H"""
+    <div :if={@entries == []} class="text-sm opacity-70">Nothing upcoming.</div>
+    <ul :if={@entries != []} class="divide-y divide-base-200">
+      <li :for={e <- @entries} class="py-1">
+        <div class="flex justify-between gap-2">
+          <span class="font-semibold">
+            <%= e.summary || "(untitled)" %>
+            <i :if={e.repeats} class="fa-solid fa-repeat text-xs opacity-60" title="Repeating"></i>
+          </span>
+          <span class="text-xs font-mono whitespace-nowrap opacity-80"><%= ical_when(e) %></span>
+        </div>
+        <div :if={e.location} class="text-xs opacity-60"><%= e.location %></div>
+      </li>
+    </ul>
+    """
+  end
+
+  # All-day events arrive as midnight UTC (VALUE=DATE is read that way), so
+  # those show as dates; anything else is a time, and in UTC, since a source
+  # has no place to take a timezone from.
+  defp ical_when(%{start: %DateTime{} = s, end: e, all_day: all_day}) do
+    if all_day do
+      last = if e, do: DateTime.add(e, -1, :day), else: s
+
+      if Date.compare(DateTime.to_date(last), DateTime.to_date(s)) == :gt,
+        do: Calendar.strftime(s, "%a %-d %b") <> " – " <> Calendar.strftime(last, "%a %-d %b %Y"),
+        else: Calendar.strftime(s, "%a %-d %b %Y")
+    else
+      Calendar.strftime(s, "%a %-d %b %Y %H:%M") <> " UTC"
+    end
+  end
+
+  defp ical_when(_e), do: "no start"
 
   # --- bourse symbol builder -------------------------------------------
 

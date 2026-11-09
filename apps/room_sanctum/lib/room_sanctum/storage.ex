@@ -3543,21 +3543,64 @@ defmodule RoomSanctum.Storage do
 
   alias RoomSanctum.Configuration
 
+  @doc """
+  A calendar source's stored entries not yet over, soonest first, with how many
+  it holds in all -- what the source page shows without a query or a foci.
+  """
+  def upcoming_icalendar_entries(source_id, limit \\ 15) do
+    now = DateTime.utc_now()
+
+    entries =
+      Repo.all(
+        from ic in ICalendar,
+          # Not yet over, rather than not yet begun: today's all-day entry
+          # started at midnight UTC and is still today's.
+          where: ic.source_id == ^source_id and coalesce(ic.date_end, ic.date_start) > ^now,
+          order_by: [asc: ic.date_start],
+          limit: ^limit
+      )
+
+    total = Repo.one(from ic in ICalendar, where: ic.source_id == ^source_id, select: count(ic.id))
+    {entries, total}
+  end
+
+  @doc """
+  A calendar query's entries: those falling on today through `days - 1` days
+  on, as the days run at its foci, soonest first.
+
+  Judged by each entry's own local day rather than by a UTC window, because
+  the two kinds of entry are stored on different clocks -- an all-day entry
+  at midnight UTC, a timed one at its real instant. A window cut at local
+  midnight drops today's all-day entries everywhere west of Greenwich, and
+  `Date.utc_today/0` is already tomorrow on a New York evening. So the rows
+  are read a day wide either side and each is placed on its day here.
+  """
   def get_upcoming_calendar_entries(source_id, query) do
     foci = Configuration.get_foci!(query.foci_id)
     {lon, lat} = foci.place.coordinates
     tz = WhereTZ.lookup(lat, lon)
-    # todo make this configurable from somewhere
-    now = DateTime.new!(Date.utc_today(), Time.new!(0, 0, 0), tz)
-    max = now |> DateTime.add(query.days * 24 * 60 * 60, :second)
 
-    q =
+    today = tz |> DateTime.now!() |> DateTime.to_date()
+    stop = Date.add(today, query.days)
+    lo = DateTime.new!(Date.add(today, -1), ~T[00:00:00], "Etc/UTC")
+    hi = DateTime.new!(Date.add(stop, 1), ~T[00:00:00], "Etc/UTC")
+
+    Repo.all(
       from ic in ICalendar,
-        where: ic.source_id == ^source_id and ic.date_start >= ^now and ic.date_start <= ^max,
-        order_by: [asc: ic.date_start],
-        limit: ^query.limit
-
-    Repo.all(q)
+        where: ic.source_id == ^source_id and ic.date_start >= ^lo and ic.date_start < ^hi
+    )
+    |> Enum.map(&%{&1 | tz: tz})
+    |> Enum.map(&{ICalendar.local_date(&1), &1})
+    |> Enum.filter(fn {day, _} ->
+      Date.compare(day, today) != :lt and Date.compare(day, stop) == :lt
+    end)
+    # The day, then all-day before timed, then the hour: by UTC instant alone a
+    # 9pm event sorts after the next day's all-day one.
+    |> Enum.sort_by(fn {day, e} ->
+      {Date.to_gregorian_days(day), not ICalendar.all_day?(e), DateTime.to_unix(e.date_start)}
+    end)
+    |> Enum.map(&elem(&1, 1))
+    |> Enum.take(query.limit)
   end
 
   alias RoomSanctum.Storage.Taxidae

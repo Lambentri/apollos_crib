@@ -508,7 +508,7 @@ use PhoenixHTMLHelpers
   @doc """
   The Plus view for whichever type the query is.
 
-  Only some types have an extended read written for them; the rest show what
+  GTFS and calendar have an extended read written for them; the rest show what
   Basic shows, so switching to Plus never empties the page.
   """
   attr :entries, :map, required: true
@@ -523,7 +523,7 @@ use PhoenixHTMLHelpers
       <% :weather -> %> <.p_weather entries={@entries} />
       <% :aqi -> %> <.p_aqi entries={@entries} />
       <% :ephem -> %> <.p_ephem entries={@entries} />
-      <% :calendar -> %> <.p_calendar entries={@entries} />
+      <% :calendar -> %> <.x_calendar entries={@entries} />
       <% :cronos -> %> <.p_cronos entries={@entries} />
       <% :gitlab -> %> <.p_gitlab entries={@entries} />
       <% :github -> %> <.p_github entries={@entries} />
@@ -887,14 +887,87 @@ use PhoenixHTMLHelpers
     <div class="card card-compact w-full bg-primary text-primary-content shadow-xl">
     <div class="card-body textd-left">
     <h2 class="card-title">
-      <p><i class="fa-solid fa-fw fa-cloud-sun"></i> <%= e.description %> </p>
+      <p><i class="fa-solid fa-fw fa-calendar-day"></i> <%= calendar_title(e) %> </p>
     </h2>
-    <p><i class="fa-solid fa-fw fa-calendar-day"></i> <%= e.date_start %></p>
+    <p><i class="fa-solid fa-fw fa-calendar"></i> <%= e.date_start %></p>
     </div>
     </div>
     <% end %>
     """
   end
+
+  # Older entries and some feeds carry only a description; summary is the
+  # title where there is one.
+  defp calendar_title(e), do: Map.get(e, :summary) || e.description
+
+  @doc """
+  The Plus read of a calendar query: the event as well as its day -- the hour
+  it starts or that it takes the whole day, how many days it runs, where, and
+  whether it repeats. The description is shown only where it says more than
+  the title.
+  """
+  def x_calendar(assigns) do
+    ~H"""
+    <%= for e <- @entries.data do %>
+      <div class="card card-compact w-full bg-primary text-primary-content shadow-xl mb-2">
+        <div class="card-body text-left">
+          <h2 class="card-title">
+            <p class="flex items-center gap-2 flex-wrap">
+              <i class="fa-solid fa-fw fa-calendar-day"></i> <%= calendar_title(e) %>
+            </p>
+          </h2>
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="badge badge-sm badge-accent"><%= calendar_day(e) %></span>
+            <span class="badge badge-sm gap-1">
+              <i class="fa-solid fa-fw fa-clock fa-2xs"></i><%= calendar_span(e) %>
+            </span>
+            <%= if e.location do %>
+              <span class="badge badge-outline badge-sm gap-1">
+                <i class="fa-solid fa-fw fa-location-dot fa-2xs"></i><%= e.location %>
+              </span>
+            <% end %>
+            <%= if e.repeats do %>
+              <span class="badge badge-ghost badge-sm gap-1" title="One date of a repeating event">
+                <i class="fa-solid fa-fw fa-repeat fa-2xs"></i> Repeats
+              </span>
+            <% end %>
+          </div>
+          <%= if e.description && e.description != e.summary do %>
+            <p class="text-sm opacity-80 line-clamp-3"><%= e.description %></p>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+    """
+  end
+
+  # Today and Tomorrow where they are, the weekday and date otherwise. Today is
+  # the entry's own zone's, which is where its date_start was worked out.
+  defp calendar_day(e) do
+    today = (Map.get(e, :tz) || "Etc/UTC") |> DateTime.now!() |> DateTime.to_date()
+
+    case Date.diff(e.date_start, today) do
+      0 -> "Today"
+      1 -> "Tomorrow"
+      _ -> Calendar.strftime(e.date_start, "%a %-d %b")
+    end
+  end
+
+  defp calendar_span(%{all_day: true, end: %Date{} = last} = e) do
+    case Date.diff(last, e.date_start) do
+      n when n > 0 -> "All day, until #{Calendar.strftime(last, "%a %-d %b")}"
+      _ -> "All day"
+    end
+  end
+
+  defp calendar_span(%{start: %DateTime{} = s, end: %DateTime{} = f}) do
+    if DateTime.to_date(f) == DateTime.to_date(s),
+      do: "#{Calendar.strftime(s, "%H:%M")}–#{Calendar.strftime(f, "%H:%M")}",
+      else: "#{Calendar.strftime(s, "%H:%M")} – #{Calendar.strftime(f, "%a %-d %b %H:%M")}"
+  end
+
+  defp calendar_span(%{start: %DateTime{} = s}), do: Calendar.strftime(s, "%H:%M")
+  defp calendar_span(_e), do: "All day"
 
   def i_calendar(assigns) do
     ~H"""
@@ -906,10 +979,10 @@ use PhoenixHTMLHelpers
         <div class="w-3/4 lg:w-11/12 mr-4">
             <div class="flex flex-col lg:flex-row justify-between">
               <div class="flex items-center justify-between lg:text-4xl lg:font-bold lg:gap-2">
-                <div class="text-lg text-accent lg:text-4xl"><%= e.description %></div>
+                <div class="text-lg text-accent lg:text-4xl"><%= calendar_title(e) %></div>
               </div>
               <div class="flex items-center justify-between lg:text-4xl lg:gap-8">
-                <p><i class="fa-solid fa-fw fa-calendar"></i><span class="text-accent"><%= e.date_start  %></span></p>
+                <p><i class="fa-solid fa-fw fa-calendar"></i><span class="text-accent"><%= e.date_start %></span></p>
               </div>
             </div>
           </div>

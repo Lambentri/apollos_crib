@@ -278,7 +278,9 @@ defmodule RoomSanctum.Condenser.BasicMQTT do
         data
         |> Enum.map(fn f ->
           %{
-            date_start: f.date_start |> DateTime.to_date(),
+            # The day it falls on at the query's foci, not in UTC.
+            date_start: RoomSanctum.Storage.ICalendar.local_date(f),
+            summary: f.blob["summary"],
             description: f.blob["description"]
           }
         end)

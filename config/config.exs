@@ -7,6 +7,12 @@
 # General application configuration
 import Config
 
+# Every app reads this file, not its own config/ -- room_sanctum's copy of this
+# line never took effect. Timex registers a Tzdata-backed database when it
+# starts, but anything started or parsing before it (ical checks at boot) sees
+# UTC only.
+config :elixir, :time_zone_database, Tzdata.TimeZoneDatabase
+
 config :room_hermes,
   ecto_repos: [RoomHermes.Repo]
 

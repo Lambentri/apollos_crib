@@ -305,6 +305,56 @@ gl_available_projects={@gitlab_available_projects}
         </div>
     </div>
 
+    <div :if={@source.type == :calendar} class="flex">
+        <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <div class="flex items-center justify-between">
+                    <h3 class="card-title">Feed preview</h3>
+                    <div class="flex gap-2">
+                        <button class="btn btn-secondary btn-sm" phx-click="ical-preview"
+                                disabled={@ical_previewing}>
+                            <%= if @ical_previewing do %>
+                            <span class="loading loading-spinner loading-xs mr-1"></span> Fetching
+                            <% else %>
+                            <i class="fa-solid fa-eye mr-1"></i> Preview
+                            <% end %>
+                        </button>
+                        <button :if={@ical_preview} class="btn btn-ghost btn-sm" phx-click="ical-preview-dismiss">
+                            <i class="fa-solid fa-close"></i>
+                        </button>
+                    </div>
+                </div>
+                <div class="text-xs opacity-60 break-all"><%= @source.config.url %></div>
+                <%= case @ical_preview do %>
+                <% nil -> %>
+                    <div class="text-sm opacity-70">Fetches the URL now and shows what it holds. Nothing is stored.</div>
+                <% {:error, reason} -> %>
+                    <div class="alert alert-error text-sm">
+                        <i class="fa-solid fa-triangle-exclamation"></i><span><%= reason %></span>
+                    </div>
+                <% {:ok, preview} -> %>
+                    <div class="text-sm">
+                        <%= preview.total %> events<%= if preview.recurring > 0, do: " (#{preview.recurring} repeating)" %>, <%= preview.upcoming %> dates in the coming year
+                    </div>
+                    <.ical_entries entries={Enum.map(preview.events, &ical_row/1)} />
+                <% end %>
+            </div>
+        </div>
+        <div class="card card-compact w-1/2 bg-base-100 shadow-xl m-2">
+            <div class="card-body">
+                <h3 class="card-title">Stored</h3>
+                <div class="text-sm">
+                    <%= @ical_stored_total %> entries stored<%= if @ical_stored_total > 0, do: ", next #{length(@ical_stored)} shown" %>
+                </div>
+                <%= if @ical_stored_total == 0 do %>
+                    <div class="text-sm opacity-70">Nothing stored yet. Update pulls the feed in.</div>
+                <% else %>
+                    <.ical_entries entries={Enum.map(@ical_stored, &ical_row/1)} />
+                <% end %>
+            </div>
+        </div>
+    </div>
+
     <div :if={@source.type == :gtfs} class="flex">
         <div class="card card-compact w-full bg-base-100 shadow-xl m-2">
             <div class="card-body">
