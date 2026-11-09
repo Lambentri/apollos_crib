@@ -15,6 +15,9 @@ defmodule RoomSanctum.Mutants do
   require Logger
 
   @env "SNAP_RES"
+  # A ceiling for the crib's +/- controls, so a run of clicks cannot fill the
+  # cluster with snappers.
+  @max_snappers 10
 
   defmodule Resolution do
     @moduledoc "One running (or starting) browser-ctl variant."
@@ -87,6 +90,25 @@ defmodule RoomSanctum.Mutants do
         with {:ok, _} <- request(:post, "/variants", body), do: {:ok, label}
     end
   end
+
+  @doc "The most snappers one resolution may be scaled to from the crib."
+  def max_snappers, do: @max_snappers
+
+  @doc """
+  Scales a resolution to `instances` snappers in place, keeping the ones
+  already running. Between 1 and `max_snappers/0`: none at all is stopping
+  it, which `delete_resolution/1` does.
+  """
+  @spec scale_resolution(String.t(), integer()) :: :ok | {:error, String.t()}
+  def scale_resolution(label, instances)
+      when is_integer(instances) and instances >= 1 and instances <= @max_snappers do
+    with {:ok, _} <-
+           request(:patch, "/variants/" <> URI.encode_www_form(label), %{instances: instances}),
+         do: :ok
+  end
+
+  def scale_resolution(_label, instances),
+    do: {:error, "snappers must be between 1 and #{@max_snappers}, got #{inspect(instances)}"}
 
   @doc "Stops a resolution started through `create_resolution/4`."
   @spec delete_resolution(String.t()) :: :ok | {:error, String.t()}

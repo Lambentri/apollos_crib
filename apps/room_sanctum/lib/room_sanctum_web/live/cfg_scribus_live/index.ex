@@ -93,8 +93,23 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
     {:noreply, load_resolutions(socket)}
   end
 
+  def handle_event("scale-resolution", %{"label" => label, "delta" => delta}, %{assigns: %{admin?: true}} = socket) do
+    socket =
+      with %{} = r <- Enum.find(socket.assigns.resolutions, &(&1.label == label)),
+           {delta, ""} <- Integer.parse(to_string(delta)),
+           :ok <- Mutants.scale_resolution(label, r.instances + delta) do
+        put_flash(socket, :info, "#{label}: #{r.instances + delta} snappers")
+      else
+        {:error, msg} -> put_flash(socket, :error, msg)
+        _ -> put_flash(socket, :error, "No resolution #{label} to scale")
+      end
+
+    {:noreply, load_resolutions(socket)}
+  end
+
   # The buttons are only rendered for admins; this covers a crafted event.
-  def handle_event(event, _params, socket) when event in ["add-resolution", "delete-resolution"] do
+  def handle_event(event, _params, socket)
+      when event in ["add-resolution", "delete-resolution", "scale-resolution"] do
     {:noreply, put_flash(socket, :error, "Only admins can change resolutions")}
   end
 

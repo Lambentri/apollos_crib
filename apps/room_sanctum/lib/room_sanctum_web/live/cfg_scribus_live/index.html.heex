@@ -81,7 +81,29 @@
             <span :if={r.read_only} class="badge badge-sm badge-ghost">git</span>
           </td>
           <td><%= r.resolution %></td>
-          <td><%= r.ready %>/<%= r.instances %></td>
+          <td class="whitespace-nowrap">
+            <button
+              :if={@admin? and not r.read_only}
+              type="button"
+              phx-click={JS.push("scale-resolution", value: %{label: r.label, delta: -1})}
+              disabled={r.instances <= 1}
+              class="btn btn-ghost btn-xs"
+              title="One snapper fewer"
+            >
+              <i class="fas fa-fw fa-minus"></i>
+            </button>
+            <%= r.ready %>/<%= r.instances %>
+            <button
+              :if={@admin? and not r.read_only}
+              type="button"
+              phx-click={JS.push("scale-resolution", value: %{label: r.label, delta: 1})}
+              disabled={r.instances >= RoomSanctum.Mutants.max_snappers()}
+              class="btn btn-ghost btn-xs"
+              title="One snapper more"
+            >
+              <i class="fas fa-fw fa-plus"></i>
+            </button>
+          </td>
           <td>
             <span class={[
               "badge badge-sm",
