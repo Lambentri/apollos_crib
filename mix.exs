@@ -53,6 +53,11 @@ defmodule ApollosCrib.MixProject do
       {:sentry, "~> 8.0"},
       {:jason, "~> 1.1"},
       {:hackney, "~> 1.8"},
+      # Poison (even 6.0) still asks for ~> 2.x; it only calls to_string/1 and
+      # builds %Decimal{} structs, both unchanged in 3. 3.1.2 is the first with
+      # the fixes for CVE-2026-32686 and CVE-2026-97853, and 3's parse limits
+      # are what keep a hostile GBFS feed's "1e999999999" out of Ecto casts.
+      {:decimal, "~> 3.2", override: true},
       # if you are using plug_cowboy
       {:plug_cowboy, "~> 2.3"}
     ]

@@ -37,6 +37,9 @@ defmodule RoomHermes.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
+      # override holds when this app is built or tested on its own.
+      {:decimal, "~> 3.2", override: true},
       {:phoenix, "~> 1.7"},
       {:phoenix_view, "~> 2.0"},
       {:phoenix_ecto, "~> 4.4"},

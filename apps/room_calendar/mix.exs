@@ -25,6 +25,9 @@ defmodule RoomCalendar.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
+      # override holds when this app is built or tested on its own.
+      {:decimal, "~> 3.2", override: true},
       {:ical, "~> 3.2"},
       {:room_sanctum, in_umbrella: true}
       # {:dep_from_hexpm, "~> 0.3.0"},

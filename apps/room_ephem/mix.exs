@@ -25,6 +25,9 @@ defmodule RoomEphem.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
+      # override holds when this app is built or tested on its own.
+      {:decimal, "~> 3.2", override: true},
       {:nebulex, "~> 2.4"},
       # => When using :shards as backend
       {:shards, "~> 1.0"},

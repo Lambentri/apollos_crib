@@ -25,6 +25,9 @@ defmodule RoomGbfs.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
+      # override holds when this app is built or tested on its own.
+      {:decimal, "~> 3.2", override: true},
       {:httpoison, "~> 1.8"},
       {:poison, "~> 5.0", override: true},
       {:parent, "~> 0.12.1"},

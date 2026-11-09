@@ -30,6 +30,9 @@ defmodule RoomGtfs.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
+      # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
+      # override holds when this app is built or tested on its own.
+      {:decimal, "~> 3.2", override: true},
       {:csv, "~> 3.0"},
       {:nimble_csv, "~> 1.2"},
       {:postgrex, "~> 0.17", override: true},
