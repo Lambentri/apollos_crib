@@ -106,7 +106,12 @@ if config_env() == :prod do
            # See the documentation on https://hexdocs.pm/plug_cowboy/Plug.Cowboy.html
            # for details about using IPv6 vs IPv4 and loopback vs public addresses.
            ip: {0, 0, 0, 0, 0, 0, 0, 0},
-           port: sport
+           port: sport,
+           # HTTP/1.1 only. Traefik talks to the pod in 1.1, so nothing here
+           # needs HTTP/2, and a clear listener otherwise takes it from anyone
+           # in the cluster -- which is where cowlib's unbounded HPACK
+           # header-list decoding (CVE-2026-113431, no fixed release yet) is.
+           protocol_options: [protocols: [:http]]
          ],
          secret_key_base: secret_key_base
 
@@ -122,7 +127,12 @@ if config_env() == :prod do
            # See the documentation on https://hexdocs.pm/plug_cowboy/Plug.Cowboy.html
            # for details about using IPv6 vs IPv4 and loopback vs public addresses.
            ip: {0, 0, 0, 0, 0, 0, 0, 0},
-           port: hport
+           port: hport,
+           # HTTP/1.1 only. Traefik talks to the pod in 1.1, so nothing here
+           # needs HTTP/2, and a clear listener otherwise takes it from anyone
+           # in the cluster -- which is where cowlib's unbounded HPACK
+           # header-list decoding (CVE-2026-113431, no fixed release yet) is.
+           protocol_options: [protocols: [:http]]
          ],
          secret_key_base: secret_key_base
 
