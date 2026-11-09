@@ -148,7 +148,10 @@ defmodule RoomGithub.Worker do
 
       refs =
         Enum.reduce(active_runs, state.refs, fn run, acc ->
-          full = get_in(run, ["repository", "full_name"]) || full_name_from_runs_state(state, run["id"])
+          full =
+            get_in(run, ["repository", "full_name"]) ||
+              full_name_from_runs_state(state, run["id"])
+
           path = "/repos/#{full}/actions/runs/#{run["id"]}/jobs"
 
           case do_github_req(api_url, pat, path, %{"per_page" => 50}) do
@@ -216,72 +219,90 @@ defmodule RoomGithub.Worker do
   defp current_poll_ms(state) do
     secs =
       case state.inst do
-        %{config: %{__struct__: @github_config_module, poll_seconds: s}} when is_integer(s) and s > 0 -> s
-        _ -> 60
+        %{config: %{__struct__: @github_config_module, poll_seconds: s}}
+        when is_integer(s) and s > 0 ->
+          s
+
+        _ ->
+          60
       end
 
     :timer.seconds(secs)
   end
 
   # HTTPoison async stream handlers
-  def handle_info(msg, state) do
-    case msg do
-      %HTTPoison.Error{reason: {:closed, :timeout}} ->
+  def handle_info(%HTTPoison.Error{id: rid}, state) do
+    close_conn(rid)
+
+    case Map.pop(state.refs, rid) do
+      {nil, _refs} ->
         {:noreply, state}
 
-      %HTTPoison.AsyncStatus{code: 200, id: _id} ->
-        {:noreply, state}
-
-      %HTTPoison.AsyncStatus{code: code, id: rid} ->
-        Logger.info("GH::#{state.inst.id} non-200: #{code}")
-
-        ref = state.refs[rid]
-        ref = ref && Map.put(ref, :write, false)
-        refs = if ref, do: Map.put(state.refs, rid, ref), else: state.refs
-        {:noreply, state |> Map.put(:refs, refs)}
-
-      %HTTPoison.AsyncHeaders{headers: headers, id: rid} ->
-        case state.refs[rid] do
-          nil ->
-            {:noreply, state}
-
-          ref ->
-            ref = Map.put(ref, :next_url, parse_next_link(headers))
-            {:noreply, state |> Map.put(:refs, Map.put(state.refs, rid, ref))}
-        end
-
-      %HTTPoison.AsyncChunk{chunk: chunk, id: rid} ->
-        case state.refs[rid] do
-          nil -> :ok
-          %{fd: fd} -> IO.binwrite(fd, chunk)
-        end
-
-        {:noreply, state}
-
-      %HTTPoison.AsyncEnd{id: rid} ->
-        case state.refs[rid] do
-          nil ->
-            {:noreply, state}
-
-          %{write: false} = ref ->
-            close_buffer(ref.fd)
-            {:noreply, state |> Map.put(:refs, Map.delete(state.refs, rid))}
-
-          ref ->
-            {_, body} = StringIO.contents(ref.fd)
-            close_buffer(ref.fd)
-
-            new_state =
-              state
-              |> ingest_response(ref, body)
-              |> follow_pagination(ref)
-
-            {:noreply, new_state |> Map.put(:refs, Map.delete(new_state.refs, rid))}
-        end
-
-      _ ->
-        {:noreply, state}
+      {ref, refs} ->
+        close_buffer(ref.fd)
+        {:noreply, %{state | refs: refs}}
     end
+  end
+
+  def handle_info(%HTTPoison.AsyncStatus{code: 200, id: _id}, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncStatus{code: code, id: rid}, state) do
+    Logger.info("GH::#{state.inst.id} non-200: #{code}")
+
+    ref = state.refs[rid]
+    ref = ref && Map.put(ref, :write, false)
+    refs = if ref, do: Map.put(state.refs, rid, ref), else: state.refs
+    {:noreply, state |> Map.put(:refs, refs)}
+  end
+
+  def handle_info(%HTTPoison.AsyncHeaders{headers: headers, id: rid}, state) do
+    case state.refs[rid] do
+      nil ->
+        {:noreply, state}
+
+      ref ->
+        ref = Map.put(ref, :next_url, parse_next_link(headers))
+        {:noreply, state |> Map.put(:refs, Map.put(state.refs, rid, ref))}
+    end
+  end
+
+  def handle_info(%HTTPoison.AsyncChunk{chunk: chunk, id: rid}, state) do
+    case state.refs[rid] do
+      nil -> :ok
+      %{fd: fd} -> IO.binwrite(fd, chunk)
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncEnd{id: rid}, state) do
+    close_conn(rid)
+
+    case state.refs[rid] do
+      nil ->
+        {:noreply, state}
+
+      %{write: false} = ref ->
+        close_buffer(ref.fd)
+        {:noreply, state |> Map.put(:refs, Map.delete(state.refs, rid))}
+
+      ref ->
+        {_, body} = StringIO.contents(ref.fd)
+        close_buffer(ref.fd)
+
+        new_state =
+          state
+          |> ingest_response(ref, body)
+          |> follow_pagination(ref)
+
+        {:noreply, new_state |> Map.put(:refs, Map.delete(new_state.refs, rid))}
+    end
+  end
+
+  def handle_info(_msg, state) do
+    {:noreply, state}
   end
 
   # Helpers
@@ -291,6 +312,15 @@ defmodule RoomGithub.Worker do
   end
 
   defp close_buffer(fd), do: StringIO.close(fd)
+
+  # Each request has a connection of its own, which nothing else will use once
+  # its response is over; left open, an HTTP/2 one would stay up for good.
+  defp close_conn(conn) do
+    :hackney.close(conn)
+  catch
+    # Already gone: an HTTP/1 one stops with the process HTTPoison streams through.
+    :exit, _ -> :ok
+  end
 
   @max_pages 20
 
@@ -310,7 +340,12 @@ defmodule RoomGithub.Worker do
 
     case HTTPoison.get(url, headers,
            follow_redirect: true,
-           stream_to: self()
+           stream_to: self(),
+           # hackney 4 tags async messages with the connection's pid, and a
+           # pooled HTTP/2 connection carries every concurrent request to the
+           # host, so their responses would all arrive under one id. A
+           # connection of its own gives each request an id of its own.
+           hackney: [pool: false]
          ) do
       {:ok, ref} ->
         {:ok, ref}
@@ -371,14 +406,17 @@ defmodule RoomGithub.Worker do
 
   defp follow_pagination(state, %{next_url: url, type: :repos, page: page})
        when is_binary(url) and page >= @max_pages do
-    Logger.warning("GH::#{state.inst.id} hit @max_pages cap (#{@max_pages}); stopping repo pagination")
+    Logger.warning(
+      "GH::#{state.inst.id} hit @max_pages cap (#{@max_pages}); stopping repo pagination"
+    )
+
     state
   end
 
   defp follow_pagination(state, _), do: state
 
   defp ingest_response(state, %{type: :repos}, body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, list} when is_list(list) ->
         merged = merge_repo_list(state.available_repos, list)
         filtered = filter_watched(merged, state.inst)
@@ -393,9 +431,13 @@ defmodule RoomGithub.Worker do
   end
 
   defp ingest_response(state, %{type: :runs, full_name: full}, body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"workflow_runs" => runs}} when is_list(runs) ->
-        runs = Enum.map(runs, fn r -> Map.put_new_lazy(r, "repository", fn -> %{"full_name" => full} end) end)
+        runs =
+          Enum.map(runs, fn r ->
+            Map.put_new_lazy(r, "repository", fn -> %{"full_name" => full} end)
+          end)
+
         Map.update!(state, :runs, &Map.put(&1, full, runs))
 
       _ ->
@@ -404,7 +446,7 @@ defmodule RoomGithub.Worker do
   end
 
   defp ingest_response(state, %{type: :jobs, run_id: rid} = ref, body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"jobs" => jobs}} when is_list(jobs) ->
         full = Map.get(ref, :full_name) || full_name_from_runs_state(state, rid)
 
@@ -490,8 +532,8 @@ defmodule RoomGithub.Worker do
   end
 
   defp target_repos(query, state) do
-    repo = Map.get(query, :repo) || Map.get(query, "repo")
-    owner = Map.get(query, :owner) || Map.get(query, "owner")
+    repo = field(query, :repo)
+    owner = field(query, :owner)
 
     cond do
       is_binary(repo) and repo != "" ->
@@ -506,6 +548,8 @@ defmodule RoomGithub.Worker do
         state.repos |> Enum.map(& &1["full_name"])
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   defp filter_runs_by_status(runs, query) do
     runs

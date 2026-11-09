@@ -52,7 +52,7 @@
             inner_label={@query.source.meta.tint_label}
           />
         </h3>
-        <pre><%= @query.query |> Poison.encode!( pretty: true) %></pre>
+        <pre><%= @query.query |> RoomSanctum.JSON.encode!( pretty: true) %></pre>
       </div>
     </div>
   </div>
@@ -87,7 +87,7 @@
             </div>
             <div class="w-7/8">
               <span class="text-secondary font-bold"><%= @query.name %></span>
-              <pre><%= condense_for(@preview_mode, @preview, {@query.id, @type}) |> Poison.encode!(pretty: true)%></pre>
+              <pre><%= condense_for(@preview_mode, @preview, {@query.id, @type}) |> RoomSanctum.JSON.encode!(pretty: true)%></pre>
             </div>
           </div>
         <% else %>

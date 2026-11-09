@@ -30,7 +30,7 @@ defmodule RoomTidal.Worker do
   def handle_call({:query_tides, query}, _from, state) do
     case HTTPoison.get(@root_url <> query.station_id, [], follow_redirect: true) do
       {:ok, result} ->
-        decoded = result.body |> Poison.decode!(keys: :atoms)
+        decoded = result.body |> Jason.decode!(keys: :atoms)
         {:reply, decoded.predictions, state}
 
       {:error, reason} ->

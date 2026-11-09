@@ -3,6 +3,8 @@ defmodule RoomSanctum.Configuration.Query do
   import Ecto.Changeset
   import PolymorphicEmbed
 
+  alias RoomSanctum.Configuration.{Foci, Ownership, Source}
+
   schema "cfg_queries" do
     belongs_to :user, RoomSanctum.Accounts.User
     field :name, :string
@@ -57,6 +59,10 @@ defmodule RoomSanctum.Configuration.Query do
     |> foreign_key_constraint(:user_id)
     |> cast_polymorphic_embed(:query, required: true)
     |> validate_required([:name])
+    # The form only offers the owner's own sources and foci; anything else
+    # sent in their place is refused rather than queried.
+    |> Ownership.validate_owned(:source_id, Source)
+    |> Ownership.validate_owned_in(:query, :foci_id, Foci)
   end
 
   def meta_changeset(meta, attrs \\ %{}) do

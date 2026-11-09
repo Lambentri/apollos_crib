@@ -13,7 +13,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
   def mount(_params, _session, socket) do
     {:ok,
      socket
-     |> stream(:cfg_scribus, Configuration.list_cfg_scribus())
+     |> stream(:cfg_scribus, Configuration.list_cfg_scribus(owner(socket)))
      |> assign(:show_info, false)
      |> assign(:admin?, Accounts.admin?(socket.assigns.current_user))
      |> assign(:resolution_form, blank_resolution_form())
@@ -28,7 +28,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Edit Scribus")
-    |> assign(:scribus, Configuration.get_scribus!(id))
+    |> assign(:scribus, Configuration.get_scribus!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -54,7 +54,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    scribus = Configuration.get_scribus!(id)
+    scribus = Configuration.get_scribus!(owner(socket), id)
     {:ok, _} = Configuration.delete_scribus(scribus)
 
     {:noreply, stream_delete(socket, :cfg_scribus, scribus)}
@@ -120,4 +120,7 @@ defmodule RoomSanctumWeb.ScribusLive.Index do
       _ -> {:error, "width, height and instances must be positive whole numbers"}
     end
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

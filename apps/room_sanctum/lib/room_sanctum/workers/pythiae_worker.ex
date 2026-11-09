@@ -83,8 +83,8 @@ defmodule RoomSanctum.Worker.Pythiae do
     comparison = DateTime.add(state.lastpub, cfg_ttl, :second)
 
     if current != state.vision and DateTime.compare(DateTime.utc_now(), comparison) == :gt do
-#      IO.puts("change detected")
-#      IO.inspect({DateTime.utc_now(), comparison})
+      #      IO.puts("change detected")
+      #      IO.inspect({DateTime.utc_now(), comparison})
 
       publish_board(state, current)
 
@@ -178,7 +178,7 @@ defmodule RoomSanctum.Worker.Pythiae do
 
   defp condense(data, queries, reading \\ :basic) do
     # Create a map of query id to query info for quick lookup
-    query_map = queries |> Enum.map(fn q -> {q.id, q} end) |> Enum.into(%{})
+    query_map = Map.new(queries, fn q -> {q.id, q} end)
 
     data
     |> Enum.map(fn {{id, type}, datum} ->

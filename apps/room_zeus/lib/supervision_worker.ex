@@ -5,29 +5,29 @@ defmodule RoomZeus.DynSupervisor do
     DynamicSupervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
   end
 
-  def start_child(type, instance_id) do
-    spec =
-      case type do
-        :gtfs -> {RoomGtfs.Worker, [name: instance_id]}
-        :gbfs -> {RoomGbfs.Worker, [name: instance_id]}
-        :aqi -> {RoomAirQuality.Worker, [name: instance_id]}
-        :tidal -> {RoomTidal.Worker, [name: instance_id]}
-        :weather -> {RoomWeather.Worker, [name: instance_id]}
-        :calendar -> {RoomCalendar.Worker, [name: instance_id]}
-        :gitlab -> {RoomGitlab.Worker, [name: instance_id]}
-        :github -> {RoomGithub.Worker, [name: instance_id]}
-        :packages -> {RoomPackages.Worker, [name: instance_id]}
-        :drought -> {RoomDrought.Worker, [name: instance_id]}
-        :pollen -> {RoomPollen.Worker, [name: instance_id]}
-        :icarus -> {RoomIcarus.Worker, [name: instance_id]}
-        :mailbox -> {RoomHermes.Mail.ImapWorker, [name: instance_id]}
-        :treasury -> {RoomTreasury.Worker, [name: instance_id]}
-        :bourse -> {RoomBourse.Worker, [name: instance_id]}
-        _ -> nil
-      end
+  # The worker behind each source type; a type not listed starts nothing.
+  @workers %{
+    gtfs: RoomGtfs.Worker,
+    gbfs: RoomGbfs.Worker,
+    aqi: RoomAirQuality.Worker,
+    tidal: RoomTidal.Worker,
+    weather: RoomWeather.Worker,
+    calendar: RoomCalendar.Worker,
+    gitlab: RoomGitlab.Worker,
+    github: RoomGithub.Worker,
+    packages: RoomPackages.Worker,
+    drought: RoomDrought.Worker,
+    pollen: RoomPollen.Worker,
+    icarus: RoomIcarus.Worker,
+    mailbox: RoomHermes.Mail.ImapWorker,
+    treasury: RoomTreasury.Worker,
+    bourse: RoomBourse.Worker
+  }
 
-    if spec != nil do
-      DynamicSupervisor.start_child(__MODULE__, spec)
+  def start_child(type, instance_id) do
+    case Map.fetch(@workers, type) do
+      {:ok, worker} -> DynamicSupervisor.start_child(__MODULE__, {worker, [name: instance_id]})
+      :error -> nil
     end
   end
 

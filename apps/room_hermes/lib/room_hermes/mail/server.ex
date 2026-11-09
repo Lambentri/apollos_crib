@@ -13,42 +13,52 @@ defmodule RoomHermes.Mail.Server do
     end
   end
 
+  # gen_smtp_server_session's callback name, fixed by the behaviour.
+  # credo:disable-for-next-line Credo.Check.Readability.FunctionNames
   def handle_DATA(from, to, data, state) do
     Logger.info("Received DATA:")
 
-    state
-    |> Map.put(:body, data)
-    |> IO.inspect()
-
     mail = parse_mail(data, state)
+
     %{mail: mail, from: from, to: to}
     |> RoomSanctum.Queues.Mail.new()
     |> Oban.insert()
-#    mail_json = Poison.encode!(mail) |> IO.inspect()
+
+    #    mail_json = Jason.encode!(mail) |> IO.inspect()
 
     {:ok, data, state}
   end
 
+  # gen_smtp_server_session's callback name, fixed by the behaviour.
+  # credo:disable-for-next-line Credo.Check.Readability.FunctionNames
   def handle_EHLO(hostname, extensions, state) do
     Logger.info("EHLO from #{hostname}")
     {:ok, extensions, state}
   end
 
+  # gen_smtp_server_session's callback name, fixed by the behaviour.
+  # credo:disable-for-next-line Credo.Check.Readability.FunctionNames
   def handle_HELO(hostname, state) do
     Logger.info("HELO from #{hostname}")
     {:ok, 655_360, state}
   end
 
+  # gen_smtp_server_session's callback name, fixed by the behaviour.
+  # credo:disable-for-next-line Credo.Check.Readability.FunctionNames
   def handle_MAIL(from, state) do
     Logger.info("MAIL from #{from}")
     {:ok, Map.put(state, :from, from)}
   end
 
+  # gen_smtp_server_session's callback name, fixed by the behaviour.
+  # credo:disable-for-next-line Credo.Check.Readability.FunctionNames
   def handle_RCPT(to, state) do
     Logger.info("RCPT to #{to}")
     {:ok, Map.put(state, :to, to)}
   end
 
+  # gen_smtp_server_session's callback name, fixed by the behaviour.
+  # credo:disable-for-next-line Credo.Check.Readability.FunctionNames
   def handle_VRFY(to, state) do
     fqdn = :smtp_util.guess_FQDN()
     {:ok, "#{to}@#{fqdn}", state}
@@ -60,7 +70,7 @@ defmodule RoomHermes.Mail.Server do
   end
 
   def terminate(reason, state) do
-    IO.inspect({reason, state})
+    Logger.debug("SMTP session ended: #{inspect(reason)}")
     {:ok, reason, state}
   end
 

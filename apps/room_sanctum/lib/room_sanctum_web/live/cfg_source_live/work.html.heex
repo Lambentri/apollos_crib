@@ -142,7 +142,7 @@
             <%= for job <- @jobs do %>
               <% {label, class} = state_label(job.state) %>
               <% sid = source_id(job) %>
-              <tr>
+              <tr id={"job-#{job.id}"}>
                 <td class="font-mono text-xs opacity-60"><%= job.id %></td>
                 <td>
                   <%= if sid && Map.get(@names, sid) do %>

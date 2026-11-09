@@ -79,12 +79,11 @@ defmodule RoomSanctum.MixProject do
       {:eqrcode, "~> 0.2"},
       {:plug_cowboy, "~> 2.5"},
       {:timex, "~> 3.7.8"},
-      {:poison, "~> 5.0", override: true},
       {:parent, "~> 0.12.1"},
 
       # tz provider, less shitty than tzworld, still shitty for diff reasons
       {:wheretz, "~> 0.1.16"},
-      {:tzdata, "~> 1.1"},
+      {:tzdata, "~> 1.2"},
 
       # makes the configs go Vroom
       {:polymorphic_embed, "~> 5.0.0", override: true},
@@ -104,6 +103,10 @@ defmodule RoomSanctum.MixProject do
 
       # hermes
       #      {:room_hermes, in_umbrella: true}
+      # wheretz (unmaintained) still asks for httpoison ~> 1.6, which holds
+      # hackney at 1.x and its advisories. Its one call, in `mix download_data`,
+      # works the same on 3.x.
+      {:httpoison, "~> 3.0", override: true},
       {:amqp, "~> 4.1"},
       {:amqp_client, "~> 4.2"},
       {:rabbit_common, "~> 4.0"},

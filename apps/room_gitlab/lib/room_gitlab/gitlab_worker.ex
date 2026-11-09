@@ -167,63 +167,44 @@ defmodule RoomGitlab.Worker do
 
   defp filter_watched(_projects, _inst), do: []
 
-  defp do_gitlab_req(uri, token, lookup, id \\ nil) do
-    {path, params} =
-      case lookup do
-        # , %{updated_after: DateTime.utc_now |> DateTime.add(-3600 * 7) |> DateTime.truncate(:second) |> DateTime.to_iso8601, order_by: "updated_at"}}
-        :projects -> {"/api/v4/projects", %{simple: true, per_page: 100}}
-        :commits -> {"/api/v4/projects/#{id}/repository/commits/master", %{}}
-        :jobs -> {"/api/v4/projects/#{id}/jobs", %{}}
-      end
+  # , %{updated_after: DateTime.utc_now |> DateTime.add(-3600 * 7) |> DateTime.truncate(:second) |> DateTime.to_iso8601, order_by: "updated_at"}}
+  defp gitlab_path(:projects, _id), do: {"/api/v4/projects", %{simple: true, per_page: 100}}
+  defp gitlab_path(:commits, id), do: {"/api/v4/projects/#{id}/repository/commits/master", %{}}
+  defp gitlab_path(:jobs, id), do: {"/api/v4/projects/#{id}/jobs", %{}}
 
-    case HTTPoison.get(
-           uri <> path,
-           ["PRIVATE-TOKEN": "#{token}", Accept: "Application/json; Charset=utf-8"],
-           params: params,
-           follow_redirect: true
-         ) do
-      {:ok, response} ->
-        case response.status_code do
-          500 ->
-            Logger.info("Failed to retrieve data from Gitlab due to #{response.body}")
-            {:error, :five_hundred}
+  # Starts a request and files `entry` under its id. One that can't start
+  # (the host unreachable, say) is logged and left out; the next poll tries
+  # again.
+  defp start_req(refs, state, url, pat, {lookup, id}, entry) do
+    case do_gitlab_reqa(url, pat, lookup, id) do
+      {:ok, ref} ->
+        {:ok, fd} = StringIO.open("")
+        Map.put(refs, ref.id, Map.put(entry, :fd, fd))
 
-          200 ->
-            case response.body |> Poison.decode() do
-              {:ok, decoded} -> {:ok, decoded}
-              {:error, error} -> {:error, :decode_json}
-            end
-
-          404 ->
-            {:error, :four_o_four}
-        end
-
-      {:error, error} ->
-        Logger.info("Failed to retrieve data from Gitlab due to #{error.reason}")
-        {:error, :http}
+      {:error, %HTTPoison.Error{reason: reason}} ->
+        Logger.warning("GLab::#{state.inst.id} #{lookup} request failed: #{inspect(reason)}")
+        refs
     end
   end
 
-  defp do_gitlab_reqa(uri, token, lookup, id \\ nil) do
-    {path, params} =
-      case lookup do
-        # , %{updated_after: DateTime.utc_now |> DateTime.add(-3600 * 7) |> DateTime.truncate(:second) |> DateTime.to_iso8601, order_by: "updated_at"}}
-        :projects -> {"/api/v4/projects", %{simple: true, per_page: 100}}
-        :commits -> {"/api/v4/projects/#{id}/repository/commits/master", %{}}
-        :jobs -> {"/api/v4/projects/#{id}/jobs", %{}}
-      end
+  defp do_gitlab_reqa(uri, token, lookup, id) do
+    {path, params} = gitlab_path(lookup, id)
 
     HTTPoison.get(
       uri <> path,
       ["PRIVATE-TOKEN": "#{token}", Accept: "Application/json; Charset=utf-8"],
       params: params,
       follow_redirect: true,
-      stream_to: self()
+      stream_to: self(),
+      # hackney 4 tags async messages with the connection's pid, and a pooled
+      # HTTP/2 connection carries every concurrent request to the host, so
+      # their responses would all arrive under one id. A connection of its
+      # own gives each request an id of its own.
+      hackney: [pool: false]
     )
-#    |> IO.inspect()
   end
 
-  defp is_last_hour?(entry_field, hours \\ 1) do
+  defp last_hour?(entry_field, hours \\ 1) do
     case entry_field |> DateTime.from_iso8601() do
       {:ok, dt, _something} ->
         DateTime.compare(dt, DateTime.utc_now() |> DateTime.add(-3600 * hours)) === :gt
@@ -238,15 +219,15 @@ defmodule RoomGitlab.Worker do
 
     with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
          {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
-      {:ok, ref} = do_gitlab_reqa(url, pat, :projects)
-      {:ok, fd} = StringIO.open("")
-      refs = state |> Map.get(:refs)
-      refs = refs |> Map.put(ref.id, %{fd: fd, type: :projects})
+      refs = start_req(state.refs, state, url, pat, {:projects, nil}, %{type: :projects})
 
       {:noreply, state |> Map.put(:refs, refs)}
     else
       :no_creds ->
-        Logger.warning("GLab::#{state.inst.id} skipping query_projects - config missing url/pat (type/config mismatch?)")
+        Logger.warning(
+          "GLab::#{state.inst.id} skipping query_projects - config missing url/pat (type/config mismatch?)"
+        )
+
         {:noreply, state}
 
       _ ->
@@ -271,17 +252,12 @@ defmodule RoomGitlab.Worker do
   def handle_cast(:query_commits, state) do
     with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
          {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
-      all =
-        state.projects
-        |> Enum.map(fn p ->
+      refs =
+        Enum.reduce(state.projects, state.refs, fn p, acc ->
           Logger.info("GLab::#{state.inst.id} Querying Commits for #{p["name"]}")
-          {:ok, ref} = do_gitlab_reqa(url, pat, :commits, p["id"])
-          {:ok, fd} = StringIO.open("")
-          {ref.id, %{fd: fd, type: :commits, id: p["id"]}}
+          start_req(acc, state, url, pat, {:commits, p["id"]}, %{type: :commits, id: p["id"]})
         end)
-        |> Map.new()
 
-      refs = state |> Map.get(:refs) |> Map.merge(all)
       {:noreply, state |> Map.put(:refs, refs)}
     else
       _ -> {:noreply, state}
@@ -295,20 +271,17 @@ defmodule RoomGitlab.Worker do
   def handle_cast({:query_jobs, _query}, state) do
     with true <- state |> Map.get(:inst, %{}) |> Map.get(:enabled),
          {url, pat} when is_binary(url) and is_binary(pat) <- gitlab_creds(state.inst) do
-      Logger.info("GLab::#{state.inst.id} Querying Jobs for #{length(state.projects)} watched projects")
+      Logger.info(
+        "GLab::#{state.inst.id} Querying Jobs for #{length(state.projects)} watched projects"
+      )
 
-      all =
-        state.projects
-        |> Enum.map(fn p ->
+      refs =
+        Enum.reduce(state.projects, state.refs, fn p, acc ->
           id = p["id"]
           Logger.debug("GLab::#{state.inst.id} Querying Jobs for #{id}")
-          {:ok, ref} = do_gitlab_reqa(url, pat, :jobs, id)
-          {:ok, fd} = StringIO.open("")
-          {ref.id, %{fd: fd, type: :jobs, id: id}}
+          start_req(acc, state, url, pat, {:jobs, id}, %{type: :jobs, id: id})
         end)
-        |> Map.new()
 
-      refs = state |> Map.get(:refs) |> Map.merge(all)
       {:noreply, state |> Map.put(:refs, refs)}
     else
       _ ->
@@ -318,7 +291,7 @@ defmodule RoomGitlab.Worker do
 
   def handle_call({:read_jobs, query}, _from, state) do
     project_ids = jobs_target_ids(query, state)
-    statuses = parse_statuses(Map.get(query, :statuses) || Map.get(query, "statuses"))
+    statuses = parse_statuses(field(query, :statuses))
 
     jobs =
       project_ids
@@ -329,8 +302,8 @@ defmodule RoomGitlab.Worker do
   end
 
   defp jobs_target_ids(query, state) do
-    id = Map.get(query, :id) || Map.get(query, "id")
-    ns = Map.get(query, :namespace) || Map.get(query, "namespace")
+    id = field(query, :id)
+    ns = field(query, :namespace)
 
     cond do
       not is_nil(id) ->
@@ -346,17 +319,24 @@ defmodule RoomGitlab.Worker do
     end
   end
 
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
+
   defp parse_statuses(nil), do: :all
   defp parse_statuses(s) when is_list(s), do: s
+
   defp parse_statuses(s) when is_binary(s) do
     case String.trim(s) do
-      "" -> :all
-      trimmed -> trimmed |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
+      "" ->
+        :all
+
+      trimmed ->
+        trimmed |> String.split(",") |> Enum.map(&String.trim/1) |> Enum.reject(&(&1 == ""))
     end
   end
 
   defp filter_by_statuses(jobs, :all), do: jobs
   defp filter_by_statuses(jobs, [single]), do: Enum.filter(jobs, &(&1["status"] == single))
+
   defp filter_by_statuses(jobs, statuses) when is_list(statuses),
     do: Enum.filter(jobs, &Enum.member?(statuses, &1["status"]))
 
@@ -364,68 +344,93 @@ defmodule RoomGitlab.Worker do
     {:reply, [:ok], state}
   end
 
-  def handle_info(msg, state) do
-    #    IO.inspect({:handle_info, msg})
-    case msg do
-      %HTTPoison.Error{reason: {:closed, :timeout}, id: resp_id} ->
+  # A request's buffer goes from state.refs when its response ends or fails,
+  # so anything that still arrives for it afterwards is dropped.
+  def handle_info(%HTTPoison.Error{id: resp_id}, state) do
+    close_conn(resp_id)
+
+    case Map.pop(state.refs, resp_id) do
+      {nil, _refs} ->
         {:noreply, state}
 
-      %HTTPoison.AsyncStatus{code: status_code, id: resp_id} ->
-#        IO.inspect(status_code)
-
-        if status_code == 200 do
-          {:noreply, state}
-        else
-          refs = state[:refs]
-          r = state[:refs][resp_id]
-          r = r |> Map.put(:write, false)
-          refs = refs |> Map.put(resp_id, r)
-          {:noreply, state |> Map.put(:refs, refs)}
-        end
-
-      %HTTPoison.AsyncHeaders{headers: headers, id: resp_id} ->
-#        IO.inspect(headers)
-        {:noreply, state}
-
-      %HTTPoison.AsyncChunk{chunk: chunk, id: resp_id} ->
-        IO.binwrite(state[:refs][resp_id][:fd], chunk)
-        {:noreply, state}
-
-      %HTTPoison.AsyncEnd{id: resp_id} ->
-        {_, str} = StringIO.contents(state[:refs][resp_id][:fd])
-        StringIO.close(state[:refs][resp_id][:fd])
-        t = state[:refs][resp_id][:type]
-
-        case Poison.decode(str) do
-          {:ok, decoded} ->
-            case state[:refs][resp_id] |> Map.get(:write) do
-              false ->
-                {:noreply, state}
-
-              nil ->
-                case t do
-                  :projects ->
-                    filtered = filter_watched(decoded, state.inst)
-
-                    {:noreply,
-                     state
-                     |> Map.put(:available_projects, decoded)
-                     |> Map.put(:projects, filtered)}
-
-                  x when x in [:commits, :jobs] ->
-                    c = state |> Map.get(t)
-
-                    i = state[:refs][resp_id][:id]
-                    c = c |> Map.put(i, decoded)
-
-                    {:noreply, state |> Map.put(t, c)}
-                end
-            end
-
-          {:error, error} ->
-            {:noreply, state}
-        end
+      {ref, refs} ->
+        StringIO.close(ref.fd)
+        {:noreply, %{state | refs: refs}}
     end
+  end
+
+  def handle_info(%HTTPoison.AsyncStatus{code: 200}, state), do: {:noreply, state}
+
+  def handle_info(%HTTPoison.AsyncStatus{id: resp_id}, state) do
+    case state.refs do
+      %{^resp_id => ref} ->
+        {:noreply, %{state | refs: Map.put(state.refs, resp_id, Map.put(ref, :write, false))}}
+
+      _ ->
+        {:noreply, state}
+    end
+  end
+
+  def handle_info(%HTTPoison.AsyncHeaders{}, state) do
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncChunk{chunk: chunk, id: resp_id}, state) do
+    case state.refs do
+      %{^resp_id => %{fd: fd}} -> IO.binwrite(fd, chunk)
+      _ -> :ok
+    end
+
+    {:noreply, state}
+  end
+
+  def handle_info(%HTTPoison.AsyncEnd{id: resp_id}, state) do
+    close_conn(resp_id)
+
+    case Map.pop(state.refs, resp_id) do
+      {nil, _refs} ->
+        {:noreply, state}
+
+      {ref, refs} ->
+        {:ok, {_input, body}} = StringIO.close(ref.fd)
+        {:noreply, store_response(%{state | refs: refs}, ref, body)}
+    end
+  end
+
+  def handle_info(msg, state) do
+    Logger.debug("GLab::#{state.id} ignoring #{inspect(msg)}")
+    {:noreply, state}
+  end
+
+  defp store_response(state, %{write: false}, _body), do: state
+
+  defp store_response(state, ref, body) do
+    case Jason.decode(body) do
+      {:ok, decoded} -> store_decoded(state, ref.type, ref[:id], decoded)
+      {:error, _error} -> state
+    end
+  end
+
+  # Each request has a connection of its own, which nothing else will use once
+  # its response is over; left open, an HTTP/2 one would stay up for good.
+  defp close_conn(conn) do
+    :hackney.close(conn)
+  catch
+    # Already gone: an HTTP/1 one stops with the process HTTPoison streams through.
+    :exit, _ -> :ok
+  end
+
+  defp store_decoded(state, :projects, _id, decoded) do
+    filtered = filter_watched(decoded, state.inst)
+
+    state
+    |> Map.put(:available_projects, decoded)
+    |> Map.put(:projects, filtered)
+  end
+
+  defp store_decoded(state, type, id, decoded) when type in [:commits, :jobs] do
+    c = state |> Map.get(type) |> Map.put(id, decoded)
+    state |> Map.put(type, c)
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}

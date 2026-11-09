@@ -1,0 +1,77 @@
+#!/usr/bin/env python3
+"""Compare two osv-scanner JSON reports: a pull request's lockfiles
+against the same files on its base branch.
+
+  scripts/osv-diff BASE.json HEAD.json [BASE_ROOT]
+
+Prints what the pull request fixed, what it brings in, and what's still
+there; exits 1 only if it brings something in. BASE_ROOT (default
+/tmp/base) is where the base branch's copies were written, stripped so
+the two reports' paths line up. Used by .forgejo/workflows/audit.yml.
+"""
+
+import json
+import os
+import sys
+
+
+def advisories(report, root):
+    """{(lockfile, package, version): {advisory ids}} from a report."""
+    found = {}
+    for result in report.get("results", []):
+        path = result["source"]["path"]
+        path = os.path.relpath(path, root) if path.startswith(root + os.sep) else os.path.relpath(path)
+        for pkg in result.get("packages", []):
+            info = pkg["package"]
+            ids = {v["id"] for v in pkg.get("vulnerabilities", [])}
+            if ids:
+                found[(path, info["name"], info["version"])] = ids
+    return found
+
+
+def by_package(found):
+    """{(lockfile, package): {advisory ids}}, versions folded away."""
+    out = {}
+    for (path, name, _version), ids in found.items():
+        out.setdefault((path, name), set()).update(ids)
+    return out
+
+
+def load(path):
+    with open(path) as f:
+        text = f.read().strip()
+    return json.loads(text) if text else {}
+
+
+def main(argv):
+    if len(argv) < 3:
+        sys.exit(__doc__)
+    root = argv[3] if len(argv) > 3 else "/tmp/base"
+    base = by_package(advisories(load(argv[1]), root))
+    head = by_package(advisories(load(argv[2]), root))
+
+    fixed, added, still = [], [], []
+    for key in sorted(set(base) | set(head)):
+        before, after = base.get(key, set()), head.get(key, set())
+        path, name = key
+        if before - after:
+            fixed.append(f"{name} ({path}): {', '.join(sorted(before - after))}")
+        if after - before:
+            added.append(f"{name} ({path}): {', '.join(sorted(after - before))}")
+        if after & before:
+            still.append(f"{name} ({path}): {', '.join(sorted(after & before))}")
+
+    for title, lines in (("Fixed", fixed), ("Brought in", added), ("Still there, as before", still)):
+        print(f"{title}: {len(lines)}")
+        for line in lines:
+            print(f"  {line}")
+
+    if added:
+        print("\nThis pull request brings in known vulnerabilities.")
+        return 1
+    print(f"\nNothing new. {len(fixed)} fixed, {len(still)} still open from before.")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

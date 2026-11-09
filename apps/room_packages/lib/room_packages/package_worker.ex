@@ -57,35 +57,46 @@ defmodule RoomPackages.Worker do
         source.meta.tracking
         |> Enum.filter(fn t -> t.type == :usps and not delivered?(t) end)
 
+      # Each batch starts from the source the last one left behind:
+      # update_source_meta_tracking/3 rewrites the whole list from the struct
+      # it is handed, so a batch working from the pre-poll copy would put
+      # every earlier batch's entries back the way they were.
       pending
       |> Enum.chunk_every(RoomPackages.USPS.max_batch())
-      |> Enum.each(fn chunk ->
-        numbers = Enum.map(chunk, & &1.number)
+      |> Enum.reduce(source, &refresh_chunk/2)
+    end
+  end
 
-        case RoomPackages.USPS.track_many(source, numbers) do
-          {:ok, summaries} ->
-            # Re-read per write: update_source_meta_tracking/3 builds the new
-            # list from the struct it is handed.
-            Enum.reduce(summaries, source, fn summary, src ->
-              existing = Enum.find(src.meta.tracking, &(&1.number == summary.number))
+  defp refresh_chunk(chunk, source) do
+    numbers = Enum.map(chunk, & &1.number)
 
-              if existing && changed?(existing, summary) do
-                Configuration.update_source_meta_tracking(src, summary.number, summary)
-                Configuration.get_source!(src.id)
-              else
-                src
-              end
-            end)
+    case RoomPackages.USPS.track_many(source, numbers) do
+      {:ok, summaries} ->
+        # Re-read per write: update_source_meta_tracking/3 builds the new
+        # list from the struct it is handed.
+        Enum.reduce(summaries, source, &record_summary/2)
 
-          {:error, reason} ->
-            Logger.debug("USPS batch of #{length(numbers)}: #{inspect(reason)}")
-        end
-      end)
+      {:error, reason} ->
+        Logger.debug("USPS batch of #{length(numbers)}: #{inspect(reason)}")
+        source
+    end
+  end
+
+  defp record_summary(summary, src) do
+    existing = Enum.find(src.meta.tracking, &(&1.number == summary.number))
+
+    if existing && changed?(existing, summary) do
+      Configuration.update_source_meta_tracking(src, summary.number, summary)
+      Configuration.get_source!(src.id)
+    else
+      src
     end
   end
 
   defp delivered?(%{entries: entries}) when is_list(entries) do
-    Enum.any?(entries, fn e -> Map.get(e, :delivered) == true or Map.get(e, "delivered") == true end)
+    Enum.any?(entries, fn e ->
+      Map.get(e, :delivered) == true or Map.get(e, "delivered") == true
+    end)
   end
 
   defp delivered?(_), do: false
@@ -94,17 +105,16 @@ defmodule RoomPackages.Worker do
   # add another identical entry and the history would be nothing but noise.
   defp changed?(%{entries: entries}, summary) when is_list(entries) do
     last = List.last(entries)
-    last == nil or status_of(last) != summary.status
+    last == nil or field(last, :status) != summary.status
   end
 
   defp changed?(_, _), do: true
 
-  defp status_of(entry), do: Map.get(entry, :status) || Map.get(entry, "status")
+  defp field(entry, key), do: Map.get(entry, key) || Map.get(entry, Atom.to_string(key))
 
   def handle_call({:read, query}, _from, state) do
     {:reply, state.data, state}
   end
 
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
-
 end

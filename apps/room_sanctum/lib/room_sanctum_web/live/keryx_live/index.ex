@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.KeryxLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Edit Keryx")
-    |> assign(:keryx, Configuration.get_keryx!(id))
+    |> assign(:keryx, Configuration.get_keryx!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -42,7 +42,7 @@ defmodule RoomSanctumWeb.KeryxLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    keryx = Configuration.get_keryx!(id)
+    keryx = Configuration.get_keryx!(owner(socket), id)
     {:ok, _} = Configuration.delete_keryx(keryx)
 
     {:noreply, stream_delete(socket, :keryxiae, keryx)}
@@ -51,4 +51,7 @@ defmodule RoomSanctumWeb.KeryxLive.Index do
   def handle_event("info", _params, socket) do
     {:noreply, socket |> assign(:show_info, !socket.assigns.show_info)}
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

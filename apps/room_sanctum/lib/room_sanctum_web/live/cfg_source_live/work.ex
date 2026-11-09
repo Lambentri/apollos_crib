@@ -1,6 +1,7 @@
 defmodule RoomSanctumWeb.SourceLive.Work do
   @moduledoc """
-  What the GTFS import queue is doing, across every source at once.
+  What the GTFS import queue is doing, across every one of the user's sources
+  at once.
 
   The source page shows one feed's progress bar, which is the right view when
   you are looking at one feed. It is the wrong view for the question this
@@ -80,9 +81,17 @@ defmodule RoomSanctumWeb.SourceLive.Work do
     end
   end
 
-
   @impl true
   def handle_info(_msg, socket), do: {:noreply, socket}
+
+  # A job id the client sends is only acted on if it is one of the import jobs
+  # this page listed, for one of the user's own feeds -- not any Oban job.
+  defp own_job?(socket, id) do
+    case Enum.find(socket.assigns.jobs, &(to_string(&1.id) == to_string(id))) do
+      nil -> false
+      job -> mine?(socket, source_id(job))
+    end
+  end
 
   defp mine?(socket, id) do
     case Integer.parse(to_string(id)) do
@@ -92,8 +101,9 @@ defmodule RoomSanctumWeb.SourceLive.Work do
   end
 
   @impl true
+  # Only the user's own feeds: the id is the client's.
   def handle_event("requeue", %{"id" => id}, socket) do
-    case RoomGtfs.Worker.update_static_data(String.to_integer(id)) do
+    case mine?(socket, id) && RoomGtfs.Worker.update_static_data(String.to_integer(id)) do
       {:ok, %{conflict?: true}} ->
         {:noreply, socket |> put_flash(:info, "That feed already has an import outstanding")}
 
@@ -121,7 +131,7 @@ defmodule RoomSanctumWeb.SourceLive.Work do
   """
   @impl true
   def handle_event("clear", %{"id" => id}, socket) do
-    case Oban.cancel_job(String.to_integer(id)) do
+    case own_job?(socket, id) && Oban.cancel_job(String.to_integer(id)) do
       :ok ->
         {:noreply,
          socket
@@ -173,14 +183,18 @@ defmodule RoomSanctumWeb.SourceLive.Work do
     socket
     |> assign(:sources, Enum.sort_by(sources, & &1.name))
     |> assign(:names, names)
-    |> assign(:jobs, jobs())
+    |> assign(:jobs, jobs(Map.keys(names)))
   end
 
-  # The queue's own history. Fifty is enough to cover a night's run of every
-  # feed and its retries without turning the page into a log.
-  defp jobs do
+  # The queue's own history, for the user's own feeds only: the queue is
+  # shared, and its rows carry each feed's error text. Fifty is enough to cover
+  # a night's run of every feed and its retries without turning the page into
+  # a log. Compared as text, since a job's source_id may be stored either way.
+  defp jobs(source_ids) do
+    ids = Enum.map(source_ids, &to_string/1)
+
     from(j in "oban_jobs",
-      where: j.queue == "gtfs_import",
+      where: j.queue == "gtfs_import" and fragment("?->>'source_id'", j.args) in ^ids,
       order_by: [desc: j.id],
       limit: 50,
       select: %{

@@ -1,7 +1,9 @@
-# Elixir 1.17+ and OTP 27+ are what httpoison 3 and hackney 4 need; this is
-# the pair dev runs on. Not pinned to the patch: the 1.20.x-otp-28-alpine tags
-# have shipped without an amd64 image, while this one carries it.
-FROM docker.io/elixir:1.20-otp-28-alpine
+# The same Elixir and OTP the dependency-updates workflow resolves with.
+# room_scribes declares `elixir: "~> 1.18"`, which Mix won't compile on
+# the 1.15 this used to name. hexpm's Alpine build rather than the
+# official elixir:1.20.4-otp-28-alpine, which has no amd64 image; its
+# Alpine is the one alpine:latest below points at.
+FROM docker.io/hexpm/elixir:1.20.4-erlang-28.5.0.8-alpine-3.24.3
 MAINTAINER Gabe <gmp@gmp.io>
 ARG app_name=apollos_crib
 ARG phoenix_subdir=.

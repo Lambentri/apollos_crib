@@ -26,12 +26,8 @@ defmodule RoomWeather.Worker do
     {:ok, %{id: opts[:name], src: c}}
   end
 
-  defp normalize_ll(val) do
-    cond do
-      val < -180 -> val + 360
-      true -> val
-    end
-  end
+  defp normalize_ll(val) when val < -180, do: val + 360
+  defp normalize_ll(val), do: val
 
   def handle_call({:query_weather, query}, _from, state) do
     {lon, lat} = Configuration.place_for!(query).coordinates
@@ -50,7 +46,7 @@ defmodule RoomWeather.Worker do
          ) do
       {:ok, result} ->
         decoded =
-          result.body |> Poison.decode!(keys: :atoms) |> Map.put(:units, state.src.config.units)
+          result.body |> Jason.decode!(keys: :atoms) |> Map.put(:units, state.src.config.units)
 
         {:reply, [decoded], state}
 

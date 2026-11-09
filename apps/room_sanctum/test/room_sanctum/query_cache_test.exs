@@ -29,7 +29,12 @@ defmodule RoomSanctum.QueryCacheTest do
     test "the second caller gets the first one's answer without running", %{key: key} do
       me = self()
 
-      ran = fn tag, value -> fn -> send(me, tag); value end end
+      ran = fn tag, value ->
+        fn ->
+          send(me, tag)
+          value
+        end
+      end
 
       assert {:ok, [:answer]} = QueryCache.fetch(key, ran.(:ran, [:answer]))
       assert_received :ran
@@ -109,7 +114,12 @@ defmodule RoomSanctum.QueryCacheTest do
 
       # The claim outlives the process, which is why it carries an expiry.
       assert QueryCache.fetch(key, fn -> [:x] end) == :busy
-      assert :ets.insert(QueryCache.table(), {{:claim, key}, System.monotonic_time(:millisecond) - 120_000})
+
+      assert :ets.insert(
+               QueryCache.table(),
+               {{:claim, key}, System.monotonic_time(:millisecond) - 120_000}
+             )
+
       assert {:ok, [:recovered]} = QueryCache.fetch(key, fn -> [:recovered] end)
     end
 

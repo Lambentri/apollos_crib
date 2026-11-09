@@ -127,17 +127,7 @@ defmodule RoomHermes.Mail.IMAP do
         uids =
           lines
           |> Enum.filter(&String.match?(&1, ~r/^\* SEARCH/i))
-          |> Enum.flat_map(fn line ->
-            line
-            |> String.replace(~r/^\* SEARCH/i, "")
-            |> String.split(~r/\s+/, trim: true)
-            |> Enum.flat_map(fn tok ->
-              case Integer.parse(tok) do
-                {n, ""} -> [n]
-                _ -> []
-              end
-            end)
-          end)
+          |> Enum.flat_map(&search_uids/1)
           |> Enum.sort()
 
         {:ok, conn, uids}
@@ -145,6 +135,18 @@ defmodule RoomHermes.Mail.IMAP do
       {:error, reason} ->
         {:error, {:search_failed, reason}}
     end
+  end
+
+  defp search_uids(line) do
+    line
+    |> String.replace(~r/^\* SEARCH/i, "")
+    |> String.split(~r/\s+/, trim: true)
+    |> Enum.flat_map(fn tok ->
+      case Integer.parse(tok) do
+        {n, ""} -> [n]
+        _ -> []
+      end
+    end)
   end
 
   @doc """
@@ -316,8 +318,13 @@ defmodule RoomHermes.Mail.IMAP do
   @doc "Turn a protocol failure into something actionable."
   def describe({:connect_failed, :nxdomain}), do: "Host not found - check the server address."
   def describe({:connect_failed, :econnrefused}), do: "Connection refused - check the port."
-  def describe({:connect_failed, :timeout}), do: "Timed out connecting - check host, port and firewall."
-  def describe({:connect_failed, {:tls_alert, _} = alert}), do: "TLS failed: #{inspect(alert)}. If this server uses port 143, turn TLS off."
+
+  def describe({:connect_failed, :timeout}),
+    do: "Timed out connecting - check host, port and firewall."
+
+  def describe({:connect_failed, {:tls_alert, _} = alert}),
+    do: "TLS failed: #{inspect(alert)}. If this server uses port 143, turn TLS off."
+
   def describe({:connect_failed, reason}), do: "Could not connect: #{inspect(reason)}"
 
   def describe({:login_failed, reason}) do
@@ -330,7 +337,9 @@ defmodule RoomHermes.Mail.IMAP do
     end
   end
 
-  def describe({:select_failed, reason}), do: "Could not open that folder: #{inspect(reason)}. Check the folder name."
+  def describe({:select_failed, reason}),
+    do: "Could not open that folder: #{inspect(reason)}. Check the folder name."
+
   def describe({:bad_greeting, text}), do: "Not an IMAP server? It said: #{text}"
   def describe({:search_failed, reason}), do: "Connected, but SEARCH failed: #{inspect(reason)}"
   def describe(other), do: inspect(other)
@@ -364,19 +373,23 @@ defmodule RoomHermes.Mail.IMAP do
             {:error, String.trim(trimmed)}
 
           true ->
-            # A line ending in {N} announces exactly N bytes of raw data that
-            # are not line-delimited and may contain anything, including CRLFs.
-            case Regex.run(~r/\{(\d+)\}$/, trimmed) do
-              [_, count] ->
-                case read_literal(conn, String.to_integer(count)) do
-                  {:ok, literal} -> collect(conn, tag, [{:literal, literal}, trimmed | acc])
-                  {:error, reason} -> {:error, reason}
-                end
-
-              nil ->
-                collect(conn, tag, [trimmed | acc])
-            end
+            collect_untagged(conn, tag, trimmed, acc)
         end
+    end
+  end
+
+  # A line ending in {N} announces exactly N bytes of raw data that
+  # are not line-delimited and may contain anything, including CRLFs.
+  defp collect_untagged(conn, tag, trimmed, acc) do
+    case Regex.run(~r/\{(\d+)\}$/, trimmed) do
+      [_, count] ->
+        case read_literal(conn, String.to_integer(count)) do
+          {:ok, literal} -> collect(conn, tag, [{:literal, literal}, trimmed | acc])
+          {:error, reason} -> {:error, reason}
+        end
+
+      nil ->
+        collect(conn, tag, [trimmed | acc])
     end
   end
 

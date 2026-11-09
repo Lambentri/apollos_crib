@@ -32,7 +32,7 @@ defmodule RoomAirQuality.MixProject do
       # mix.exs. Repeated here for the same reason as decimal.
       {:httpoison, "~> 3.0", override: true},
       {:csv, "~> 3.0"},
-      {:poison, "~> 5.0"},
+      {:httpoison, "~> 3.0", override: true},
       {:parent, "~> 0.12.1"},
       {:timex, "~> 3.7"},
       {:room_sanctum, in_umbrella: true}

@@ -32,18 +32,16 @@ defmodule RoomObservatory.MixProject do
   # lie about the architecture that outlives whoever wrote it.
   defp deps do
     [
-      # Poison pins decimal ~> 2.x; see the root mix.exs. Repeated here so the
-      # override holds when this app is built or tested on its own.
-      {:decimal, "~> 3.2", override: true},
-      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
-      # mix.exs. Repeated here for the same reason as decimal.
-      {:httpoison, "~> 3.0", override: true},
-      {:prom_ex, "~> 1.11.0"},
+      {:prom_ex, "~> 1.12.0"},
       # PromEx's own metrics_server is Plug.Cowboy-based. That is the right
       # choice *here* — unlike the Bandit-based apps in this fleet, cowboy is
       # already in this release via Phoenix 1.7 — so it is declared rather than
       # leaned on transitively.
       {:plug_cowboy, "~> 2.5"},
+      # wheretz pins httpoison ~> 1.6 for its download_data task; see the root
+      # mix.exs. Repeated here so the override holds when this app is built or
+      # tested on its own.
+      {:httpoison, "~> 3.0", override: true},
       {:room_sanctum, in_umbrella: true},
       {:room_hermes, in_umbrella: true},
       # For RoomGtfs.FeedHealth. Realtime feed health is the one thing here that

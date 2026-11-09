@@ -87,14 +87,20 @@ defmodule RoomSanctum.ConfigurationFixtures do
   Generate a scribus.
   """
   def scribus_fixture(attrs \\ %{}) do
-    {:ok, scribus} =
+    {user_id, attrs} =
       attrs
-      |> Enum.into(%{
-        configuration: [],
-        name: "some name",
-        resolution: "some resolution"
-      })
-      |> RoomSanctum.Configuration.create_scribus()
+      |> Map.new()
+      |> Map.pop_lazy(:user_id, fn -> RoomSanctum.OwnershipFixtures.owner().id end)
+
+    {:ok, scribus} =
+      RoomSanctum.Configuration.create_scribus(
+        {:user, user_id},
+        Enum.into(attrs, %{
+          configuration: [],
+          name: "some name",
+          resolution: "some resolution"
+        })
+      )
 
     scribus
   end

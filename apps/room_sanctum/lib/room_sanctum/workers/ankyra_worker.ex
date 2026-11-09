@@ -1,6 +1,8 @@
 defmodule RoomSanctum.Worker.Ankyra do
   @moduledoc false
-  use GenServer
+  # Transient: a worker whose rabbit user has been deleted stops normally and
+  # stays stopped, rather than being restarted into the same missing row.
+  use GenServer, restart: :transient
 
   require Logger
 
@@ -180,15 +182,24 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_cast(:refresh_db_cfg, state) do
     p = Accounts.get_rabbit_user!(state[:id])
     {:noreply, state |> Map.put(:ankyra, p) |> listen_for_requests()}
+  rescue
+    # Deleted. Raising here had the supervisor restart it straight back into
+    # the same missing row, until it gave up and took every Ankyra with it.
+    Ecto.NoResultsError -> {:stop, :normal, state}
   end
 
   def handle_cast({:publish, data}, state) do
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic, data |> Poison.encode!())
+        AMQP.Basic.publish(
+          chan,
+          "amq.topic",
+          state.ankyra.topic,
+          data |> RoomSanctum.JSON.encode!()
+        )
 
       {:error, error} ->
-        IO.inspect(error)
+        Logger.warning("ankyra #{state.id}: could not publish: #{inspect(error)}")
     end
 
     {:noreply, state}
@@ -201,7 +212,7 @@ defmodule RoomSanctum.Worker.Ankyra do
           chan,
           "amq.topic",
           state.ankyra.topic <> ".plus",
-          data |> Poison.encode!()
+          data |> RoomSanctum.JSON.encode!()
         )
 
       {:error, error} ->
@@ -211,7 +222,8 @@ defmodule RoomSanctum.Worker.Ankyra do
     {:noreply, state}
   end
 
-  def handle_cast({:discover_board, _board, _reading}, %{ankyra: nil} = state), do: {:noreply, state}
+  def handle_cast({:discover_board, _board, _reading}, %{ankyra: nil} = state),
+    do: {:noreply, state}
 
   def handle_cast({:discover_board, board, reading}, state) do
     devices = RoomSanctum.Hass.board_devices(state.id, state.ankyra.topic, board, reading)
@@ -225,14 +237,17 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   def handle_cast({:publish_img, data}, state) do
-    IO.puts("and here")
-
     case AMQP.Application.get_channel(:default) do
       {:ok, chan} ->
-        AMQP.Basic.publish(chan, "amq.topic", state.ankyra.topic <> ".img", data |> Poison.encode!()) |> IO.inspect
+        AMQP.Basic.publish(
+          chan,
+          "amq.topic",
+          state.ankyra.topic <> ".img",
+          data |> RoomSanctum.JSON.encode!()
+        )
 
       {:error, error} ->
-        IO.inspect(error)
+        Logger.warning("ankyra #{state.id}: could not publish img: #{inspect(error)}")
     end
 
     {:noreply, state}
@@ -243,9 +258,10 @@ defmodule RoomSanctum.Worker.Ankyra do
   def handle_info({:basic_cancel_ok, _meta}, state), do: {:noreply, state}
 
   def handle_info({:basic_deliver, payload, %{routing_key: key}}, state) do
-    cond do
-      String.contains?(key, ".up.") -> {:noreply, remember_position(state, payload)}
-      true -> {:noreply, serve_request(state, key)}
+    if String.contains?(key, ".up.") do
+      {:noreply, remember_position(state, payload)}
+    else
+      {:noreply, serve_request(state, key)}
     end
   end
 
@@ -330,7 +346,8 @@ defmodule RoomSanctum.Worker.Ankyra do
   defp listen_for_requests(state) do
     with {:ok, conn} <- AMQP.Application.get_connection(:default),
          {:ok, chan} <- AMQP.Channel.open(conn),
-         {:ok, %{queue: queue}} <- AMQP.Queue.declare(chan, "", exclusive: true, auto_delete: true),
+         {:ok, %{queue: queue}} <-
+           AMQP.Queue.declare(chan, "", exclusive: true, auto_delete: true),
          :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: request_key(state)),
          :ok <- AMQP.Queue.bind(chan, queue, "amq.topic", routing_key: uplink_key(state)),
          {:ok, tag} <- AMQP.Basic.consume(chan, queue, self(), no_ack: true) do
@@ -413,7 +430,7 @@ defmodule RoomSanctum.Worker.Ankyra do
   end
 
   defp decode_position(payload) do
-    with {:ok, %{"lat" => lat, "lon" => lon} = fix} <- Poison.decode(payload),
+    with {:ok, %{"lat" => lat, "lon" => lon} = fix} <- Jason.decode(payload),
          true <- is_number(lat) and is_number(lon) do
       %{
         lat: lat,
@@ -491,12 +508,13 @@ defmodule RoomSanctum.Worker.Ankyra do
 
   defp fetch_connections(url, cfg) do
     HTTPoison.get(
-      String.trim_trailing(url, "/") <> "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
+      String.trim_trailing(url, "/") <>
+        "/api/connections?columns=protocol,user,vhost,client_properties.client_id",
       [{"accept", "application/json"}],
       # The management API is plain HTTP inside the cluster (and on localhost
-      # in dev). hackney 4 lets that through by default today, but httpoison 3
-      # asks for the opt-in, and without it a later default would refuse
-      # quietly here -- the rescue below turns the error into "checking".
+      # in dev). hackney 4 can refuse basic auth over http unless told it is
+      # meant, and without the opt-in it would refuse quietly here -- the
+      # rescue below turns the error into "checking".
       hackney: [
         basic_auth: {to_string(cfg[:username]), to_string(cfg[:password])},
         insecure_basic_auth: true

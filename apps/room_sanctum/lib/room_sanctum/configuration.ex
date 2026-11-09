@@ -55,6 +55,10 @@ defmodule RoomSanctum.Configuration do
   """
   def get_source!(:bare, id), do: Repo.get!(Source, id)
 
+  # Someone else's source raises the not-found a missing one does.
+  def get_source!({:user, uid}, id),
+    do: Source |> Repo.get_by!(id: id, user_id: uid) |> Repo.preload([:mailboxes, :webhooks])
+
   @doc """
   Subscribe to config changes for one record, so a worker can be told rather
   than asking.
@@ -105,16 +109,23 @@ defmodule RoomSanctum.Configuration do
   """
   def create_source(attrs \\ %{}) do
     r = %Source{} |> Source.changeset(attrs) |> Repo.insert()
-    {:ok, d} = r
-    case d.type do
-      :packages ->
+
+    # A refused source is handed back as one, not raised as a MatchError.
+    case r do
+      {:ok, %Source{type: :packages} = d} ->
         ## create main mailbox
-        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate, designator: "mail_main"})
+        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate(), designator: "mail_main"})
         ## create mailbox for usps handling
-        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate, designator: "mail_usps"})
+        create_taxid(%{source_id: d.id, user: Ecto.UUID.generate(), designator: "mail_usps"})
 
         ## create default webhook url
-        create_agyr(%{source_id: d.id, path: Ecto.UUID.generate, user: Ecto.UUID.generate, token: Ecto.UUID.generate, designator: "ups_webhook"})
+        create_agyr(%{
+          source_id: d.id,
+          path: Ecto.UUID.generate(),
+          user: Ecto.UUID.generate(),
+          token: Ecto.UUID.generate(),
+          designator: "ups_webhook"
+        })
 
       _otherwise ->
         :ok
@@ -168,13 +179,16 @@ defmodule RoomSanctum.Configuration do
     s = source.meta
     original_tracking = source.meta.tracking |> Enum.map(fn x -> Map.from_struct(x) end)
     extant_id = original_tracking |> Enum.filter(fn t -> t.number == number end)
+
     case length(extant_id) do
-      0 -> new_entry = %{number: number, type: type, entries: []}
-           new_tracking = List.insert_at(original_tracking, -1 ,new_entry)
-           RoomSanctum.Configuration.update_source_meta(source, %{tracking: new_tracking})
-           new_tracking
+      0 ->
+        new_entry = %{number: number, type: type, entries: []}
+        new_tracking = List.insert_at(original_tracking, -1, new_entry)
+        RoomSanctum.Configuration.update_source_meta(source, %{tracking: new_tracking})
+        new_tracking
+
       _otherwise ->
-          original_tracking
+        original_tracking
     end
   end
 
@@ -270,6 +284,11 @@ defmodule RoomSanctum.Configuration do
   """
   def get_query!(id), do: Repo.get!(Query, id) |> Repo.preload(:source)
 
+  # Someone else's query raises the same Ecto.NoResultsError a missing one
+  # does, so a page built on this cannot be used to tell the two apart.
+  def get_query!({:user, uid}, id),
+    do: Query |> Repo.get_by!(id: id, user_id: uid) |> Repo.preload(:source)
+
   def get_queries!(ids) do
     from(q in Query, where: q.id in ^ids) |> Repo.all() |> Repo.preload(:source)
   end
@@ -315,7 +334,13 @@ defmodule RoomSanctum.Configuration do
   end
 
   @doc """
-  Deletes a query.
+  Deletes a query, and takes it off every vision it was on.
+
+  A vision records its queries twice -- the embedded list that renders, and
+  the `query_ids` every "which visions is this on" lookup reads -- and both
+  used to keep the deleted query's id. Both are cleared in the same
+  transaction as the delete, so a vision is never left pointing at a query
+  that is gone; the visions' workers are told once it has committed.
 
   ## Examples
 
@@ -327,8 +352,23 @@ defmodule RoomSanctum.Configuration do
 
   """
   def delete_query(%Query{} = query) do
-    Repo.delete(query)
+    Repo.transaction(fn ->
+      vision_ids = detach_from_visions(query.id)
+
+      case Repo.delete(query) do
+        {:ok, deleted} -> {deleted, vision_ids}
+        {:error, changeset} -> Repo.rollback(changeset)
+      end
+    end)
+    |> announce_detached()
   end
+
+  defp announce_detached({:ok, {deleted, vision_ids}}) do
+    Enum.each(vision_ids, &announce({:ok, %{id: &1}}, :vision))
+    {:ok, deleted}
+  end
+
+  defp announce_detached(error), do: error
 
   @doc """
   Returns an `%Ecto.Changeset{}` for tracking query changes.
@@ -378,14 +418,29 @@ defmodule RoomSanctum.Configuration do
   """
   def get_vision!(id), do: Repo.get!(Vision, id)
 
+  # Someone else's vision raises the not-found a missing one does.
+  def get_vision!({:user, uid}, id), do: Repo.get_by!(Vision, id: id, user_id: uid)
+
   def get_vision(id), do: Repo.get(Vision, id)
 
-  def get_visions(:query, id) do
-    from(v in Vision, where: ^id in v.query_ids) |> Repo.all()
+  def get_vision({:user, uid}, id), do: Repo.get_by(Vision, id: id, user_id: uid)
+
+  @doc """
+  The user's visions a query is on, and (`get_visions_nv/3`) the ones it is
+  not -- the ones it could be pinned to. Both are scoped to the user: the query
+  page lists them, and another user's visions are not theirs to see or pin to.
+  """
+  def get_visions(:query, id, user_id) do
+    from(v in Vision, where: v.user_id == ^user_id and ^id in v.query_ids) |> Repo.all()
   end
 
-  def get_visions_nv(:query, id) do
-    from(v in Vision, where: ^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == []) |> Repo.all()
+  def get_visions_nv(:query, id, user_id) do
+    from(v in Vision,
+      where:
+        v.user_id == ^user_id and
+          (^id not in v.query_ids or is_nil(v.query_ids) or v.query_ids == [])
+    )
+    |> Repo.all()
   end
 
   @doc """
@@ -472,6 +527,46 @@ defmodule RoomSanctum.Configuration do
   end
 
   #
+  # Strips a query from both halves of every vision that holds it, whoever
+  # owns the vision, returning the ids of the visions it touched. Written as
+  # one UPDATE rather than through the changeset: it has to work on whatever
+  # is stored -- embeds duplicated by the old re-pinning, an embed whose query
+  # was saved as a string -- which the changeset would refuse, and a refusal
+  # here would block the delete.
+  defp detach_from_visions(query_id) do
+    id_text = to_string(query_id)
+
+    {_count, ids} =
+      from(v in Vision,
+        where:
+          ^query_id in v.query_ids or
+            fragment(
+              "jsonb_typeof(?) = 'array' AND EXISTS (SELECT 1 FROM jsonb_array_elements(?) AS e WHERE e->'data'->>'query' = ?)",
+              v.queries,
+              v.queries,
+              ^id_text
+            ),
+        select: v.id,
+        update: [
+          set: [
+            query_ids: fragment("array_remove(?, ?)", v.query_ids, ^query_id),
+            queries:
+              fragment(
+                "CASE WHEN jsonb_typeof(?) = 'array' THEN (SELECT COALESCE(jsonb_agg(e.elem ORDER BY e.ord), '[]'::jsonb) FROM jsonb_array_elements(?) WITH ORDINALITY AS e(elem, ord) WHERE (e.elem->'data'->>'query') IS DISTINCT FROM ?) ELSE ? END",
+                v.queries,
+                v.queries,
+                ^id_text,
+                v.queries
+              ),
+            updated_at: ^NaiveDateTime.truncate(NaiveDateTime.utc_now(), :second)
+          ]
+        ]
+      )
+      |> Repo.update_all([])
+
+    ids
+  end
+
   def get_landing_vision() do
     q =
       from v in Vision,
@@ -517,6 +612,9 @@ defmodule RoomSanctum.Configuration do
 
   """
   def get_foci!(id), do: Repo.get!(Foci, id)
+
+  # Someone else's foci raises the not-found a missing one does.
+  def get_foci!({:user, uid}, id), do: Repo.get_by!(Foci, id: id, user_id: uid)
 
   @doc """
   Where a query is being asked from.
@@ -653,6 +751,9 @@ defmodule RoomSanctum.Configuration do
   """
   def get_pythiae!(id), do: Repo.get!(Pythiae, id)
 
+  # Someone else's pythiae raises the not-found a missing one does.
+  def get_pythiae!({:user, uid}, id), do: Repo.get_by!(Pythiae, id: id, user_id: uid)
+
   alias RoomSanctum.Configuration.Plani
 
   @doc "Every Plani, for the supervisor that keeps a worker per one."
@@ -668,6 +769,15 @@ defmodule RoomSanctum.Configuration do
   end
 
   def get_plani!(id), do: Repo.get!(Plani, id)
+
+  # Someone else's plani raises the not-found a missing one -- or a junk id --
+  # does.
+  def get_plani!({:user, uid}, id) do
+    case Integer.parse(to_string(id)) do
+      {n, ""} -> Repo.get_by!(Plani, id: n, user_id: uid)
+      _ -> raise Ecto.NoResultsError, queryable: Plani
+    end
+  end
 
   def create_plani(attrs \\ %{}) do
     %Plani{} |> Plani.changeset(attrs) |> Repo.insert() |> announce(:plani)
@@ -721,13 +831,16 @@ defmodule RoomSanctum.Configuration do
     from(p in Pythiae, where: ^id in p.visions) |> Repo.all()
   end
 
+  def get_pythiae(:vision, id, user_id) do
+    from(p in Pythiae, where: p.user_id == ^user_id and ^id in p.visions) |> Repo.all()
+  end
+
   @doc """
   The pythiae a vision is *not* on -- the ones it could be added to.
 
-  Scoped to the user, unlike its opposite number for visions
-  (`get_visions_nv/2`), which lists every vision in the database regardless of
-  who owns it. A pythiae is a screen on somebody's wall; offering to put your
-  vision on one belonging to someone else is not a feature.
+  Scoped to the user, like its opposite number for visions
+  (`get_visions_nv/3`). A pythiae is a screen on somebody's wall; offering to
+  put your vision on one belonging to someone else is not a feature.
   """
   def get_pythiae_nv(:vision, id, user_id) do
     from(p in Pythiae,
@@ -819,6 +932,10 @@ defmodule RoomSanctum.Configuration do
     Repo.all(Scribus)
   end
 
+  def list_cfg_scribus({:user, uid}) do
+    Repo.all(from s in Scribus, where: s.user_id == ^uid)
+  end
+
   @doc """
   Gets a single scribus.
 
@@ -835,20 +952,26 @@ defmodule RoomSanctum.Configuration do
   """
   def get_scribus!(id), do: Repo.get!(Scribus, id)
 
+  # Someone else's scribus raises the not-found a missing one does.
+  def get_scribus!({:user, uid}, id), do: Repo.get_by!(Scribus, id: id, user_id: uid)
+
   @doc """
-  Creates a scribus.
+  Creates a scribus belonging to the given user.
+
+  The owner is set here rather than taken from `attrs`, so a form cannot
+  make one for somebody else.
 
   ## Examples
 
-      iex> create_scribus(%{field: value})
+      iex> create_scribus({:user, uid}, %{field: value})
       {:ok, %Scribus{}}
 
-      iex> create_scribus(%{field: bad_value})
+      iex> create_scribus({:user, uid}, %{field: bad_value})
       {:error, %Ecto.Changeset{}}
 
   """
-  def create_scribus(attrs \\ %{}) do
-    %Scribus{}
+  def create_scribus({:user, uid}, attrs \\ %{}) do
+    %Scribus{user_id: uid}
     |> Scribus.changeset(attrs)
     |> Repo.insert()
   end
@@ -1133,6 +1256,9 @@ defmodule RoomSanctum.Configuration do
 
   """
   def get_keryx!(id), do: Repo.get!(Keryx, id)
+
+  # Someone else's keryx raises the not-found a missing one does.
+  def get_keryx!({:user, uid}, id), do: Repo.get_by!(Keryx, id: id, user_id: uid)
 
   @doc """
   Creates a keryx.

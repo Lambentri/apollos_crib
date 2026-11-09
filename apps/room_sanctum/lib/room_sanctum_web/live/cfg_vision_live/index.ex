@@ -20,7 +20,7 @@ defmodule RoomSanctumWeb.VisionLive.Index do
   defp apply_action(socket, :edit, %{"id" => id}) do
     socket
     |> assign(:page_title, "Modify Vision")
-    |> assign(:vision, Configuration.get_vision!(id))
+    |> assign(:vision, Configuration.get_vision!(owner(socket), id))
   end
 
   defp apply_action(socket, :new, _params) do
@@ -42,7 +42,7 @@ defmodule RoomSanctumWeb.VisionLive.Index do
 
   @impl true
   def handle_event("delete", %{"id" => id}, socket) do
-    vision = Configuration.get_vision!(id)
+    vision = Configuration.get_vision!(owner(socket), id)
     {:ok, _} = Configuration.delete_vision(vision)
 
     {:noreply, stream_delete(socket, :visions, vision)}
@@ -55,4 +55,7 @@ defmodule RoomSanctumWeb.VisionLive.Index do
   defp list_visions(uid) do
     Configuration.list_visions({:user, uid})
   end
+
+  # Ids from the URL or the client are looked up among the user's own.
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 end

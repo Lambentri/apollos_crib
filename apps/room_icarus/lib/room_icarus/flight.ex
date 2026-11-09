@@ -113,12 +113,10 @@ defmodule RoomIcarus.Flight do
 
     base = if is_nil(watch.first_seen_at), do: Map.put(base, :first_seen_at, now), else: base
 
-    cond do
-      landed?(watch, aircraft) ->
-        base |> Map.merge(%{state: "landed", landed_at: now, eta: nil})
-
-      true ->
-        Map.put(base, :state, "enroute")
+    if landed?(watch, aircraft) do
+      base |> Map.merge(%{state: "landed", landed_at: now, eta: nil})
+    else
+      Map.put(base, :state, "enroute")
     end
   end
 
@@ -166,10 +164,13 @@ defmodule RoomIcarus.Flight do
   defp near_destination?(_), do: false
 
   defp position_of(pos) do
-    lat = pos["lat"] || pos[:lat]
-    lon = pos["lon"] || pos[:lon]
+    lat = field(pos, :lat)
+    lon = field(pos, :lon)
     if is_number(lat) and is_number(lon), do: {lat, lon}, else: nil
   end
+
+  # Decoded-JSON string keys first, then atom keys.
+  defp field(pos, key), do: Map.get(pos, Atom.to_string(key)) || Map.get(pos, key)
 
   @doc """
   Estimated touchdown from current position, ground speed, and the great-circle
@@ -212,7 +213,7 @@ defmodule RoomIcarus.Flight do
 
     case HTTPoison.get(url, [{"Accept", "application/json"}], recv_timeout: 15_000) do
       {:ok, %{status_code: 200, body: body}} ->
-        case Poison.decode(body) do
+        case Jason.decode(body) do
           {:ok, %{"ac" => ac}} when is_list(ac) ->
             {:ok, Enum.map(ac, &RoomIcarus.Worker.normalize_aircraft/1)}
 

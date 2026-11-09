@@ -54,7 +54,7 @@ gl_available_projects={@gitlab_available_projects}
             <div class="card-body">
                 <h3 class="card-title">Config
                     <.tint_dot tint={@source.meta.tint} label={@source.meta.tint_label} /></h3>
-                <pre><%= @source.config |> Poison.encode!( pretty: true) %></pre>
+                <pre><%= @source.config |> RoomSanctum.JSON.encode!( pretty: true) %></pre>
             </div>
         </div>
     </div>
@@ -72,7 +72,7 @@ gl_available_projects={@gitlab_available_projects}
                         <% end %>
                         </ul>
                         <br/>
-                        Last Triggered <%= @source.meta |> is_updated %>
+                        Last Triggered <%= @source.meta |> last_run_label %>
                     </div>
                 </div>
             </div>
@@ -88,7 +88,7 @@ gl_available_projects={@gitlab_available_projects}
                             <% end %>
                         </ul>
                         <br/>
-                        Last Triggered <%= @source.meta |> is_updated %>
+                        Last Triggered <%= @source.meta |> last_run_label %>
                     </div>
                 </div>
             </div>
@@ -104,7 +104,7 @@ gl_available_projects={@gitlab_available_projects}
                     <div class="py-1">
                         <%= case @source.type do %>
                     <% :gtfs -> %>
-                        Last Updated <%= @source.meta |> is_updated %>
+                        Last Updated <%= @source.meta |> last_run_label %>
                     <% _default -> %>
                     <% end %>
                     </div>

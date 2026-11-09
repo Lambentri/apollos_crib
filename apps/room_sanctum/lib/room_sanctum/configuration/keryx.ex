@@ -2,6 +2,8 @@ defmodule RoomSanctum.Configuration.Keryx do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias RoomSanctum.Configuration.{Ownership, Query}
+
   schema "keryxiae" do
     field :name, :string
     field :ttl, :integer
@@ -18,6 +20,9 @@ defmodule RoomSanctum.Configuration.Keryx do
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :query_ids, :ttl])
     |> unique_constraint(:name)
+    # The worker publishes every one of these queries' results, so another
+    # user's would be published to this keryx's subscribers.
+    |> Ownership.validate_owned(:query_ids, Query)
   end
 
   @doc """

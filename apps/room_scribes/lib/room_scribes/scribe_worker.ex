@@ -4,7 +4,6 @@ defmodule RoomScribe.Worker do
   use Nebulex.Caching
   use AMQP
 
-
   require Logger
 
   alias RoomSanctum.Configuration
@@ -14,7 +13,6 @@ defmodule RoomScribe.Worker do
   @repub_error "#{@queue_repub}_error"
   @exchange "lambentri.browser_ctl"
   @queue_snap "lambentri.browser_ctl.snap"
-
 
   def start_link(opts) do
     Parent.GenServer.start_link(__MODULE__, opts, name: via_tuple("scribe"))
@@ -53,7 +51,10 @@ defmodule RoomScribe.Worker do
     {:noreply, chan}
   end
 
-  def handle_info({:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}}, state) do
+  def handle_info(
+        {:basic_deliver, payload, %{delivery_tag: tag, redelivered: redelivered}},
+        state
+      ) do
     # You might want to run payload consumption in separate Tasks in production
     consume(state.chan, tag, redelivered, payload)
     {:noreply, state}
@@ -61,14 +62,17 @@ defmodule RoomScribe.Worker do
 
   def handle_cast({:request, scribe_id}, state) do
     sc = Configuration.get_scribus!(scribe_id)
-    path = System.get_env("PHX_HOST") # todo move to runtime.exs
-    full_path = case sc.theme do
-      :inky -> "#{path}/p/s/i/#{scribe_id}"
-      :color -> "#{path}/p/s/c/#{scribe_id}"
-      :her -> "#{path}/p/s/h/#{scribe_id}"
-      :afterdark -> "#{path}/p/s/a/#{scribe_id}"
-      _ -> "#{path}/p/s/c/#{scribe_id}"
-    end
+    # Read from the environment here rather than from runtime.exs config.
+    path = System.get_env("PHX_HOST")
+
+    full_path =
+      case sc.theme do
+        :inky -> "#{path}/p/s/i/#{scribe_id}"
+        :color -> "#{path}/p/s/c/#{scribe_id}"
+        :her -> "#{path}/p/s/h/#{scribe_id}"
+        :afterdark -> "#{path}/p/s/a/#{scribe_id}"
+        _ -> "#{path}/p/s/c/#{scribe_id}"
+      end
 
     chan = state.chan
 
@@ -82,28 +86,31 @@ defmodule RoomScribe.Worker do
       wait: sc.wait
     }
 
-    AMQP.Basic.publish(chan, @exchange, sc.resolution, msg |> Poison.encode!())
+    AMQP.Basic.publish(chan, @exchange, sc.resolution, msg |> Jason.encode!())
 
     {:noreply, state}
   end
 
   defp setup_queue(chan) do
     {:ok, _} = Queue.declare(chan, @repub_error, durable: true)
+
     # Messages that cannot be delivered to any consumer in the main queue will be routed to the error queue
-    {:ok, _} = Queue.declare(chan, @queue_repub,
-      durable: true,
-      arguments: [
-        {"x-dead-letter-exchange", :longstr, ""},
-        {"x-dead-letter-routing-key", :longstr, @repub_error}
-      ]
-    )
+    {:ok, _} =
+      Queue.declare(chan, @queue_repub,
+        durable: true,
+        arguments: [
+          {"x-dead-letter-exchange", :longstr, ""},
+          {"x-dead-letter-routing-key", :longstr, @repub_error}
+        ]
+      )
+
     :ok = Exchange.direct(chan, @exchange, durable: false)
-    :ok = Queue.bind(chan, @queue_repub, @exchange, [routing_key: @queue_repub])
+    :ok = Queue.bind(chan, @queue_repub, @exchange, routing_key: @queue_repub)
   end
 
   defp consume(channel, tag, redelivered, payload) do
-    decoded = payload |> Poison.decode!(keys: :atoms)
-    :ok = Basic.ack channel, tag
+    decoded = payload |> Jason.decode!(keys: :atoms)
+    :ok = Basic.ack(channel, tag)
     Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "scribus:#{decoded.id}", {:update, decoded})
     write_cache(decoded.id, decoded)
   end
@@ -113,7 +120,8 @@ defmodule RoomScribe.Worker do
     entry
   end
 
-  def read_cache(id)  when is_integer(id), do: read_cache(id |> Integer.to_string)
+  def read_cache(id) when is_integer(id), do: read_cache(id |> Integer.to_string())
+
   def read_cache(id) do
     RoomZeus.Cache.get({"scribus", id})
   end

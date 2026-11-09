@@ -147,7 +147,9 @@ defmodule RoomSanctumWeb.KeryxLive.FormComponent do
   end
 
   def handle_event("generate-new-name", _params, socket) do
-    changeset = socket.assigns.changeset |> Ecto.Changeset.change(name: gen_name() |> String.downcase)
+    changeset =
+      socket.assigns.changeset |> Ecto.Changeset.change(name: gen_name() |> String.downcase())
+
     {:noreply, assign(socket, changeset: changeset, form: to_form(changeset))}
   end
 
@@ -155,11 +157,12 @@ defmodule RoomSanctumWeb.KeryxLive.FormComponent do
     query_id = String.to_integer(query_id_str)
     selected = socket.assigns.selected_query_ids
 
-    new_selected = if query_id in selected do
-      List.delete(selected, query_id)
-    else
-      [query_id | selected]
-    end
+    new_selected =
+      if query_id in selected do
+        List.delete(selected, query_id)
+      else
+        [query_id | selected]
+      end
 
     changeset = socket.assigns.changeset |> Ecto.Changeset.change(query_ids: new_selected)
 
@@ -185,7 +188,7 @@ defmodule RoomSanctumWeb.KeryxLive.FormComponent do
          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset) |> IO.inspect)}
+        {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 
@@ -200,7 +203,7 @@ defmodule RoomSanctumWeb.KeryxLive.FormComponent do
          |> push_patch(to: socket.assigns.patch)}
 
       {:error, %Ecto.Changeset{} = changeset} ->
-        {:noreply, assign(socket, form: to_form(changeset)  |> IO.inspect)}
+        {:noreply, assign(socket, form: to_form(changeset))}
     end
   end
 

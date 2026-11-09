@@ -1,6 +1,10 @@
 defmodule RoomSanctum.Configuration.Vision do
   use Ecto.Schema
   import Ecto.Changeset
+  import Ecto.Query, only: [from: 2]
+
+  alias RoomSanctum.Configuration.{Ownership, Query}
+  alias RoomSanctum.Repo
 
   schema "cfg_visions" do
     belongs_to :user, RoomSanctum.Accounts.User
@@ -9,7 +13,7 @@ defmodule RoomSanctum.Configuration.Vision do
     embeds_many :queries, RoomSanctum.Configuration.Vision.Schema, on_replace: :delete
     field :public, :boolean
 
-    embeds_one :meta, Meta, on_replace: :delete, primary_key: :false do
+    embeds_one :meta, Meta, on_replace: :delete, primary_key: false do
       field :tint, :string
       # Which subgroup of that tint -- see RoomSanctum.Tints.
       field :tint_label, :string
@@ -24,11 +28,33 @@ defmodule RoomSanctum.Configuration.Vision do
     vision
     |> cast(attrs, [:name, :user_id, :query_ids, :public])
     |> cast_embed(:meta, required: false, with: &meta_changeset/2)
-    |> cast_embed(:queries, with: &RoomSanctum.Configuration.Vision.Schema.changeset/2, sort_param: :queries_sort, drop_param: :queries_drop)
+    |> cast_embed(:queries,
+      with: &RoomSanctum.Configuration.Vision.Schema.changeset/2,
+      sort_param: :queries_sort,
+      drop_param: :queries_drop
+    )
     |> foreign_key_constraint(:user_id)
     |> validate_required([:name, :user_id])
     |> validate_queries_have_valid_ids()
+    |> validate_embedded_queries_owned()
     |> validate_queries_are_distinct()
+  end
+
+  # The rows are what the vision's worker actually runs, so the same rule as
+  # query_ids holds for them: a row added with another user's query in it
+  # would show that user's results here.
+  defp validate_embedded_queries_owned(changeset) do
+    added =
+      embedded_query_ids(get_field(changeset, :queries)) --
+        embedded_query_ids(changeset.data.queries)
+
+    Ownership.validate_added(changeset, :queries, added, Query)
+  end
+
+  defp embedded_query_ids(queries) do
+    queries
+    |> List.wrap()
+    |> Enum.map(fn query -> query.data && Map.get(query.data, :query) end)
   end
 
   # A query belongs on a vision once. Twice is never deliberate -- the same
@@ -60,22 +86,37 @@ defmodule RoomSanctum.Configuration.Vision do
   # render as an unstyled dot rather than a colour.
   defp validate_tint(changeset) do
     case get_field(changeset, :tint) do
-      nil -> changeset
-      "" -> put_change(changeset, :tint, nil)
-      tint -> if RoomSanctum.Tints.valid?(tint), do: changeset, else: add_error(changeset, :tint, "unknown colour")
+      nil ->
+        changeset
+
+      "" ->
+        put_change(changeset, :tint, nil)
+
+      tint ->
+        if RoomSanctum.Tints.valid?(tint),
+          do: changeset,
+          else: add_error(changeset, :tint, "unknown colour")
     end
   end
 
+  # A vision can only point at its owner's queries -- the form's picker only
+  # offers those. Only the ids this change adds are checked: a vision struct
+  # loaded before one of its queries was deleted still holds that id, and it
+  # has to stay editable.
   defp validate_queries_have_valid_ids(changeset) do
-    case get_field(changeset, :query_ids) do
-      ids when is_list(ids) and length(ids) > 0 ->
-        # Validate that all query IDs exist and belong to the user
-        changeset
-      _ ->
-        changeset
+    with [_ | _] = ids <- get_change(changeset, :query_ids),
+         [_ | _] = added <- Enum.uniq(ids) -- (changeset.data.query_ids || []),
+         user_id when not is_nil(user_id) <- get_field(changeset, :user_id),
+         [_ | _] <- added -- owned_query_ids(added, user_id) do
+      add_error(changeset, :query_ids, "must be queries you own")
+    else
+      _ -> changeset
     end
   end
 
+  defp owned_query_ids(ids, user_id) do
+    Repo.all(from q in Query, where: q.id in ^ids and q.user_id == ^user_id, select: q.id)
+  end
 end
 
 defmodule RoomSanctum.Configuration.Vision.Schema do
@@ -86,7 +127,7 @@ defmodule RoomSanctum.Configuration.Vision.Schema do
   embedded_schema do
     field :type, Ecto.Enum, values: [:alerts, :time, :pinned, :background]
 
-    polymorphic_embeds_one :data,
+    polymorphic_embeds_one(:data,
       types: [
         alerts: RoomSanctum.Configuration.Vision.Schema0Alerts,
         time: RoomSanctum.Configuration.Vision.Schema1Time,
@@ -95,6 +136,7 @@ defmodule RoomSanctum.Configuration.Vision.Schema do
       ],
       on_type_not_found: :raise,
       on_replace: :update
+    )
   end
 
   def changeset(source, params) do
@@ -182,13 +224,18 @@ defmodule RoomSanctum.Configuration.Vision.Schema3Background do
 
   defp validate_query_selection(changeset) do
     case get_field(changeset, :query) do
-      query when is_integer(query) and query > 0 -> changeset
+      query when is_integer(query) and query > 0 ->
+        changeset
+
       query when is_binary(query) and query != "" ->
         case Integer.parse(query) do
           {id, ""} when id > 0 -> put_change(changeset, :query, id)
           _ -> add_error(changeset, :query, "must be a valid query ID")
         end
-      _ -> changeset  # Allow empty for new entries
+
+      # Allow empty for new entries
+      _ ->
+        changeset
     end
   end
 end

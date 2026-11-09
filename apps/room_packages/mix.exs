@@ -25,9 +25,12 @@ defmodule RoomPackages.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:httpoison, "~> 3.0"},
-      {:poison, "~> 5.0", override: true},
+      {:httpoison, "~> 3.0", override: true},
+      {:jason, "~> 1.4"},
       {:plug_crypto, "~> 2.0"},
+      # The worker reads and writes sources through RoomSanctum, which the
+      # umbrella starts in production; its tests need the Repo here too.
+      {:room_sanctum, in_umbrella: true, only: :test}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},
       # {:sibling_app_in_umbrella, in_umbrella: true}

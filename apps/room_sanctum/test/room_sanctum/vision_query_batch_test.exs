@@ -41,11 +41,10 @@ defmodule RoomSanctum.VisionQueryBatchTest do
       on_timeout: :kill_task
     )
     |> Enum.zip(jobs)
-    |> Enum.map(fn
+    |> Map.new(fn
       {{:ok, v}, {name, _}} -> {name, v}
       {{:exit, _reason}, {name, _}} -> {name, []}
     end)
-    |> Enum.into(%{})
   end
 
   test "a slow query costs only itself" do

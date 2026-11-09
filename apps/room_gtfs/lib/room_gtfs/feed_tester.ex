@@ -119,7 +119,11 @@ defmodule RoomGtfs.FeedTester do
       true ->
         Enum.reduce(kinds, result, fn kind, acc ->
           if counts[kind] == 0 do
-            add(acc, :warn, "no #{kind_name(kind)} in this feed, though it is configured for them")
+            add(
+              acc,
+              :warn,
+              "no #{kind_name(kind)} in this feed, though it is configured for them"
+            )
           else
             acc
           end
@@ -256,21 +260,29 @@ defmodule RoomGtfs.FeedTester do
     end
   end
 
-  defp do_check_agency(result, feed, source) do
-    prefixes =
-      feed.entity
-      |> Enum.map(&trip_id/1)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.map(fn id ->
-        case String.split(id, ":", parts: 2) do
-          [prefix, _rest] -> prefix
-          _ -> nil
-        end
-      end)
-      |> Enum.reject(&is_nil/1)
-      |> Enum.uniq()
-      |> Enum.sort()
+  # The operator prefixes on the feed's trip ids -- the part before the first
+  # colon -- each once, sorted.
+  defp trip_prefixes(feed) do
+    feed.entity
+    |> Enum.map(&trip_id/1)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.map(fn id ->
+      case String.split(id, ":", parts: 2) do
+        [prefix, _rest] -> prefix
+        _ -> nil
+      end
+    end)
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
 
+  defp shown_prefixes(prefixes) do
+    "#{Enum.join(Enum.take(prefixes, 6), ", ")}#{if Enum.count_until(prefixes, 7) > 6, do: ", …", else: ""}"
+  end
+
+  defp do_check_agency(result, feed, source) do
+    prefixes = trip_prefixes(feed)
     configured = Map.get(source.config, :rt_agency)
     result = Map.put(result, :prefixes, prefixes)
 
@@ -279,7 +291,7 @@ defmodule RoomGtfs.FeedTester do
         add(
           result,
           :error,
-          "trip ids are prefixed (#{Enum.join(Enum.take(prefixes, 6), ", ")}#{if length(prefixes) > 6, do: ", …", else: ""}) " <>
+          "trip ids are prefixed (#{shown_prefixes(prefixes)}) " <>
             "but no operator code is set, so nothing will match the schedule"
         )
 
@@ -462,7 +474,10 @@ defmodule RoomGtfs.FeedTester do
 
   defp describe_failure(:decode_failed, url), do: describe_failure(:not_protobuf, url)
   defp describe_failure(:bad_status, _url), do: "did not answer with HTTP 200"
-  defp describe_failure(%HTTPoison.Error{reason: reason}, _url), do: "could not be reached: #{inspect(reason)}"
+
+  defp describe_failure(%HTTPoison.Error{reason: reason}, _url),
+    do: "could not be reached: #{inspect(reason)}"
+
   defp describe_failure(reason, _url), do: "failed: #{inspect(reason)}"
 
   defp describe_counts(counts) do
@@ -514,8 +529,10 @@ defmodule RoomGtfs.FeedTester do
     |> put_caps(stus, [
       {"live occupancy (per stop)", &set?(&1.departure_occupancy_status)},
       {"skipped stops", &(&1.schedule_relationship == :SKIPPED)},
-      {"track assignment", &(&1.stop_time_properties && set?(&1.stop_time_properties.assigned_stop_id))},
-      {"per-stop headsign", &(&1.stop_time_properties && set?(&1.stop_time_properties.stop_headsign))}
+      {"track assignment",
+       &(&1.stop_time_properties && set?(&1.stop_time_properties.assigned_stop_id))},
+      {"per-stop headsign",
+       &(&1.stop_time_properties && set?(&1.stop_time_properties.stop_headsign))}
     ])
     |> put_caps(events, [
       {"delay", &(&1.delay != nil)},

@@ -19,6 +19,7 @@ defmodule RoomScribus.Timer do
   def init(opts) do
     Process.send_after(self(), :tick, 150)
     Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "scribus:#{opts[:name]}")
+
     Periodic.start_link(
       every: :timer.seconds(@dynamic_refresh_seconds),
       run: fn -> RoomScribus.Timer.reread(opts[:name]) end,
@@ -38,10 +39,12 @@ defmodule RoomScribus.Timer do
     case state.scribus do
       nil ->
         Process.send_after(self(), :tick, 1000)
+
       value ->
         Process.send_after(self(), :tick, value.buffer * 1000)
-        RoomScribe.Worker.request(state.scribus.id |> Integer.to_string)
+        RoomScribe.Worker.request(state.scribus.id |> Integer.to_string())
     end
+
     {:noreply, state}
   end
 
@@ -52,12 +55,11 @@ defmodule RoomScribus.Timer do
   end
 
   def handle_info({:update, scan_data}, state) do
-    IO.inspect("gottem here")
-    png = scan_data.png |> Base.decode64!
-#    {:ok, pixels} = Pixels.read(png) |> IO.inspect
-#    as_grayscale = to_grayscale_again(pixels) |> IO.inspect
-#    filled = fill_from_array(pixels.height, pixels.width, as_grayscale)
-#    RoomSanctum.Worker.Ankyra.publish_img(state.scribus.ankyra, scan_data |> Map.put(:png, :binary.bin_to_list(filled) |> to_string()))
+    png = scan_data.png |> Base.decode64!()
+    #    {:ok, pixels} = Pixels.read(png) |> IO.inspect
+    #    as_grayscale = to_grayscale_again(pixels) |> IO.inspect
+    #    filled = fill_from_array(pixels.height, pixels.width, as_grayscale)
+    #    RoomSanctum.Worker.Ankyra.publish_img(state.scribus.ankyra, scan_data |> Map.put(:png, :binary.bin_to_list(filled) |> to_string()))
     {:noreply, state}
   end
 
@@ -72,7 +74,8 @@ defmodule RoomScribus.Timer do
         acc = pixel(acc, width, height, x, y, color)
         {:cont, acc}
       else
-        {:cont, acc}  # Continue, but don't modify the framebuffer if out of bounds
+        # Continue, but don't modify the framebuffer if out of bounds
+        {:cont, acc}
       end
     end)
   end
@@ -101,7 +104,7 @@ defmodule RoomScribus.Timer do
         if rem(x, 2) == 1 do
           (existing_byte &&& 0x0F) ||| (color &&& 0xF0)
         else
-          (existing_byte &&& 0xF0) ||| ((color >>> 4) && 0x0F)
+          (existing_byte &&& 0xF0) ||| (color >>> 4 && 0x0F)
         end
 
       updated_fb = put_byte(fb, pos, new_byte)

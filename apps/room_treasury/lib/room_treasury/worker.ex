@@ -99,25 +99,23 @@ defmodule RoomTreasury.Worker do
     to = normalise(field(query, :to))
     precision = field(query, :precision) || 4
 
-    cond do
-      is_nil(from) or is_nil(to) ->
-        {:reply, [], state}
+    if is_nil(from) or is_nil(to) do
+      {:reply, [], state}
+    else
+      {rates, state} =
+        case Map.get(state.rates, from) do
+          nil ->
+            case fetch_base(from) do
+              {:ok, payload} -> {Map.put(state.rates, from, payload), state}
+              :error -> {state.rates, state}
+            end
 
-      true ->
-        {rates, state} =
-          case Map.get(state.rates, from) do
-            nil ->
-              case fetch_base(from) do
-                {:ok, payload} -> {Map.put(state.rates, from, payload), state}
-                :error -> {state.rates, state}
-              end
+          _ ->
+            {state.rates, state}
+        end
 
-            _ ->
-              {state.rates, state}
-          end
-
-        state = %{state | rates: rates, names: names(state)}
-        {:reply, [quote_pair({from, to}, state, precision)], state}
+      state = %{state | rates: rates, names: names(state)}
+      {:reply, [quote_pair({from, to}, state, precision)], state}
     end
   end
 
@@ -210,7 +208,7 @@ defmodule RoomTreasury.Worker do
              follow_redirect: true
            ) do
         {:ok, %{status_code: 200, body: body}} ->
-          case Poison.decode(body) do
+          case Jason.decode(body) do
             {:ok, decoded} -> {:halt, {:ok, decoded}}
             {:error, _} -> {:cont, :error}
           end

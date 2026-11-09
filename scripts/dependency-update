@@ -1,0 +1,402 @@
+#!/usr/bin/env python3
+"""Security updates for a repository's dependencies, as pull requests.
+
+Run by .forgejo/workflows/dependency-updates.yml. For each lockfile
+osv-scanner reads, finds the packages with a known vulnerability that a
+newer version fixes, bumps them to the lowest version that fixes every
+advisory against them, and keeps one pull request per ecosystem up to
+date with the result:
+
+  deps/security-hex    mix.lock files       (mix deps.update)
+  deps/security-cargo  Cargo.lock files     (cargo update --precise)
+
+The branch is force-pushed and its pull request refreshed in place, so
+there is never a pile of them; once an ecosystem has nothing left to
+fix, its pull request is closed. A branch someone else has pushed to —
+a person fixing what a bump broke — is left alone: their commits aren't
+the bot's to overwrite. Packages it can't fix — no fixed
+version yet, or one the manifest's constraint won't reach — are listed
+in the pull request, not touched.
+
+Needs: osv-scanner (OSV_SCANNER, default `osv-scanner`), mix and/or
+cargo for the ecosystems present, git with push access, and in CI the
+job's token (GITHUB_TOKEN) with `contents: write` and `pull-requests:
+write`. Everything else comes from the job's environment
+(GITHUB_SERVER_URL, GITHUB_REPOSITORY, GITHUB_RUN_NUMBER).
+
+  scripts/dependency-update            do it
+  scripts/dependency-update --dry-run  show what it would bump, change nothing
+
+Standard library only, so it runs wherever python3 does.
+"""
+
+import argparse
+import json
+import os
+import re
+import subprocess
+import sys
+import urllib.error
+import urllib.request
+
+ECOSYSTEMS = {
+    # OSV ecosystem → (branch suffix, lockfile name, human name)
+    "Hex": ("hex", "mix.lock", "Hex (mix)"),
+    "crates.io": ("cargo", "Cargo.lock", "crates.io (cargo)"),
+}
+
+BOT_NAME = os.environ.get("GG_BOT_NAME", "gg-security")
+BOT_EMAIL = os.environ.get("GG_BOT_EMAIL", "gg-security@bots.invalid")
+
+
+# ── versions ────────────────────────────────────────────────────────────
+
+
+def vkey(version):
+    """Sort key for a semver-ish version: 1.2.3 < 1.2.10, 1.0.0-rc.1 < 1.0.0."""
+    main, _, pre = version.partition("-")
+    nums = []
+    for part in main.split("."):
+        m = re.match(r"\d+", part)
+        nums.append(int(m.group()) if m else 0)
+    nums += [0] * (3 - len(nums))
+    if not pre:
+        return (nums, 1, ())
+    pre_parts = tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in pre.split("."))
+    return (nums, 0, pre_parts)
+
+
+def fixed_for(vuln, name, current):
+    """The version that fixes `vuln` for `name` at `current`, or None."""
+    for affected in vuln.get("affected", []):
+        if affected.get("package", {}).get("name") != name:
+            continue
+        for rng in affected.get("ranges", []):
+            if rng.get("type") not in ("SEMVER", "ECOSYSTEM"):
+                continue
+            introduced = None
+            for event in rng.get("events", []):
+                if "introduced" in event:
+                    introduced = event["introduced"]
+                elif "fixed" in event and introduced is not None:
+                    low = "0" if introduced == "0" else introduced
+                    if (low == "0" or vkey(low) <= vkey(current)) and vkey(current) < vkey(event["fixed"]):
+                        return event["fixed"]
+                    introduced = None
+    return None
+
+
+# ── scanning ────────────────────────────────────────────────────────────
+
+
+def tracked_lockfiles():
+    """The lockfiles git tracks, of the kinds handled here: not vendored
+    copies, scratch checkouts or anything else lying in the tree."""
+    names = {lockname for _, lockname, _ in ECOSYSTEMS.values()}
+    listed = run(["git", "ls-files", "-z"]).stdout.split("\0")
+    return sorted(p for p in listed if os.path.basename(p) in names)
+
+
+def scan(lockfiles):
+    """osv-scanner's JSON for `lockfiles`."""
+    if not lockfiles:
+        return {}
+    scanner = os.environ.get("OSV_SCANNER", "osv-scanner")
+    args = [scanner, "scan", "source", "--format", "json"]
+    for path in lockfiles:
+        args += ["--lockfile", path]
+    out = subprocess.run(args, capture_output=True, text=True)
+    # 0: nothing found, 1: vulnerabilities found; anything else is a failure.
+    if out.returncode not in (0, 1):
+        sys.exit(f"osv-scanner failed ({out.returncode}):\n{out.stderr}")
+    return json.loads(out.stdout or "{}")
+
+
+def findings(report):
+    """{(ecosystem, lockfile): [finding]} for the ecosystems handled here."""
+    found = {}
+    for result in report.get("results", []):
+        lockfile = os.path.relpath(result["source"]["path"])
+        for pkg in result.get("packages", []):
+            info = pkg["package"]
+            ecosystem = info.get("ecosystem")
+            if ecosystem not in ECOSYSTEMS:
+                continue
+            name, current = info["name"], info["version"]
+            vulns = pkg.get("vulnerabilities", [])
+            fixes = [fixed_for(v, name, current) for v in vulns]
+            ids = sorted({v["id"] for v in vulns})
+            entry = {
+                "name": name,
+                "current": current,
+                "advisories": ids,
+                "target": max((f for f in fixes if f), key=vkey, default=None),
+                "unfixed": sorted(v["id"] for v, f in zip(vulns, fixes) if not f),
+            }
+            found.setdefault((ecosystem, lockfile), []).append(entry)
+    return found
+
+
+# ── updating ────────────────────────────────────────────────────────────
+
+
+def run(args, cwd=None, check=True):
+    out = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    if check and out.returncode != 0:
+        raise RuntimeError(f"{' '.join(args)} failed:\n{out.stdout}{out.stderr}")
+    return out
+
+
+def lock_versions(ecosystem, lockfile):
+    """{name: [versions]} as the lockfile has them now."""
+    text = open(lockfile).read()
+    versions = {}
+    if ecosystem == "Hex":
+        for name, version in re.findall(r'^\s*"([^"]+)": \{:hex, :[^,]+, "([^"]+)"', text, re.M):
+            versions.setdefault(name, []).append(version)
+    else:
+        for name, version in re.findall(r'^\[\[package\]\]\nname = "([^"]+)"\nversion = "([^"]+)"', text, re.M):
+            versions.setdefault(name, []).append(version)
+    return versions
+
+
+def cargo_reason(stderr):
+    """cargo's own account of why it couldn't, from its `error:` line on."""
+    lines = [l.strip() for l in stderr.strip().splitlines()]
+    start = next((i for i, l in enumerate(lines) if l.startswith("error:")), None)
+    if start is None:
+        return "cargo update failed"
+    reason = " ".join(l for l in lines[start : start + 3] if l)
+    return reason.removeprefix("error: ")[:300]
+
+
+def bump(ecosystem, lockfile, entries):
+    """Bump `entries` in `lockfile`; returns (bumped, left, carried) lists,
+    `carried` being what moved along without being asked — what the bumps
+    required."""
+    root = os.path.dirname(lockfile) or "."
+    before = lock_versions(ecosystem, lockfile)
+    fixable = [e for e in entries if e["target"]]
+    left = [dict(e, reason="no fixed version yet") for e in entries if not e["target"]]
+    if not fixable:
+        return [], left, []
+
+    if ecosystem == "Hex":
+        # deps.update takes them as far as mix.exs allows, which may be
+        # past the fix; checked against the target below. On a fresh
+        # checkout it knows only mix.exs's own deps until deps.get has
+        # fetched the rest ("Unknown dependency" for a transitive one).
+        got = run(["mix", "deps.get"], cwd=root, check=False)
+        if got.returncode != 0:
+            return [], left + [dict(e, reason=f"mix deps.get failed: {got.stderr.strip()[-200:]}") for e in fixable], []
+        out = run(["mix", "deps.update"] + sorted({e["name"] for e in fixable}), cwd=root, check=False)
+        if out.returncode != 0:
+            return [], left + [dict(e, reason=f"mix deps.update failed: {out.stderr.strip()[-200:]}") for e in fixable], []
+    else:
+        for e in fixable:
+            precise = ["cargo", "update", "-p", f"{e['name']}@{e['current']}", "--precise", e["target"]]
+            out = run(precise, cwd=root, check=False)
+            # --precise moves nothing else, so a fix that needs a newer
+            # build dependency than the lockfile holds ("previously
+            # selected package `autocfg v1.5.0`") fails. Move that one
+            # within its own requirements, and try once more.
+            held = re.search(r"previously selected package `(\S+) v", out.stderr) if out.returncode else None
+            if held:
+                run(["cargo", "update", "-p", held.group(1)], cwd=root, check=False)
+                out = run(precise, cwd=root, check=False)
+            if out.returncode != 0:
+                e["failed"] = cargo_reason(out.stderr)
+
+    now = lock_versions(ecosystem, lockfile)
+    bumped = []
+    for e in fixable:
+        versions = now.get(e["name"], [])
+        reached = [v for v in versions if vkey(v) >= vkey(e["target"])]
+        if e.get("failed"):
+            left.append(dict(e, reason=e["failed"]))
+        elif e["current"] not in versions and reached:
+            bumped.append(dict(e, to=max(reached, key=vkey)))
+        else:
+            left.append(dict(e, reason=f"the manifest's constraint doesn't reach {e['target']}"))
+
+    asked = {e["name"] for e in fixable}
+    carried = [
+        {"name": name, "current": ", ".join(old), "to": ", ".join(now.get(name, ["(removed)"]))}
+        for name, old in sorted(before.items())
+        if name not in asked and sorted(old) != sorted(now.get(name, []))
+    ]
+    return bumped, left, carried
+
+
+def authors_besides_bot(base, branch):
+    """Who other than the bot has commits on `branch` past `base`."""
+    remote = f"refs/remotes/origin/{branch}"
+    if run(["git", "rev-parse", "--verify", "--quiet", remote], check=False).returncode != 0:
+        return []
+    emails = run(["git", "log", "--format=%ae", f"origin/{base}..{remote}"]).stdout.split()
+    return sorted({e for e in emails if e != BOT_EMAIL})
+
+
+# ── the forge ───────────────────────────────────────────────────────────
+
+
+class Forge:
+    def __init__(self):
+        self.base = os.environ["GITHUB_SERVER_URL"].rstrip("/") + "/api/mobile/v1"
+        self.repo = os.environ["GITHUB_REPOSITORY"]
+        self.token = os.environ["GITHUB_TOKEN"]
+
+    def call(self, method, path, body=None):
+        req = urllib.request.Request(
+            f"{self.base}/repos/{self.repo}{path}",
+            method=method,
+            data=json.dumps(body).encode() if body is not None else None,
+            headers={
+                "Authorization": f"Bearer {self.token}",
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+            },
+        )
+        try:
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                return json.loads(resp.read() or b"{}")
+        except urllib.error.HTTPError as err:
+            raise RuntimeError(f"{method} {path}: {err.code} {err.read().decode(errors='replace')}")
+
+    def open_pull(self, branch):
+        pulls = self.call("GET", "/pulls?state=open&limit=100").get("pulls", [])
+        return next((p for p in pulls if p.get("source_ref") == branch), None)
+
+
+# ── pull request text ───────────────────────────────────────────────────
+
+
+def osv_links(ids):
+    return ", ".join(f"[{i}](https://osv.dev/vulnerability/{i})" for i in ids)
+
+
+def describe(human, bumped, left, carried):
+    lines = [
+        f"Security updates for {human} dependencies with known vulnerabilities "
+        "([OSV](https://osv.dev)), each to the lowest version that fixes every advisory "
+        "against it, or as far as the manifest allows past that.",
+        "",
+        "| package | from | to | advisories | lockfile |",
+        "|---|---|---|---|---|",
+    ]
+    for b in sorted(bumped, key=lambda b: (b["lockfile"], b["name"])):
+        lines.append(
+            f"| `{b['name']}` | {b['current']} | {b['to']} | {osv_links(b['advisories'])} | `{b['lockfile']}` |"
+        )
+    if carried:
+        lines += ["", "Also moved, as the above required:", ""]
+        for c in sorted(carried, key=lambda c: (c["lockfile"], c["name"])):
+            lines.append(f"- `{c['name']}` {c['current']} → {c['to']} ({c['lockfile']})")
+    if left:
+        lines += ["", "Left alone:", ""]
+        for l in sorted(left, key=lambda l: (l["lockfile"], l["name"])):
+            lines.append(f"- `{l['name']}` {l['current']} ({l['lockfile']}): {l['reason']}")
+    run_number = os.environ.get("GITHUB_RUN_NUMBER")
+    lines += [
+        "",
+        "Refreshed in place by the `dependency-updates` workflow"
+        + (f" (run #{run_number})" if run_number else "")
+        + "; it closes this once there's nothing left to fix.",
+    ]
+    return "\n".join(lines)
+
+
+# ── main ────────────────────────────────────────────────────────────────
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--dry-run", action="store_true", help="show what would change; change nothing")
+    parser.add_argument("--base", default=None, help="the branch to update from (default: the current one)")
+    opts = parser.parse_args()
+
+    base = opts.base or run(["git", "rev-parse", "--abbrev-ref", "HEAD"]).stdout.strip()
+    by_lockfile = findings(scan(tracked_lockfiles()))
+    forge = None if opts.dry_run else Forge()
+
+    if not opts.dry_run:
+        run(["git", "config", "user.name", BOT_NAME])
+        run(["git", "config", "user.email", BOT_EMAIL])
+
+    for ecosystem, (suffix, lockname, human) in ECOSYSTEMS.items():
+        branch = f"deps/security-{suffix}"
+        lockfiles = sorted(lf for (eco, lf) in by_lockfile if eco == ecosystem)
+        bumped, left, carried = [], [], []
+
+        if lockfiles and not opts.dry_run:
+            run(["git", "checkout", "-B", branch, base])
+
+        for lockfile in lockfiles:
+            entries = by_lockfile[(ecosystem, lockfile)]
+            for e in entries:
+                e["lockfile"] = lockfile
+            if opts.dry_run:
+                for e in entries:
+                    plan = f"→ {e['target']}" if e["target"] else "(no fixed version)"
+                    print(f"{human}: {lockfile}: {e['name']} {e['current']} {plan}  {', '.join(e['advisories'])}")
+                continue
+            b, l, c = bump(ecosystem, lockfile, entries)
+            bumped += [dict(x, lockfile=lockfile) for x in b]
+            left += [dict(x, lockfile=lockfile) for x in l]
+            carried += [dict(x, lockfile=lockfile) for x in c]
+
+        if opts.dry_run:
+            continue
+
+        existing = forge.open_pull(branch)
+
+        others = authors_besides_bot(base, branch)
+        if others:
+            run(["git", "checkout", "--force", base])
+            print(f"{human}: {branch} has commits by {', '.join(others)}; leaving it alone")
+            continue
+
+        if not bumped:
+            run(["git", "checkout", "--force", base])
+            if existing:
+                forge.call("POST", f"/pulls/{existing['number']}/comments",
+                           {"body": "Nothing left here to fix: closing."})
+                forge.call("POST", f"/pulls/{existing['number']}/state", {"state": "closed"})
+                print(f"{human}: nothing to fix; closed #{existing['number']}")
+            else:
+                print(f"{human}: nothing to fix")
+            continue
+
+        names = ", ".join(sorted({b["name"] for b in bumped}))
+        title = f"Security updates: {human} — {names}"
+        if len(title) > 120:
+            title = f"Security updates: {human} — {len(bumped)} packages"
+        body = describe(human, bumped, left, carried)
+
+        run(["git", "add"] + lockfiles)
+        run(["git", "commit", "--quiet", "-m", title, "-m", body])
+
+        # Push only when the result differs from what the branch has — the
+        # bumps, or the base it sits on — so an unchanged week doesn't
+        # re-run the pull request's CI, but a moved base does move it.
+        remote = run(["git", "rev-parse", "--verify", "--quiet", f"refs/remotes/origin/{branch}"], check=False)
+        same = remote.returncode == 0 and run(
+            ["git", "diff", "--quiet", f"origin/{branch}", "HEAD"], check=False
+        ).returncode == 0
+        if not same:
+            run(["git", "push", "--force", "origin", f"HEAD:refs/heads/{branch}"])
+
+        if existing:
+            forge.call("PATCH", f"/pulls/{existing['number']}", {"title": title, "body": body})
+            print(f"{human}: refreshed #{existing['number']}" + ("" if not same else " (no new changes)"))
+        else:
+            created = forge.call("POST", "/pulls", {"title": title, "body": body, "head": branch, "base": base})
+            print(f"{human}: opened #{created['pull']['number']}")
+
+        run(["git", "checkout", "--force", base])
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

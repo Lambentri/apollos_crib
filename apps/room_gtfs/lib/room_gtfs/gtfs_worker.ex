@@ -195,7 +195,9 @@ defmodule RoomGtfs.Worker do
         vehicles
 
       :miss ->
-        "gtfs-rt#{name}" |> via_tuple() |> GenServer.call({:query_vehicle_positions, trips}, timeout)
+        "gtfs-rt#{name}"
+        |> via_tuple()
+        |> GenServer.call({:query_vehicle_positions, trips}, timeout)
     end
   end
 
@@ -306,41 +308,39 @@ defmodule RoomGtfs.Worker do
             vehicles = occupancy_vehicles(id, config, trips)
 
             res
-            |> Enum.map(fn x ->
-              case Enum.find(rtvals, fn v ->
-                     trip_id_match?(config, x.trip_id, v.trip_id)
-                   end) do
-                nil ->
-                  x
-
-                val ->
-                  stu = val.stop
-                  time_event = stu && (stu.arrival || stu.departure)
-
-                  x =
-                    x
-                    |> merge_occupancy(occupancy_for(config, x.trip_id, stu, vehicles))
-                    |> merge_fleet_mark(config, vehicles)
-                    |> merge_schedule_relationship(val.schedule_relationship, stu)
-                    |> merge_stop_properties(stu)
-
-                  case time_event do
-                    nil ->
-                      x
-
-                    event ->
-                      x
-                      |> Map.put(:arrival_time_live_ts, event.time)
-                      |> Map.put(:arrival_time_live_delay, event.delay)
-                      |> Map.put(:arrival_time_live_uncertianty, event.uncertainty)
-                  end
-              end
-            end)
+            |> Enum.map(&merge_realtime(&1, rtvals, config, vehicles))
             |> resolve_assigned_platforms(id)
         end
     end
   end
 
+  # One scheduled arrival with whatever the trip update for its trip says.
+  defp merge_realtime(x, rtvals, config, vehicles) do
+    case Enum.find(rtvals, fn v -> trip_id_match?(config, x.trip_id, v.trip_id) end) do
+      nil ->
+        x
+
+      val ->
+        stu = val.stop
+        time_event = stu && (stu.arrival || stu.departure)
+
+        x
+        |> merge_occupancy(occupancy_for(config, x.trip_id, stu, vehicles))
+        |> merge_fleet_mark(config, vehicles)
+        |> merge_schedule_relationship(val.schedule_relationship, stu)
+        |> merge_stop_properties(stu)
+        |> merge_live_time(time_event)
+    end
+  end
+
+  defp merge_live_time(x, nil), do: x
+
+  defp merge_live_time(x, event) do
+    x
+    |> Map.put(:arrival_time_live_ts, event.time)
+    |> Map.put(:arrival_time_live_delay, event.delay)
+    |> Map.put(:arrival_time_live_uncertianty, event.uncertainty)
+  end
 
   # How long to wait for vehicle positions before giving up on occupancy.
   #
@@ -451,7 +451,10 @@ defmodule RoomGtfs.Worker do
           Map.put(
             arrival,
             :carriages,
-            Enum.map(carriages, &Map.put(&1, :marked, RoomGtfs.Fleet.car_marked?(&1.label, ranges)))
+            Enum.map(
+              carriages,
+              &Map.put(&1, :marked, RoomGtfs.Fleet.car_marked?(&1.label, ranges))
+            )
           )
       end
     else
@@ -562,14 +565,17 @@ defmodule RoomGtfs.Worker do
   defp occupancy_status(status) when is_atom(status), do: status
 
   # A feed may send a number outside the enum the generated module knows; that
-  # is not an occupancy anyone can draw, so it reads as no answer.
-  defp occupancy_status(status) when is_integer(status) do
-    try do
-      TransitRealtime.VehiclePosition.OccupancyStatus.key(status) |> occupancy_status()
-    rescue
-      _ -> nil
+  # is not an occupancy anyone can draw, so it reads as no answer. key/1 hands
+  # an unknown non-negative number back unchanged, so only an atom goes round
+  # again; it raises on a negative one, which never reaches it.
+  defp occupancy_status(status) when is_integer(status) and status >= 0 do
+    case TransitRealtime.VehiclePosition.OccupancyStatus.key(status) do
+      key when is_atom(key) -> occupancy_status(key)
+      _unknown -> nil
     end
   end
+
+  defp occupancy_status(status) when is_integer(status), do: nil
 
   # etc
   def init(opts) do
@@ -739,14 +745,12 @@ defmodule RoomGtfs.Worker do
       on_timeout: :kill_task
     )
     |> Enum.zip(@stat_names)
-    |> Enum.map(fn
+    |> Map.new(fn
       {{:ok, value}, name} -> {name, value}
       # One count that will not answer should not cost the other ten.
       {{:exit, _reason}, name} -> {name, :unavailable}
     end)
-    |> Enum.into(%{})
   end
-
 
   # In the source's own timezone: a board in Boston rolls over to the next
   # service day at midnight there, not at midnight UTC, and for part of every
@@ -769,7 +773,6 @@ defmodule RoomGtfs.Worker do
 end
 
 defmodule RoomGtfs.Worker.RT do
-
   # A realtime feed is a protobuf of a few hundred kilobytes, fetched on a
   # tick. Explicit rather than left to HTTPoison's five seconds, which is the
   # right number here but should not be a coincidence.
@@ -950,46 +953,21 @@ defmodule RoomGtfs.Worker.RT do
   def handle_call({:query_alerts, stop, route_ids}, _from, state) do
     now = System.os_time(:second)
 
-    alerts = case state.rt_sa do
-      nil -> []
-      feed ->
-        feed.entity
-        |> Enum.filter(& &1.alert)
-        |> Enum.map(& &1.alert)
-        |> Enum.filter(fn alert ->
-          active = case alert.active_period do
-            [] -> true
-            periods -> Enum.any?(periods, fn p ->
-              (p.start == nil || p.start <= now) &&
-              (Map.get(p, :end) == nil || Map.get(p, :end) >= now)
-            end)
-          end
-          relevant = Enum.any?(alert.informed_entity, fn e ->
-            (e.stop_id != nil && e.stop_id == stop) ||
-            (e.route_id != nil && e.route_id in route_ids) ||
-            (e.agency_id != nil && e.stop_id == nil && e.route_id == nil) ||
-            (e.stop_id == nil && e.route_id == nil && e.trip == nil && e.agency_id == nil)
-          end)
-          active && relevant
-        end)
-        |> Enum.map(fn alert ->
-          route_id = Enum.find_value(alert.informed_entity, fn e -> e.route_id end)
+    alerts =
+      case state.rt_sa do
+        nil ->
+          []
 
-          %{
-            effect:      alert.effect |> to_string(),
-            cause:       alert.cause |> to_string(),
-            header:      get_translation(alert.header_text),
-            description: get_translation(alert.description_text),
-            route_id:    route_id,
-            severity:    alert.severity_level |> to_string(),
-            # Whether the alert names this stop, as opposed to reaching it by
-            # naming the line it is on. "Elevator out here" and "delays on the
-            # Red Line" are both true of the stop and are not the same news.
-            stop_specific:
-              Enum.any?(alert.informed_entity, fn e -> e.stop_id != nil and e.stop_id == stop end)
-          }
-        end)
-    end
+        feed ->
+          feed.entity
+          |> Enum.filter(& &1.alert)
+          |> Enum.map(& &1.alert)
+          |> Enum.filter(fn alert ->
+            alert_active?(alert, now) &&
+              Enum.any?(alert.informed_entity, &reaches_stop?(&1, stop, route_ids))
+          end)
+          |> Enum.map(&present_stop_alert(&1, stop))
+      end
 
     {:reply, alerts, state}
   end
@@ -1004,8 +982,7 @@ defmodule RoomGtfs.Worker.RT do
 
         feed ->
           feed.entity
-          |> Enum.filter(& &1.alert)
-          |> Enum.filter(fn entity -> alert_active?(entity.alert, now) end)
+          |> Enum.filter(fn entity -> entity.alert && alert_active?(entity.alert, now) end)
           |> Enum.map(&present_alert/1)
       end
 
@@ -1025,6 +1002,35 @@ defmodule RoomGtfs.Worker.RT do
     end
   end
 
+  # An informed entity reaches a stop by naming it, by naming a route in
+  # route_ids, or by naming neither -- the whole agency when it carries an
+  # agency id, the whole feed when it carries no trip either.
+  defp reaches_stop?(e, stop, route_ids) do
+    (e.stop_id != nil and e.stop_id == stop) or
+      (e.route_id != nil and e.route_id in route_ids) or
+      (e.stop_id == nil and e.route_id == nil and (e.agency_id != nil or e.trip == nil))
+  end
+
+  defp present_stop_alert(alert, stop) do
+    route_id = Enum.find_value(alert.informed_entity, fn e -> e.route_id end)
+
+    %{
+      effect: alert.effect |> to_string(),
+      cause: alert.cause |> to_string(),
+      header: get_translation(alert.header_text),
+      description: get_translation(alert.description_text),
+      route_id: route_id,
+      severity: alert.severity_level |> to_string(),
+      # Whether the alert names this stop, as opposed to reaching it by
+      # naming the line it is on. "Elevator out here" and "delays on the
+      # Red Line" are both true of the stop and are not the same news.
+      stop_specific:
+        Enum.any?(alert.informed_entity, fn e ->
+          e.stop_id != nil and e.stop_id == stop
+        end)
+    }
+  end
+
   # An alert names what it affects as a list of informed entities, each of
   # which may carry a route, a stop, both, or neither -- "neither" meaning the
   # whole agency. Those ids are the thing worth reading: they say whether an
@@ -1041,11 +1047,20 @@ defmodule RoomGtfs.Worker.RT do
       url: get_translation(alert.url),
       route_ids: informed(alert, :route_id),
       stop_ids: informed(alert, :stop_id),
-      agency_wide?: Enum.any?(alert.informed_entity, fn e ->
-        e.route_id in [nil, ""] and e.stop_id in [nil, ""] and e.trip == nil
-      end),
-      starts_at: alert.active_period |> Enum.map(& &1.start) |> Enum.reject(&is_nil/1) |> Enum.min(fn -> nil end),
-      ends_at: alert.active_period |> Enum.map(&Map.get(&1, :end)) |> Enum.reject(&is_nil/1) |> Enum.max(fn -> nil end)
+      agency_wide?:
+        Enum.any?(alert.informed_entity, fn e ->
+          e.route_id in [nil, ""] and e.stop_id in [nil, ""] and e.trip == nil
+        end),
+      starts_at:
+        alert.active_period
+        |> Enum.map(& &1.start)
+        |> Enum.reject(&is_nil/1)
+        |> Enum.min(fn -> nil end),
+      ends_at:
+        alert.active_period
+        |> Enum.map(&Map.get(&1, :end))
+        |> Enum.reject(&is_nil/1)
+        |> Enum.max(fn -> nil end)
     }
   end
 
@@ -1058,30 +1073,37 @@ defmodule RoomGtfs.Worker.RT do
 
   defp get_translation(nil), do: nil
   defp get_translation(%{translation: []}), do: nil
+
   defp get_translation(%{translation: translations}) do
-    t = Enum.find(translations, fn t -> t.language in ["en", "en-US", nil] end) || List.first(translations)
+    t =
+      Enum.find(translations, fn t -> t.language in ["en", "en-US", nil] end) ||
+        List.first(translations)
+
     t && t.text
   end
 
   def handle_call(:stats, _from, state) do
-    {:reply, %{
-      rt_sa: feed_summary(state.rt_sa),
-      rt_tu: feed_summary(state.rt_tu),
-      rt_vp: feed_summary(state.rt_vp),
-    }, state}
+    {:reply,
+     %{
+       rt_sa: feed_summary(state.rt_sa),
+       rt_tu: feed_summary(state.rt_tu),
+       rt_vp: feed_summary(state.rt_vp)
+     }, state}
   end
 
   defp feed_summary(nil), do: %{loaded: false}
+
   defp feed_summary(feed) when is_struct(feed, TransitRealtime.FeedMessage) do
     %{
-      loaded:           true,
+      loaded: true,
       header_timestamp: feed.header.timestamp,
-      entity_count:     length(feed.entity),
-      trip_updates:     Enum.count(feed.entity, & &1.trip_update),
+      entity_count: length(feed.entity),
+      trip_updates: Enum.count(feed.entity, & &1.trip_update),
       vehicle_positions: Enum.count(feed.entity, & &1.vehicle),
-      alerts:           Enum.count(feed.entity, & &1.alert),
+      alerts: Enum.count(feed.entity, & &1.alert)
     }
   end
+
   defp feed_summary(_), do: %{loaded: false}
 
   # Helper function to extract vehicle positions from protobuf data
@@ -1133,11 +1155,11 @@ defmodule RoomGtfs.Worker.RT do
 
   defp place_vehicle(v, stops) do
     base = %{
-      vehicle_id: v.vehicle && v.vehicle.id,
+      vehicle_id: field_of(v.vehicle, :id),
       # What is painted on it, which for the MBTA is the car numbers.
-      label: v.vehicle && v.vehicle.label,
-      trip_id: v.trip && v.trip.trip_id,
-      route_id: v.trip && v.trip.route_id,
+      label: field_of(v.vehicle, :label),
+      trip_id: field_of(v.trip, :trip_id),
+      route_id: field_of(v.trip, :route_id),
       stop_id: v.stop_id,
       current_status: v.current_status,
       occupancy_status: v.occupancy_status,
@@ -1168,6 +1190,10 @@ defmodule RoomGtfs.Worker.RT do
         nil
     end
   end
+
+  # A field of a descriptor the feed may have left out.
+  defp field_of(nil, _key), do: nil
+  defp field_of(descriptor, key), do: Map.fetch!(descriptor, key)
 
   # Positions for the stops this feed actually names, as the fallback above
   # needs them.
@@ -1236,7 +1262,6 @@ defmodule RoomGtfs.Worker.RT do
 
   defp positioned?(_vehicle), do: false
 
-
   def fetch_rt_url(url, headers \\ []) do
     case HTTPoison.get(url, headers, @rt_http) do
       {:ok, %{status_code: 200} = result} ->
@@ -1263,6 +1288,10 @@ defmodule RoomGtfs.Worker.RT do
       try do
         {:ok, TransitRealtime.FeedMessage.decode(body)}
       rescue
+        # Garbage bytes can fail the decoder in more ways than
+        # Protobuf.DecodeError, and any of them is just a feed that did not
+        # decode; the caller handles {:error, :decode_failed}.
+        # credo:disable-for-next-line ExSlop.Check.Warning.RescueWithoutReraise
         e ->
           Logger.warning("failed to decode gtfs-rt protobuf from #{url}: #{inspect(e)}")
           {:error, :decode_failed}
@@ -1468,9 +1497,7 @@ defmodule RoomGtfs.Worker.RT do
     started = System.monotonic_time(:millisecond)
 
     headers =
-      RoomSanctum.Configuration.Configs.GTFS.request_headers(
-        state.inst && state.inst.config
-      )
+      RoomSanctum.Configuration.Configs.GTFS.request_headers(state.inst && state.inst.config)
 
     # Scoped to the owner. Several of one person's sources pointing at one URL
     # still fetch it once between them, which is what this cache is for; two
@@ -1483,6 +1510,7 @@ defmodule RoomGtfs.Worker.RT do
         headers,
         state.inst && state.inst.user_id
       )
+
     took = System.monotonic_time(:millisecond) - started
 
     case result do
@@ -1530,9 +1558,14 @@ defmodule RoomGtfs.Worker.RT do
   """
   def rt_url_for(config, kind)
 
-  def rt_url_for(config, :sa), do: blank(Map.get(config, :url_rt_sa)) || blank(Map.get(config, :url_rt_shared))
-  def rt_url_for(config, :tu), do: blank(Map.get(config, :url_rt_tu)) || blank(Map.get(config, :url_rt_shared))
-  def rt_url_for(config, :vp), do: blank(Map.get(config, :url_rt_vp)) || blank(Map.get(config, :url_rt_shared))
+  def rt_url_for(config, :sa),
+    do: blank(Map.get(config, :url_rt_sa)) || blank(Map.get(config, :url_rt_shared))
+
+  def rt_url_for(config, :tu),
+    do: blank(Map.get(config, :url_rt_tu)) || blank(Map.get(config, :url_rt_shared))
+
+  def rt_url_for(config, :vp),
+    do: blank(Map.get(config, :url_rt_vp)) || blank(Map.get(config, :url_rt_shared))
 
   defp blank(nil), do: nil
   defp blank(""), do: nil
@@ -1650,7 +1683,6 @@ defmodule RoomGtfs.Worker.RT do
     end)
   end
 
-
   def handle_call({:query_realtime, trips, stop}, _from, state) do
     #    IO.inspect(trips)
 
@@ -1709,7 +1741,6 @@ defmodule RoomGtfs.Worker.RT do
 end
 
 defmodule RoomGtfs.Worker.Static do
-
   # A static feed is the whole timetable, and they are enormous: Chicago's is
   # 95 MiB, which is half a minute of transfer on a good link and several on a
   # bad one. Left on HTTPoison's five second default it could not finish, and
@@ -1722,11 +1753,15 @@ defmodule RoomGtfs.Worker.Static do
   # That is what the `:checkout_timeout`s on unrelated requests were: not those
   # services being slow, but this download holding the pool. A pool of its own
   # means a bulk transfer can only ever starve another bulk transfer.
+  #
+  # Since hackney 2 a pool's `max_connections` only sizes the idle connections
+  # it keeps, and does not limit how many are open; `max_per_host` does, one
+  # host at a time. Four per host is what the pool used to mean.
   @static_http [
     follow_redirect: true,
     recv_timeout: 300_000,
     timeout: 30_000,
-    hackney: [pool: :gtfs_static]
+    hackney: [pool: :gtfs_static, max_per_host: 4]
   ]
   use GenServer
   require Logger
@@ -1757,7 +1792,11 @@ defmodule RoomGtfs.Worker.Static do
   end
 
   defp bcast(id, file, complete, total) do
-    Phoenix.PubSub.broadcast(RoomSanctum.PubSub, "gtfs", {:gtfs, wire_id(id), file, complete, total})
+    Phoenix.PubSub.broadcast(
+      RoomSanctum.PubSub,
+      "gtfs",
+      {:gtfs, wire_id(id), file, complete, total}
+    )
   end
 
   defp bcast(id, :disabled) do
@@ -1777,14 +1816,13 @@ defmodule RoomGtfs.Worker.Static do
   defp wire_id(id) when is_integer(id), do: Integer.to_string(id)
 
   def init(opts) do
-
-#    pgopts = RoomSanctum.Repo.config()
-#    {:ok, pid} = Postgrex.start_link(pgopts)
+    #    pgopts = RoomSanctum.Repo.config()
+    #    {:ok, pid} = Postgrex.start_link(pgopts)
 
     {:ok,
      %{
-       id: opts[:name],
-#       pg_pid: pid
+       id: opts[:name]
+       #       pg_pid: pid
      }}
   end
 
@@ -1833,8 +1871,7 @@ defmodule RoomGtfs.Worker.Static do
     schema.__schema__(:fields)
     |> List.delete(:id)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k,v} -> cast_col(k, v) end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn {k, v} -> cast_col(k, v) end)
   end
 
   def get_cols_pgtypes(schema, cols) do
@@ -1842,22 +1879,19 @@ defmodule RoomGtfs.Worker.Static do
     |> List.delete(:id)
     |> Enum.filter(fn f -> Enum.member?(cols |> Enum.map(&String.to_atom/1), f) end)
     |> Enum.map(fn f -> {f, schema.__schema__(:type, f) |> as_pg} end)
-    |> Enum.map(fn {k,v} -> cast_col(k, v) end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn {k, v} -> cast_col(k, v) end)
   end
 
   def csv_cols_to_tmp_cols(cols) do
     cols
-    |> Enum.map(fn x -> "#{x} varchar" end)
-    |> Enum.join(", ")
+    |> Enum.map_join(", ", fn x -> "#{x} varchar" end)
   end
 
   def csv_cols_to_tmp_cols(cols, :add) do
     cols
     |> Kernel.++(["inserted_at", "updated_at", "source_id"])
-    |> Enum.map(fn x -> "#{x} varchar" end)
-    |> Enum.join(", ")
-end
+    |> Enum.map_join(", ", fn x -> "#{x} varchar" end)
+  end
 
   # CSV headers are matched by name against schema fields, so any decoration on
   # the header cell silently drops that column from the import. BART quotes its
@@ -1911,6 +1945,20 @@ end
     )
   end
 
+  # Each file type written by COPY: its schema, and what empties the source's
+  # rows of it first.
+  @copy_tables %{
+    agencies: {GTFS.Agency, &RoomSanctum.Storage.truncate_agency/1},
+    calendars: {GTFS.Calendar, &RoomSanctum.Storage.truncate_calendar/1},
+    calendar_dates: {GTFS.CalendarDate, &RoomSanctum.Storage.truncate_calendar_date/1},
+    directions: {GTFS.Direction, &RoomSanctum.Storage.truncate_direction/1},
+    routes: {GTFS.Route, &RoomSanctum.Storage.truncate_route/1},
+    stops: {GTFS.Stop, &RoomSanctum.Storage.truncate_stop/1},
+    stop_times: {GTFS.StopTime, &RoomSanctum.Storage.truncate_stop_time/1},
+    trips: {GTFS.Trip, &RoomSanctum.Storage.truncate_trip/1},
+    shapes: {GTFS.Shape, &RoomSanctum.Storage.truncate_shape/1}
+  }
+
   defp write_file(contents, type, id, pid) do
     datetime = NaiveDateTime.local_now()
     Logger.info("GTFS::#{id} writing #{type} (c)")
@@ -1925,45 +1973,24 @@ end
       |> Enum.to_list()
       |> List.flatten()
       |> List.first()
-      |> String.strip
+      |> String.strip()
       |> String.split(",")
       |> Enum.map(&normalize_header/1)
 
-#    cols_j = ["source_id" |cols_j]
-      cols_j_plus = cols_j ++ ["inserted_at", "updated_at", "source_id"]
+    #    cols_j = ["source_id" |cols_j]
+    cols_j_plus = cols_j ++ ["inserted_at", "updated_at", "source_id"]
 
-#    contents |> Stream.take(500) |> Enum.to_list() |> IO.inspect
-
+    #    contents |> Stream.take(500) |> Enum.to_list() |> IO.inspect
 
     # add truncation here as necessary
-    case type do
-      :agencies -> RoomSanctum.Storage.truncate_agency(id)
-      :calendars -> RoomSanctum.Storage.truncate_calendar(id)
-      :calendar_dates -> RoomSanctum.Storage.truncate_calendar_date(id)
-      :directions -> RoomSanctum.Storage.truncate_direction(id)
-      :routes -> RoomSanctum.Storage.truncate_route(id)
-      :stops -> RoomSanctum.Storage.truncate_stop(id)
-      :stop_times -> RoomSanctum.Storage.truncate_stop_time(id)
-      :trips -> RoomSanctum.Storage.truncate_trip(id)
-      :shapes -> RoomSanctum.Storage.truncate_shape(id)
-      _ -> :ok
-    end
+    {schema, truncate} = Map.fetch!(@copy_tables, type)
+    truncate.(id)
 
     # set our variables based on the type
-    {table, columns, pg_cols} =
-      case type do
-        :agencies -> {:gtfs_agencies, [GTFS.Agency |> get_cols(cols_j_plus)], GTFS.Agency |> get_cols_pgtypes(cols_j_plus)}
-        :calendars -> {:gtfs_calendars, [GTFS.Calendar |> get_cols(cols_j_plus)], GTFS.Calendar |> get_cols_pgtypes(cols_j_plus)}
-        :calendar_dates -> {:gtfs_calendar_dates, [GTFS.CalendarDate |> get_cols(cols_j_plus)], GTFS.CalendarDate |> get_cols_pgtypes(cols_j_plus)}
-        :directions -> {:gtfs_directions, [GTFS.Direction |> get_cols(cols_j_plus)], GTFS.Direction |> get_cols_pgtypes(cols_j_plus)}
-        :routes -> {:gtfs_routes, [GTFS.Route |> get_cols(cols_j_plus)], GTFS.Route |> get_cols_pgtypes(cols_j_plus)}
-        :stops -> {:gtfs_stops, [GTFS.Stop |> get_cols(cols_j_plus)], GTFS.Stop |> get_cols_pgtypes(cols_j_plus)}
-        :stop_times -> {:gtfs_stop_times, [GTFS.StopTime |> get_cols(cols_j_plus)], GTFS.StopTime |> get_cols_pgtypes(cols_j_plus)}
-        :trips -> {:gtfs_trips, [GTFS.Trip |> get_cols(cols_j_plus)], GTFS.Trip |> get_cols_pgtypes(cols_j_plus)}
-        :shapes -> {:gtfs_shapes, [GTFS.Shape |> get_cols(cols_j_plus)], GTFS.Shape |> get_cols_pgtypes(cols_j_plus)}
-      end
+    columns = [schema |> get_cols(cols_j_plus)]
+    pg_cols = schema |> get_cols_pgtypes(cols_j_plus)
 
-#    IO.inspect({table, columns, pg_cols})
+    #    IO.inspect({table, columns, pg_cols})
     # `Repo.config/0` carries Ecto's `timeout: 15000`, which looks like it would
     # cap the bulk statements below. It does not: DBConnection takes the
     # *transaction's* timeout as the default for statements run inside it, and
@@ -2005,7 +2032,7 @@ end
             []
           )
 
-        Enum.into(contents, stream)
+        contents |> Stream.into(stream) |> Stream.run()
 
         qtc =
           Postgrex.prepare!(
@@ -2036,11 +2063,12 @@ end
 
         Postgrex.execute(conn, qs, [])
 
-#        qd = Postgrex.prepare!(conn, "", "DROP TABLE #{tmp_table_name}")
-#        Postgrex.execute(conn, qd, [])
+        #        qd = Postgrex.prepare!(conn, "", "DROP TABLE #{tmp_table_name}")
+        #        Postgrex.execute(conn, qd, [])
       end,
       timeout: :infinity
-    ) |> IO.inspect
+    )
+
     GenServer.stop(pid)
   end
 
@@ -2048,12 +2076,7 @@ end
     datetime = NaiveDateTime.local_now()
     Logger.info("GTFS::#{id} writing #{type}")
 
-    case type do
-      :routes -> RoomSanctum.Storage.truncate_route(id)
-      :stops -> RoomSanctum.Storage.truncate_stop(id)
-      :stop_times -> RoomSanctum.Storage.truncate_stop_time(id)
-      _ -> :ok
-    end
+    truncate_rows(type, id)
 
     contents
     |> Stream.filter(fn {status, data} -> status == :ok end)
@@ -2065,34 +2088,8 @@ end
         |> Map.put("inserted_at", datetime)
         |> Map.put("updated_at", datetime)
 
-      case type do
-        :agency ->
-          RoomSanctum.Storage.change_agency(%RoomSanctum.Storage.GTFS.Agency{}, relevant_data).changes
-
-        :calendar ->
-          RoomSanctum.Storage.change_calendar(%RoomSanctum.Storage.GTFS.Calendar{}, relevant_data).changes
-
-        :directions ->
-          RoomSanctum.Storage.change_direction(
-            %RoomSanctum.Storage.GTFS.Direction{},
-            relevant_data
-          ).changes
-
-        :routes ->
-          RoomSanctum.Storage.change_route(%RoomSanctum.Storage.GTFS.Route{}, relevant_data).changes
-
-        :stops ->
-          RoomSanctum.Storage.change_stop(%RoomSanctum.Storage.GTFS.Stop{}, relevant_data).changes
-
-        :stop_times ->
-          RoomSanctum.Storage.change_stop_time(
-            %RoomSanctum.Storage.GTFS.StopTime{},
-            relevant_data
-          ).changes
-
-        :trips ->
-          RoomSanctum.Storage.change_trip(%RoomSanctum.Storage.GTFS.Trip{}, relevant_data).changes
-      end
+      type
+      |> row_changes(relevant_data)
       |> Map.put(:inserted_at, datetime)
       |> Map.put(:updated_at, datetime)
     end)
@@ -2102,63 +2099,65 @@ end
         chunked_data
         |> Enum.uniq()
 
-      case type do
-        :agency ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.Agency,
-            chunked_data,
-            on_conflict: {:replace_all_except, [:id]},
-            conflict_target: [:source_id, :agency_id]
-          )
-
-        :calendar ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.Calendar,
-            chunked_data,
-            on_conflict: {:replace_all_except, [:id]},
-            conflict_target: [:source_id, :service_id]
-          )
-
-        :directions ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.Direction,
-            chunked_data,
-            on_conflict: {:replace_all_except, [:id]},
-            conflict_target: [:source_id, :route_id, :direction_id]
-          )
-
-        :routes ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.Route,
-            chunked_data
-          )
-
-        :stops ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.Stop,
-            chunked_data
-          )
-
-        :stop_times ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.StopTime,
-            chunked_data
-          )
-
-        :trips ->
-          Repo.insert_all(
-            RoomSanctum.Storage.GTFS.Trip,
-            chunked_data,
-            on_conflict: {:replace_all_except, [:id]},
-            conflict_target: [:source_id, :trip_id]
-          )
-      end
+      insert_rows(type, chunked_data)
     end)
-    |> Enum.count()
+    |> Stream.run()
 
     DateTime.utc_now()
   end
 
+  # The types written row by row that are emptied first rather than upserted.
+  defp truncate_rows(:routes, id), do: RoomSanctum.Storage.truncate_route(id)
+  defp truncate_rows(:stops, id), do: RoomSanctum.Storage.truncate_stop(id)
+  defp truncate_rows(:stop_times, id), do: RoomSanctum.Storage.truncate_stop_time(id)
+  defp truncate_rows(_type, _id), do: :ok
+
+  defp row_changes(:agency, data),
+    do: RoomSanctum.Storage.change_agency(%RoomSanctum.Storage.GTFS.Agency{}, data).changes
+
+  defp row_changes(:calendar, data),
+    do: RoomSanctum.Storage.change_calendar(%RoomSanctum.Storage.GTFS.Calendar{}, data).changes
+
+  defp row_changes(:directions, data),
+    do: RoomSanctum.Storage.change_direction(%RoomSanctum.Storage.GTFS.Direction{}, data).changes
+
+  defp row_changes(:routes, data),
+    do: RoomSanctum.Storage.change_route(%RoomSanctum.Storage.GTFS.Route{}, data).changes
+
+  defp row_changes(:stops, data),
+    do: RoomSanctum.Storage.change_stop(%RoomSanctum.Storage.GTFS.Stop{}, data).changes
+
+  defp row_changes(:stop_times, data),
+    do: RoomSanctum.Storage.change_stop_time(%RoomSanctum.Storage.GTFS.StopTime{}, data).changes
+
+  defp row_changes(:trips, data),
+    do: RoomSanctum.Storage.change_trip(%RoomSanctum.Storage.GTFS.Trip{}, data).changes
+
+  defp insert_rows(:agency, rows),
+    do: upsert_rows(RoomSanctum.Storage.GTFS.Agency, rows, [:source_id, :agency_id])
+
+  defp insert_rows(:calendar, rows),
+    do: upsert_rows(RoomSanctum.Storage.GTFS.Calendar, rows, [:source_id, :service_id])
+
+  defp insert_rows(:directions, rows),
+    do:
+      upsert_rows(RoomSanctum.Storage.GTFS.Direction, rows, [:source_id, :route_id, :direction_id])
+
+  defp insert_rows(:routes, rows), do: Repo.insert_all(RoomSanctum.Storage.GTFS.Route, rows)
+  defp insert_rows(:stops, rows), do: Repo.insert_all(RoomSanctum.Storage.GTFS.Stop, rows)
+
+  defp insert_rows(:stop_times, rows),
+    do: Repo.insert_all(RoomSanctum.Storage.GTFS.StopTime, rows)
+
+  defp insert_rows(:trips, rows),
+    do: upsert_rows(RoomSanctum.Storage.GTFS.Trip, rows, [:source_id, :trip_id])
+
+  defp upsert_rows(schema, rows, conflict_target) do
+    Repo.insert_all(schema, rows,
+      on_conflict: {:replace_all_except, [:id]},
+      conflict_target: conflict_target
+    )
+  end
 
   # linked_datasets.txt associates GTFS-RT feeds with the schedule that
   # describes them, so a feed that ships one can wire up its own realtime URLs.
@@ -2288,36 +2287,19 @@ end
     String.starts_with?(name, "__MACOSX/") or String.starts_with?(Path.basename(name), "._")
   end
 
-  defp file_to_atom(filename) do
-    case filename do
-      "agency.txt" ->
-        :agencies
+  @file_types %{
+    "agency.txt" => :agencies,
+    "calendar.txt" => :calendars,
+    "calendar_dates.txt" => :calendar_dates,
+    "directions.txt" => :directions,
+    "routes.txt" => :routes,
+    "stops.txt" => :stops,
+    "stop_times.txt" => :stop_times,
+    "trips.txt" => :trips,
+    "shapes.txt" => :shapes
+  }
 
-      "calendar.txt" ->
-        :calendars
-
-      "calendar_dates.txt" ->
-        :calendar_dates
-
-      "directions.txt" ->
-        :directions
-
-      "routes.txt" ->
-        :routes
-
-      "stops.txt" ->
-        :stops
-
-      "stop_times.txt" ->
-        :stop_times
-
-      "trips.txt" ->
-        :trips
-
-      "shapes.txt" ->
-        :shapes
-    end
-  end
+  defp file_to_atom(filename), do: Map.fetch!(@file_types, filename)
 
   # The order the progress bar counts in, which has to be the order the files are
   # actually written in or the bar moves backwards. Entries come from the zip's
@@ -2326,19 +2308,19 @@ end
   # Being numbered last meant its step arrived as "10 of 10", which the source
   # page reads as completion: the bar hit 100% and flipped to idle while three
   # more files, stop_times included, were still to load.
-  def file_to_order(filename) do
-    case filename do
-      "agency.txt" -> 3
-      "calendar.txt" -> 4
-      "calendar_dates.txt" -> 5
-      "directions.txt" -> 6
-      "routes.txt" -> 7
-      "shapes.txt" -> 8
-      "stops.txt" -> 9
-      "stop_times.txt" -> 10
-      "trips.txt" -> 11
-    end
-  end
+  @file_order %{
+    "agency.txt" => 3,
+    "calendar.txt" => 4,
+    "calendar_dates.txt" => 5,
+    "directions.txt" => 6,
+    "routes.txt" => 7,
+    "shapes.txt" => 8,
+    "stops.txt" => 9,
+    "stop_times.txt" => 10,
+    "trips.txt" => 11
+  }
+
+  def file_to_order(filename), do: Map.fetch!(@file_order, filename)
 
   defp atom_to_table(atom) do
     "gtfs_#{atom}"
@@ -2395,7 +2377,9 @@ end
         body
 
       offset ->
-        <<_::binary-size(offset), _::binary-size(20), comment_len::16-little, _rest::binary>> = body
+        <<_::binary-size(offset), _::binary-size(20), comment_len::16-little, _rest::binary>> =
+          body
+
         declared_end = offset + 22 + comment_len
 
         if byte_size(body) > declared_end do
@@ -2439,60 +2423,7 @@ end
         bcast(id, :extracting, 2, 11)
         Logger.info("GTFS::#{id} downloaded #{byte_size(result.body)} bytes")
 
-        case result.body |> trim_zip_tail() |> Unzip.InMem.new() |> Unzip.new() do
-          {:ok, unzip} ->
-            files = Unzip.list_entries(unzip)
-
-            case Enum.find(files, &(&1.file_name == "linked_datasets.txt")) do
-              nil ->
-                :ok
-
-              entry ->
-                Unzip.file_stream!(unzip, entry.file_name)
-                |> Enum.to_list()
-                |> IO.iodata_to_binary()
-                |> parse_linked_datasets()
-                |> linked_dataset_urls()
-                |> then(&apply_linked_datasets(cfg, &1))
-            end
-
-            try do
-              # Sorted, because `Unzip.list_entries/1` maps over `cd_list`, which
-              # is a map -- so the order it hands back is neither the zip's nor
-              # alphabetical, it is whatever the hash gives. Left to that, the
-              # progress bar walks backwards: stop_times (step 9) came out ahead
-              # of stops (step 8) on the MTA feeds. Sorting by the same function
-              # that numbers the steps makes the order the bar claims the order
-              # the files are actually written in, for every feed.
-              files
-              |> gtfs_entries(id)
-              |> Enum.sort_by(&file_to_order(Path.basename(&1.file_name)))
-              |> Enum.map(fn e ->
-                name = Path.basename(e.file_name)
-                type = file_to_atom(name)
-
-                bcast(id, type, file_to_order(name), 12)
-
-                Unzip.file_stream!(unzip, e.file_name)
-                |> write_file(type, id, nil)
-              end)
-            rescue
-              e ->
-                Logger.error("GTFS::#{id} error during static import: #{inspect(e)}")
-            after
-              Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
-              bcast(id, :done)
-            end
-
-            :ok
-
-          {:error, term} ->
-            # `Logger.error/1` takes chardata, not a struct: passing the
-            # raw term raised here, inside the branch meant to report the
-            # error.
-            Logger.error("GTFS::#{id} static feed was not a readable zip: #{inspect(term)}")
-            {:error, {:unzip, term}}
-        end
+        import_zip(id, cfg, result.body)
 
       # A server that answers a zip URL with an error page was, until now,
       # reported as a feed that was not a readable zip -- true, and useless.
@@ -2510,6 +2441,66 @@ end
         Logger.error("GTFS::#{id} static feed download failed: #{inspect(error)}")
         {:error, {:download, error}}
     end
+  end
+
+  defp import_zip(id, cfg, body) do
+    case body |> trim_zip_tail() |> Unzip.InMem.new() |> Unzip.new() do
+      {:ok, unzip} ->
+        files = Unzip.list_entries(unzip)
+        apply_linked_datasets_entry(unzip, files, cfg)
+        write_entries(unzip, files, id, cfg)
+        :ok
+
+      {:error, term} ->
+        # `Logger.error/1` takes chardata, not a struct: passing the
+        # raw term raised here, inside the branch meant to report the
+        # error.
+        Logger.error("GTFS::#{id} static feed was not a readable zip: #{inspect(term)}")
+        {:error, {:unzip, term}}
+    end
+  end
+
+  defp apply_linked_datasets_entry(unzip, files, cfg) do
+    case Enum.find(files, &(&1.file_name == "linked_datasets.txt")) do
+      nil ->
+        :ok
+
+      entry ->
+        Unzip.file_stream!(unzip, entry.file_name)
+        |> Enum.to_list()
+        |> IO.iodata_to_binary()
+        |> parse_linked_datasets()
+        |> linked_dataset_urls()
+        |> then(&apply_linked_datasets(cfg, &1))
+    end
+  end
+
+  defp write_entries(unzip, files, id, cfg) do
+    # Sorted, because `Unzip.list_entries/1` maps over `cd_list`, which
+    # is a map -- so the order it hands back is neither the zip's nor
+    # alphabetical, it is whatever the hash gives. Left to that, the
+    # progress bar walks backwards: stop_times (step 9) came out ahead
+    # of stops (step 8) on the MTA feeds. Sorting by the same function
+    # that numbers the steps makes the order the bar claims the order
+    # the files are actually written in, for every feed.
+    files
+    |> gtfs_entries(id)
+    |> Enum.sort_by(&file_to_order(Path.basename(&1.file_name)))
+    |> Enum.each(fn e ->
+      name = Path.basename(e.file_name)
+      type = file_to_atom(name)
+
+      bcast(id, type, file_to_order(name), 12)
+
+      Unzip.file_stream!(unzip, e.file_name)
+      |> write_file(type, id, nil)
+    end)
+  rescue
+    e ->
+      Logger.error("GTFS::#{id} error during static import: #{inspect(e)}")
+  after
+    Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
+    bcast(id, :done)
   end
 
   # The first line of whatever came instead, flattened. Enough to tell a rate
@@ -2549,64 +2540,7 @@ end
         case HTTPoison.get(cfg.config.url) do
           {:ok, result} ->
             bcast(state.id, :extracting, 2, 10)
-
-            case result.body
-                 |> :zip.unzip([:memory]) do
-              {:ok, files} ->
-                files
-                |> Enum.map(fn {name, data} ->
-                  as_csv =
-                    data
-                    |> String.split("\n")
-                    |> Enum.map(&replace/1)
-                    |> Enum.filter(fn x -> x != "" end)
-                    |> XP.parse_stream
-
-                  Logger.info({"datum", as_csv})
-                  IO.inspect({"datum", as_csv})
-
-                  case name do
-                    'agency.txt' ->
-                      write_file(as_csv, :agency, state.id)
-                      bcast(state.id, :agency, 3, 9)
-
-                    'calendar.txt' ->
-                      write_file(as_csv, :calendar, state.id)
-                      bcast(state.id, :calendar, 4, 9)
-
-                    'directions.txt' ->
-                      write_file(as_csv, :directions, state.id)
-                      bcast(state.id, :directions, 5, 9)
-
-                    'routes.txt' ->
-                      write_file(as_csv, :routes, state.id)
-                      bcast(state.id, :routes, 6, 9)
-
-                    'stops.txt' ->
-                      write_file(as_csv, :stops, state.id)
-                      bcast(state.id, :stops, 7, 9)
-
-                    'stop_times.txt' ->
-                      write_file(data, :stop_times, state.id, via: :copy)
-                      bcast(state.id, :stop_times, 8, 9)
-
-                    'trips.txt' ->
-                      write_file(as_csv, :trips, state.id)
-                      bcast(state.id, :trips, 9, 9)
-
-                    _other ->
-                      :ok
-                  end
-                end)
-
-                Logger.info("GTFS::#{state.id} completed import")
-
-                Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
-
-              {:error, _info} ->
-                bcast(state.id, :error, 1, 1)
-                Logger.info("GTFS::#{state.id} Got invalid zip file #{_info.reason}")
-            end
+            import_old_zip(result.body, cfg, state.id)
 
           {:error, info} ->
             Logger.info(info.reason)
@@ -2618,6 +2552,62 @@ end
     end
 
     {:noreply, state}
+  end
+
+  defp import_old_zip(body, cfg, id) do
+    case :zip.unzip(body, [:memory]) do
+      {:ok, files} ->
+        Enum.each(files, fn {name, data} -> import_old_file(name, data, id) end)
+
+        Logger.info("GTFS::#{id} completed import")
+
+        Configuration.update_source_meta(cfg, %{last_run: DateTime.utc_now()})
+
+      {:error, _info} ->
+        bcast(id, :error, 1, 1)
+        Logger.info("GTFS::#{id} Got invalid zip file #{_info.reason}")
+    end
+  end
+
+  # What the zip-in-memory import above made of one file.
+  @old_files %{
+    'agency.txt' => {:agency, 3},
+    'calendar.txt' => {:calendar, 4},
+    'directions.txt' => {:directions, 5},
+    'routes.txt' => {:routes, 6},
+    'stops.txt' => {:stops, 7},
+    'trips.txt' => {:trips, 9}
+  }
+
+  defp import_old_file('stop_times.txt', data, id) do
+    log_old_datum(data)
+    write_file(data, :stop_times, id, via: :copy)
+    bcast(id, :stop_times, 8, 9)
+  end
+
+  defp import_old_file(name, data, id) do
+    as_csv = log_old_datum(data)
+
+    case Map.fetch(@old_files, name) do
+      {:ok, {type, step}} ->
+        write_file(as_csv, type, id)
+        bcast(id, type, step, 9)
+
+      :error ->
+        :ok
+    end
+  end
+
+  defp log_old_datum(data) do
+    as_csv =
+      data
+      |> String.split("\n")
+      |> Enum.map(&replace/1)
+      |> Enum.filter(fn x -> x != "" end)
+      |> XP.parse_stream()
+
+    Logger.info({"datum", as_csv})
+    as_csv
   end
 end
 
@@ -2647,12 +2637,14 @@ defmodule RoomGtfs.Debug do
   """
   def urls(id) do
     cfg = Configuration.get_source!(id)
+
     %{
-      name:      cfg.name,
+      name: cfg.name,
       url_rt_sa: cfg.config.url_rt_sa,
       url_rt_tu: cfg.config.url_rt_tu,
-      url_rt_vp: cfg.config.url_rt_vp,
-    } |> IO.inspect(label: "RT URLs for source #{id}")
+      url_rt_vp: cfg.config.url_rt_vp
+    }
+    |> show(label: "RT URLs for source #{id}")
   end
 
   @doc """
@@ -2661,20 +2653,22 @@ defmodule RoomGtfs.Debug do
   """
   def fetch_url(url) do
     IO.puts("Fetching #{url} ...")
+
     case RoomGtfs.Worker.RT.fetch_rt_url(url) do
       {:ok, feed} ->
         summary = %{
           header_timestamp: feed.header.timestamp,
-          entity_count:     length(feed.entity),
-          trip_updates:     feed.entity |> Enum.count(& &1.trip_update),
+          entity_count: length(feed.entity),
+          trip_updates: feed.entity |> Enum.count(& &1.trip_update),
           vehicle_positions: feed.entity |> Enum.count(& &1.vehicle),
-          alerts:           feed.entity |> Enum.count(& &1.alert),
+          alerts: feed.entity |> Enum.count(& &1.alert)
         }
-        IO.inspect(summary, label: "Feed summary")
+
+        show(summary, label: "Feed summary")
         {:ok, feed}
 
       {:error, reason} ->
-        IO.inspect(reason, label: "Fetch failed")
+        show(reason, label: "Fetch failed")
         {:error, reason}
     end
   end
@@ -2684,11 +2678,17 @@ defmodule RoomGtfs.Debug do
   """
   def fetch_all(id) do
     cfg = Configuration.get_source!(id)
-    for {label, url} <- [sa: cfg.config.url_rt_sa, tu: cfg.config.url_rt_tu, vp: cfg.config.url_rt_vp],
+
+    for {label, url} <- [
+          sa: cfg.config.url_rt_sa,
+          tu: cfg.config.url_rt_tu,
+          vp: cfg.config.url_rt_vp
+        ],
         url != nil do
       IO.puts("\n--- #{label} ---")
       fetch_url(url)
     end
+
     :ok
   end
 
@@ -2703,11 +2703,13 @@ defmodule RoomGtfs.Debug do
 
       pid ->
         state = :sys.get_state(pid)
+
         %{
           rt_sa: feed_summary(state.rt_sa),
           rt_tu: feed_summary(state.rt_tu),
-          rt_vp: feed_summary(state.rt_vp),
-        } |> IO.inspect(label: "RT worker state for source #{id}")
+          rt_vp: feed_summary(state.rt_vp)
+        }
+        |> show(label: "RT worker state for source #{id}")
     end
   end
 
@@ -2719,15 +2721,22 @@ defmodule RoomGtfs.Debug do
     IO.puts("Running query_stop for source=#{id} stop=#{query.stop} ...")
     results = RoomGtfs.Worker.query_stop(id, query)
     IO.puts("#{length(results)} arrivals:")
+
     for r <- results do
       route_id = get_in(r, [:trip, :route_id]) || get_in(r, [:trip, :route, :route_id]) || "?"
       headsign = get_in(r, [:trip, :trip_headsign]) || "?"
-      live = case Map.get(r, :arrival_time_live_ts) do
-        nil -> ""
-        ts  -> " [LIVE ts=#{ts} delay=#{r.arrival_time_live_delay}s]"
-      end
-      IO.puts("  route=#{route_id}  trip=#{r.trip_id}  to=#{headsign}  arrival=#{r.arrival_time}#{live}")
+
+      live =
+        case Map.get(r, :arrival_time_live_ts) do
+          nil -> ""
+          ts -> " [LIVE ts=#{ts} delay=#{r.arrival_time_live_delay}s]"
+        end
+
+      IO.puts(
+        "  route=#{route_id}  trip=#{r.trip_id}  to=#{headsign}  arrival=#{r.arrival_time}#{live}"
+      )
     end
+
     results
   end
 
@@ -2742,23 +2751,35 @@ defmodule RoomGtfs.Debug do
 
       pid ->
         state = :sys.get_state(pid)
+
         case state.rt_tu do
           nil ->
             IO.puts("rt_tu is nil — no successful fetch yet")
 
           feed ->
-            entities = feed.entity |> Enum.filter(& &1.trip_update)
-            entities = if stop_id do
-              entities |> Enum.filter(fn e ->
-                Enum.any?(e.trip_update.stop_time_update, & &1.stop_id == stop_id)
-              end)
-            else
-              entities
-            end
-            IO.puts("#{length(entities)} trip_update entities#{if stop_id, do: " for stop #{stop_id}", else: ""}:")
-            entities |> IO.inspect(limit: :infinity)
+            dump_feed(feed, stop_id)
         end
     end
+  end
+
+  defp dump_feed(feed, stop_id) do
+    entities = feed.entity |> Enum.filter(& &1.trip_update)
+
+    entities =
+      if stop_id do
+        entities
+        |> Enum.filter(fn e ->
+          Enum.any?(e.trip_update.stop_time_update, &(&1.stop_id == stop_id))
+        end)
+      else
+        entities
+      end
+
+    IO.puts(
+      "#{length(entities)} trip_update entities#{if stop_id, do: " for stop #{stop_id}", else: ""}:"
+    )
+
+    entities |> show(limit: :infinity)
   end
 
   @doc """
@@ -2770,32 +2791,45 @@ defmodule RoomGtfs.Debug do
     alias RoomSanctum.Storage
 
     IO.puts("\n=== RT state ===")
-    rt_summary = case dbg_pid(id) do
-      :undefined ->
-        IO.puts("RT worker not found!")
-        nil
-      pid ->
-        state = :sys.get_state(pid)
-        IO.puts("rt_tu: #{inspect(feed_summary(state.rt_tu))}")
-        state.rt_tu
-    end
+
+    rt_summary =
+      case dbg_pid(id) do
+        :undefined ->
+          IO.puts("RT worker not found!")
+          nil
+
+        pid ->
+          state = :sys.get_state(pid)
+          IO.puts("rt_tu: #{inspect(feed_summary(state.rt_tu))}")
+          state.rt_tu
+      end
 
     IO.puts("\n=== Static arrivals for stop #{stop} ===")
-    static = Storage.get_upcoming_arrivals_for_stop(id, stop) |> Storage.fix_arrival_times
+    static = Storage.get_upcoming_arrivals_for_stop(id, stop) |> Storage.fix_arrival_times()
     static_trip_ids = static |> Enum.map(& &1.trip_id)
-    IO.puts("#{length(static)} static trips: #{inspect(Enum.take(static_trip_ids, 5))}#{if length(static_trip_ids) > 5, do: " ...", else: ""}")
+
+    IO.puts(
+      "#{length(static)} static trips: #{inspect(Enum.take(static_trip_ids, 5))}#{if Enum.count_until(static_trip_ids, 6) > 5, do: " ...", else: ""}"
+    )
 
     if rt_summary do
       IO.puts("\n=== RT feed trip IDs (sample of 5) ===")
-      rt_trip_ids = rt_summary.entity
+
+      rt_trip_ids =
+        rt_summary.entity
         |> Enum.filter(& &1.trip_update)
         |> Enum.map(& &1.trip_update.trip.trip_id)
+
       IO.puts("#{length(rt_trip_ids)} total RT trip updates")
       IO.puts("Sample: #{inspect(Enum.take(rt_trip_ids, 5))}")
 
       IO.puts("\n=== Trip ID overlap ===")
       matched = MapSet.intersection(MapSet.new(static_trip_ids), MapSet.new(rt_trip_ids))
-      IO.puts("#{MapSet.size(matched)} of #{length(static_trip_ids)} static trips found in RT feed")
+
+      IO.puts(
+        "#{MapSet.size(matched)} of #{length(static_trip_ids)} static trips found in RT feed"
+      )
+
       if MapSet.size(matched) > 0 do
         IO.puts("Matched trip IDs: #{inspect(MapSet.to_list(matched))}")
       else
@@ -2805,18 +2839,24 @@ defmodule RoomGtfs.Debug do
       end
 
       IO.puts("\n=== stop_id format check ===")
-      rt_stop_ids = rt_summary.entity
+
+      rt_stop_ids =
+        rt_summary.entity
         |> Enum.filter(& &1.trip_update)
         |> Enum.flat_map(& &1.trip_update.stop_time_update)
         |> Enum.map(& &1.stop_id)
         |> Enum.uniq()
         |> Enum.take(5)
+
       IO.puts("Static stop_id: #{inspect(stop)}")
       IO.puts("RT stop_ids (sample): #{inspect(rt_stop_ids)}")
-      stop_match = rt_summary.entity
+
+      stop_match =
+        rt_summary.entity
         |> Enum.filter(& &1.trip_update)
         |> Enum.flat_map(& &1.trip_update.stop_time_update)
-        |> Enum.any?(& &1.stop_id == stop)
+        |> Enum.any?(&(&1.stop_id == stop))
+
       IO.puts("stop_id #{inspect(stop)} found in RT feed: #{stop_match}")
     end
 
@@ -2824,12 +2864,14 @@ defmodule RoomGtfs.Debug do
   end
 
   defp feed_summary(nil), do: :not_loaded
+
   defp feed_summary(feed) when is_struct(feed, TransitRealtime.FeedMessage) do
     %{
       header_timestamp: feed.header.timestamp,
-      entity_count:     length(feed.entity),
+      entity_count: length(feed.entity)
     }
   end
+
   defp feed_summary(other), do: {:unexpected, other}
 
   defp dbg_pid(id) do
@@ -2838,4 +2880,8 @@ defmodule RoomGtfs.Debug do
       _ -> :undefined
     end
   end
+
+  # Printing is what these IEx helpers are for, not a leftover.
+  # credo:disable-for-next-line Credo.Check.Warning.IoInspect
+  defp show(term, opts), do: IO.inspect(term, opts)
 end

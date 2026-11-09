@@ -37,6 +37,7 @@ defmodule RoomWeather.MixProject do
       # => When using Caching Annotations
       {:decorator, "~> 1.4"},
       {:telemetry, "~> 1.0"},
+      {:jason, "~> 1.4"},
       {:parent, "~> 0.12.1"},
       {:room_sanctum, in_umbrella: true}
       # {:dep_from_hexpm, "~> 0.3.0"},

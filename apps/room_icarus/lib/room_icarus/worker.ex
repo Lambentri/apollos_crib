@@ -123,6 +123,7 @@ defmodule RoomIcarus.Worker do
 
     if watches != [] do
       Logger.info("Icarus::#{state.id} sweeping #{length(watches)} flight watches")
+
       Enum.each(watches, fn watch ->
         maybe_poll(watch)
         Process.sleep(@request_spacing_ms)
@@ -191,6 +192,7 @@ defmodule RoomIcarus.Worker do
   # only actually polled every @flight_poll_seconds.
   defp maybe_poll(watch) do
     now = DateTime.utc_now()
+
     due? =
       is_nil(watch.last_polled_at) or
         DateTime.diff(now, watch.last_polled_at, :second) >= @flight_poll_seconds
@@ -338,6 +340,10 @@ defmodule RoomIcarus.Worker do
         _ -> nil
       end
     rescue
+      # Not just a missing row (Ecto.NoResultsError): a malformed id raises
+      # Ecto.Query.CastError and a database fault raises its own errors, and
+      # every one of them means there is no foci to anchor on.
+      # credo:disable-for-next-line ExSlop.Check.Warning.BlanketRescue
       _ -> nil
     end
   end
@@ -366,17 +372,15 @@ defmodule RoomIcarus.Worker do
     min_alt = numeric(field(query, :alt_min))
     max_alt = numeric(field(query, :alt_max))
 
-    cond do
-      is_nil(min_alt) and is_nil(max_alt) ->
-        list
-
-      true ->
-        Enum.filter(list, fn ac ->
-          case ac["alt_baro"] do
-            alt when is_number(alt) -> above?(alt, min_alt) and below?(alt, max_alt)
-            _ -> is_nil(min_alt)
-          end
-        end)
+    if is_nil(min_alt) and is_nil(max_alt) do
+      list
+    else
+      Enum.filter(list, fn ac ->
+        case ac["alt_baro"] do
+          alt when is_number(alt) -> above?(alt, min_alt) and below?(alt, max_alt)
+          _ -> is_nil(min_alt)
+        end
+      end)
     end
   end
 
@@ -429,7 +433,7 @@ defmodule RoomIcarus.Worker do
 
     case HTTPoison.get(url, [{"Accept", "application/json"}], recv_timeout: 15_000) do
       {:ok, %{status_code: 200, body: body}} ->
-        case Poison.decode(body) do
+        case Jason.decode(body) do
           {:ok, %{"ac" => ac}} when is_list(ac) ->
             {:ok, Enum.map(ac, &normalize_aircraft/1)}
 

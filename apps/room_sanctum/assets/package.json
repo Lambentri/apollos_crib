@@ -7,5 +7,8 @@
     "leaflet": "^1.8.0",
     "leaflet-centermarker": "file:./vendor/leaflet-centermarker-1.0.tgz",
     "pako": "^2.1.0"
+  },
+  "overrides": {
+    "postcss-selector-parser": "^7.1.6"
   }
 }

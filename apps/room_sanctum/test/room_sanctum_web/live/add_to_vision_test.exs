@@ -78,7 +78,7 @@ defmodule RoomSanctumWeb.AddToVisionTest do
     add(ctx.conn, b, ctx.vision)
 
     for q <- [a, b] do
-      assert length(Configuration.get_visions(:query, to_string(q.id))) == 1,
+      assert length(Configuration.get_visions(:query, to_string(q.id), ctx.user.id)) == 1,
              "#{q.name} did not show its vision"
     end
   end
@@ -86,9 +86,9 @@ defmodule RoomSanctumWeb.AddToVisionTest do
   test "a vision already holding the query stops offering itself", ctx do
     a = query(ctx, "AAPL")
 
-    assert length(Configuration.get_visions_nv(:query, to_string(a.id))) == 1
+    assert length(Configuration.get_visions_nv(:query, to_string(a.id), ctx.user.id)) == 1
     add(ctx.conn, a, ctx.vision)
-    assert Configuration.get_visions_nv(:query, to_string(a.id)) == []
+    assert Configuration.get_visions_nv(:query, to_string(a.id), ctx.user.id) == []
   end
 
   test "adding the same query twice does not duplicate it", ctx do
@@ -130,7 +130,7 @@ defmodule RoomSanctumWeb.AddToVisionTest do
 
       create_with(ctx.conn, q, "Morning commute")
 
-      visions = Configuration.get_visions(:query, to_string(q.id))
+      visions = Configuration.get_visions(:query, to_string(q.id), ctx.user.id)
       assert Enum.map(visions, & &1.name) == ["Morning commute"]
     end
 
@@ -203,21 +203,21 @@ defmodule RoomSanctumWeb.AddToVisionTest do
     test "the query page stops listing the vision", ctx do
       q = query(ctx, "AAPL")
       add(ctx.conn, q, ctx.vision)
-      assert length(Configuration.get_visions(:query, to_string(q.id))) == 1
+      assert length(Configuration.get_visions(:query, to_string(q.id), ctx.user.id)) == 1
 
       remove(ctx.conn, q, ctx.vision)
 
-      assert Configuration.get_visions(:query, to_string(q.id)) == []
+      assert Configuration.get_visions(:query, to_string(q.id), ctx.user.id) == []
     end
 
     test "the vision is offered again afterwards", ctx do
       q = query(ctx, "AAPL")
       add(ctx.conn, q, ctx.vision)
-      assert Configuration.get_visions_nv(:query, to_string(q.id)) == []
+      assert Configuration.get_visions_nv(:query, to_string(q.id), ctx.user.id) == []
 
       remove(ctx.conn, q, ctx.vision)
 
-      assert length(Configuration.get_visions_nv(:query, to_string(q.id))) == 1
+      assert length(Configuration.get_visions_nv(:query, to_string(q.id), ctx.user.id)) == 1
     end
 
     test "the other queries in that vision are left alone", ctx do

@@ -32,7 +32,7 @@ defmodule RoomGtfs.FeedTesterFindingsTest do
 
   defp stu(attrs), do: struct(%T.TripUpdate.StopTimeUpdate{}, attrs)
 
-  defp messages(result), do: Enum.map(result.findings, fn {_sev, m} -> m end) |> Enum.join(" | ")
+  defp messages(result), do: Enum.map_join(result.findings, " | ", fn {_sev, m} -> m end)
   defp severities(result), do: Enum.map(result.findings, fn {sev, _m} -> sev end)
 
   # The checks run over a decoded feed; fetching it and comparing it to the

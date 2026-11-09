@@ -2,6 +2,9 @@ defmodule RoomSanctum.Configuration.Scribus do
   use Ecto.Schema
   import Ecto.Changeset
 
+  alias RoomSanctum.Accounts.RabbitUser
+  alias RoomSanctum.Configuration.{Ownership, Vision}
+
   schema "cfg_scribus" do
     field :configuration, {:array, :map}
     field :name, :string
@@ -16,6 +19,8 @@ defmodule RoomSanctum.Configuration.Scribus do
     field :show_name, :boolean
     field :show_time, :boolean
     field :tz, :string
+    # Set by create_scribus/2 from the signed-in user, never cast.
+    belongs_to :user, RoomSanctum.Accounts.User
 
     timestamps()
   end
@@ -25,5 +30,8 @@ defmodule RoomSanctum.Configuration.Scribus do
     scribus
     |> cast(attrs, [:name, :resolution, :configuration, :enabled, :ankyra, :color, :wait, :buffer, :theme, :vision])
     |> validate_required([:name, :resolution, :vision, :enabled, :color, :wait, :buffer, :theme])
+    # As on a pythiae: only the owner's own vision, shown on their own Ankyra.
+    |> Ownership.validate_owned(:vision, Vision)
+    |> Ownership.validate_owned(:ankyra, RabbitUser)
   end
 end

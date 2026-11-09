@@ -15,7 +15,7 @@ defmodule RoomSanctum.FranceImportBundleTest do
   @bundle Application.app_dir(:room_sanctum, "priv/imports/france_top_ten.json")
 
   defp sources do
-    @bundle |> File.read!() |> Poison.decode!() |> Map.fetch!("sources")
+    @bundle |> File.read!() |> Jason.decode!() |> Map.fetch!("sources")
   end
 
   # What the import page does to a pasted source before validating it.

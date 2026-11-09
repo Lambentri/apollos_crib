@@ -31,16 +31,22 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
 
   @impl true
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, 15000)
+    Process.send_after(self(), :update, 15_000)
 
     %{data: data, queries: queries, name: name} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.pythiae.curr_vision)
 
-    shuffled_consts = socket.assigns.pythiae.consts |> Enum.shuffle |> Enum.with_index |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end) |> Map.new
+    shuffled_consts =
+      socket.assigns.pythiae.consts
+      |> Enum.shuffle()
+      |> Enum.with_index()
+      |> Enum.map(fn {c, i} -> {{c.title, :const}, c} end)
+      |> Map.new()
 
-    data = Map.merge(data, shuffled_consts) |> Enum.shuffle
+    data = Map.merge(data, shuffled_consts) |> Enum.shuffle()
 
-    {:noreply, socket |> assign(:preview, data) |> assign(:queries, queries) |> assign(:curr_vision, name)}
+    {:noreply,
+     socket |> assign(:preview, data) |> assign(:queries, queries) |> assign(:curr_vision, name)}
   end
 
   defp condense({id, type}, data) do
@@ -60,7 +66,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
   end
 
   defp get_query_data(item, queries, size \\ 8) do
-    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+    as_map = Map.new(queries, fn x -> {x.id, x} end)
 
     case Map.get(as_map, item) do
       nil ->
@@ -79,7 +85,7 @@ defmodule RoomSanctumWeb.PythiaeLive.Public do
   end
 
   defp get_query_data_icon(item, queries) do
-    as_map = queries |> Enum.map(fn x -> {x.id, x} end) |> Enum.into(%{})
+    as_map = Map.new(queries, fn x -> {x.id, x} end)
 
     case Map.get(as_map, item) do
       nil -> ""

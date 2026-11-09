@@ -45,6 +45,13 @@ defmodule RoomGtfs.Application do
   # unbounded, a scheduled refresh of every source at once would try to hold
   # them all.
   #
+  # On hackney 4 `max_connections` is how many idle connections each pool
+  # keeps, not a cap on how many are open at once: the four-at-a-time limit is
+  # `max_per_host` in the static worker's request options, and it holds per
+  # host rather than across all of them. TLS connections are not pooled at
+  # all unless asked for, so for https feeds these pools hold nothing between
+  # requests.
+  #
   # Separate from hackney's default pool for the same reason. Everything else
   # in this umbrella -- realtime feeds, GitHub, the weather -- shares that one,
   # and a bulk transfer sitting in it starves requests that take milliseconds.

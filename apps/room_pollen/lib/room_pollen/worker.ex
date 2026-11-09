@@ -60,9 +60,7 @@ defmodule RoomPollen.Worker do
   def handle_cast(:refresh_forecasts, state) do
     case creds(state.inst) do
       {:ok, key} ->
-        Logger.info(
-          "Pollen::#{state.inst.id} refreshing #{MapSet.size(state.targets)} targets"
-        )
+        Logger.info("Pollen::#{state.inst.id} refreshing #{MapSet.size(state.targets)} targets")
 
         new_forecasts =
           state.targets
@@ -97,21 +95,8 @@ defmodule RoomPollen.Worker do
           GenServer.cast(self(), {:add_target, {lat, lng, days}})
 
           case Map.get(state.forecasts, {lat, lng, days}) do
-            nil ->
-              # Lazy fetch on first read
-              case creds(state.inst) do
-                {:ok, key} ->
-                  case fetch_forecast(key, lat, lng, days) do
-                    {:ok, daily_info} -> daily_info
-                    :error -> []
-                  end
-
-                :no_creds ->
-                  []
-              end
-
-            cached ->
-              cached
+            nil -> fetch_on_read(state.inst, lat, lng, days)
+            cached -> cached
           end
       end
 
@@ -119,6 +104,20 @@ defmodule RoomPollen.Worker do
   end
 
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}
+
+  # Lazy fetch on first read
+  defp fetch_on_read(inst, lat, lng, days) do
+    case creds(inst) do
+      {:ok, key} ->
+        case fetch_forecast(key, lat, lng, days) do
+          {:ok, daily_info} -> daily_info
+          :error -> []
+        end
+
+      :no_creds ->
+        []
+    end
+  end
 
   # Helpers
   defp via(name), do: via_tuple(name)
@@ -134,20 +133,21 @@ defmodule RoomPollen.Worker do
     # A place if one was handed over, otherwise the foci named in the query.
     anchor =
       RoomSanctum.Configuration.place_for!(query) ||
-        Map.get(query, :foci_id) || Map.get(query, "foci_id")
+        field(query, :foci_id)
 
-    days =
-      case Map.get(query, :days) || Map.get(query, "days") do
-        n when is_integer(n) and n in 1..5 -> n
-        n when is_binary(n) -> String.to_integer(n) |> max(1) |> min(5)
-        _ -> 3
-      end
+    days = days_from_query(field(query, :days))
 
     case resolve_foci(anchor) do
       {lat, lng} -> {lat, lng, days}
       nil -> nil
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
+
+  defp days_from_query(n) when is_integer(n) and n in 1..5, do: n
+  defp days_from_query(n) when is_binary(n), do: String.to_integer(n) |> max(1) |> min(5)
+  defp days_from_query(_), do: 3
 
   defp resolve_foci(nil), do: nil
 
@@ -164,6 +164,10 @@ defmodule RoomPollen.Worker do
         _ -> nil
       end
     rescue
+      # Not just a missing row (Ecto.NoResultsError): a malformed id raises
+      # Ecto.Query.CastError and a database fault raises its own errors, and
+      # every one of them means there is no foci to anchor on.
+      # credo:disable-for-next-line ExSlop.Check.Warning.BlanketRescue
       _ -> nil
     end
   end
@@ -176,7 +180,7 @@ defmodule RoomPollen.Worker do
 
     case HTTPoison.get(url, [{"Accept", "application/json"}], recv_timeout: 15_000) do
       {:ok, %{status_code: 200, body: body}} ->
-        case Poison.decode(body) do
+        case Jason.decode(body) do
           {:ok, %{"dailyInfo" => daily}} when is_list(daily) ->
             {:ok, daily}
 

@@ -112,7 +112,8 @@ defmodule RoomBourse.Worker do
   A single quote, or `{:error, message}` with something worth showing a user.
   """
   def quote_for(symbol) do
-    url = "#{endpoint()}/v8/finance/chart/#{URI.encode(symbol, &URI.char_unreserved?/1)}?range=1d&interval=1d"
+    url =
+      "#{endpoint()}/v8/finance/chart/#{URI.encode(symbol, &URI.char_unreserved?/1)}?range=1d&interval=1d"
 
     # Yahoo returns 404 for unknown symbols with a usable description, so a
     # non-200 body is still worth decoding before giving up on it.
@@ -136,7 +137,7 @@ defmodule RoomBourse.Worker do
   end
 
   defp decode(body, symbol) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"chart" => %{"result" => [%{"meta" => meta} | _]}}} ->
         {:ok, present(meta, symbol)}
 
@@ -149,7 +150,7 @@ defmodule RoomBourse.Worker do
   end
 
   defp describe_error(body) do
-    case Poison.decode(body) do
+    case Jason.decode(body) do
       {:ok, %{"chart" => %{"error" => %{"description" => description}}}} -> description
       _ -> nil
     end
@@ -158,8 +159,8 @@ defmodule RoomBourse.Worker do
   defp present(meta, symbol) do
     price = meta["regularMarketPrice"]
     previous = meta["chartPreviousClose"] || meta["previousClose"]
-    change = if is_number(price) and is_number(previous), do: price - previous
-    change_pct = if is_number(change) and is_number(previous) and previous != 0, do: change / previous * 100
+    change = change(price, previous)
+    change_pct = change_pct(change, previous)
 
     %{
       symbol: meta["symbol"] || String.upcase(symbol),
@@ -179,6 +180,17 @@ defmodule RoomBourse.Worker do
       checked_at: DateTime.utc_now() |> DateTime.to_iso8601()
     }
   end
+
+  defp change(price, previous) when is_number(price) and is_number(previous),
+    do: price - previous
+
+  defp change(_price, _previous), do: nil
+
+  defp change_pct(change, previous)
+       when is_number(change) and is_number(previous) and previous != 0,
+       do: change / previous * 100
+
+  defp change_pct(_change, _previous), do: nil
 
   defp direction(change) when is_number(change) and change > 0, do: :up
   defp direction(change) when is_number(change) and change < 0, do: :down
@@ -214,7 +226,8 @@ defmodule RoomBourse.Worker do
 
   # Yahoo rejects requests without a browser-ish agent.
   defp user_agent,
-    do: Application.get_env(:room_bourse, :user_agent, "Mozilla/5.0 (compatible; ApollosCrib/1.0)")
+    do:
+      Application.get_env(:room_bourse, :user_agent, "Mozilla/5.0 (compatible; ApollosCrib/1.0)")
 
   defp normalise(symbol) when is_binary(symbol) do
     case symbol |> String.trim() |> String.upcase() do

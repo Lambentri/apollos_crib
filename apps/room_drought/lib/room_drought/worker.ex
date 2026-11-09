@@ -60,7 +60,9 @@ defmodule RoomDrought.Worker do
 
   def handle_cast(:refresh_usdm, state) do
     if usdm_enabled?(state.inst) do
-      Logger.info("Drought::#{state.inst.id} refreshing USDM (#{MapSet.size(state.targets)} targets)")
+      Logger.info(
+        "Drought::#{state.inst.id} refreshing USDM (#{MapSet.size(state.targets)} targets)"
+      )
 
       new_usdm =
         state.targets
@@ -89,56 +91,59 @@ defmodule RoomDrought.Worker do
 
   # Call handlers
   def handle_call({:read, query}, _from, state) do
-    product = Map.get(query, :product) || Map.get(query, "product") || "usdm"
+    product = field(query, :product) || "usdm"
 
-    result =
-      case product do
-        "usdm" ->
-          case scope_from_query(query) do
-            nil ->
-              []
-
-            target ->
-              # Make sure we're tracking it for next refresh
-              GenServer.cast(self(), {:add_target, target})
-
-              case Map.get(state.usdm, target) do
-                nil ->
-                  case fetch_usdm(target) do
-                    {:ok, record} -> [record]
-                    :error -> []
-                  end
-
-                record ->
-                  [record]
-              end
-          end
-
-        product when product in ["csi", "cpc", "gpcc"] ->
-          [%{"product" => product, "status" => "not_yet_implemented"}]
-
-        _ ->
-          []
-      end
-
-    {:reply, result, state}
+    {:reply, read_product(product, query, state), state}
   end
 
   def handle_call(_msg, _from, state), do: {:reply, :ok, state}
+
+  defp read_product("usdm", query, state) do
+    case scope_from_query(query) do
+      nil ->
+        []
+
+      target ->
+        # Make sure we're tracking it for next refresh
+        GenServer.cast(self(), {:add_target, target})
+        read_usdm(target, state)
+    end
+  end
+
+  defp read_product(product, _query, _state) when product in ["csi", "cpc", "gpcc"],
+    do: [%{"product" => product, "status" => "not_yet_implemented"}]
+
+  defp read_product(_product, _query, _state), do: []
+
+  defp read_usdm(target, state) do
+    case Map.get(state.usdm, target) do
+      nil ->
+        case fetch_usdm(target) do
+          {:ok, record} -> [record]
+          :error -> []
+        end
+
+      record ->
+        [record]
+    end
+  end
 
   # Helpers
   defp via(name), do: via_tuple(name)
   defp via_tuple(name), do: {:via, Registry, {@registry, name}}
 
-  defp usdm_enabled?(%{enabled: true, config: %{__struct__: @drought_config_module, products: products}})
+  defp usdm_enabled?(%{
+         enabled: true,
+         config: %{__struct__: @drought_config_module, products: products}
+       })
        when is_list(products),
        do: "usdm" in products
 
   defp usdm_enabled?(_), do: false
 
   defp scope_from_query(query) do
-    fips = Map.get(query, :fips) || Map.get(query, "fips")
-    state = Map.get(query, :state) || Map.get(query, "state")
+    fips = field(query, :fips)
+    state = field(query, :state)
 
     cond do
       is_binary(fips) and fips != "" -> {:county, fips}
@@ -146,6 +151,8 @@ defmodule RoomDrought.Worker do
       true -> nil
     end
   end
+
+  defp field(query, key), do: Map.get(query, key) || Map.get(query, Atom.to_string(key))
 
   defp normalize_scope({:county, fips}) when is_binary(fips), do: {:county, fips}
   defp normalize_scope({:state, st}) when is_binary(st), do: {:state, String.upcase(st)}
@@ -170,7 +177,7 @@ defmodule RoomDrought.Worker do
 
     case HTTPoison.get(url, [{"Accept", "application/json"}], recv_timeout: 15_000) do
       {:ok, %{status_code: 200, body: body}} ->
-        case Poison.decode(body) do
+        case Jason.decode(body) do
           {:ok, [_ | _] = list} ->
             # API returns most-recent first
             {:ok, List.first(list)}

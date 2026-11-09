@@ -16,7 +16,7 @@ defmodule RoomSanctum.GbfsQueryTest do
   end
 
   test "station is the default, so a query saved before area mode existed still reads" do
-    assert %GBFS{mode: :station}= %GBFS{}
+    assert %GBFS{mode: :station} = %GBFS{}
     assert changeset(%{"stop_id" => "s1"}).valid?
   end
 

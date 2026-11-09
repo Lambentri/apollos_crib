@@ -40,7 +40,10 @@ defmodule RoomEphem.MixProject do
       {:parent, "~> 0.12.1"},
       {:solarex, "~> 0.1.1"},
       {:wheretz, "~> 0.1.16"},
-      {:poison, "~> 5.0", override: true},
+      # wheretz (unmaintained) still asks for httpoison ~> 1.6, which holds
+      # hackney at 1.x and its advisories. Its one call, in `mix download_data`,
+      # works the same on 3.x.
+      {:httpoison, "~> 3.0", override: true},
       {:room_sanctum, in_umbrella: true}
       # {:dep_from_hexpm, "~> 0.3.0"},
       # {:dep_from_git, git: "https://github.com/elixir-lang/my_dep.git", tag: "0.1.0"},

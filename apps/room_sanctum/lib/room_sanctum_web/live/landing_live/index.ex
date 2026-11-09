@@ -1,10 +1,11 @@
 defmodule RoomSanctumWeb.LandingLive.Index do
   use RoomSanctumWeb, :live_view_ca
+
   use LiveViewNative.LiveView,
-      formats: [:jetpack],
-      layouts: [
-        jetpack: {RoomSanctumWeb.Layouts.Jetpack, :app}
-      ]
+    formats: [:jetpack],
+    layouts: [
+      jetpack: {RoomSanctumWeb.Layouts.Jetpack, :app}
+    ]
 
   alias RoomSanctum.Configuration
 
@@ -45,7 +46,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
 
   @impl true
   def handle_info(:update, socket) do
-    Process.send_after(self(), :update, 10000)
+    Process.send_after(self(), :update, 10_000)
 
     %{data: data, queries: queries} =
       RoomSanctum.Worker.Vision.get_state(socket.assigns.vision.id)
@@ -73,8 +74,7 @@ defmodule RoomSanctumWeb.LandingLive.Index do
   defp get_query_data(item, queries, size \\ 8) do
     as_map =
       queries
-      |> Enum.map(fn x -> {x.id, x} end)
-      |> Enum.into(%{})
+      |> Map.new(fn x -> {x.id, x} end)
 
     case Map.get(as_map, item) do
       nil ->

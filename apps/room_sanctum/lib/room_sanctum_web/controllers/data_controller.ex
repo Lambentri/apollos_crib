@@ -12,20 +12,20 @@ defmodule RoomSanctumWeb.DataController do
   def index(conn, data) do
     {path, data} = data |> Map.pop("path")
     {:ok, datas, _conn_details} = Plug.Conn.read_body(conn)
-    IO.inspect(datas)
+    Logger.debug("webhook #{path}: #{datas}")
 
-#    IO.inspect({"PDPDPD", path, data})
-#    %{path: path, data: datas}
-#    |> RoomSanctum.Queues.Webhooks.new()
-#    |> Oban.insert()
+    #    IO.inspect({"PDPDPD", path, data})
+    #    %{path: path, data: datas}
+    #    |> RoomSanctum.Queues.Webhooks.new()
+    #    |> Oban.insert()
 
-#    LambentEx.Meta.get_http()
-#    |> Enum.map(fn {name, hpath} ->
-#      case {name, hpath} do
-#        {name, ^path} -> Phoenix.PubSub.broadcast(@pubsub_name, @pubsub_topic, {name, path, data})
-#        {name, _path} -> :ok
-#      end
-#    end)
+    #    LambentEx.Meta.get_http()
+    #    |> Enum.map(fn {name, hpath} ->
+    #      case {name, hpath} do
+    #        {name, ^path} -> Phoenix.PubSub.broadcast(@pubsub_name, @pubsub_topic, {name, path, data})
+    #        {name, _path} -> :ok
+    #      end
+    #    end)
 
     text(conn, :ok)
   end
@@ -40,20 +40,21 @@ defmodule RoomSanctumWeb.DataController do
         [value | _] -> value
         [] -> List.first(Plug.Conn.get_req_header(conn, "hmac-header"))
       end
-#    IO.inspect(data)
-#    {:ok, datas, _conn_details} = Plug.Conn.read_body(conn)
-#    IO.inspect(datas)
+
+    #    IO.inspect(data)
+    #    {:ok, datas, _conn_details} = Plug.Conn.read_body(conn)
+    #    IO.inspect(datas)
     %{path: path, data: data, hmac: hmac}
     |> RoomSanctum.Queues.Webhooks.new()
     |> Oban.insert()
 
-#    # LambentEx.Meta.get_http()
-#    |> Enum.map(fn {name, hpath} ->
-#      case {name, hpath} do
-#        {name, ^path} -> Phoenix.PubSub.broadcast(@pubsub_name, @pubsub_topic, {name, path, data})
-#        {name, _path} -> :ok
-#      end
-#    end)
+    #    # LambentEx.Meta.get_http()
+    #    |> Enum.map(fn {name, hpath} ->
+    #      case {name, hpath} do
+    #        {name, ^path} -> Phoenix.PubSub.broadcast(@pubsub_name, @pubsub_topic, {name, path, data})
+    #        {name, _path} -> :ok
+    #      end
+    #    end)
 
     text(conn, :ok)
   end

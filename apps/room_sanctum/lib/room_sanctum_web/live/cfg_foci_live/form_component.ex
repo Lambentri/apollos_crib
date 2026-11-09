@@ -8,12 +8,8 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
     |> Map.put("user_id", socket.assigns.current_user.id)
   end
 
-  defp normalize_ll(val) do
-    cond do
-      val < -180 -> val + 360
-      true -> val
-    end
-  end
+  defp normalize_ll(val) when val < -180, do: val + 360
+  defp normalize_ll(val), do: val
 
   # Moving the pin must not discard what has been typed but not yet saved, so
   # the changeset is rebuilt from the form's current params rather than from
@@ -140,6 +136,6 @@ defmodule RoomSanctumWeb.FociLive.FormComponent do
   end
 
   defp getlatlng(%{:place => place}) do
-    place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> Poison.encode!()
+    place |> Map.get(:coordinates, {}) |> Tuple.to_list() |> RoomSanctum.JSON.encode!()
   end
 end

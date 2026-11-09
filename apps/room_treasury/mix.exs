@@ -21,8 +21,8 @@ defmodule RoomTreasury.MixProject do
 
   defp deps do
     [
-      {:httpoison, "~> 3.0"},
-      {:poison, "~> 5.0", override: true}
+      {:httpoison, "~> 3.0", override: true},
+      {:jason, "~> 1.4"}
     ]
   end
 end

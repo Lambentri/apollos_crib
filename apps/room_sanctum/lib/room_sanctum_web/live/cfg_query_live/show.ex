@@ -10,18 +10,19 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def mount(_params, _session, socket) do
     if connected?(socket), do: Process.send_after(self(), :update_sec, 200)
     if connected?(socket), do: Process.send_after(self(), :update, 1000)
-    
+
     # Subscribe to vehicle position updates for showing live vehicles  
     if connected?(socket) do
       Phoenix.PubSub.subscribe(RoomSanctum.PubSub, "gtfs_vehicle_positions")
       Process.send_after(self(), :update_vehicle_positions, 1000)
     end
-    
-    {:ok, socket 
+
+    {:ok,
+     socket
      |> assign(:preview, [])
      |> assign(:query_summaries, %{})
      |> assign(:free_bikes, [])
-     |> assign(:gbfs_docks, []) 
+     |> assign(:gbfs_docks, [])
      |> assign(:preview_mode, :basic)
      |> assign(:preview_raw, true)
      |> assign(:vehicle_positions, [])
@@ -84,7 +85,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   @impl true
   def handle_params(%{"id" => id}, _, socket) do
-    q = Configuration.get_query!(id)
+    # Only the user's own: anyone else's raises the not-found a missing id does.
+    q = Configuration.get_query!(owner(socket), id)
 
     {:noreply,
      socket
@@ -97,113 +99,14 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      # come up without the context it is mostly there to show.
      |> assign(:nearby_stations, nearby_stations(q))
      |> assign(:avail_visions, [])
-     |> assign(:avail_sel, :false)
-    }
+     |> assign(:avail_sel, false)}
   end
 
   @impl true
   def handle_info(:update, socket) do
     Process.send_after(self(), :update, 5000)
 
-
-    result =
-      case socket.assigns.query.source.type do
-        :gtfs ->
-          RoomGtfs.Worker.query_stop(socket.assigns.query.source.id, socket.assigns.query.query)
-
-        :gbfs ->
-          RoomGbfs.Worker.query_stop(socket.assigns.query.source.id, socket.assigns.query.query)
-
-        :tidal ->
-          RoomTidal.Worker.query_tides(socket.assigns.query.source.id, socket.assigns.query.query)
-
-        :weather ->
-          RoomWeather.Worker.query_weather(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :aqi ->
-          RoomAirQuality.Worker.query_place(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :ephem ->
-          RoomEphem.Worker.query_ephem(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :calendar ->
-          RoomCalendar.Worker.query_calendar(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :cronos ->
-          RoomCronos.Worker.query_cronos(
-            # we want the query's name here
-            socket.assigns.query.id,
-            socket.assigns.query.query
-          )
-
-        :gitlab ->
-          RoomGitlab.Worker.read_jobs(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :github ->
-          level = Map.get(socket.assigns.query.query, :level) || "runs"
-
-          case level do
-            "jobs" -> RoomGithub.Worker.read_jobs(socket.assigns.query.source.id, socket.assigns.query.query)
-            _ -> RoomGithub.Worker.read_runs(socket.assigns.query.source.id, socket.assigns.query.query)
-          end
-
-        :packages ->
-          RoomPackages.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :drought ->
-          RoomDrought.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :pollen ->
-          RoomPollen.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :icarus ->
-          RoomIcarus.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :mailbox ->
-          RoomHermes.Mail.ImapWorker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :treasury ->
-          RoomTreasury.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-
-        :bourse ->
-          RoomBourse.Worker.read(
-            socket.assigns.query.source.id,
-            socket.assigns.query.query
-          )
-      end
+    result = preview_for(socket.assigns.query)
 
     query = socket.assigns.query
 
@@ -217,6 +120,55 @@ defmodule RoomSanctumWeb.QueryLive.Show do
      |> assign(:gbfs_docks, MapData.stations_for(query, result))
      |> assign(:nearby_stations, nearby_stations(query))}
   end
+
+  # Workers answering through read/2.
+  @readers %{
+    packages: RoomPackages.Worker,
+    drought: RoomDrought.Worker,
+    pollen: RoomPollen.Worker,
+    icarus: RoomIcarus.Worker,
+    mailbox: RoomHermes.Mail.ImapWorker,
+    treasury: RoomTreasury.Worker,
+    bourse: RoomBourse.Worker
+  }
+
+  defp preview_for(%{source: %{type: :gtfs}} = q),
+    do: RoomGtfs.Worker.query_stop(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :gbfs}} = q),
+    do: RoomGbfs.Worker.query_stop(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :tidal}} = q),
+    do: RoomTidal.Worker.query_tides(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :weather}} = q),
+    do: RoomWeather.Worker.query_weather(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :aqi}} = q),
+    do: RoomAirQuality.Worker.query_place(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :ephem}} = q),
+    do: RoomEphem.Worker.query_ephem(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :calendar}} = q),
+    do: RoomCalendar.Worker.query_calendar(q.source.id, q.query)
+
+  # we want the query's name here
+  defp preview_for(%{source: %{type: :cronos}} = q),
+    do: RoomCronos.Worker.query_cronos(q.id, q.query)
+
+  defp preview_for(%{source: %{type: :gitlab}} = q),
+    do: RoomGitlab.Worker.read_jobs(q.source.id, q.query)
+
+  defp preview_for(%{source: %{type: :github}} = q) do
+    case Map.get(q.query, :level) || "runs" do
+      "jobs" -> RoomGithub.Worker.read_jobs(q.source.id, q.query)
+      _ -> RoomGithub.Worker.read_runs(q.source.id, q.query)
+    end
+  end
+
+  defp preview_for(%{source: %{type: type}} = q) when is_map_key(@readers, type),
+    do: Map.fetch!(@readers, type).read(q.source.id, q.query)
 
   # For an air quality query, the answer is one station -- so the neighbours
   # are the context that makes it readable: whether the number is local or the
@@ -265,16 +217,18 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   defp from_foci(_query, _q), do: []
 
   def handle_info(:update_sec, socket) do
-    visions = Configuration.get_visions(:query, socket.assigns.query_id)
-    nv = Configuration.get_visions_nv(:query, socket.assigns.query_id)
-    {:noreply, socket |> assign(:visions, visions) |>  assign(:avail_visions, nv)}
+    user_id = socket.assigns.current_user.id
+    visions = Configuration.get_visions(:query, socket.assigns.query_id, user_id)
+    nv = Configuration.get_visions_nv(:query, socket.assigns.query_id, user_id)
+    {:noreply, socket |> assign(:visions, visions) |> assign(:avail_visions, nv)}
   end
 
   # Handle vehicle position updates
   def handle_info({:vehicle_positions_updated, vehicles}, socket) do
     # Filter vehicles to only show those relevant to current query
     filtered_vehicles = filter_vehicles_for_single_query(vehicles, socket.assigns.query)
-#    IO.inspect("Query Show: Filtered #{length(vehicles)} to #{length(filtered_vehicles)} vehicles for stop")
+
+    #    IO.inspect("Query Show: Filtered #{length(vehicles)} to #{length(filtered_vehicles)} vehicles for stop")
     {:noreply,
      socket
      |> assign(
@@ -301,12 +255,15 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     {:noreply, socket |> assign(:avail_sel, !socket.assigns.avail_sel)}
   end
 
+  # The vision id comes from the client, so it is looked up among the user's
+  # own: the list only offers those, but nothing stops an event naming another.
   def handle_event("add-to", %{"vision" => vision}, socket) do
     Process.send_after(self(), :update_sec, 200)
 
-    vision
-    |> Configuration.get_vision!()
-    |> pin_query(socket)
+    case Configuration.get_vision(owner(socket), vision) do
+      nil -> {:noreply, put_flash(socket, :error, "No such vision")}
+      vision -> pin_query(vision, socket)
+    end
   end
 
   # Create a vision around this query, for when the one you want does not exist
@@ -336,15 +293,21 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_event("remove-from", %{"vision" => vision}, socket) do
     Process.send_after(self(), :update_sec, 200)
 
-    vision = Configuration.get_vision!(vision)
+    case Configuration.get_vision(owner(socket), vision) do
+      nil -> {:noreply, put_flash(socket, :error, "No such vision")}
+      vision -> unpin_query(vision, socket)
+    end
+  end
+
+  defp unpin_query(vision, socket) do
     query_id = String.to_integer(socket.assigns.query_id)
 
     # Both halves again: drop every embed pointing at this query -- there may
     # be more than one, since re-pinning used to duplicate them -- and the id.
     queries =
       vision.queries
-      |> Poison.encode!()
-      |> Poison.decode!()
+      |> RoomSanctum.JSON.encode!()
+      |> Jason.decode!()
       |> Enum.reject(fn q -> to_string(get_in(q, ["data", "query"])) == to_string(query_id) end)
 
     query_ids = (vision.query_ids || []) -- [query_id]
@@ -369,11 +332,11 @@ defmodule RoomSanctumWeb.QueryLive.Show do
     else
       new_query = %{
         id: nil,
-        data: %{order: 0, query: socket.assigns.query_id, "__type__": "pinned"},
+        data: %{order: 0, query: socket.assigns.query_id, __type__: "pinned"},
         type: "pinned"
       }
 
-      queries = (vision.queries |> Poison.encode!() |> Poison.decode!()) ++ [new_query]
+      queries = (vision.queries |> RoomSanctum.JSON.encode!() |> Jason.decode!()) ++ [new_query]
 
       # `||` binds looser than `++`, so `vision.query_ids || [] ++ [id]` read as
       # `query_ids || ([] ++ [id])` and handed back the existing list untouched.
@@ -401,6 +364,8 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   def handle_event("toggle-preview-raw", _params, socket) do
     {:noreply, socket |> assign(:preview_raw, !socket.assigns.preview_raw)}
   end
+
+  defp owner(socket), do: {:user, socket.assigns.current_user.id}
 
   defp page_title(:show), do: "Query Detail"
   defp page_title(:edit), do: "Modify Query"
@@ -449,58 +414,70 @@ defmodule RoomSanctumWeb.QueryLive.Show do
 
   # Helper function to filter vehicles for a single query
   defp filter_vehicles_for_single_query(vehicles, query) do
-#    IO.inspect("=== SINGLE QUERY FILTERING DEBUG ===")
-#    IO.inspect("Input vehicles count: #{length(vehicles)}")
-#    IO.inspect("Query: #{query.name} (#{query.source.type})")
-#    IO.inspect("Query data: #{inspect(query.query)}")
-    
-    result = case query.query do
-      %{stop: stop_id} when is_binary(stop_id) ->
-#        IO.inspect("Processing stop query for stop_id: #{stop_id}")
-        # Get trips that serve this stop
-        try do
-          stop_trips = RoomSanctum.Storage.get_trips_for_stop(query.source.id, stop_id)
-          trip_ids = Enum.map(stop_trips, & &1.trip_id)
-#          IO.inspect("Found #{length(trip_ids)} trips serving stop #{stop_id}: #{Enum.take(trip_ids, 10)}")
-          
-          # Sample some vehicles
-          sample_vehicles = Enum.take(vehicles, 5)
-#          IO.inspect("Sample vehicle trip_ids: #{Enum.map(sample_vehicles, & &1.trip_id)}")
-          
-          filtered = vehicles
-          |> Enum.filter(fn vehicle ->
-            match = vehicle.trip_id && Enum.member?(trip_ids, vehicle.trip_id)
-            if match do
-#              IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on trip #{vehicle.trip_id}")
-            end
-            match
-          end)
-          
-#          IO.inspect("Stop filtering result: #{length(filtered)} vehicles matched")
-          filtered
-        rescue
-          e -> 
-#            IO.inspect("Error getting trips for stop #{stop_id}: #{inspect(e)}")
-            []
-        end
-      %{routes: route_ids} when is_list(route_ids) ->
-#        IO.inspect("Processing route query for route_ids: #{inspect(route_ids)}")
-        filtered = vehicles
-        |> Enum.filter(fn vehicle ->
-          match = vehicle.route_id && vehicle.route_id in route_ids
-          if match do
-#            IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on route #{vehicle.route_id}")
+    #    IO.inspect("=== SINGLE QUERY FILTERING DEBUG ===")
+    #    IO.inspect("Input vehicles count: #{length(vehicles)}")
+    #    IO.inspect("Query: #{query.name} (#{query.source.type})")
+    #    IO.inspect("Query data: #{inspect(query.query)}")
+
+    result =
+      case query.query do
+        %{stop: stop_id} when is_binary(stop_id) ->
+          #        IO.inspect("Processing stop query for stop_id: #{stop_id}")
+          # Get trips that serve this stop
+          try do
+            stop_trips = RoomSanctum.Storage.get_trips_for_stop(query.source.id, stop_id)
+            trip_ids = Enum.map(stop_trips, & &1.trip_id)
+
+            #          IO.inspect("Found #{length(trip_ids)} trips serving stop #{stop_id}: #{Enum.take(trip_ids, 10)}")
+
+            # Sample some vehicles
+            sample_vehicles = Enum.take(vehicles, 5)
+
+            #          IO.inspect("Sample vehicle trip_ids: #{Enum.map(sample_vehicles, & &1.trip_id)}")
+
+            filtered =
+              vehicles
+              |> Enum.filter(fn vehicle ->
+                match = vehicle.trip_id && Enum.member?(trip_ids, vehicle.trip_id)
+
+                if match do
+                  #              IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on trip #{vehicle.trip_id}")
+                end
+
+                match
+              end)
+
+            #          IO.inspect("Stop filtering result: #{length(filtered)} vehicles matched")
+            filtered
+          rescue
+            e ->
+              #            IO.inspect("Error getting trips for stop #{stop_id}: #{inspect(e)}")
+              []
           end
-          match
-        end)
-#        IO.inspect("Route filtering result: #{length(filtered)} vehicles matched")
-        filtered
-      _ ->
-#        IO.inspect("Unhandled query type: #{inspect(query.query)}")
-        []
-    end
-    
-#    IO.inspect("=== SINGLE QUERY FILTERING COMPLETE: #{length(result)} vehicles ===")
+
+        %{routes: route_ids} when is_list(route_ids) ->
+          #        IO.inspect("Processing route query for route_ids: #{inspect(route_ids)}")
+          filtered =
+            vehicles
+            |> Enum.filter(fn vehicle ->
+              match = vehicle.route_id && vehicle.route_id in route_ids
+
+              if match do
+                #            IO.inspect("MATCHED vehicle: #{vehicle.vehicle_id} on route #{vehicle.route_id}")
+              end
+
+              match
+            end)
+
+          #        IO.inspect("Route filtering result: #{length(filtered)} vehicles matched")
+          filtered
+
+        _ ->
+          #        IO.inspect("Unhandled query type: #{inspect(query.query)}")
+          []
+      end
+
+    #    IO.inspect("=== SINGLE QUERY FILTERING COMPLETE: #{length(result)} vehicles ===")
     result
   end
 
@@ -508,9 +485,10 @@ defmodule RoomSanctumWeb.QueryLive.Show do
   defp get_vehicle_positions_for_query(query) do
     try do
       case RoomGtfs.Worker.get_current_vehicle_positions(query.source.id) do
-        vehicles when is_list(vehicles) -> 
+        vehicles when is_list(vehicles) ->
           filter_vehicles_for_single_query(vehicles, query)
-        _ -> 
+
+        _ ->
           []
       end
     rescue

@@ -5,7 +5,6 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
   alias RoomSanctum.Accounts
   alias RoomSanctum.Configuration.Pythiae.Const
 
-
   def gen_name() do
     FriendlyID.generate(2, separator: "-")
   end
@@ -92,7 +91,6 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
     {:noreply, socket}
   end
 
-
   @impl true
   def update(%{pythiae: pythiae} = assigns, socket) do
     changeset = Configuration.change_pythiae(pythiae)
@@ -107,23 +105,23 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
      |> assign(
        :cfg_ankyra_sel,
        list_cfg_ankyra(assigns.current_user.id)
-       |> Enum.map(fn x -> {x.topic, x.id} end)
-       |> Enum.into(%{})
+       |> Map.new(fn x -> {x.topic, x.id} end)
      )
      |> assign(
        :cfg_visions_sel,
        list_cfg_visions(assigns.current_user.id)
-       |> Enum.map(fn x -> {x.name, x.id} end)
-       |> Enum.into(%{})
+       |> Map.new(fn x -> {x.name, x.id} end)
      )
      |> assign(
        :cfg_foci_sel,
        list_cfg_foci(assigns.current_user.id)
-       |> Enum.map(fn x -> {x.name, x.id} end)
-       |> Enum.into(%{})
+       |> Map.new(fn x -> {x.name, x.id} end)
      )
-    |> assign(:consts, [
-       %Const{title: "Fun Fact", body: "A Coconut will reach approx 10 meters per second before crushing your skull"},
+     |> assign(:consts, [
+       %Const{
+         title: "Fun Fact",
+         body: "A Coconut will reach approx 10 meters per second before crushing your skull"
+       },
        %Const{title: "Fun Fact", body: "Poseidon will take blood, it's guaranteed."}
      ])}
   end
@@ -152,8 +150,6 @@ defmodule RoomSanctumWeb.PythiaeLive.FormComponent do
   end
 
   defp save_pythiae(socket, :edit, pythiae_params) do
-    IO.inspect(pythiae_params)
-
     case Configuration.update_pythiae(socket.assigns.pythiae, pythiae_params) do
       {:ok, pythiae} ->
         notify_parent({:saved, pythiae})

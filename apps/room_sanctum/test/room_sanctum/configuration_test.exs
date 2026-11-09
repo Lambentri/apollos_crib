@@ -311,6 +311,8 @@ defmodule RoomSanctum.ConfigurationTest do
 
     @invalid_attrs %{configuration: nil, name: nil, resolution: nil}
 
+    defp owner, do: {:user, RoomSanctum.OwnershipFixtures.owner().id}
+
     test "list_cfg_scribus/0 returns all cfg_scribus" do
       scribus = scribus_fixture()
       assert Configuration.list_cfg_scribus() == [scribus]
@@ -324,14 +326,14 @@ defmodule RoomSanctum.ConfigurationTest do
     test "create_scribus/1 with valid data creates a scribus" do
       valid_attrs = %{configuration: [], name: "some name", resolution: "some resolution"}
 
-      assert {:ok, %Scribus{} = scribus} = Configuration.create_scribus(valid_attrs)
+      assert {:ok, %Scribus{} = scribus} = Configuration.create_scribus(owner(), valid_attrs)
       assert scribus.configuration == []
       assert scribus.name == "some name"
       assert scribus.resolution == "some resolution"
     end
 
     test "create_scribus/1 with invalid data returns error changeset" do
-      assert {:error, %Ecto.Changeset{}} = Configuration.create_scribus(@invalid_attrs)
+      assert {:error, %Ecto.Changeset{}} = Configuration.create_scribus(owner(), @invalid_attrs)
     end
 
     test "update_scribus/2 with valid data updates the scribus" do
