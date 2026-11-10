@@ -1,6 +1,10 @@
 
 # ApollosCrib
 
+<!-- gg:badges ci workflow:audit workflow:credo workflow:android license package:fdroid:io.neiam.apolloscrib -->
+[![CI status](https://gg.neiam.co/r/neiam/apollos_crib/badge/ci.svg)](https://gg.neiam.co/r/neiam/apollos_crib/actions) [![audit status](https://gg.neiam.co/r/neiam/apollos_crib/badge/workflow/audit.svg)](https://gg.neiam.co/r/neiam/apollos_crib/actions) [![credo status](https://gg.neiam.co/r/neiam/apollos_crib/badge/workflow/credo.svg)](https://gg.neiam.co/r/neiam/apollos_crib/actions) [![android status](https://gg.neiam.co/r/neiam/apollos_crib/badge/workflow/android.svg)](https://gg.neiam.co/r/neiam/apollos_crib/actions) [![license](https://gg.neiam.co/r/neiam/apollos_crib/badge/license.svg)](https://gg.neiam.co/r/neiam/apollos_crib/blob/master/LICENSE) [![install io.neiam.apolloscrib](https://gg.neiam.co/r/neiam/apollos_crib/badge/package/fdroid/io.neiam.apolloscrib.svg)](https://gg.neiam.co/r/neiam/apollos_crib/packages)
+<!-- /gg:badges -->
+
 A generalized automated data collection platform, for the purpose of collecting and displaying timely data for wherever you may be.
 
 It supports the creation of offerings data from 8+ generalized sources, with more to come:
