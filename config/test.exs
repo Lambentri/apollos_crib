@@ -48,3 +48,7 @@ config :logger, level: :warn
 
 # Initialize plugs at runtime for faster test compilation
 config :phoenix, :plug_init_mode, :runtime
+
+# No metrics server under test: PromEx's own listener would fight a running
+# dev server (or another app's suite) for 9568.
+config :room_observatory, RoomObservatory.PromEx, metrics_server: :disabled
