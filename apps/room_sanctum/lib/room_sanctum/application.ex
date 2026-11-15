@@ -14,6 +14,10 @@ defmodule RoomSanctum.Application do
     children = [
       # Start the Ecto repository
       RoomSanctum.Repo,
+      # OIDC sign-in. Starts nothing unless OIDC_ENABLED=true; then one
+      # provider worker that loads discovery/JWKS in the background, so an
+      # unreachable issuer never holds up boot.
+      NeiamAuth,
       # Start the Telemetry supervisor
       RoomSanctumWeb.Telemetry,
       # Start the PubSub system

@@ -15,6 +15,13 @@ defmodule RoomSanctumWeb.UserLoginLive do
         </:subtitle>
       </.header>
 
+      <%!-- One button per configured provider; nothing while OIDC_ENABLED is
+           off. Plain links: the browser has to leave LiveView for the IdP. --%>
+      <div :if={NeiamAuth.enabled?() and NeiamAuth.providers() != []} class="mt-10 space-y-4">
+        <NeiamAuth.Components.neiam_sign_in_buttons class="btn btn-primary w-full" />
+        <div class="divider">or</div>
+      </div>
+
       <.simple_form for={@form} id="login_form" action={~p"/users/log_in"} phx-update="ignore" class="rounded ">
         <.input field={@form[:email]} type="email" label="Email" required />
         <.input field={@form[:password]} type="password" label="Password" required />

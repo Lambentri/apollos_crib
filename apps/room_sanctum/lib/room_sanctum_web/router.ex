@@ -5,6 +5,7 @@ defmodule RoomSanctumWeb.Router do
   forward("/health/ready", Healthchex.Probes.Readiness)
 
   import RoomSanctumWeb.UserAuth
+  import NeiamAuth.Router
 
   pipeline :browser do
     plug :accepts, [
@@ -343,6 +344,13 @@ defmodule RoomSanctumWeb.Router do
     pipe_through [:browser]
 
     delete "/users/log_out", UserSessionController, :delete
+
+    # Sign in with NEIAM (OIDC): GET /auth/oidc/:provider/{login,callback} and
+    # /auth/oidc/health. Plain :browser (not redirect_if_user_is_authenticated):
+    # the flow state rides in the session cookie, and the settings page's
+    # "link" flow starts signed in. Both are GETs, so CSRF doesn't apply. 404
+    # while OIDC_ENABLED is off.
+    neiam_auth_routes()
 
     live_session :current_user,
       on_mount: [{RoomSanctumWeb.UserAuth, :mount_current_user}] do
