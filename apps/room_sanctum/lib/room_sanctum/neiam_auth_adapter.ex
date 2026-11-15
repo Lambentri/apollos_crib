@@ -23,7 +23,9 @@ defmodule RoomSanctum.NeiamAuthAdapter do
     conn.assigns[:current_user]
   end
 
-  # PROVISION=auto only. A passwordless, confirmed user: hashed_password is
+  # First login with no account to link: PROVISION=auto, or (neiam_auth
+  # v0.2.0) a member of PROVISION_GROUPS under invite_only. A passwordless,
+  # confirmed user: hashed_password is
   # nullable since 20261115214900, and User.valid_password?/2 already refuses
   # a nil hash. confirmed_at is a :naive_datetime here (gen.auth 1.7).
   @impl true

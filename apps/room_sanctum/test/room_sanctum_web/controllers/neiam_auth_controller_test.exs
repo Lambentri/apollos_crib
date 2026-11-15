@@ -288,6 +288,40 @@ defmodule RoomSanctumWeb.NeiamAuthControllerTest do
     end
   end
 
+  describe "PROVISION_GROUPS=admins (invite_only otherwise)" do
+    setup do
+      idp = idp()
+      start_neiam(neiam_env(idp, provision_groups: "admins"))
+      %{idp: idp}
+    end
+
+    test "a member of admins gets a working account on first login", %{conn: conn, idp: idp} do
+      FakeIdP.put_user(idp, sub: "sub-bob", email: "bob@example.com", groups: ["users", "admins"])
+
+      conn = sso(conn, idp, "neiam")
+      assert redirected_to(conn) == ~p"/"
+      user = signed_in_user(conn)
+      assert %User{email: "bob@example.com", hashed_password: nil} = user
+      assert %NaiveDateTime{} = user.confirmed_at
+      assert [%Identity{sub: "sub-bob", groups: ["users", "admins"]}] = Repo.all(Identity)
+
+      # Usable: the signed-in pages work, and the next SSO login is the same account.
+      {:ok, _lv, _html} = conn |> recycle() |> live(~p"/users/settings")
+      assert conn |> recycle() |> get("/cfg/visions") |> html_response(200)
+
+      conn = sso(build_conn(), idp, "neiam")
+      assert signed_in_user(conn).id == user.id
+      assert Repo.aggregate(User, :count) == 1
+    end
+
+    test "not in the group: still invite-only", %{conn: conn, idp: idp} do
+      FakeIdP.put_user(idp, email: "carol@example.com", groups: ["users"])
+      conn = quietly(fn -> sso(conn, idp, "neiam") end)
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "invite"
+      assert Repo.all(User) == []
+    end
+  end
+
   describe "the public pages stay public with SSO on" do
     setup do
       idp = idp()

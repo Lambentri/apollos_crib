@@ -125,7 +125,7 @@ defmodule RoomSanctum.MixProject do
 
       # "Sign in with NEIAM" (Authelia OIDC). Inert until OIDC_ENABLED=true.
       # Public over HTTPS so the Docker builders need no credentials.
-      {:neiam_auth, git: "https://gg.neiam.co/neiam/neiam_auth.git", tag: "v0.1.0"},
+      {:neiam_auth, git: "https://gg.neiam.co/neiam/neiam_auth.git", tag: "v0.2.0"},
       # Test only: serves neiam_auth's NeiamAuth.Test.FakeIdP. The app itself
       # stays on Cowboy.
       {:bandit, "~> 1.5", only: :test}
