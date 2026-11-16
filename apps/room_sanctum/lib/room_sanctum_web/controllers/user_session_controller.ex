@@ -21,17 +21,36 @@ defmodule RoomSanctumWeb.UserSessionController do
   defp create(conn, %{"user" => user_params}, info) do
     %{"email" => email, "password" => password} = user_params
 
-    if user = Accounts.get_user_by_email_and_password(email, password) do
-      conn
-      |> put_flash(:info, info)
-      |> UserAuth.log_in_user(user, user_params)
-    else
-      # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
-      conn
-      |> put_flash(:error, "Invalid email or password")
-      |> put_flash(:email, String.slice(email, 0, 160))
-      |> redirect(to: ~p"/users/log_in")
+    user = Accounts.get_user_by_email_and_password(email, password)
+
+    # No re-auth exception here (unlike gen.auth 1.8): this route sits behind
+    # redirect_if_user_is_authenticated, and a password change has already
+    # revoked the session by the time its form posts here, so every request
+    # that reaches this is a sign-in.
+    cond do
+      # Only after the password checked out, so this says nothing about an
+      # address to someone who doesn't know its password.
+      user && not NeiamAuth.password_login_allowed?(user) ->
+        sso_required(conn)
+
+      user ->
+        conn
+        |> put_flash(:info, info)
+        |> UserAuth.log_in_user(user, user_params)
+
+      true ->
+        # In order to prevent user enumeration attacks, don't disclose whether the email is registered.
+        conn
+        |> put_flash(:error, "Invalid email or password")
+        |> put_flash(:email, String.slice(email, 0, 160))
+        |> redirect(to: ~p"/users/log_in")
     end
+  end
+
+  defp sso_required(conn) do
+    conn
+    |> put_flash(:error, "This account signs in with NEIAM: use the Sign in with NEIAM button.")
+    |> redirect(to: ~p"/users/log_in")
   end
 
   def delete(conn, _params) do

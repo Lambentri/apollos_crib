@@ -51,6 +51,12 @@ defmodule RoomSanctum.NeiamAuthAdapter do
   @impl true
   def apply_groups(user, _groups), do: {:ok, user}
 
+  # Who may only sign in through SSO: neiam_auth's own rule (under
+  # OIDC_LOGIN_MODE=sso, anyone linked to a REQUIRED_FOR_LINKED provider).
+  # The password log-in asks it through NeiamAuth.password_login_allowed?/1.
+  @impl true
+  def sso_required?(user), do: NeiamAuth.sso_required?(user)
+
   @impl true
   def login_path, do: "/users/log_in"
 

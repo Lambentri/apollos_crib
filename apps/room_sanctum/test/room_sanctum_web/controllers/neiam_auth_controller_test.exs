@@ -260,6 +260,128 @@ defmodule RoomSanctumWeb.NeiamAuthControllerTest do
     end
   end
 
+  describe "OIDC_LOGIN_MODE" do
+    setup do
+      %{idp: idp()}
+    end
+
+    defp start_mode(idp, extra_env) do
+      idp
+      |> neiam_env(required_for_linked: "true")
+      |> Map.merge(extra_env)
+      |> start_neiam()
+    end
+
+    # alice@example.com, linked by a first SSO login; bob@example.com, not.
+    defp linked_and_unlinked(idp) do
+      alice = user_fixture("alice@example.com")
+      bob = user_fixture("bob@example.com")
+      sso(build_conn(), idp, "neiam")
+      assert [%Identity{user_id: id}] = Repo.all(Identity)
+      assert id == alice.id
+      {alice, bob}
+    end
+
+    defp password_log_in(user) do
+      post(build_conn(), ~p"/users/log_in", %{
+        "user" => %{"email" => user.email, "password" => @password}
+      })
+    end
+
+    test "sso: a linked user's password log-in is refused", %{idp: idp} do
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso"})
+      assert NeiamAuth.login_mode() == :sso
+      {alice, _bob} = linked_and_unlinked(idp)
+
+      conn = password_log_in(alice)
+      refute signed_in_user(conn)
+      assert redirected_to(conn) == ~p"/users/log_in"
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Sign in with NEIAM"
+
+      # A wrong password still says only "Invalid email or password".
+      conn =
+        post(build_conn(), ~p"/users/log_in", %{
+          "user" => %{"email" => alice.email, "password" => "not the password"}
+        })
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+
+      # SSO still signs them in.
+      assert signed_in_user(sso(build_conn(), idp, "neiam")).id == alice.id
+    end
+
+    test "sso: an unlinked user keeps the password", %{idp: idp} do
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso"})
+      {_alice, bob} = linked_and_unlinked(idp)
+      assert signed_in_user(password_log_in(bob)).id == bob.id
+    end
+
+    test "sso: a provider without REQUIRED_FOR_LINKED doesn't make its users SSO-only",
+         %{idp: idp} do
+      idp |> neiam_env() |> Map.put("OIDC_LOGIN_MODE", "sso") |> start_neiam()
+      {alice, _bob} = linked_and_unlinked(idp)
+      assert signed_in_user(password_log_in(alice)).id == alice.id
+    end
+
+    test "mixed (the default, and an explicit value): linked users keep the password",
+         %{idp: idp} do
+      start_mode(idp, %{})
+      assert NeiamAuth.login_mode() == :mixed
+      {alice, _bob} = linked_and_unlinked(idp)
+      assert signed_in_user(password_log_in(alice)).id == alice.id
+
+      stop_supervised!(NeiamAuth.Supervisor)
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "mixed"})
+      assert NeiamAuth.login_mode() == :mixed
+      assert signed_in_user(password_log_in(alice)).id == alice.id
+    end
+
+    test "local: SSO is off even with OIDC_ENABLED, and passwords work", %{idp: idp} do
+      {alice, _bob} = with_linked_users(idp)
+
+      stop_supervised!(NeiamAuth.Supervisor)
+
+      start_supervised!(
+        {NeiamAuth,
+         env:
+           idp
+           |> neiam_env(required_for_linked: "true")
+           |> Map.merge(%{"OIDC_ENABLED" => "true", "OIDC_LOGIN_MODE" => "local"}),
+         name: :neiam_auth_test}
+      )
+
+      assert NeiamAuth.login_mode() == :local
+      {:ok, _lv, html} = live(build_conn(), ~p"/users/log_in")
+      refute html =~ "/auth/oidc/"
+      assert get(build_conn(), "/auth/oidc/neiam/login").status == 404
+
+      assert %{"enabled" => false} =
+               build_conn() |> get("/auth/oidc/health") |> json_response(200)
+
+      assert signed_in_user(password_log_in(alice)).id == alice.id
+    end
+
+    test "OIDC_SSO_REQUIRED=false is the kill switch: sso acts as mixed", %{idp: idp} do
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso", "OIDC_SSO_REQUIRED" => "false"})
+      assert NeiamAuth.login_mode() == :mixed
+      {alice, _bob} = linked_and_unlinked(idp)
+      assert signed_in_user(password_log_in(alice)).id == alice.id
+    end
+
+    # The links are made with SSO on, then the mode under test is started.
+    defp with_linked_users(idp) do
+      start_mode(idp, %{})
+      linked_and_unlinked(idp)
+    end
+
+    test "health reports the mode", %{idp: idp} do
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso"})
+
+      assert %{"login_mode" => "sso"} =
+               build_conn() |> get("/auth/oidc/health") |> json_response(200)
+    end
+  end
+
   describe "PROVISION=auto" do
     setup do
       idp = idp()

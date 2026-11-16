@@ -50,10 +50,10 @@ The public demo instance https://ac.gmp.io/ is here, and the landing data displa
 ## Sign in with NEIAM
 
 Optional OpenID Connect sign-in through Authelia at `auth.neiam.org`, using
-[`neiam_auth`](https://gg.neiam.co/neiam/neiam_auth) (`v0.2.0`, pinned in
+[`neiam_auth`](https://gg.neiam.co/neiam/neiam_auth) (`v0.3.0`, pinned in
 `apps/room_sanctum/mix.exs`). It's off unless `OIDC_ENABLED=true`: until then
 there's no button and every `/auth/oidc/*` route except `/auth/oidc/health` is
-a 404. Password login stays as it is. The glue is
+a 404. Password login stays, except as `OIDC_LOGIN_MODE` says below. The glue is
 `apps/room_sanctum/lib/room_sanctum/neiam_auth_adapter.ex`.
 
 **Settings** (env, read at start; the values from the `apollos-crib` deployment):
@@ -73,6 +73,7 @@ a 404. Password login stays as it is. The glue is
 | `OIDC_LABEL` | `Sign in with NEIAM` |
 | `OIDC_LOGOUT_URL` | `https://auth.neiam.org/logout` |
 | `OIDC_ENABLED` | `true` |
+| `OIDC_LOGIN_MODE` | unset (`mixed`) |
 
 Routes: `/auth/oidc/neiam/login`, `/auth/oidc/neiam/callback` and
 `/auth/oidc/health` (JSON: enabled, and each provider's status).
@@ -90,8 +91,26 @@ which SSO leaves alone. The groups are recorded on the identity row. The
 public kiosk, board and map pages (`/p/...`) stay public with SSO on: they
 render signed out and never start a sign-in.
 
-**Once linked.** Apollos Crib doesn't act on `REQUIRED_FOR_LINKED` yet: a
-linked account can still sign in with its password. To remove a link anyway:
+**Login mode.** `OIDC_LOGIN_MODE` says how SSO and the password log-in
+coexist (with `OIDC_ENABLED=true`):
+
+| `OIDC_LOGIN_MODE` | |
+|---|---|
+| `local` | SSO off, exactly as with `OIDC_ENABLED` unset: no button, `/auth/oidc/*` is a 404 |
+| `mixed` (the default, when unset) | SSO on; linked accounts can still use their password |
+| `sso` | An account linked to a provider with `REQUIRED_FOR_LINKED=true` signs in with NEIAM only: its password log-in is refused with "This account signs in with NEIAM" (only after the password checked out, so the form tells nobody who is linked). Unlinked accounts keep their password |
+
+`OIDC_SSO_REQUIRED=false` is the kill switch: it turns `sso` back into
+`mixed` (env is read at start, so restart the pods). `local`, or
+`OIDC_ENABLED` unset, gives every password back too. `/auth/oidc/health`
+reports the mode as `login_mode`.
+
+Apollos Crib has no magic link and no password API (`/api/data` takes
+webhooks, not log-ins), so the `/users/log_in` form is the only path this
+applies to.
+
+**Once linked.** To remove a link (in `sso`, that gives the account its
+password log-in back):
 
 ```sh
 kubectl -n apollos-crib exec deploy/apollos-crib -- bin/apollos_crib rpc 'NeiamAuth.unlink(<user id>)'
