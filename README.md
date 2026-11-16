@@ -47,6 +47,66 @@ The public demo instance https://ac.gmp.io/ is here, and the landing data displa
 - Lincoln Park, Chicago
 
 
+## Sign in with NEIAM
+
+Optional OpenID Connect sign-in through Authelia at `auth.neiam.org`, using
+[`neiam_auth`](https://gg.neiam.co/neiam/neiam_auth) (`v0.2.0`, pinned in
+`apps/room_sanctum/mix.exs`). It's off unless `OIDC_ENABLED=true`: until then
+there's no button and every `/auth/oidc/*` route except `/auth/oidc/health` is
+a 404. Password login stays as it is. The glue is
+`apps/room_sanctum/lib/room_sanctum/neiam_auth_adapter.ex`.
+
+**Settings** (env, read at start; the values from the `apollos-crib` deployment):
+
+| Variable | Value |
+|---|---|
+| `OIDC_ISSUER` | `https://auth.neiam.org` |
+| `OIDC_CLIENT_ID` | `apollos-crib` |
+| `OIDC_CLIENT_SECRET` | from the `apollos-crib-oidc` Secret (optional: without it the provider is off) |
+| `OIDC_REDIRECT_URI` | `https://ac.neiam.org/auth/oidc/neiam/callback` |
+| `OIDC_SCOPES` | `openid profile email groups` |
+| `OIDC_GROUPS_CLAIM` | `groups` |
+| `OIDC_TRUST_EMAIL` | `true` |
+| `OIDC_REQUIRED_FOR_LINKED` | `true` |
+| `OIDC_PROVISION` | `invite_only` |
+| `OIDC_PROVISION_GROUPS` | `admins` |
+| `OIDC_LABEL` | `Sign in with NEIAM` |
+| `OIDC_LOGOUT_URL` | `https://auth.neiam.org/logout` |
+| `OIDC_ENABLED` | `true` |
+
+Routes: `/auth/oidc/neiam/login`, `/auth/oidc/neiam/callback` and
+`/auth/oidc/health` (JSON: enabled, and each provider's status).
+
+**Who gets in.** Invite-only. On a first sign-in:
+
+- A verified email that matches an existing account links to it. Every
+  account can be linked.
+- Members of `admins` get a new, passwordless, confirmed account.
+- Anyone else is refused and told to ask for an invite; no account is made.
+- A signed-in user can link their account from `/users/settings`.
+
+Groups aren't mapped to roles: admins still come from `CRIB_ADMIN_EMAILS`,
+which SSO leaves alone. The groups are recorded on the identity row. The
+public kiosk, board and map pages (`/p/...`) stay public with SSO on: they
+render signed out and never start a sign-in.
+
+**Once linked.** Apollos Crib doesn't act on `REQUIRED_FOR_LINKED` yet: a
+linked account can still sign in with its password. To remove a link anyway:
+
+```sh
+kubectl -n apollos-crib exec deploy/apollos-crib -- bin/apollos_crib rpc 'NeiamAuth.unlink(<user id>)'
+```
+
+**Turning it off.** Remove `OIDC_ENABLED`, or delete the `apollos-crib-oidc`
+Secret, and restart the pods.
+
+**Doctor.** Checks TLS, discovery, JWKS and the client credentials from
+inside the pod, whether or not SSO is on:
+
+```sh
+kubectl -n apollos-crib exec deploy/apollos-crib -- bin/apollos_crib rpc 'NeiamAuth.Doctor.check()'
+```
+
 ### Development
 
 Debian/Ubuntu users may need to install `erlang-xmerl`
