@@ -374,6 +374,77 @@ defmodule RoomSanctumWeb.NeiamAuthControllerTest do
       linked_and_unlinked(idp)
     end
 
+    test "sso_strict: SSO only; the log-in page has just the button", %{idp: idp} do
+      {alice, bob} = with_linked_users(idp)
+      stop_supervised!(NeiamAuth.Supervisor)
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso_strict"})
+      assert NeiamAuth.login_mode() == :sso_strict
+
+      {:ok, lv, html} = live(build_conn(), ~p"/users/log_in")
+      assert html =~ ~s(href="/auth/oidc/neiam/login")
+      refute has_element?(lv, "#login_form")
+      refute html =~ "Forgot your password?"
+      refute html =~ "Sign up"
+      refute html =~ ~s(class="divider")
+
+      # Linked or not, nobody signs in with a password.
+      for user <- [alice, bob] do
+        conn = password_log_in(user)
+        refute signed_in_user(conn)
+        assert Phoenix.Flash.get(conn.assigns.flash, :error) =~ "Sign in with NEIAM"
+      end
+
+      # A wrong password still says only "Invalid email or password".
+      conn =
+        post(build_conn(), ~p"/users/log_in", %{
+          "user" => %{"email" => "nobody@example.com", "password" => @password}
+        })
+
+      assert Phoenix.Flash.get(conn.assigns.flash, :error) == "Invalid email or password"
+
+      assert signed_in_user(sso(build_conn(), idp, "neiam")).id == alice.id
+    end
+
+    test "sso_strict: registration and password reset are refused", %{idp: idp} do
+      {alice, _bob} = with_linked_users(idp)
+      stop_supervised!(NeiamAuth.Supervisor)
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso_strict"})
+
+      assert {:error, {:redirect, %{to: "/users/log_in", flash: %{"error" => signup}}}} =
+               live(build_conn(), ~p"/users/register")
+
+      assert signup =~ "signing in with NEIAM"
+
+      assert {:error, {:redirect, %{to: "/users/log_in"}}} =
+               live(build_conn(), ~p"/users/reset_password")
+
+      # An old reset link sets nothing either.
+      {:ok, _email} =
+        Accounts.deliver_user_reset_password_instructions(alice, fn token ->
+          send(self(), {:reset_token, token})
+          "http://localhost/users/reset_password/#{token}"
+        end)
+
+      assert_received {:reset_token, token}
+
+      assert {:error, {:redirect, %{to: "/users/log_in"}}} =
+               live(build_conn(), ~p"/users/reset_password/#{token}")
+    end
+
+    test "sso_strict with OIDC_SSO_REQUIRED=false is mixed: everything is back", %{idp: idp} do
+      start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso_strict", "OIDC_SSO_REQUIRED" => "false"})
+      assert NeiamAuth.login_mode() == :mixed
+      {alice, _bob} = linked_and_unlinked(idp)
+
+      {:ok, lv, html} = live(build_conn(), ~p"/users/log_in")
+      assert has_element?(lv, "#login_form")
+      assert html =~ "Forgot your password?"
+      assert html =~ ~s(href="/auth/oidc/neiam/login")
+      assert {:ok, _lv, _html} = live(build_conn(), ~p"/users/register")
+      assert {:ok, _lv, _html} = live(build_conn(), ~p"/users/reset_password")
+      assert signed_in_user(password_log_in(alice)).id == alice.id
+    end
+
     test "health reports the mode", %{idp: idp} do
       start_mode(idp, %{"OIDC_LOGIN_MODE" => "sso"})
 

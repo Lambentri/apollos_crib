@@ -50,7 +50,7 @@ The public demo instance https://ac.gmp.io/ is here, and the landing data displa
 ## Sign in with NEIAM
 
 Optional OpenID Connect sign-in through Authelia at `auth.neiam.org`, using
-[`neiam_auth`](https://gg.neiam.co/neiam/neiam_auth) (`v0.3.0`, pinned in
+[`neiam_auth`](https://gg.neiam.co/neiam/neiam_auth) (`v0.4.0`, pinned in
 `apps/room_sanctum/mix.exs`). It's off unless `OIDC_ENABLED=true`: until then
 there's no button and every `/auth/oidc/*` route except `/auth/oidc/health` is
 a 404. Password login stays, except as `OIDC_LOGIN_MODE` says below. The glue is
@@ -99,15 +99,23 @@ coexist (with `OIDC_ENABLED=true`):
 | `local` | SSO off, exactly as with `OIDC_ENABLED` unset: no button, `/auth/oidc/*` is a 404 |
 | `mixed` (the default, when unset) | SSO on; linked accounts can still use their password |
 | `sso` | An account linked to a provider with `REQUIRED_FOR_LINKED=true` signs in with NEIAM only: its password log-in is refused with "This account signs in with NEIAM" (only after the password checked out, so the form tells nobody who is linked). Unlinked accounts keep their password |
+| `sso_strict` | NEIAM is the only way in, for every account, linked or not. The log-in page shows only the button (no password form, "Forgot your password?" or "Sign up"); a password post is refused; `/users/register` and `/users/reset_password[/:token]` redirect to log-in. A new account comes from a first sign-in with NEIAM (`OIDC_PROVISION_GROUPS`) |
 
-`OIDC_SSO_REQUIRED=false` is the kill switch: it turns `sso` back into
-`mixed` (env is read at start, so restart the pods). `local`, or
-`OIDC_ENABLED` unset, gives every password back too. `/auth/oidc/health`
-reports the mode as `login_mode`.
+`OIDC_SSO_REQUIRED=false` is the kill switch: it turns `sso` and
+`sso_strict` back into `mixed` (env is read at start, so restart the pods).
+`local`, or `OIDC_ENABLED` unset, gives every password back too.
+`/auth/oidc/health` reports the mode as `login_mode`.
 
-Apollos Crib has no magic link and no password API (`/api/data` takes
-webhooks, not log-ins), so the `/users/log_in` form is the only path this
-applies to.
+The settings page still offers a password change. For an account that
+can't sign in with a password (linked in `sso`, anyone in `sso_strict`),
+changing it signs that browser out, since a password change ends every
+session; sign in with NEIAM again.
+
+Apollos Crib has no magic link and no password API, so the
+`/users/log_in` form (plus, in `sso_strict`, registration and password
+reset) is all this applies to. No mode touches what isn't an account
+sign-in: the public kiosk, board and map pages (`/p/...`) and the
+`/api/data` webhooks work the same in every mode, `sso_strict` included.
 
 **Once linked.** To remove a link (in `sso`, that gives the account its
 password log-in back):

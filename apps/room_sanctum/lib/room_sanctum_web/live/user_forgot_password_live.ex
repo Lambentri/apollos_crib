@@ -27,8 +27,16 @@ defmodule RoomSanctumWeb.UserForgotPasswordLive do
     """
   end
 
+  # OIDC_LOGIN_MODE=sso_strict: passwords aren't used, so no reset mail.
   def mount(_params, _session, socket) do
-    {:ok, assign(socket, form: to_form(%{}, as: "user"))}
+    if NeiamAuth.local_login_enabled?() do
+      {:ok, assign(socket, form: to_form(%{}, as: "user"))}
+    else
+      {:ok,
+       socket
+       |> put_flash(:error, "This site signs in with NEIAM only: there is no password to reset.")
+       |> redirect(to: ~p"/users/log_in")}
+    end
   end
 
   def handle_event("send_email", %{"user" => %{"email" => email}}, socket) do
