@@ -170,6 +170,15 @@ defmodule RoomSanctumWeb.UserSettingsLive do
                 </.simple_form>
               </div>
             </div>
+
+            <%!-- Link this account to an SSO provider; nothing while OIDC_ENABLED is off. --%>
+            <div :if={NeiamAuth.providers() != []} id="neiam_auth_settings" class="card bg-base-100 shadow-xl">
+              <div class="card-body space-y-2">
+                <h2 class="card-title text-primary mb-4">Single sign-on</h2>
+                <NeiamAuth.Components.neiam_link_buttons user={@current_user} class="btn w-full" />
+                <NeiamAuth.Components.neiam_global_logout user={@current_user} class="link text-sm" />
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -35,6 +35,14 @@ config :room_hermes,
 config :room_sanctum,
   ecto_repos: [RoomSanctum.Repo]
 
+# "Sign in with NEIAM" (neiam_auth, in apps/room_sanctum). Everything else is
+# OIDC_* env, read at start; with OIDC_ENABLED unset (the default) the library
+# does nothing.
+config :neiam_auth,
+  repo: RoomSanctum.Repo,
+  user_schema: RoomSanctum.Accounts.User,
+  adapter: RoomSanctum.NeiamAuthAdapter
+
 # Configures the endpoint
 config :room_sanctum,
        RoomSanctumWeb.Endpoint,

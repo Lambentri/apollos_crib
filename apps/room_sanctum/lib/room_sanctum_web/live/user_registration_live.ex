@@ -18,6 +18,7 @@ defmodule RoomSanctumWeb.UserRegistrationLive do
         </:subtitle>
       </.header>
 
+      <%= if NeiamAuth.local_login_enabled?() do %>
       <.simple_form
         for={@form}
         id="registration_form"
@@ -38,19 +39,30 @@ defmodule RoomSanctumWeb.UserRegistrationLive do
           <.button phx-disable-with="Creating account..." class="w-full">Create an account</.button>
         </:actions>
       </.simple_form>
+      <% end %>
     </div>
     """
   end
 
+  # OIDC_LOGIN_MODE=sso_strict: no local accounts; a first "Sign in with
+  # NEIAM" makes one (PROVISION_GROUPS). Signed-in users never get here
+  # (redirect_if_user_is_authenticated).
   def mount(_params, _session, socket) do
-    changeset = Accounts.change_user_registration(%User{})
+    if NeiamAuth.local_login_enabled?() do
+      changeset = Accounts.change_user_registration(%User{})
 
-    socket =
-      socket
-      |> assign(trigger_submit: false, check_errors: false)
-      |> assign_form(changeset)
+      socket =
+        socket
+        |> assign(trigger_submit: false, check_errors: false)
+        |> assign_form(changeset)
 
-    {:ok, socket, temporary_assigns: [form: nil]}
+      {:ok, socket, temporary_assigns: [form: nil]}
+    else
+      {:ok,
+       socket
+       |> put_flash(:error, "Sign up by signing in with NEIAM.")
+       |> redirect(to: ~p"/users/log_in")}
+    end
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do

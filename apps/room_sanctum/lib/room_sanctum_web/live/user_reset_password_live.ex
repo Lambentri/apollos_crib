@@ -38,7 +38,20 @@ defmodule RoomSanctumWeb.UserResetPasswordLive do
     """
   end
 
+  # OIDC_LOGIN_MODE=sso_strict: passwords aren't used, so an old reset link
+  # sets nothing.
   def mount(params, _session, socket) do
+    if NeiamAuth.local_login_enabled?() do
+      mount_reset(params, socket)
+    else
+      {:ok,
+       socket
+       |> put_flash(:error, "This site signs in with NEIAM only: there is no password to reset.")
+       |> redirect(to: ~p"/users/log_in")}
+    end
+  end
+
+  defp mount_reset(params, socket) do
     socket = assign_user_and_token(socket, params)
 
     form_source =

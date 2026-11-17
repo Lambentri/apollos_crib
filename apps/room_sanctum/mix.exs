@@ -121,7 +121,14 @@ defmodule RoomSanctum.MixProject do
 
       # ui random
       {:makeup, "1.2.1"},
-      {:makeup_json, "1.0.0"}
+      {:makeup_json, "1.0.0"},
+
+      # "Sign in with NEIAM" (Authelia OIDC). Inert until OIDC_ENABLED=true.
+      # Public over HTTPS so the Docker builders need no credentials.
+      {:neiam_auth, git: "https://gg.neiam.co/neiam/neiam_auth.git", tag: "v0.4.0"},
+      # Test only: serves neiam_auth's NeiamAuth.Test.FakeIdP. The app itself
+      # stays on Cowboy.
+      {:bandit, "~> 1.5", only: :test}
     ]
   end
 
