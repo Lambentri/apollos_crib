@@ -84,6 +84,41 @@ class Settings(context: Context) {
         set(value) = prefs.edit { putInt(KEY_RICH_CARDS, value.coerceIn(0, MAX_RICH_CARDS)) }
 
     /**
+     * Whether the static board -- the one that does not turn -- draws every
+     * query as a detailed card rather than a compact one. Toggled by tapping
+     * the compass while nothing is turning.
+     */
+    var staticLarge: Boolean
+        get() = prefs.getBoolean(KEY_STATIC_LARGE, false)
+        set(value) = prefs.edit { putBoolean(KEY_STATIC_LARGE, value) }
+
+    /**
+     * Cards pinned to the top of the static board, most recently pinned
+     * first. A list rather than a set because the order is the point.
+     */
+    var pinned: List<String>
+        get() = readKeys(KEY_PINNED)
+        set(value) = writeKeys(KEY_PINNED, value)
+
+    /** Cards held in the rotation, most recently held (or woken) first. */
+    var held: List<String>
+        get() = readKeys(KEY_HELD)
+        set(value) = writeKeys(KEY_HELD, value)
+
+    /** Held cards that went quiet and dropped out, waiting for an update. */
+    var dormant: Set<String>
+        get() = readKeys(KEY_DORMANT).toSet()
+        set(value) = writeKeys(KEY_DORMANT, value.toList())
+
+    // Newline-separated: a card key is built from query ids and route names,
+    // neither of which carries one, and a StringSet would lose the order.
+    private fun readKeys(key: String): List<String> =
+        prefs.getString(key, "").orEmpty().split('\n').filter { it.isNotEmpty() }
+
+    private fun writeKeys(key: String, value: List<String>) =
+        prefs.edit { putString(key, value.joinToString("\n")) }
+
+    /**
      * Which of the ported palettes the app's own screens use. Mostly named
      * themes the Scribus routes also render under, which the user picks; the
      * exception is "system", the default, which follows the OS between the
@@ -176,6 +211,10 @@ class Settings(context: Context) {
         private const val KEY_RICH_CARDS = "rich_cards"
         private const val KEY_ROTATION_MS = "rotation_ms"
         private const val KEY_TRANSPARENT_WIDGETS = "transparent_widgets"
+        private const val KEY_STATIC_LARGE = "static_large"
+        private const val KEY_PINNED = "pinned_cards"
+        private const val KEY_HELD = "held_cards"
+        private const val KEY_DORMANT = "dormant_cards"
 
         /**
          * The turns on offer, quickest first. Twelve seconds is the default

@@ -10,7 +10,16 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.material3.CardDefaults
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import io.neiam.apolloscrib.data.CardAges
 import io.neiam.apolloscrib.types.GtfsPlusCondensed
 import io.neiam.apolloscrib.types.SourceType
 import io.neiam.apolloscrib.types.VisionEntry
@@ -80,7 +89,10 @@ fun BoardScreen(
     modifier: Modifier = Modifier,
     store: VisionStore,
     /** Null where the board is read-only -- the launcher's feed page. */
-    onEditConnection: (() -> Unit)?
+    onEditConnection: (() -> Unit)?,
+    /** The theme in use, and how to change it. Null where it cannot be. */
+    themeKey: String? = null,
+    onPickTheme: ((String) -> Unit)? = null
 ) {
     val boards by VisionStore.boards.collectAsState()
     val state by AnkyraService.connectionState.collectAsState()
@@ -96,10 +108,33 @@ fun BoardScreen(
 
     // Held here rather than in the header, because the header only offers the
     // gesture -- what changes is the whole board below it.
-    var richCards by remember { mutableStateOf(Settings(context).richCards) }
-    var rotationMs by remember { mutableStateOf(Settings(context).rotationMs) }
-    val plus = remember(boards, richCards) {
-        if (richCards > 0) store.plusEntries() else emptyList()
+    val settings = remember { Settings(context) }
+    var richCards by remember { mutableStateOf(settings.richCards) }
+    var rotationMs by remember { mutableStateOf(settings.rotationMs) }
+    var staticLarge by remember { mutableStateOf(settings.staticLarge) }
+    var pinned by remember { mutableStateOf(settings.pinned) }
+
+    // Read whatever the mode: a card's age is kept by comparing it with what
+    // it said last time, and a card not looked at is a card forgotten -- so
+    // the detailed reading has to be watched even while the compact board is
+    // the one on screen, or every switch would make it all new again.
+    val plus = remember(boards) { store.plusEntries() }
+
+    // A clock for anything that goes stale by the minute rather than by the
+    // board: a card's age, and a compact row's "in 4 min".
+    var now by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            kotlinx.coroutines.delay(30_000)
+            now = System.currentTimeMillis()
+        }
+    }
+    LaunchedEffect(boards) { now = System.currentTimeMillis() }
+
+    // The compact board, one card per preview, each with a key a pin can
+    // hold onto.
+    val compact: List<CompactItem> = remember(entries, now) {
+        entries.flatMap { entry -> Targets.preview(entry).map { CompactItem(entry, it) } }
     }
 
     // Everything the board has, as cards of one weight, in one order.
@@ -125,11 +160,83 @@ fun BoardScreen(
         routes + others
     }
 
+    // How old each card is: what it says now against what it said before.
+    // Fingerprinted from the data rather than from what is drawn, because a
+    // drawn "in 4 min" changes every minute without anything having been
+    // heard.
+    val ages = remember { CardAges(context) }
+    var seen by remember { mutableStateOf(ages.load()) }
+    val fingerprints: Map<String, Int> = remember(compact, cards) {
+        compact.associate { it.key to it.entry.data.toString().hashCode() } +
+            cards.associate { card ->
+                card.key to when (card) {
+                    is RichItem.Transit -> card.route.toString().hashCode()
+                    is RichItem.Facts -> card.entry.data.toString().hashCode()
+                }
+            }
+    }
+    LaunchedEffect(fingerprints) {
+        val next = Freshness.observe(seen, fingerprints, System.currentTimeMillis())
+        if (next != seen) {
+            seen = next
+            ages.save(next)
+        }
+    }
+    val quiet: Set<String> = remember(seen, now) {
+        seen.filterValues { Freshness.isStale(it, now) }.keys
+    }
+
+    // Cards held in the rotation. They sit above it and do not turn; the
+    // rest turn underneath them in whatever room is left.
+    var holds by remember { mutableStateOf(Holds(settings.held, settings.dormant)) }
+    fun keepHolds(next: Holds) {
+        if (next == holds) return
+        holds = next
+        settings.held = next.order
+        settings.dormant = next.dormant
+    }
+    val cardKeys = remember(cards) { cards.map { it.key }.toSet() }
+
+    // A dormant card that has updated wakes now rather than on the next turn:
+    // it is news, and news should not wait twelve seconds.
+    LaunchedEffect(cardKeys, quiet) { keepHolds(holds.settle(cardKeys, quiet)) }
+
+    val byKey = remember(cards) { cards.associateBy { it.key } }
+    val heldCards = if (richCards > 0) holds.shown.mapNotNull { byKey[it] } else emptyList()
+    // Dormant ones are left out too: dropping off means gone, not back in
+    // with the others.
+    val turning = remember(cards, holds) { cards.filter { !holds.isHeld(it.key) } }
+
+    // At least one slot keeps turning, however many are held. Holding every
+    // slot would stop the rotation for good, and then nothing new could come
+    // round to be held in its turn.
+    val slots = if (heldCards.isEmpty()) richCards else maxOf(1, richCards - heldCards.size)
+
     // Rotated only when there is more than fits. Turning a list that is
     // already whole would take cards away and give them back for nothing.
-    val rotating = richCards > 0 && cards.size > richCards
-    val turn = rememberRotation(cards.size, richCards, rotationMs)
+    val rotating = richCards > 0 && turning.size > slots
+    val turn = rememberRotation(turning.size, slots, rotationMs)
     val advance = turn.advance
+
+    // A held card counts its quiet turns even when nothing is turning -- one
+    // held card and nothing else would otherwise never drop off. The interval
+    // stands in for the turn it would have been.
+    var idleTurns by remember { mutableIntStateOf(0) }
+    LaunchedEffect(richCards, rotating, rotationMs) {
+        if (richCards == 0 || rotating) return@LaunchedEffect
+        while (true) {
+            kotlinx.coroutines.delay(rotationMs.toLong())
+            idleTurns += 1
+        }
+    }
+    val turnsTaken = turn.turns + idleTurns
+    var lastTurns by remember { mutableIntStateOf(turnsTaken) }
+    LaunchedEffect(turnsTaken) {
+        if (turnsTaken != lastTurns) {
+            lastTurns = turnsTaken
+            if (richCards > 0) keepHolds(holds.turned(cardKeys, quiet))
+        }
+    }
 
     // A pull asks for a board; the wait ends when one lands. There is no
     // acknowledgement to wait for -- a Pythiae answers on its own tick and the
@@ -209,19 +316,26 @@ fun BoardScreen(
             rotation = turn.progress,
             rotationMs = rotationMs,
             rotating = rotating,
+            staticLarge = staticLarge,
             onCycleSpeed = {
                 val choices = Settings.ROTATION_CHOICES
                 rotationMs = choices[(choices.indexOf(rotationMs) + 1) % choices.size]
-                Settings(context).rotationMs = rotationMs
+                settings.rotationMs = rotationMs
+            },
+            onToggleStaticSize = {
+                staticLarge = !staticLarge
+                settings.staticLarge = staticLarge
             },
             onToggleRich = {
                 // One more each time, and off the end back to the compact
                 // board -- so the gesture always has somewhere to go and never
                 // needs a second one to undo it.
                 richCards = (richCards + 1) % (Settings.MAX_RICH_CARDS + 1)
-                Settings(context).richCards = richCards
+                settings.richCards = richCards
             },
             onEditConnection = onEditConnection,
+            themeKey = themeKey,
+            onPickTheme = onPickTheme,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 8.dp)
         )
 
@@ -264,29 +378,68 @@ fun BoardScreen(
             }
         }
 
-        if (richCards > 0) {
+        // What a long press on a card does, and what that card looks like for
+        // it: held in the rotation, pinned on the static board.
+        val marking: (String) -> CardMark = if (richCards > 0) {
+            { key ->
+                CardMark(
+                    marked = holds.isHeld(key),
+                    stale = key in quiet,
+                    label = if (holds.isHeld(key)) "Release this card" else "Hold this card",
+                    toggle = { keepHolds(holds.toggle(key)) }
+                )
+            }
+        } else {
+            { key ->
+                CardMark(
+                    marked = key in pinned,
+                    stale = key in quiet,
+                    label = if (key in pinned) "Unpin this card" else "Pin this card to the top",
+                    toggle = {
+                        pinned = togglePin(pinned, key)
+                        settings.pinned = pinned
+                    }
+                )
+            }
+        }
 
-            if (cards.isEmpty()) {
-                item {
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(
-                            Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Text(
-                                "No detailed board yet",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                "The extended reading is published separately, and only " +
-                                    "when the Pythiae is asked for it. Hold the compass " +
-                                    "again to go back.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = LocalAppTheme.current.dim
-                            )
-                        }
+        if ((richCards > 0 || staticLarge) && entries.isNotEmpty() && cards.isEmpty()) {
+            item {
+                Card(Modifier.fillMaxWidth()) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            "No detailed board yet",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "The extended reading is published separately, and only " +
+                                "when the Pythiae is asked for it. " +
+                                if (richCards > 0) "Hold the compass again to go back."
+                                else "Tap the compass to go back to the compact cards.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = LocalAppTheme.current.dim
+                        )
                     }
                 }
+            }
+        }
+
+        if (richCards > 0) {
+
+            // Held cards first, above the turn and out of it.
+            items(heldCards, key = { "held-${it.key}" }) { card ->
+                RichItemCard(
+                    card,
+                    marking(card.key),
+                    Modifier.animateItem(
+                        fadeInSpec = tween(220),
+                        placementSpec = spring(stiffness = Spring.StiffnessMediumLow),
+                        fadeOutSpec = tween(160)
+                    )
+                )
             }
 
             // One card is a different animation from three.
@@ -301,9 +454,12 @@ fun BoardScreen(
             // arrives from below, which is the direction a flick pushes it.
             // The gesture and the animation then agree about which way the
             // board runs, and the timer's turn looks like the one you make.
-            if (richCards == 1 && turn.window.isNotEmpty()) {
+            //
+            // Only while nothing is held: with a held card above it there are
+            // two cards on screen, and the stack's animation is the right one.
+            if (richCards == 1 && heldCards.isEmpty() && turn.window.isNotEmpty()) {
                 item(key = "single") {
-                    val card = cards[turn.window.first()]
+                    val card = turning[turn.window.first()]
 
                     AnimatedContent(
                         targetState = card,
@@ -316,15 +472,10 @@ fun BoardScreen(
                                 )
                         },
                         label = "card"
-                    ) { shown ->
-                        when (shown) {
-                            is RichItem.Transit -> RichCard(shown.entry, shown.route)
-                            is RichItem.Facts -> RichFactsCard(shown.facts)
-                        }
-                    }
+                    ) { shown -> RichItemCard(shown, marking(shown.key)) }
                 }
             } else {
-            items(turn.window.map { cards[it] }, key = { it.key }) { card ->
+            items(turn.window.map { turning[it] }, key = { it.key }) { card ->
                 // Keyed, so the list knows the two cards that stayed are the
                 // same two cards. Without that every turn is three removals
                 // and three insertions, and nothing can be animated because
@@ -335,19 +486,20 @@ fun BoardScreen(
                     fadeOutSpec = tween(160)
                 )
 
-                when (card) {
-                    is RichItem.Transit -> RichCard(card.entry, card.route, slide)
-                    is RichItem.Facts -> RichFactsCard(card.facts, slide)
-                }
+                RichItemCard(card, marking(card.key), slide)
             }
+            }
+        } else if (staticLarge) {
+            // Every detailed card at once, pinned ones first. Animated so a
+            // pin is seen to rise rather than the list just being different.
+            items(pinnedFirst(cards, pinned) { it.key }, key = { it.key }) { card ->
+                RichItemCard(card, marking(card.key), Modifier.animateItem())
             }
         } else {
-            entries.forEach { entry ->
-                // No preview means the renderer had nothing worth a card -- a
-                // stop with nothing due says so by not being there.
-                items(Targets.preview(entry), key = { "${entry.key}-${it.id}" }) { preview ->
-                    PreviewCard(preview)
-                }
+            // No preview means the renderer had nothing worth a card -- a
+            // stop with nothing due says so by not being there.
+            items(pinnedFirst(compact, pinned) { it.key }, key = { it.key }) { item ->
+                PreviewCard(item.preview, marking(item.key), Modifier.animateItem())
             }
         }
 
@@ -418,13 +570,18 @@ private fun StatusHeader(
     rotation: Float?,
     rotationMs: Int,
     rotating: Boolean,
+    staticLarge: Boolean,
     onCycleSpeed: () -> Unit,
+    onToggleStaticSize: () -> Unit,
     onToggleRich: () -> Unit,
     onEditConnection: (() -> Unit)?,
+    themeKey: String?,
+    onPickTheme: ((String) -> Unit)?,
     modifier: Modifier = Modifier
 ) {
     val palette = LocalAppTheme.current
     val heading by rememberHeading()
+    var themeMenu by remember { mutableStateOf(false) }
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.Top
@@ -432,11 +589,31 @@ private fun StatusHeader(
         // The name, and when the board it is showing arrived. What the screen
         // is, on the left, where reading starts.
         Column(Modifier.weight(1f)) {
-            Text(
-                "Apollo's",
-                style = MaterialTheme.typography.headlineSmall,
-                color = palette.accent
-            )
+            // The name is the way into the theme: the board has no toolbar
+            // to put a palette button in, and the name is the one thing in
+            // the header that is not a readout.
+            Box {
+                Text(
+                    "Apollo's",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = palette.accent,
+                    modifier = if (onPickTheme != null) {
+                        Modifier.clickable(onClickLabel = "Theme and background") {
+                            themeMenu = true
+                        }
+                    } else {
+                        Modifier
+                    }
+                )
+                if (onPickTheme != null && themeKey != null) {
+                    ThemeMenu(
+                        expanded = themeMenu,
+                        onDismiss = { themeMenu = false },
+                        themeKey = themeKey,
+                        onPick = onPickTheme
+                    )
+                }
+            }
             Text(
                 when {
                     lastUpdated == null -> "No board received yet"
@@ -461,13 +638,23 @@ private fun StatusHeader(
                 // your thumb brushes it. Nothing is bound to the short press,
                 // so a stray tap does nothing at all.
                 .combinedClickable(
-                    // Only while something is turning. Outside the detailed
-                    // mode there is no rotation to speed up, and a tap that
-                    // silently changes a setting you cannot see the effect of
-                    // is worse than one that does nothing.
-                    onClick = { if (rotating) onCycleSpeed() },
-                    onClickLabel =
-                        if (rotating) "Change how long each card stays" else null,
+                    // While something is turning, how fast. On the static
+                    // board, which size of card it draws -- the one setting
+                    // there is to see the effect of. In a detailed mode with
+                    // nothing to turn it does nothing: a tap that silently
+                    // changes a setting you cannot see is worse than none.
+                    onClick = {
+                        when {
+                            rotating -> onCycleSpeed()
+                            richCards == 0 -> onToggleStaticSize()
+                        }
+                    },
+                    onClickLabel = when {
+                        rotating -> "Change how long each card stays"
+                        richCards == 0 && staticLarge -> "Show compact cards"
+                        richCards == 0 -> "Show detailed cards"
+                        else -> null
+                    },
                     onLongClick = onToggleRich,
                     onLongClickLabel =
                         if (richCards == Settings.MAX_RICH_CARDS) {
@@ -514,9 +701,9 @@ private fun StatusHeader(
  * glyphs the web board uses.
  */
 @Composable
-private fun PreviewCard(preview: Preview) {
+private fun PreviewCard(preview: Preview, mark: CardMark, modifier: Modifier = Modifier) {
     val palette = LocalAppTheme.current
-    Card(Modifier.fillMaxWidth()) {
+    Card(modifier.marked(mark).fillMaxWidth()) {
         Row(Modifier.padding(16.dp)) {
             Glyph(preview.iconRes, size = 28.dp, tint = palette.primary)
             Spacer(Modifier.width(12.dp))
@@ -608,6 +795,59 @@ private fun Glyph(res: Int, size: Dp, tint: Color) {
 }
 
 private fun clock(at: Long): String = DateFormat.getTimeInstance().format(Date(at))
+
+/**
+ * What a long press does to a card, and how the card shows it.
+ *
+ * @property marked held in the rotation, or pinned on the static board --
+ *   drawn with an accent edge either way, since it is the same promise:
+ *   this one stays where you put it
+ * @property stale has said the same thing for long enough to be suspect
+ */
+class CardMark(
+    val marked: Boolean,
+    val stale: Boolean,
+    val label: String,
+    val toggle: () -> Unit
+)
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun Modifier.marked(mark: CardMark): Modifier {
+    // Faded rather than greyed: still readable, plainly not current. Eased,
+    // so a card going quiet mid-read does not blink.
+    val alpha by animateFloatAsState(if (mark.stale) 0.4f else 1f, tween(600), label = "stale")
+    val edge = if (mark.marked) {
+        Modifier.border(2.dp, LocalAppTheme.current.accent, CardDefaults.shape)
+    } else {
+        Modifier
+    }
+    return this
+        .graphicsLayer { this.alpha = alpha }
+        .then(edge)
+        .clip(CardDefaults.shape)
+        // Long press only. A tap on a card is somebody reading it, and should
+        // not move it anywhere.
+        .combinedClickable(
+            onClick = {},
+            onLongClick = mark.toggle,
+            onLongClickLabel = mark.label
+        )
+}
+
+@Composable
+private fun RichItemCard(card: RichItem, mark: CardMark, modifier: Modifier = Modifier) {
+    val m = modifier.marked(mark)
+    when (card) {
+        is RichItem.Transit -> RichCard(card.entry, card.route, m)
+        is RichItem.Facts -> RichFactsCard(card.facts, m)
+    }
+}
+
+/** One compact card, and the key a pin holds it by. */
+data class CompactItem(val entry: VisionEntry, val preview: Preview) {
+    val key: String get() = "${entry.key}-${preview.id}"
+}
 
 /**
  * One card in the detailed rotation.

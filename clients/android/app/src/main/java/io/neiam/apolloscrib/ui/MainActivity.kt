@@ -9,7 +9,14 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
+import io.neiam.apolloscrib.data.BackgroundStore
+import io.neiam.apolloscrib.ui.shader.Backgrounds
+import io.neiam.apolloscrib.ui.shader.LocalBackgrounds
+import io.neiam.apolloscrib.ui.shader.ShaderBackground
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.horizontalScroll
@@ -17,8 +24,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.AssistChip
-import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -84,13 +89,41 @@ class MainActivity : ComponentActivity() {
         // finished opening the app.
         AnkyraService.resume(this)
 
+        val backgrounds = Backgrounds(BackgroundStore(this))
+
         setContent {
             var themeKey by remember { mutableStateOf(settings.themeKey) }
             // The connection is setup, not the app. Once there is one, the
             // board is what the app is for; the form is a page you go back to.
             var editing by remember(paired.value) { mutableStateOf(!settings.isConfigured) }
 
-            CribTheme(theme = appThemeForKey(themeKey)) {
+            val pickTheme: (String) -> Unit = {
+                settings.themeKey = it
+                themeKey = it
+                // The widget reads the palette when it redraws, and it
+                // redraws when a board lands -- which could be minutes. Tell
+                // it now, or the home screen keeps the old colours until
+                // something unrelated happens.
+                BoardWidget.refresh(this)
+                RichBoardWidget.refresh(this)
+            }
+
+            val theme = appThemeForKey(themeKey)
+            CribTheme(theme = theme, clearBackground = true) {
+            CompositionLocalProvider(LocalBackgrounds provides backgrounds) {
+                // The shader, then the ground over it: opaque with no
+                // pattern, a veil with one, so the header and the notes
+                // between cards stay readable -- the cards keep their own
+                // solid colour either way.
+                val shaderOn = backgrounds.isOn
+                if (shaderOn) {
+                    ShaderBackground(backgrounds.mine, theme, Modifier.fillMaxSize())
+                }
+                Box(
+                    Modifier.fillMaxSize()
+                        .background(if (shaderOn) theme.bg.copy(alpha = SHADER_VEIL) else theme.bg)
+                )
+
                 Scaffold { padding ->
                     val modifier = Modifier.fillMaxSize().padding(padding)
                     if (editing) {
@@ -99,17 +132,7 @@ class MainActivity : ComponentActivity() {
                             settings = settings,
                             pairingKey = paired.value,
                             themeKey = themeKey,
-                            onThemeChange = {
-                                settings.themeKey = it
-                                themeKey = it
-                                // The widget reads the palette when it redraws,
-                                // and it redraws when a board lands -- which
-                                // could be minutes. Tell it now, or the home
-                                // screen keeps the old colours until something
-                                // unrelated happens.
-                                BoardWidget.refresh(this)
-                                RichBoardWidget.refresh(this)
-                            },
+                            onThemeChange = pickTheme,
                             onConnect = {
                                 AnkyraService.start(this)
                                 editing = false
@@ -121,10 +144,13 @@ class MainActivity : ComponentActivity() {
                         BoardScreen(
                             modifier = modifier,
                             store = store,
-                            onEditConnection = { editing = true }
+                            onEditConnection = { editing = true },
+                            themeKey = themeKey,
+                            onPickTheme = pickTheme
                         )
                     }
                 }
+            }
             }
         }
     }
@@ -158,6 +184,9 @@ class MainActivity : ComponentActivity() {
         Toast.makeText(this, "Paired with ${pairing.topic}", Toast.LENGTH_LONG).show()
     }
 }
+
+/** How much of the ground lies over a shader background, as in party². */
+private const val SHADER_VEIL = 0.55f
 
 @Composable
 private fun ConnectionScreen(
@@ -385,33 +414,13 @@ private fun ConnectionScreen(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             // System first, as in the web picker.
-            AssistChip(
-                onClick = { onThemeChange(SYSTEM_THEME_KEY) },
-                label = { Text("System") },
-                colors = if (themeKey == SYSTEM_THEME_KEY) {
-                    AssistChipDefaults.assistChipColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        labelColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                } else {
-                    AssistChipDefaults.assistChipColors()
-                }
-            )
+            PickChip("System", themeKey == SYSTEM_THEME_KEY) { onThemeChange(SYSTEM_THEME_KEY) }
             ALL_THEMES.forEach { theme ->
-                AssistChip(
-                    onClick = { onThemeChange(theme.key) },
-                    label = { Text(theme.name) },
-                    colors = if (theme.key == themeKey) {
-                        AssistChipDefaults.assistChipColors(
-                            containerColor = MaterialTheme.colorScheme.primary,
-                            labelColor = MaterialTheme.colorScheme.onPrimary
-                        )
-                    } else {
-                        AssistChipDefaults.assistChipColors()
-                    }
-                )
+                PickChip(theme.name, theme.key == themeKey) { onThemeChange(theme.key) }
             }
         }
+
+        BackgroundControls()
 
         onDone?.let {
             OutlinedButton(onClick = it, modifier = Modifier.fillMaxWidth()) {

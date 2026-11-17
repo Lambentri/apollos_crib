@@ -4,6 +4,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import io.neiam.apolloscrib.data.Settings
 
@@ -22,11 +23,18 @@ fun CribTheme(content: @Composable () -> Unit) {
     CribTheme(theme = appThemeForKey(settings.themeKey), content = content)
 }
 
+/**
+ * [clearBackground] makes Material's background transparent, so a Scaffold
+ * lets the shader through; whoever asks for it paints the ground themselves,
+ * behind everything -- as party² does, and as MainActivity does here.
+ */
 @Composable
-fun CribTheme(theme: AppTheme, content: @Composable () -> Unit) {
+fun CribTheme(theme: AppTheme, clearBackground: Boolean = false, content: @Composable () -> Unit) {
+    val scheme = theme.toColorScheme()
+        .let { if (clearBackground) it.copy(background = Color.Transparent) else it }
     CompositionLocalProvider(LocalAppTheme provides theme) {
         MaterialTheme(
-            colorScheme = theme.toColorScheme(),
+            colorScheme = scheme,
             typography = CribTypography,
             content = content,
         )

@@ -17,11 +17,14 @@ import androidx.compose.runtime.withFrameNanos
  *   nothing is turning — the compass draws no ring in that case, because a
  *   full circle sitting still would promise a turn that is not coming
  * @property advance move on now, and start the turn again from the top
+ * @property turns how many turns have been taken, by the timer or by hand --
+ *   for anything that counts in turns rather than in seconds
  */
 data class Rotation(
     val window: List<Int>,
     val progress: Float?,
-    val advance: () -> Unit
+    val advance: () -> Unit,
+    val turns: Int = 0
 )
 
 /**
@@ -41,8 +44,12 @@ fun rememberRotation(total: Int, size: Int, intervalMs: Int): Rotation {
     if (total <= 0 || size <= 0) return Rotation(emptyList(), null, {})
     if (total <= size) return Rotation((0 until total).toList(), null, {})
 
-    var first by remember(total, size) { mutableIntStateOf(0) }
+    // Not keyed on the total: holding a card takes it out of the turning list,
+    // and starting the rest over from the first card every time would show the
+    // same few cards again rather than carrying on. Wrapped where it is read.
+    var first by remember { mutableIntStateOf(0) }
     val progress = remember { mutableFloatStateOf(0f) }
+    var turns by remember { mutableIntStateOf(0) }
 
     // Bumped by a turn taken by hand. The loop owns the clock -- it is the
     // only thing holding a frame time -- so a flick asks for a reset rather
@@ -68,6 +75,7 @@ fun rememberRotation(total: Int, size: Int, intervalMs: Int): Rotation {
 
             if (elapsed >= intervalMs) {
                 first = (first + 1) % total
+                turns += 1
                 startedAt = now
                 progress.floatValue = 0f
             } else {
@@ -84,9 +92,11 @@ fun rememberRotation(total: Int, size: Int, intervalMs: Int): Rotation {
         progress = progress.floatValue,
         advance = {
             first = (first + 1) % total
+            turns += 1
             // The turn starts again, rather than the next card landing
             // however much of the interval happened to be left.
             restarts += 1
-        }
+        },
+        turns = turns
     )
 }

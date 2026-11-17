@@ -165,6 +165,28 @@ themes ("Her", "After Dark", "Forest" ...) that the Scribus public routes render
 under, and B612 for text. The Smartspace targets themselves are drawn by the
 launcher and are not ours to type.
 
+Blueprint, and the shader background behind the app's own screens, come from
+party²'s Android app (`ui/shader/`, `assets/field.frag`). The fragment shader
+is the moire wallpaper's, unchanged; `Shader.toGles` rewrites only its Qt
+header. Pick a pattern and its effects on the connection screen, or by tapping
+"Apollo's" on the board. It is off by default -- a panel on a wall should not
+start drawing thirty frames a second because of an update -- and the launcher
+feed page never draws it.
+
+## The board
+
+- **Hold the compass** to step through the modes: the static board, then one,
+  two or three detailed cards turning.
+- **Tap the compass** on the static board to switch between compact and
+  detailed cards; while cards are turning, a tap changes how long each stays.
+- **Long-press a card** on the static board to pin it to the top (newest pin
+  first); again to unpin.
+- **Long-press a card** while they are turning to hold it: it sits above the
+  rotation and stops turning; again to release it.
+- A card whose content has not changed in fifteen minutes is drawn faded. A
+  held card that stays faded for three turns drops out, still held, and comes
+  back at the top the next time it updates.
+
 The board's glyphs are the ones the web board draws -- a bus for a bus, a
 subway for a subway, a broadcast tower on a time the feed gave and a clock on
 one the timetable did, a pin on an alert that names your stop. They are not

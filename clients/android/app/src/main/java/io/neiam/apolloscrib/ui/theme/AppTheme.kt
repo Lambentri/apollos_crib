@@ -9,6 +9,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
@@ -55,10 +56,19 @@ data class AppTheme(
     val accent: Color,
     val liveGreen: Color,
     val isLight: Boolean = false,
+    /**
+     * Text on [primary]. Most of these palettes have a primary dark enough
+     * for [content] to sit on, and leave this null; Blueprint's is a bright
+     * blue that pale text disappears into, so it brings its own, as the web
+     * declares it.
+     */
+    val onPrimaryOverride: Color? = null,
 ) {
+    val onPrimary: Color get() = onPrimaryOverride ?: content
+
     fun toColorScheme() = if (isLight) {
         lightColorScheme(
-            primary = primary, onPrimary = content,
+            primary = primary, onPrimary = onPrimary,
             primaryContainer = cardBg, onPrimaryContainer = content,
             secondary = accent, onSecondary = bg,
             background = bg, onBackground = content,
@@ -84,7 +94,7 @@ data class AppTheme(
             // contain. secondaryContainer is the one that bites: it paints the
             // selected NavigationBar pill and selected chips, so a themed app
             // with a bottom bar shows a purple pill on every theme.
-            secondaryContainer = primary, onSecondaryContainer = bg,
+            secondaryContainer = primary, onSecondaryContainer = onPrimary,
             tertiary = accent, onTertiary = bg,
             tertiaryContainer = cardBg, onTertiaryContainer = content,
             inversePrimary = primary,
@@ -94,7 +104,7 @@ data class AppTheme(
         )
     } else {
         darkColorScheme(
-            primary = primary, onPrimary = content,
+            primary = primary, onPrimary = onPrimary,
             primaryContainer = cardBg, onPrimaryContainer = content,
             secondary = accent, onSecondary = bg,
             background = bg, onBackground = content,
@@ -112,7 +122,7 @@ data class AppTheme(
             // contain. secondaryContainer is the one that bites: it paints the
             // selected NavigationBar pill and selected chips, so a themed app
             // with a bottom bar shows a purple pill on every theme.
-            secondaryContainer = primary, onSecondaryContainer = bg,
+            secondaryContainer = primary, onSecondaryContainer = onPrimary,
             tertiary = accent, onTertiary = bg,
             tertiaryContainer = cardBg, onTertiaryContainer = content,
             inversePrimary = primary,
@@ -122,6 +132,26 @@ data class AppTheme(
         )
     }
 }
+
+private fun hex(rgb: Long): Color = Color(0xFF000000 or rgb)
+
+/**
+ * Blueprint, from party² (its web tailwind config declares it in hex): navy
+ * ground, pale blue ink, a drafting-blue primary and the cream accent the
+ * neiam themes share. [AppTheme.dim] has no web token, so it is the same 60%
+ * blend of content over the ground the other palettes use.
+ */
+private val BLUEPRINT = AppTheme(
+    name = "Blueprint", key = "blueprint",
+    bg = hex(0x002661),
+    cardBg = hex(0x001C51),
+    content = hex(0xC2E7FE),
+    primary = hex(0x0E9DFF),
+    dim = lerp(hex(0x002661), hex(0xC2E7FE), 0.6f),
+    accent = hex(0xFDF2C6),
+    liveGreen = oklchToColor(0.75f, 0.15f, 145f),
+    onPrimaryOverride = hex(0x000C1F),
+)
 
 private fun oklchTheme(
     name: String, key: String,
@@ -170,6 +200,7 @@ val ALL_THEMES: List<AppTheme> = listOf(
     oklchTheme("Forest",     "forest",     0.12f, 0.055f, 153f, 0.16f, 0.040f, 153f, 0.90f, 0.035f, 153f, 0.80f, 0.182f, 152f, 0.44f, 0.050f, 153f),
     oklchTheme("Sky",        "sky",        0.14f, 0.055f, 243f, 0.18f, 0.040f, 243f, 0.90f, 0.035f, 243f, 0.75f, 0.139f, 233f, 0.42f, 0.050f, 243f),
     oklchTheme("Clays",      "clays",      0.13f, 0.065f, 46f,  0.17f, 0.050f, 46f,  0.90f, 0.035f, 46f,  0.67f, 0.157f, 58f,  0.42f, 0.060f, 46f),
+    BLUEPRINT,
     oklchTheme("Stones",     "stones",     0.12f, 0.005f, 34f,  0.16f, 0.003f, 34f,  0.90f, 0.035f, 34f,  0.55f, 0.023f, 264f, 0.36f, 0.005f, 34f),
     oklchTheme(
         "Dark", "dark",
