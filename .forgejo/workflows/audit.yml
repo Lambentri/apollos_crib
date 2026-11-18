@@ -2,10 +2,12 @@ name: audit
 # Known vulnerabilities in what the service is built from: every
 # lockfile in the repository (the umbrella's mix.lock, room_sanctum's
 # assets/package-lock.json) checked against the OSV database
-# (https://osv.dev). A finding fails the run, which is how it gets
-# noticed — the CI page, the panel widget, `gg ci list`. Nightly, since
-# advisories land without anyone pushing, and by hand from the Actions
-# page.
+# (https://osv.dev). scripts/osv-audit sorts what it finds: a finding
+# with a fixed version fails the run, which is how it gets noticed — the
+# CI page, the panel widget, `gg ci list`; one with no fix yet makes the
+# job a warning (its `gitgud-conclusion` output), since there's nothing
+# to do but wait. Nightly, since advisories land without anyone pushing,
+# and by hand from the Actions page.
 #
 # On a pull request it compares the lockfiles the pull request changes
 # with the same files on the base branch: it fails only on a
@@ -34,6 +36,13 @@ concurrency:
 jobs:
   osv:
     runs-on: self-hosted
+    # `warning` when only unfixable findings remain (scripts/osv-audit).
+    # GitHub and Forgejo read it as an ordinary output.
+    outputs:
+      gitgud-conclusion: ${{ steps.scan.outputs.conclusion }}
+      # "2 to fix, 1 no fix": what the workflow's badge says, rather
+      # than just "warning" (GitGud.Badges).
+      gitgud-summary: ${{ steps.scan.outputs.summary }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -53,11 +62,15 @@ jobs:
           echo "${OSV_SHA256}  /tmp/osv-scanner" | sha256sum -c -
           chmod +x /tmp/osv-scanner
 
-      # Exit 1 when anything is vulnerable, so the run fails; the table
-      # names each package, its version, and the version that fixes it.
+      # Exit 1 when anything has a fixed version, so the run fails; the
+      # tables name each package, its version, its advisories, and the
+      # version that fixes it or that none does.
       - name: Scan the lockfiles
+        id: scan
         if: github.event_name != 'pull_request'
-        run: /tmp/osv-scanner scan source --recursive .
+        env:
+          OSV_SCANNER: /tmp/osv-scanner
+        run: python3 scripts/osv-audit --recursive .
 
       - name: Scan the lockfiles this pull request changes
         if: github.event_name == 'pull_request'

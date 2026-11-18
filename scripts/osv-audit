@@ -1,0 +1,230 @@
+#!/usr/bin/env python3
+"""Scan lockfiles with osv-scanner and sort what it finds by whether
+there is anything to do about it yet.
+
+  scripts/osv-audit [osv-scanner scan source args…]
+  scripts/osv-audit -r .
+  scripts/osv-audit --lockfile cli/Cargo.lock
+
+Runs `osv-scanner scan source --format json` with the arguments given
+(plus `--config osv-scanner.toml` when that file is here and no
+`--config` was given; osv-scanner applies its IgnoredVulns), then
+prints two tables:
+
+  Fix now                    OSV lists a fixed version: bump to it
+  No fix available / blocked no advisory against the package has one
+
+A package with both kinds of advisory is in both, each with its own.
+
+Exits 1 if anything can be fixed now. Otherwise exits 0, and when
+something can't be fixed yet, says `conclusion=warning` in
+$GITHUB_OUTPUT (when set) — wired to the job's `gitgud-conclusion`
+output, the run shows the job as a warning rather than a pass or a
+failure:
+
+  outputs:
+    gitgud-conclusion: ${{ steps.scan.outputs.conclusion }}
+
+Alongside it, `summary=` says what was found in a few words ("2 to fix,
+1 no fix"), for the job's `gitgud-summary` output: the badge for the
+workflow shows it (GitGud.Badges). Nothing found writes no summary.
+
+`conclusion=success` when nothing was found. osv-scanner's own errors
+are passed on: 127 (it failed) as 127, and 128 (no lockfiles found) as
+128 unless `--allow-no-lockfiles` was given, when it's nothing found.
+
+The scanner is OSV_SCANNER (default `osv-scanner`). Only public
+advisory data passes through here. Standard library only, so it runs
+wherever python3 does. Used by .forgejo/workflows/audit.yml.
+"""
+
+import json
+import os
+import re
+import subprocess
+import sys
+
+
+def vkey(version):
+    """Sort key for a semver-ish version: 1.2.3 < 1.2.10, 1.0.0-rc.1 < 1.0.0."""
+    main, _, pre = version.partition("-")
+    nums = []
+    for part in main.split("."):
+        m = re.match(r"\d+", part)
+        nums.append(int(m.group()) if m else 0)
+    nums += [0] * (3 - len(nums))
+    if not pre:
+        return (nums, 1, ())
+    pre_parts = tuple((0, int(p), "") if p.isdigit() else (1, 0, p) for p in pre.split("."))
+    return (nums, 0, pre_parts)
+
+
+def same_ecosystem(a, b):
+    """`Debian:12` and `Debian` are one ecosystem; case doesn't matter."""
+    return (a or "").split(":")[0].lower() == (b or "").split(":")[0].lower()
+
+
+def same_package(ecosystem, a, b):
+    """Whether two names are one package in `ecosystem`. crates.io treats
+    `-` and `_` alike, and advisories don't always spell a crate as its
+    lockfile does (GHSA-qwgh-2vcv-g2f7 says `block_buffer`); PyPI folds
+    case and runs of `-_.` (PEP 503). Missing one would turn a fixable
+    finding into an unfixable one."""
+    kind = (ecosystem or "").split(":")[0].lower()
+    if kind == "crates.io":
+        return a.replace("_", "-") == b.replace("_", "-")
+    if kind == "pypi":
+        fold = lambda n: re.sub(r"[-_.]+", "-", n).lower()
+        return fold(a) == fold(b)
+    return a == b
+
+
+def fixed_version(vuln, ecosystem, name, current):
+    """The version that fixes `vuln` for this package, or None when OSV
+    lists no fixed version for it at all.
+
+    The fix for the range `current` is in when there is one; otherwise
+    the newest fix listed (a version range this can't place, say)."""
+    fixes = []
+    for affected in vuln.get("affected", []):
+        pkg = affected.get("package", {})
+        if not same_ecosystem(pkg.get("ecosystem"), ecosystem):
+            continue
+        if not same_package(ecosystem, pkg.get("name", ""), name):
+            continue
+        for rng in affected.get("ranges", []):
+            introduced = None
+            for event in rng.get("events", []):
+                if "introduced" in event:
+                    introduced = event["introduced"]
+                elif "fixed" in event:
+                    fixed = event["fixed"]
+                    fixes.append(fixed)
+                    if rng.get("type") in ("SEMVER", "ECOSYSTEM") and introduced is not None:
+                        low = introduced
+                        if (low == "0" or vkey(low) <= vkey(current)) and vkey(current) < vkey(fixed):
+                            return fixed
+                    introduced = None
+    return max(fixes, key=vkey, default=None)
+
+
+def classify(report):
+    """([fixable], [unfixable]) rows from an osv-scanner JSON report."""
+    fixable, unfixable = [], []
+    for result in report.get("results", []) or []:
+        lockfile = os.path.relpath(result.get("source", {}).get("path", "?"))
+        for pkg in result.get("packages", []) or []:
+            info = pkg.get("package", {})
+            name, version = info.get("name", "?"), info.get("version", "?")
+            ecosystem = info.get("ecosystem")
+            fixed, blocked = {}, []
+            for vuln in pkg.get("vulnerabilities", []) or []:
+                fix = fixed_version(vuln, ecosystem, name, version)
+                if fix:
+                    fixed[vuln["id"]] = fix
+                else:
+                    blocked.append(vuln["id"])
+            row = {"lockfile": lockfile, "package": name, "version": version}
+            if fixed:
+                fixable.append(
+                    dict(row, ids=sorted(fixed), fixed=max(fixed.values(), key=vkey))
+                )
+            if blocked:
+                unfixable.append(dict(row, ids=sorted(blocked), why="no fixed version"))
+    return fixable, unfixable
+
+
+def table(headers, rows):
+    widths = [max(len(str(c)) for c in col) for col in zip(headers, *rows)]
+    for line in [headers, *rows]:
+        print("  " + "  ".join(str(c).ljust(w) for c, w in zip(line, widths)).rstrip())
+
+
+def report(fixable, unfixable):
+    print(f"Fix now: {len(fixable)}")
+    if fixable:
+        table(
+            ["LOCKFILE", "PACKAGE", "VERSION", "ADVISORIES", "FIXED IN"],
+            [[r["lockfile"], r["package"], r["version"], ", ".join(r["ids"]), r["fixed"]] for r in fixable],
+        )
+    print(f"\nNo fix available / blocked: {len(unfixable)}")
+    if unfixable:
+        table(
+            ["LOCKFILE", "PACKAGE", "VERSION", "ADVISORIES", "WHY"],
+            [[r["lockfile"], r["package"], r["version"], ", ".join(r["ids"]), r["why"]] for r in unfixable],
+        )
+
+
+def set_output(conclusion, summary=None):
+    path = os.environ.get("GITHUB_OUTPUT")
+    if path:
+        with open(path, "a") as f:
+            f.write(f"conclusion={conclusion}\n")
+            if summary:
+                f.write(f"summary={summary}\n")
+
+
+def summary(fixable, unfixable):
+    """A badge's worth: `2 to fix, 1 no fix`, `1 no fix`."""
+    parts = []
+    if fixable:
+        parts.append(f"{len(fixable)} to fix")
+    if unfixable:
+        parts.append(f"{len(unfixable)} no fix")
+    return ", ".join(parts) or None
+
+
+def main(argv):
+    args = argv[1:]
+    if any(a in ("-h", "--help") for a in args):
+        print(__doc__)
+        return 0
+    if any(a == "--format" or a.startswith("--format=") or a == "--output" or a.startswith("--output=") for a in args):
+        print("osv-audit reads osv-scanner's JSON itself: don't pass --format or --output.", file=sys.stderr)
+        return 2
+    if not any(a == "--config" or a.startswith("--config=") for a in args) and os.path.isfile("osv-scanner.toml"):
+        args = ["--config", "osv-scanner.toml", *args]
+
+    scanner = os.environ.get("OSV_SCANNER", "osv-scanner")
+    try:
+        out = subprocess.run(
+            [scanner, "scan", "source", "--format", "json", *args], stdout=subprocess.PIPE, text=True
+        )
+    except OSError as e:
+        print(f"osv-audit: can't run {scanner}: {e}", file=sys.stderr)
+        return 127
+
+    # 0: nothing found (or all ignored), 1: found some. 128: no packages
+    # or lockfiles, which is only an answer if the caller said it may be.
+    if out.returncode == 128 and any(a.startswith("--allow-no-lockfiles") for a in args):
+        print("No lockfiles found.")
+        set_output("success")
+        return 0
+    if out.returncode not in (0, 1):
+        print(f"osv-audit: osv-scanner failed ({out.returncode})", file=sys.stderr)
+        return out.returncode
+
+    try:
+        data = json.loads(out.stdout.strip() or "{}")
+    except json.JSONDecodeError as e:
+        print(f"osv-audit: osv-scanner's output isn't JSON: {e}", file=sys.stderr)
+        return 127
+
+    fixable, unfixable = classify(data)
+    report(fixable, unfixable)
+
+    if fixable:
+        print(f"\n{len(fixable)} package(s) have a fixed version: update them.")
+        set_output("failure", summary(fixable, unfixable))
+        return 1
+    if unfixable:
+        print(f"\nNothing to update yet: {len(unfixable)} package(s) have no fixed version.")
+        set_output("warning", summary(fixable, unfixable))
+        return 0
+    print("\nNo known vulnerabilities.")
+    set_output("success")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))
