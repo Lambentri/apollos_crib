@@ -30,17 +30,18 @@ private const val FPS = 30
  * Paced from Compose's frame clock at [FPS] while resumed; paused with the
  * activity, so a phone in a pocket draws nothing. With animations off
  * system-wide it draws one settled frame per change, as the web does for
- * prefers-reduced-motion.
+ * prefers-reduced-motion, unless the settings say to always move.
  */
 @Composable
 fun ShaderBackground(settings: ShaderSettings, theme: AppTheme, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val renderer = remember {
-        FieldRenderer(context.assets.open("field.frag").bufferedReader().use { it.readText() })
+        val assets = context.applicationContext.assets
+        FieldRenderer { name -> assets.open("$name.frag").bufferedReader().use { it.readText() } }
     }
     var view by remember { mutableStateOf<GLSurfaceView?>(null) }
     val colours = remember(theme) { ShaderColours.forTheme(theme) }
-    val still = !ValueAnimator.areAnimatorsEnabled()
+    val still = !settings.alwaysMove && !ValueAnimator.areAnimatorsEnabled()
 
     SideEffect {
         renderer.settings = settings

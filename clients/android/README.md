@@ -168,7 +168,13 @@ launcher and are not ours to type.
 Blueprint, and the shader background behind the app's own screens, come from
 party²'s Android app (`ui/shader/`, `assets/field.frag`). The fragment shader
 is the moire wallpaper's, unchanged; `Shader.toGles` rewrites only its Qt
-header. Pick a pattern and its effects on the connection screen, or by tapping
+header. Prism, Oil on glass, Bubbles and Absorbing spheres have shaders of
+their own (`assets/{prism,oil,bubbles,spheres}.frag`, neiam-device's
+`moire/shaders/` copies, unchanged), drawn over the field as they fade in;
+their motion is neiam-device's `droid/Motion.kt` and `Balls.kt`, and their
+settings show in the effects dialog only while they are the pattern. With
+animations off system-wide it draws one still frame, unless "Always move" is
+on. Pick a pattern and its effects on the connection screen, or by tapping
 "Apollo's" on the board. It is off by default -- a panel on a wall should not
 start drawing thirty frames a second because of an update -- and the launcher
 feed page never draws it.
