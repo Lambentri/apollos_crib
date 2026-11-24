@@ -5,10 +5,11 @@ package io.neiam.apolloscrib.ui.shader
  * fragment shader is the Plasma wallpaper's moire/shaders/field.frag,
  * packaged unchanged as assets/field.frag (the web's copy is
  * assets/f/js/shaders/field.frag; tests/shader_copies.rs keeps the two the
- * same). It is written for Qt,
- * whose qsb compiles it: Vulkan-style GLSL 440 with its uniforms in a
+ * same), and prism, oil, bubbles and spheres.frag beside it are the same
+ * directory's, also unchanged. They are written for Qt,
+ * whose qsb compiles them: Vulkan-style GLSL 440 with uniforms in a
  * std140 block. This rewrites only that header for OpenGL ES 3.0; the
- * shader body is the same code the desktop runs.
+ * shader bodies are the same code the desktop runs.
  */
 object Shader {
 

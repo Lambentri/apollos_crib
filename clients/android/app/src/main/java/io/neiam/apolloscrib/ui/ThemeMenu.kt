@@ -148,7 +148,11 @@ fun PickChip(label: String, selected: Boolean, onClick: () -> Unit) {
     )
 }
 
-/** party²'s background effects, applied live behind the dialog. */
+/**
+ * party²'s background effects, applied live behind the dialog, and the
+ * settings of a pattern that has its own (neiam-org's shaders page): shown
+ * only while it is the pattern.
+ */
 @Composable
 private fun EffectsDialog(onDismiss: () -> Unit) {
     val backgrounds = LocalBackgrounds.current
@@ -160,11 +164,17 @@ private fun EffectsDialog(onDismiss: () -> Unit) {
         title = { Text("Background effects") },
         text = {
             Column(Modifier.verticalScroll(rememberScrollState())) {
+                PatternSettings(s, ::set)
                 Toggle("Glint", "a band of light sweeping across every minute and a half", s.glints) { set(s.copy(glints = it)) }
                 Toggle("Breathing", "the pattern slowly swelling and easing", s.breathing) { set(s.copy(breathing = it)) }
                 Toggle("Foreground discs", "large defocused discs drifting past now and then", s.foreground) { set(s.copy(foreground = it)) }
                 Toggle("Film grain", "a fine moving noise", s.grain) { set(s.copy(grain = it)) }
                 Toggle("Dither", "keeps slow gradients from banding", s.dither) { set(s.copy(dither = it)) }
+                Toggle(
+                    "Always move",
+                    "animate even with animations off system-wide (otherwise one still frame)",
+                    s.alwaysMove,
+                ) { set(s.copy(alwaysMove = it)) }
                 Text("Bokeh lights: ${s.lights}", style = MaterialTheme.typography.labelMedium)
                 Slider(
                     value = s.lights.toFloat(),
@@ -187,6 +197,51 @@ private fun EffectsDialog(onDismiss: () -> Unit) {
             }
         },
         confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } },
+    )
+}
+
+/** The selected pattern's own settings, if it has any. */
+@Composable
+private fun PatternSettings(s: ShaderSettings, set: (ShaderSettings) -> Unit) {
+    when (s.pattern) {
+        "prism" -> {
+            Whole("Beam angle", "°", s.prismAngle, 0..355, by = 5) { set(s.copy(prismAngle = it)) }
+            Text("Shape", style = MaterialTheme.typography.labelMedium)
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Patterns.shapes.forEach { (sides, name) ->
+                    PickChip(name, s.prismSides == sides) { set(s.copy(prismSides = sides)) }
+                }
+            }
+            Whole("Rays", "", s.prismRays, 2..24) { set(s.copy(prismRays = it)) }
+            Toggle(
+                "Slow spin",
+                if (s.prismSlow) "a steady rotation" else "a turn every 15 s",
+                s.prismSlow,
+            ) { set(s.copy(prismSlow = it)) }
+        }
+        "oil" -> Whole("Coverage", "%", s.oilCoverage, 0..100, by = 5) { set(s.copy(oilCoverage = it)) }
+        "bubbles" -> Whole("Bubbles", "", s.bubbleCount, 1..32) { set(s.copy(bubbleCount = it)) }
+        "spheres" -> Whole("Spheres per round", "", s.sphereCount, 4..48) { set(s.copy(sphereCount = it)) }
+        else -> return
+    }
+    HorizontalDivider(Modifier.padding(vertical = 8.dp))
+}
+
+/** A slider over whole numbers, [by] apart. */
+@Composable
+private fun Whole(name: String, unit: String, value: Int, range: IntRange, by: Int = 1, onChange: (Int) -> Unit) {
+    Text("$name: $value$unit", style = MaterialTheme.typography.labelMedium)
+    Slider(
+        value = value.toFloat(),
+        onValueChange = {
+            val v = (range.first + Math.round((it - range.first) / by) * by).coerceIn(range)
+            if (v != value) onChange(v)
+        },
+        valueRange = range.first.toFloat()..range.last.toFloat(),
+        steps = (range.last - range.first) / by - 1,
     )
 }
 

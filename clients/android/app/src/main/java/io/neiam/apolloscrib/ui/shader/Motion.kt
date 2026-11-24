@@ -3,6 +3,7 @@ package io.neiam.apolloscrib.ui.shader
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sign
@@ -17,7 +18,10 @@ import kotlin.math.sin
  * a raw clock.
  *
  * Pattern amounts ease over 1.5 s and colours over 4 s, so a change of
- * pattern or theme fades rather than cuts.
+ * pattern or theme fades rather than cuts. The patterns with shaders of
+ * their own ([PROGRAMS]) fade in over the layered one the same way, as
+ * [shown] amounts; their motion (the prism's turns, the discs) is
+ * droid/Motion.kt's and Balls.kt's, unchanged.
  */
 class Motion {
     /** Seconds of motion so far, scaled by speed; a random start. */
@@ -31,7 +35,29 @@ class Motion {
     private var to: List<FloatArray> = emptyList()
     private var t = 1.0
 
+    /** Prism's turns, in radians. Accumulated rather than taken from
+     * the clock, so switching between the two motions carries on from
+     * where they are. */
+    var spin = Math.random() * 2 * PI
+        private set
+    var rayTurn = Math.random() * 2 * PI
+        private set
+    private var stepClock = 0.0
+
+    private val bubbles = Balls.Bubbles()
+    private val spheres = Balls.Absorbers()
+    // Each as last stepped, kept while its pattern fades out.
+    private var bubbleDiscs = Balls.Packed(emptyList(), 1.0)
+    private var sphereDiscs = Balls.Packed(emptyList(), 0.0)
+
+    // The surface's size in the shader's units, as last drawn.
+    private var extentX = 16.0 / 9
+    private var extentY = 1.0
+
     private fun sweep(period: Double, phase: Double) = sin(2 * PI * (clock / period + phase))
+
+    /** How much of each own-shader pattern shows, 0-1, by name. */
+    fun shown(program: String) = eased[program] ?: 0.0
 
     private fun layerOf(name: String, layer: String): Double =
         if (layer == name || (name == "both" && (layer == "moire" || layer == "halftone"))) 1.0 else 0.0
@@ -51,8 +77,37 @@ class Motion {
     }
 
     fun advance(dt: Double, s: ShaderSettings, target: List<FloatArray>) {
-        clock += s.speed * min(dt, 0.25)
+        val step = s.speed * min(dt, 0.25)
+        clock += step
         frame = (frame + 1) % 100000
+
+        // Slow spin: a steady turn, the shape every 2 min and the rays
+        // every 160 s. Otherwise both hold still, then every 15 s turn one
+        // step (a side of the shape, one ray's spacing) over 2 s, eased.
+        val tau = 2 * PI
+        if (s.prismSlow) {
+            spin = (spin + tau * step / 120) % tau
+            rayTurn = (rayTurn + tau * step / 160) % tau
+        } else {
+            fun steps(t: Double): Double {
+                val f = min(1.0, (t % 15) / 2)
+                return floor(t / 15) + f * f * (3 - 2 * f)
+            }
+            val before = steps(stepClock)
+            stepClock += step
+            val moved = steps(stepClock) - before
+            spin = (spin + moved * tau / (if (s.prismSides >= 3) s.prismSides else 6)) % tau
+            rayTurn = (rayTurn + moved * tau / max(1, s.prismRays)) % tau
+        }
+        // Stepped even by nothing, so a still frame has its discs.
+        val program = program(s)
+        if (program == "bubbles") {
+            bubbles.step(step, extentX, extentY, s.bubbleCount)
+            bubbleDiscs = bubbles.pack()
+        } else if (program == "spheres") {
+            spheres.step(step, extentX, extentY, s.sphereCount)
+            sphereDiscs = spheres.pack()
+        }
 
         val current = colours
         if (current == null) {
@@ -76,10 +131,18 @@ class Motion {
             val a = amount(layer, s)
             if (direct) eased[layer] = a else ease(layer, a, dt)
         }
+        for (p in PROGRAMS) ease(p, if (program == p) 1.0 else 0.0, dt)
         ease("flare", if (s.foreground) 1.0 else 0.0, dt)
         ease("glints", if (s.glints) 1.0 else 0.0, dt)
         ease("grain", if (s.grain) 1.0 else 0.0, dt)
         ease("breathe", if (s.breathing) 1.0 else 0.0, dt)
+    }
+
+    /** Where the surface's size is known before the first frame. */
+    fun resize(width: Int, height: Int) {
+        val shorter = max(1, min(width, height)).toDouble()
+        extentX = width / shorter
+        extentY = height / shorter
     }
 
     /** The shader's uniforms for a surface of this size, by name. */
@@ -90,8 +153,9 @@ class Motion {
         // short side); on anything much smaller they fall below a pixel apart
         // and blur into a glow, so scale them up to keep their look.
         val zoom = min(6.0, max(1.0, 1000 / shorter))
-        val ex = width / shorter
-        val ey = height / shorter
+        resize(width, height)
+        val ex = extentX
+        val ey = extentY
         val hub = doubleArrayOf(0.62 * ex + 0.05 * sweep(97.0, 0.0), 0.46 * ey + 0.04 * sweep(131.0, 0.3))
         val spread = 0.03 * (1 + 0.35 * sweep(71.0, 0.1))
         val turn = 2 * PI * clock / 53
@@ -129,7 +193,31 @@ class Motion {
             "deep" to rgba(c[1]),
             "ink" to rgba(c[2]),
             "tone" to rgba(c[3]),
+            // Prism
+            "centre" to f(0.5 * ex + 0.03 * sweep(97.0, 0.0), 0.5 * ey + 0.03 * sweep(131.0, 0.3)),
+            "radius" to f(0.15),
+            "sides" to f(s.prismSides.toDouble()),
+            "spin" to f(spin),
+            "beamAngle" to f(s.prismAngle * PI / 180),
+            "rays" to f(s.prismRays.toDouble()),
+            "rayTurn" to f(rayTurn),
+            "cycle" to f((clock / 900) % 1),
+            // Oil on glass
+            "oilCycle" to f((clock / 240) % 1),
+            "coverage" to f(s.oilCoverage / 100.0),
         )
+    }
+
+    /** The discs' uniforms for bubbles.frag or spheres.frag: ball0-ball47,
+     * count and (spheres) fade. Unused slots are zero. Held [still], a
+     * round never fades in, so it shows as it is. */
+    fun discUniforms(program: String, s: ShaderSettings, still: Boolean = false): Map<String, FloatArray> {
+        val packed = if (program == "spheres") sphereDiscs else bubbleDiscs
+        val out = HashMap<String, FloatArray>()
+        for (i in 0 until Balls.MAX) out["ball$i"] = packed.balls.getOrNull(i) ?: FloatArray(4)
+        out["count"] = floatArrayOf(packed.count.toFloat())
+        out["fade"] = floatArrayOf(if (s.speed > 0 && !still) packed.fade.toFloat() else 1f)
+        return out
     }
 
     /** The settled ground colour, for clearing when the shader can't run. */
@@ -140,5 +228,11 @@ class Motion {
 
     companion object {
         val LAYERS = listOf("moire", "halftone", "bokeh", "stars")
+
+        /** Patterns drawn by a shader of their own, over field.frag. */
+        val PROGRAMS = listOf("prism", "oil", "bubbles", "spheres")
+
+        /** Which shader draws the pattern: "field" for the layered ones. */
+        fun program(s: ShaderSettings) = if (s.pattern in PROGRAMS) s.pattern else "field"
     }
 }
